@@ -17,7 +17,7 @@
 }
 
 .button--primary {
-  background: #4B4BCF;
+  background: blue;
   color: white;
 }
 
@@ -30,6 +30,14 @@
 .button--ghost {
   background: transparent;
   color: #4B4BCF;
+}
+
+.button--block {
+  width: 100%;
+}
+
+.button--danger {
+  background: red;
 }
 
 .button:hover {

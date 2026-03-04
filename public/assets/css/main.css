@@ -1,4 +1,7 @@
 @import "../js/components/button/button.css";
+@import "../js/components/logo/logo.css";
+@import "../js/components/input/input.css";
+@import "../js/pages/login/login.css";
 
 body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;

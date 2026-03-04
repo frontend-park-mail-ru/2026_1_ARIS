@@ -15,20 +15,20 @@ export function renderLogin() {
           name: "email",
           type: "email",
           placeholder: "Введите email",
-          required: true
+          required: true,
         })}
 
         ${renderInput({
           name: "password",
           type: "password",
           placeholder: "Введите пароль",
-          required: true
+          required: true,
         })}
 
-        ${renderButton({ 
-          text: "Войти", 
-          type: "submit", 
-          variant: "primary" 
+        ${renderButton({
+          text: "Войти",
+          type: "submit",
+          variant: "primary",
         })}
       </div>
 

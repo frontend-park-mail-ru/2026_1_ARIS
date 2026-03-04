@@ -23,13 +23,13 @@
 
 .button--outline {
   background: transparent;
-  border: 1px solid #4B4BCF;
-  color: #4B4BCF;
+  border: 1px solid #4b4bcf;
+  color: #4b4bcf;
 }
 
 .button--ghost {
   background: transparent;
-  color: #4B4BCF;
+  color: #4b4bcf;
 }
 
 .button--block {

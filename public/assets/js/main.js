@@ -1,8 +1,8 @@
-import { createRouter } from './router.js';
-import { renderLogin } from './pages/login.js';
-import { renderRegister } from './pages/register.js';
-import { renderFeed } from './pages/feed.js';
-import { renderProfile } from './pages/profile.js';
+import { createRouter } from './router/router.js';
+import { renderLogin } from './pages/login/login.js';
+import { renderRegister } from './pages/register/register.js';
+import { renderFeed } from './pages/feed/feed.js';
+import { renderProfile } from './pages/profile/profile.js';
 
 const root = document.getElementById('app');
 

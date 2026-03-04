@@ -1,0 +1,42 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 10px 15px;
+  height: 45px;
+
+  border-radius: 10px;
+  border: none;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.button--primary {
+  background: #4B4BCF;
+  color: white;
+}
+
+.button--outline {
+  background: transparent;
+  border: 1px solid #4B4BCF;
+  color: #4B4BCF;
+}
+
+.button--ghost {
+  background: transparent;
+  color: #4B4BCF;
+}
+
+.button:hover {
+  opacity: 0.9;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

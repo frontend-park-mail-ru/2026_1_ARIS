@@ -7,14 +7,18 @@
     <link rel="stylesheet" href="/assets/css/main.css" />
   </head>
   <body>
-    <h1>ARISNET</h1>
-    <ul>
-      <li><a href="/pages/login.html">Войти</a></li>
-      <li><a href="/pages/register.html">Регистрация</a></li>
-      <li><a href="/pages/feed.html">Лента</a></li>
-      <li><a href="/pages/profile.html">Профиль</a></li>
-    </ul>
+    <header>
+      <a href="/feed" data-link>ARISNET</a>
+      <nav>
+        <a href="/login" data-link>Войти</a>
+        <a href="/register" data-link>Регистрация</a>
+        <a href="/feed" data-link>Лента</a>
+        <a href="/profile" data-link>Профиль</a>
+      </nav>
+    </header>
 
+    <main id="app"></main>
+    
     <script type="module" src="/assets/js/main.js"></script>
   </body>
 </html>

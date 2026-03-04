@@ -14,15 +14,18 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.js": [
+    "**/*.js": [
       "prettier --write",
       "eslint"
     ],
-    "*.css": [
+    "**/*.css": [
       "prettier --write",
       "stylelint --fix"
     ],
-    "*.html": [
+    "**/*.html": [
+      "prettier --write"
+    ],
+    "**/*.{json,md}": [
       "prettier --write"
     ]
   },

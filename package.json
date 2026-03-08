@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:css": "stylelint \"public/**/*.css\"",
+    "lint:css:fix": "stylelint \"public/**/*.css\" --fix",
     "prepare": "husky"
   },
   "lint-staged": {

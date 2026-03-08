@@ -2,6 +2,7 @@
 @import url("../js/components/logo/logo.css");
 @import url("../js/components/input/input.css");
 @import url("../js/pages/login/login.css");
+@import url("../js/pages/feed/feed.css");
 
 body {
   font-family:
@@ -11,5 +12,11 @@ body {
     Roboto,
     Arial,
     sans-serif;
-  padding: 24px;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  margin: 0;
+  padding: 0;
 }

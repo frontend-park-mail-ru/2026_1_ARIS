@@ -55,6 +55,29 @@
   transform: translateY(1px);
 }
 
+.button--surface {
+  border: none;
+  background: #fff;
+  color: var(--color-primary);
+}
+
+.button--surface:hover {
+  background: var(--color-variant-light);
+}
+
+.button--surface:active {
+  background: var(--color-variant-medium);
+  transform: translateY(1px);
+}
+
+.button--small {
+  width: 109px;
+}
+
+.button--full {
+  width: 100%;
+}
+
 .button--light {
   border: 1px solid #000f66;
   background: var(--color-variant-light);

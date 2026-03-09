@@ -1,4 +1,5 @@
 import { initPostcardExpand } from "../components/postcard/postcard.js";
+import { initAuthForm } from "../components/auth-form/auth-form-controller.js";
 
 function normalisePath(p) {
   const noTrailing = (p || "/").replace(/\/+$/g, "");
@@ -18,6 +19,7 @@ export function createRouter(root, routes) {
 
     document.title = route.title;
     root.innerHTML = route.render();
+    initAuthForm(root);
     initPostcardExpand(root);
   }
 

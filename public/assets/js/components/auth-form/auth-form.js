@@ -9,22 +9,20 @@ function renderLoginFields(hasError) {
   const state = hasError ? "error" : "default";
 
   return `
-    ${renderInput({
+    ${renderAuthField({
       type: "text",
       name: "login",
       placeholder: "Логин",
       state,
-      className: "auth-form__input-control",
     })}
 
-    ${renderInput({
+    ${renderAuthField({
       type: "password",
       name: "password",
       placeholder: "Пароль",
       state,
       withToggle: true,
       isVisible: false,
-      className: "auth-form__input-control",
     })}
   `;
 }
@@ -35,7 +33,7 @@ function renderLoginFields(hasError) {
  */
 function renderRegisterFields() {
   return `
-    ${renderInput({
+    ${renderAuthField({
       type: "text",
       name: "firstName",
       placeholder: "Имя",
@@ -43,7 +41,7 @@ function renderRegisterFields() {
       className: "auth-form__input-control",
     })}
 
-    ${renderInput({
+    ${renderAuthField({
       type: "text",
       name: "lastName",
       placeholder: "Фамилия",
@@ -51,7 +49,7 @@ function renderRegisterFields() {
       className: "auth-form__input-control",
     })}
 
-    ${renderInput({
+    ${renderAuthField({
       type: "text",
       name: "birthDate",
       placeholder: "Дата рождения (дд/мм/гггг)",
@@ -59,7 +57,7 @@ function renderRegisterFields() {
       className: "auth-form__input-control",
     })}
 
-    ${renderInput({
+    ${renderAuthField({
       type: "text",
       name: "login",
       placeholder: "Логин",
@@ -67,7 +65,7 @@ function renderRegisterFields() {
       className: "auth-form__input-control",
     })}
 
-    ${renderInput({
+    ${renderAuthField({
       type: "password",
       name: "password",
       placeholder: "Пароль",
@@ -77,7 +75,7 @@ function renderRegisterFields() {
       className: "auth-form__input-control",
     })}
 
-    ${renderInput({
+    ${renderAuthField({
       type: "password",
       name: "repeatPassword",
       placeholder: "Повторите пароль",
@@ -116,9 +114,16 @@ export function renderAuthForm({
           ${isLogin ? renderLoginFields(hasError) : renderRegisterFields()}
         </div>
 
-        <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
-          ${errorText}
-        </p>
+
+        ${
+          isLogin
+            ? `
+                <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
+                ${errorText}
+                </p>
+            `
+            : ""
+        }
 
         <div class="auth-form__actions">
           ${renderButton({
@@ -160,5 +165,35 @@ export function renderAuthForm({
           `
       }
     </section>
+  `;
+}
+
+function renderAuthField({
+  type,
+  name,
+  placeholder,
+  state = "default",
+  withToggle = false,
+  isVisible = false,
+  errorText = "",
+}) {
+  const hasError = Boolean(errorText);
+
+  return `
+    <div class="auth-form__field-group">
+      ${renderInput({
+        type,
+        name,
+        placeholder,
+        state,
+        withToggle,
+        isVisible,
+        className: "auth-form__input-control",
+      })}
+
+      <p class="auth-form__field-error${hasError ? "" : " auth-form__field-error--hidden"}">
+        ${hasError ? errorText : " "}
+      </p>
+    </div>
   `;
 }

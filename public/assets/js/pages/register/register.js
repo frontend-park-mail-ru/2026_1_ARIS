@@ -1,3 +1,11 @@
+import { renderAuthForm } from "../../components/auth-form/auth-form.js";
+
 export function renderRegister() {
-  return `<section><h1>Регистрация</h1><p>TODO: страница регистрации</p></section>`;
+  return `
+    <div class="register-page">
+      <main class="register-page__content">
+        ${renderAuthForm({ mode: "register" })}
+      </main>
+    </div>
+  `;
 }

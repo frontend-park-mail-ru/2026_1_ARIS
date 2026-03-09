@@ -1,27 +1,46 @@
 .feed-page {
   min-height: 100vh;
   margin: 0;
+  overflow-x: hidden;
   background: linear-gradient(135deg, #3242d3 0%, #d9d7e6 35%, #b4c9f2 70%, #7b81f0 100%);
 }
 
 .feed-layout {
-  display: flex;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: 240px 630px 300px;
+  column-gap: 24px;
+  align-items: start;
+  width: max-content;
+  min-width: 1458px;
   padding: 24px 120px 40px;
-  align-items: flex-start;
   box-sizing: border-box;
 }
 
 .feed-layout__left {
-  flex: 0 0 auto;
-  align-self: stretch;
-  min-width: 0;
+  width: 240px;
+  min-width: 240px;
 }
 
 .feed-layout__center {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 630px;
+  min-width: 630px;
+  padding: 0 5px;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.feed-layout__right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 300px;
+  min-width: 300px;
+  padding: 0 0 0 20px;
+  align-items: flex-start;
+  box-sizing: border-box;
 }
 
 .post-card {
@@ -43,13 +62,6 @@
   color: #1f1f1f;
   font-size: 16px;
   line-height: 1.5;
-}
-
-.feed-layout__right {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
 }
 
 .info-card {

@@ -1,3 +1,31 @@
+function renderPopularUsersWidget() {
+  return `
+    <section class="widgetbar-card">
+      <h3 class="widgetbar-card__title">Популярные пользователи</h3>
+
+      <div class="widgetbar-person">
+        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
+        <a href="/login" data-link class="widgetbar-card__username">Сергей Шульгиненко</a>
+      </div>
+
+      <div class="widgetbar-person">
+        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
+        <a href="/login" data-link class="widgetbar-card__username">Анна Опарина</a>
+      </div>
+
+      <div class="widgetbar-person">
+        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
+        <a href="/login" data-link class="widgetbar-card__username">Иван Хвостов</a>
+      </div>
+
+      <div class="widgetbar-person">
+        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
+        <a href="/login" data-link class="widgetbar-card__username">Ринат Байков</a>
+      </div>
+    </section>
+  `;
+}
+
 function renderKnownPeopleWidget() {
   return `
     <section class="widgetbar-card">
@@ -48,7 +76,27 @@ function renderEventsWidget() {
   `;
 }
 
-function renderPopularPostsWidget() {
+function renderGuestPopularPostsWidget() {
+  return `
+    <section class="widgetbar-card">
+      <h3 class="widgetbar-card__title">Популярные посты</h3>
+
+      <a href="/login" data-link class="widgetbar-card__post-link">
+        Веб-разработка для начинающих: как создать свою социальную сеть
+      </a>
+
+      <a href="/login" data-link class="widgetbar-card__post-link">
+        JavaScript как язык программирования в 2026?
+      </a>
+
+      <a href="/login" data-link class="widgetbar-card__post-link">
+        Лучшие вузы России
+      </a>
+    </section>
+  `;
+}
+
+function renderAuthorisedPopularPostsWidget() {
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные посты</h3>
@@ -97,12 +145,21 @@ function renderWeatherWidget() {
  * Renders the widgetbar.
  * @returns {string}
  */
-export function renderWidgetbar() {
-  return `
+export function renderWidgetbar({ isAuthorised }) {
+  if (isAuthorised) {
+    return `
     <aside class="widgetbar">
       ${renderKnownPeopleWidget()}
       ${renderEventsWidget()}
-      ${renderPopularPostsWidget()}
+      ${renderAuthorisedPopularPostsWidget()}
+      ${renderWeatherWidget()}
+    </aside>
+  `;
+  }
+  return `
+    <aside class="widgetbar">
+      ${renderPopularUsersWidget()}
+      ${renderGuestPopularPostsWidget()}
       ${renderWeatherWidget()}
     </aside>
   `;

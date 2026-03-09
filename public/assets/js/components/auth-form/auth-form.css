@@ -1,0 +1,115 @@
+.auth-form {
+  display: flex;
+  width: 340px;
+  padding: 24px 28px 32px;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.auth-form__logo {
+  display: block;
+  width: 110px;
+  height: auto;
+}
+
+.auth-form__title {
+  margin: 0;
+  color: var(--color-black);
+  font-family: var(--font-main);
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.auth-form__subtitle {
+  margin: 0;
+  color: var(--color-black);
+  font-family: var(--font-main);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.auth-form__form {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.auth-form__fields {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.auth-form__actions {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-form__input-control {
+  align-self: center;
+}
+
+.auth-form__bottom-text {
+  margin: 0;
+  color: var(--color-black);
+  font-family: var(--font-main);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.auth-form__inline-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-family: var(--font-main);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.auth-form__submit,
+.auth-form__secondary-link {
+  width: 100%;
+  align-self: stretch;
+}
+
+.auth-form__secondary-link {
+  text-align: center;
+  text-decoration: none;
+}
+
+.auth-form__inline-link:hover {
+  text-decoration: underline;
+}
+
+.auth-form__error {
+  width: 100%;
+  margin: 0;
+  min-height: 19px;
+  color: var(--color-error-text);
+  font-family: var(--font-main);
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 0.32px;
+}
+
+.auth-form__error--hidden {
+  visibility: hidden;
+}

@@ -1,46 +1,84 @@
 .button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 15px;
+  display: flex;
   height: 45px;
+  padding: 10px 15px;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  box-sizing: border-box;
   border-radius: 10px;
-  border: none;
-  font-size: 14px;
-  font-weight: 500;
+  text-decoration: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  font-family: var(--font-main);
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0.02em;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .button--primary {
-  background: blue;
-  color: white;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
 }
 
-.button--outline {
-  background: transparent;
-  border: 1px solid #4b4bcf;
-  color: #4b4bcf;
+.button--primary:hover {
+  background: var(--color-primary-hover);
 }
 
-.button--ghost {
-  background: transparent;
-  color: #4b4bcf;
+.button--primary:active {
+  background: var(--color-primary-active);
+  transform: translateY(1px);
 }
 
-.button--block {
-  width: 100%;
+.button--secondary {
+  border: 1px solid #000f66;
+  background: #fff;
+  color: var(--color-primary);
 }
 
-.button--danger {
-  background: red;
+.button--secondary:hover {
+  background: var(--color-variant-light);
 }
 
-.button:hover {
-  opacity: 0.9;
+.button--secondary:active {
+  background: var(--color-variant-medium);
+  transform: translateY(1px);
 }
 
-.button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.button--light {
+  border: 1px solid #000f66;
+  background: var(--color-variant-light);
+  color: var(--color-primary);
+}
+
+.button--light:hover {
+  background: var(--color-variant-medium);
+}
+
+.button--light:active {
+  transform: translateY(1px);
+}
+
+.button--medium {
+  border: 1px solid #000f66;
+  background: var(--color-variant-medium);
+  color: var(--color-primary);
+}
+
+.button--medium:hover {
+  background: var(--color-variant-light);
+}
+
+.button--medium:active {
+  transform: translateY(1px);
 }

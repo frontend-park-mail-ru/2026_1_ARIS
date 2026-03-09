@@ -13,6 +13,7 @@
   --color-header-bg: #fff;
   --color-card-gradient: radial-gradient(141.49% 141.42% at 0% 0%, #efeffa 0%, #f4f4ff 100%);
   --color-active-item-bg: #afb4e1;
+  --color-active-item-hover: rgb(175 180 225 / 45%);
   --color-variant-light: #cbd2de;
   --color-variant-medium: #939bbc;
   --color-search-bg: #d9d9d9;

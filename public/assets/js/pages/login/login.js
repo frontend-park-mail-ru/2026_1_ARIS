@@ -1,6 +1,7 @@
 import { renderHeader } from "../../components/header/header.js";
 import { renderButton } from "../../components/button/button.js";
 import { renderEyeToggle } from "../../components/eye-toggle/eye-toggle.js";
+import { renderInput } from "../../components/input/input.js";
 
 export function renderLogin() {
   return `
@@ -22,28 +23,24 @@ export function renderLogin() {
           </p>
 
           <form class="login-card__form">
-
             <div class="login-card__fields">
-
-              <input
-                class="login-card__input"
-                type="text"
-                placeholder="Логин"
-              >
-
-              <div class="login-card__password">
-                <input
-                  class="login-card__input login-card__input--password"
-                  type="password"
-                  placeholder="Пароль"
-                >
-
-              ${renderEyeToggle({
-                isVisible: false,
-                className: "login-card__eye",
+              ${renderInput({
+                type: "text",
+                name: "login",
+                placeholder: "Логин",
+                state: "default",
+                className: "login-card__input-control",
               })}
-              </div>
 
+              ${renderInput({
+                type: "password",
+                name: "password",
+                placeholder: "Пароль",
+                state: "default",
+                withToggle: true,
+                isVisible: false,
+                className: "login-card__input-control",
+              })}
             </div>
 
             <div class="login-card__actions">

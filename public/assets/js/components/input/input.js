@@ -1,20 +1,47 @@
+import { renderEyeToggle } from "../eye-toggle/eye-toggle.js";
+
 export function renderInput({
-  name,
   type = "text",
+  name = "",
   placeholder = "",
   value = "",
-  required = false,
+  state = "default",
+  withToggle = false,
+  isVisible = false,
   disabled = false,
+  className = "",
 } = {}) {
+  const inputType = type === "password" && isVisible ? "text" : type;
+
+  const classes = [
+    "input",
+    `input--${state}`,
+    withToggle ? "input--with-toggle" : "",
+    type === "password" ? "input--password" : "",
+    disabled ? "input--disabled" : "",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return `
-    <input
-      class="input"
-      name="${name}"
-      type="${type}"
-      placeholder="${placeholder}"
-      value="${value}"
-      ${required ? "required" : ""}
-      ${disabled ? "disabled" : ""}
-    />
+    <label class="${classes}">
+      <input
+        class="input__field"
+        type="${inputType}"
+        name="${name}"
+        placeholder="${placeholder}"
+        value="${value}"
+        ${disabled ? "disabled" : ""}
+      >
+      ${
+        withToggle
+          ? renderEyeToggle({
+              isVisible,
+              className: "input__toggle",
+            })
+          : ""
+      }
+    </label>
   `;
 }

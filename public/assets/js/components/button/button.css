@@ -14,6 +14,10 @@
   font-style: normal;
   font-weight: 400;
   line-height: normal;
+  letter-spacing: 0.02em;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   transition:
     background-color 0.2s ease,
     color 0.2s ease,

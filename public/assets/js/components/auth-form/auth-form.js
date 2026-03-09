@@ -1,72 +1,30 @@
-/**
- * Escapes unsafe HTML.
- * @param {string} value
- * @returns {string}
- */
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-/**
- * Renders one auth input.
- * @param {Object} options
- * @param {string} options.type
- * @param {string} options.name
- * @param {string} options.placeholder
- * @param {boolean} [options.withToggle=false]
- * @returns {string}
- */
-function renderAuthInput({ type, name, placeholder, withToggle = false }) {
-  const toggleButton = withToggle
-    ? `
-      <button
-        type="button"
-        class="auth-form__input-action"
-        aria-label="Показать или скрыть пароль"
-      >
-        <img src="assets/img/icons/eye-off-thin.svg" alt="">
-      </button>
-    `
-    : "";
-
-  return `
-    <label class="auth-form__field">
-      <span class="auth-form__field-control">
-        <input
-          class="auth-form__input"
-          type="${escapeHtml(type)}"
-          name="${escapeHtml(name)}"
-          placeholder="${escapeHtml(placeholder)}"
-          autocomplete="off"
-        >
-        ${toggleButton}
-      </span>
-    </label>
-  `;
-}
+import { renderButton } from "../button/button.js";
+import { renderInput } from "../input/input.js";
 
 /**
  * Renders auth form in login mode.
  * @returns {string}
  */
-function renderLoginFields() {
+function renderLoginFields(hasError) {
+  const state = hasError ? "error" : "default";
+
   return `
-    ${renderAuthInput({
+    ${renderInput({
       type: "text",
       name: "login",
       placeholder: "Логин",
+      state,
+      className: "auth-form__input-control",
     })}
 
-    ${renderAuthInput({
+    ${renderInput({
       type: "password",
       name: "password",
       placeholder: "Пароль",
+      state,
       withToggle: true,
+      isVisible: false,
+      className: "auth-form__input-control",
     })}
   `;
 }
@@ -77,42 +35,55 @@ function renderLoginFields() {
  */
 function renderRegisterFields() {
   return `
-    ${renderAuthInput({
+    ${renderInput({
       type: "text",
       name: "firstName",
       placeholder: "Имя",
+      state: "default",
+      className: "auth-form__input-control",
     })}
 
-    ${renderAuthInput({
+    ${renderInput({
       type: "text",
       name: "lastName",
       placeholder: "Фамилия",
+      state: "default",
+      className: "auth-form__input-control",
     })}
 
-    ${renderAuthInput({
+    ${renderInput({
       type: "text",
       name: "birthDate",
       placeholder: "Дата рождения (дд/мм/гггг)",
+      state: "default",
+      className: "auth-form__input-control",
     })}
 
-    ${renderAuthInput({
+    ${renderInput({
       type: "text",
       name: "login",
       placeholder: "Логин",
+      state: "default",
+      className: "auth-form__input-control",
     })}
 
-    ${renderAuthInput({
+    ${renderInput({
       type: "password",
       name: "password",
       placeholder: "Пароль",
+      state: "default",
       withToggle: true,
+      isVisible: false,
+      className: "auth-form__input-control",
     })}
 
-    ${renderAuthInput({
+    ${renderInput({
       type: "password",
       name: "repeatPassword",
       placeholder: "Повторите пароль",
       withToggle: true,
+      isVisible: false,
+      className: "auth-form__input-control",
     })}
   `;
 }
@@ -123,7 +94,11 @@ function renderRegisterFields() {
  * @param {"login"|"register"} options.mode
  * @returns {string}
  */
-export function renderAuthForm({ mode }) {
+export function renderAuthForm({
+  mode,
+  hasError = false,
+  errorText = "Неверный логин или пароль",
+}) {
   const isLogin = mode === "login";
 
   return `
@@ -137,19 +112,36 @@ export function renderAuthForm({ mode }) {
       </p>
 
       <form class="auth-form__form" novalidate>
-        ${isLogin ? renderLoginFields() : renderRegisterFields()}
+        <div class="auth-form__fields">
+          ${isLogin ? renderLoginFields(hasError) : renderRegisterFields()}
+        </div>
 
-        <button type="submit" class="auth-form__submit">
-          Продолжить
-        </button>
+        <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
+          ${errorText}
+        </p>
+
+        <div class="auth-form__actions">
+          ${renderButton({
+            text: "Продолжить",
+            variant: "primary",
+            tag: "button",
+            type: "submit",
+            className: "auth-form__submit",
+          })}
+        </div>
       </form>
 
       ${
         isLogin
           ? `
-            <a href="/register" data-link class="auth-form__secondary-link">
-              Создать аккаунт
-            </a>
+            ${renderButton({
+              text: "Создать аккаунт",
+              variant: "secondary",
+              tag: "link",
+              href: "/register",
+              withDataLink: true,
+              className: "auth-form__secondary-link",
+            })}
           `
           : `
             <p class="auth-form__bottom-text">
@@ -157,9 +149,14 @@ export function renderAuthForm({ mode }) {
               <a href="/login" data-link class="auth-form__inline-link">Войти</a>
             </p>
 
-            <a href="/feed" data-link class="auth-form__secondary-link">
-              Сначала посмотреть
-            </a>
+            ${renderButton({
+              text: "Сначала посмотреть",
+              variant: "secondary",
+              tag: "link",
+              href: "/feed",
+              withDataLink: true,
+              className: "auth-form__secondary-link",
+            })}
           `
       }
     </section>

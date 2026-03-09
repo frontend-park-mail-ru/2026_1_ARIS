@@ -15,4 +15,5 @@
   width: 40px;
   height: 40px;
   display: block;
+  transform: scale(0.9);
 }

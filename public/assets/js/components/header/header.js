@@ -1,4 +1,5 @@
 import { mockSession } from "../../mock/session.js";
+import { renderButton } from "../button/button.js";
 
 /**
  * Renders header for guest user.
@@ -12,13 +13,23 @@ function renderGuestHeader() {
       </a>
 
       <div class="header__guest-actions">
-        <a href="/register" data-link class="header__guest-button header__guest-button--primary">
-          Регистрация
-        </a>
+        ${renderButton({
+          text: "Регистрация",
+          variant: "primary",
+          tag: "link",
+          href: "/register",
+          withDataLink: true,
+          className: "header__guest-register",
+        })}
 
-        <a href="/login" data-link class="header__guest-button header__guest-button--secondary">
-          Войти
-        </a>
+        ${renderButton({
+          text: "Войти",
+          variant: "secondary",
+          tag: "link",
+          href: "/login",
+          withDataLink: true,
+          className: "header__guest-login",
+        })}
       </div>
 
       <a href="/login" data-link class="header__user">

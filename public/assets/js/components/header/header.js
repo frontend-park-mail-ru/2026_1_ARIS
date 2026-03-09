@@ -16,6 +16,9 @@ export function renderHeader() {
       <div class="header__left-filler" aria-hidden="true"></div>
 
       <label class="header__search-box" aria-label="Поиск">
+        <span class="header__search-icon" aria-hidden="true">
+          <img src="/assets/img/icons/search.svg" alt="">
+        </span>
         <input
           class="header__search-input"
           type="text"

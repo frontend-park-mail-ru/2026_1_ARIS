@@ -55,13 +55,18 @@
 
 .sidebar-item__icon {
   width: 25px;
+  height: 25px;
   min-width: 25px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #1e1e1e;
-  font-size: 18px;
-  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sidebar-item__icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .sidebar-item__label {

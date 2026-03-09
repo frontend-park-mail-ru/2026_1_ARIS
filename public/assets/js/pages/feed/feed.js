@@ -1,20 +1,160 @@
 import { renderHeader } from "../../components/header/header.js";
 import { renderSidebar } from "../../components/sidebar/sidebar.js";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar.js";
+import { mockSession } from "../../mock/session.js";
+import { renderPostcard } from "../../components/postcard/postcard.js";
 
+const mockFeedPosts = [
+  {
+    author: "Команда ARIS",
+    time: "1ч назад",
+    text: "Пост без фотографий. Проверяем, как карточка выглядит, когда медиаблок полностью отсутствует.",
+    likes: 324,
+    comments: 167,
+    reposts: 88,
+    images: [],
+  },
+  {
+    author: "Анна Смирнова",
+    time: "2ч назад",
+    text: "Пост с одной фотографией. Картинка должна занимать весь медиаблок.",
+    likes: 128,
+    comments: 14,
+    reposts: 6,
+    images: ["https://picsum.photos/seed/aris-post-1/800/600"],
+  },
+  {
+    author: "Иван Хвостов",
+    time: "3ч назад",
+    text: "Пост с двумя фотографиями. Они должны делить блок пополам.",
+    likes: 245,
+    comments: 31,
+    reposts: 12,
+    images: [
+      "https://picsum.photos/seed/aris-post-2a/800/600",
+      "https://picsum.photos/seed/aris-post-2b/800/600",
+    ],
+  },
+  {
+    author: "Ринат Байков",
+    time: "4ч назад",
+    text: "Пост с тремя фотографиями. Одна большая слева и две маленькие справа.",
+    likes: 512,
+    comments: 42,
+    reposts: 19,
+    images: [
+      "https://picsum.photos/seed/aris-post-3a/800/600",
+      "https://picsum.photos/seed/aris-post-3b/800/600",
+      "https://picsum.photos/seed/aris-post-3c/800/600",
+    ],
+  },
+  {
+    author: "Сергей Шульгиненко",
+    time: "5ч назад",
+    text: "Пост с четырьмя фотографиями. Проверяем сетку 2 на 2.",
+    likes: 1024,
+    comments: 64,
+    reposts: 21,
+    images: [
+      "https://picsum.photos/seed/aris-post-4a/800/600",
+      "https://picsum.photos/seed/aris-post-4b/800/600",
+      "https://picsum.photos/seed/aris-post-4c/800/600",
+      "https://picsum.photos/seed/aris-post-4d/800/600",
+    ],
+  },
+  {
+    author: "Анна Опарина",
+    time: "6ч назад",
+    text: "Пост с пятью фотографиями. Большая плитка плюс четыре маленьких.",
+    likes: 777,
+    comments: 53,
+    reposts: 17,
+    images: [
+      "https://picsum.photos/seed/aris-post-5a/800/600",
+      "https://picsum.photos/seed/aris-post-5b/800/600",
+      "https://picsum.photos/seed/aris-post-5c/800/600",
+      "https://picsum.photos/seed/aris-post-5d/800/600",
+      "https://picsum.photos/seed/aris-post-5e/800/600",
+    ],
+  },
+  {
+    author: "Михаил Иванов",
+    time: "7ч назад",
+    text: "Пост с шестью и более фотографиями. Последняя плитка должна показать overlay с количеством оставшихся фото.",
+    likes: 1500,
+    comments: 89,
+    reposts: 33,
+    images: [
+      "https://picsum.photos/seed/aris-post-6a/800/600",
+      "https://picsum.photos/seed/aris-post-6b/800/600",
+      "https://picsum.photos/seed/aris-post-6c/800/600",
+      "https://picsum.photos/seed/aris-post-6d/800/600",
+      "https://picsum.photos/seed/aris-post-6e/800/600",
+      "https://picsum.photos/seed/aris-post-6f/800/600",
+      "https://picsum.photos/seed/aris-post-6g/800/600",
+    ],
+  },
+];
+
+/**
+ * Renders the guest feed.
+ * @returns {string}
+ */
+function renderGuestFeed() {
+  return `
+    <section class="feed-layout__center">
+      ${renderPostcard({
+        author: "Команда ARIS",
+        time: "1ч назад",
+        text: `Привет! Добро пожаловать в ARIS :)
+
+Мы хотели создать нашу социальную сеть в том виде, как она задумывалась изначально - с акцентом на общение со знакомыми нам людьми и поиском новых, схожих с нами по интересам.
+
+Сейчас ты видишь приветственное сообщение от нашей команды, но после регистрации у тебя будет своя собственная персональная страничка и лента в таком же виде, но уже наполненная интересными лично тебе.
+
+Ты сможешь сам выбрать, в каком формате тебе интереснее смотреть ленту. Мы можем показывать тебе посты в том порядке, как они публиковались, но ты также можешь выбрать режим рекомендаций (иконка “Для Вас” в левом столбце), и тогда мы подберем сами что-нибудь интересное лично для тебя :)
+
+К постам можно прикреплять изображения. Для примера, в этом сообщении ниже мы прикрепили 4 фотографии.
+
+Как будешь готов - можем переходить к регистрации. Обещаем, что это не займет много времени!
+
+А возможно, у тебя уже есть персональная страничка на нашем сайте? :) Тогда мы можем перейти сразу к авторизации. Это будет еще быстрее.
+
+Чувствуй себя как дома,
+
+Команда ARIS.`,
+        likes: 324,
+        comments: 167,
+        reposts: 88,
+        images: [
+          "https://picsum.photos/seed/aris-team-1/600/400",
+          "https://picsum.photos/seed/aris-team-2/600/400",
+          "https://picsum.photos/seed/aris-team-3/600/400",
+          "https://picsum.photos/seed/aris-team-4/600/400",
+        ],
+      })}
+    </section>
+  `;
+}
+
+/**
+ * Renders the authorised feed.
+ * @returns {string}
+ */
+function renderAuthorisedFeed() {
+  return `
+    <section class="feed-layout__center">
+      ${mockFeedPosts.map(renderPostcard).join("")}
+    </section>
+  `;
+}
+
+/**
+ * Renders the feed page.
+ * @returns {string}
+ */
 export function renderFeed() {
-  const posts = Array.from({ length: 30 })
-    .map(
-      (_, index) => `
-        <article class="post-card">
-          <h2 class="post-card__author">Михаил Иванов ${index + 1}</h2>
-          <p class="post-card__text">
-            Сегодня наконец сделал 20 подтягиваний подряд. Делюсь программой тренировок.
-          </p>
-        </article>
-      `,
-    )
-    .join("");
+  const isAuthorised = mockSession.user !== null;
 
   return `
     <div class="feed-page">
@@ -25,12 +165,10 @@ export function renderFeed() {
           ${renderSidebar()}
         </aside>
 
-        <section class="feed-layout__center">
-          ${posts}
-        </section>
+        ${isAuthorised ? renderAuthorisedFeed() : renderGuestFeed()}
 
         <aside class="feed-layout__right">
-          ${renderWidgetbar()}
+          ${renderWidgetbar({ isAuthorised })}
         </aside>
       </main>
     </div>

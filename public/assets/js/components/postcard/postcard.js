@@ -1,0 +1,145 @@
+/**
+ * Renders a postcard footer item.
+ * @param {Object} options
+ * @param {string} options.icon
+ * @param {number} options.count
+ * @returns {string}
+ */
+function renderPostcardStat({ icon, count }) {
+  return `
+    <div class="postcard__stat">
+      <span class="postcard__stat-icon" aria-hidden="true">${icon}</span>
+      <span class="postcard__stat-count">${count}</span>
+    </div>
+  `;
+}
+
+/**
+ * Renders postcard media block.
+ * @param {string[]} images
+ * @returns {string}
+ */
+function renderPostcardMedia(images = []) {
+  if (!images || images.length === 0) {
+    return "";
+  }
+
+  if (images.length === 1) {
+    return `
+      <div class="postcard__media">
+        <div class="postcard__media-grid postcard__media-grid--single">
+          <img class="postcard__media-item" src="${images[0]}" alt="">
+        </div>
+      </div>
+    `;
+  }
+
+  if (images.length === 2) {
+    return `
+      <div class="postcard__media">
+        <div class="postcard__media-grid postcard__media-grid--double">
+          <img class="postcard__media-item" src="${images[0]}" alt="">
+          <img class="postcard__media-item" src="${images[1]}" alt="">
+        </div>
+      </div>
+    `;
+  }
+
+  if (images.length === 3) {
+    return `
+      <div class="postcard__media">
+        <div class="postcard__media-grid postcard__media-grid--triple">
+          <img class="postcard__media-item postcard__media-item--featured" src="${images[0]}" alt="">
+          <img class="postcard__media-item" src="${images[1]}" alt="">
+          <img class="postcard__media-item" src="${images[2]}" alt="">
+        </div>
+      </div>
+    `;
+  }
+
+  if (images.length === 4) {
+    return `
+      <div class="postcard__media">
+        <div class="postcard__media-grid postcard__media-grid--quad">
+          ${images
+            .slice(0, 4)
+            .map((image) => `<img class="postcard__media-item" src="${image}" alt="">`)
+            .join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  if (images.length === 5) {
+    return `
+      <div class="postcard__media postcard__media--five">
+        <div class="postcard__media-row postcard__media-row--top">
+          <img class="postcard__media-item" src="${images[0]}" alt="">
+          <img class="postcard__media-item" src="${images[1]}" alt="">
+        </div>
+
+        <div class="postcard__media-row postcard__media-row--bottom">
+          <img class="postcard__media-item" src="${images[2]}" alt="">
+          <img class="postcard__media-item" src="${images[3]}" alt="">
+          <img class="postcard__media-item" src="${images[4]}" alt="">
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="postcard__media postcard__media--five-plus">
+      <div class="postcard__media-row postcard__media-row--top">
+        <img class="postcard__media-item" src="${images[0]}" alt="">
+        <img class="postcard__media-item" src="${images[1]}" alt="">
+        <img class="postcard__media-item" src="${images[2]}" alt="">
+      </div>
+
+      <div class="postcard__media-row postcard__media-row--bottom">
+        <img class="postcard__media-item" src="${images[3]}" alt="">
+        <img class="postcard__media-item" src="${images[4]}" alt="">
+        <div class="postcard__media-overlay">
+          <img class="postcard__media-item" src="${images[5]}" alt="">
+          <span class="postcard__media-overlay-count">+${images.length - 5}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Renders a postcard.
+ * @param {Object} post
+ * @param {string} post.author
+ * @param {string} post.text
+ * @param {string} post.time
+ * @param {number} post.likes
+ * @param {number} post.comments
+ * @param {number} post.reposts
+ * @param {string[]} [post.images]
+ * @returns {string}
+ */
+export function renderPostcard(post) {
+  return `
+    <article class="postcard">
+      <header class="postcard__header">
+        <div class="postcard__avatar" aria-hidden="true"></div>
+        <h2 class="postcard__author">${post.author}</h2>
+      </header>
+
+      <p class="postcard__text">${post.text}</p>
+
+      ${renderPostcardMedia(post.images)}
+
+      <footer class="postcard__footer">
+        <div class="postcard__stats">
+          ${renderPostcardStat({ icon: "♡", count: post.likes })}
+          ${renderPostcardStat({ icon: "💬", count: post.comments })}
+          ${renderPostcardStat({ icon: "↻", count: post.reposts })}
+        </div>
+
+        <p class="postcard__time">${post.time}</p>
+      </footer>
+    </article>
+  `;
+}

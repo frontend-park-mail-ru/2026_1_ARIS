@@ -38,11 +38,11 @@
   --text-body-size: 15px;
   --text-body-weight: 500;
   --text-body-line: normal;
-  --text-body-letter-spacing: 0.02em;
+  --text-body-letter-spacing: 0;
 
   /* Author */
   --text-author-size: 15px;
-  --text-author-weight: 600;
+  --text-author-weight: 500;
   --text-author-line: normal;
 
   /* CardTitle */

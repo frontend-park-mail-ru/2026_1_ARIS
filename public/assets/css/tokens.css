@@ -4,6 +4,7 @@
   --color-black: #000;
   --color-almost-black: #111827;
   --color-blue: #1d4ed8;
+  --color-username-blue: #0c44eb;
   --color-clickable: #9333ea;
   --color-primary: #4a51d0;
   --color-primary-hover: #3239c3;
@@ -32,7 +33,9 @@
   --text-menu-weight: 500;
   --text-menu-letter-spacing: 0.02em;
   --text-body-size: 15px;
-  --text-body-weight: 400;
+  --text-body-weight: 500;
+  --text-body-line: auto;
+  --text-body-letter-spacing: 0;
   --text-author-size: 15px;
   --text-author-weight: 500;
   --text-card-title-size: 17px;
@@ -44,8 +47,12 @@
   --text-username-size: 24px;
   --text-username-weight: 500;
   --text-username-letter-spacing: 0.02em;
+  --text-username-widget-size: 15px;
+  --text-username-widget-weight: 600;
   --text-clickable-size: 15px;
   --text-clickable-weight: 500;
+  --text-clickable-line: normal;
+  --text-clickable-letter-spacing: 0;
   --text-input-size: 18px;
   --text-input-weight: 500;
   --text-input-letter-spacing: 0.02em;

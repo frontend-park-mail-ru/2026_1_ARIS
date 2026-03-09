@@ -1,0 +1,135 @@
+.widgetbar {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+.widgetbar-card {
+  display: flex;
+  width: 280px;
+  padding: 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  box-sizing: border-box;
+  border-radius: var(--radius-card);
+  background: var(--color-card-gradient);
+  box-shadow: var(--shadow-card);
+}
+
+.widgetbar-card__title {
+  margin: 0;
+  color: var(--color-black);
+  font-family: var(--font-main);
+  font-size: var(--text-card-title-size);
+  font-style: normal;
+  font-weight: var(--text-card-title-weight);
+  line-height: var(--text-card-title-line);
+}
+
+.widgetbar-card__text {
+  margin: 0;
+  color: var(--color-almost-black);
+  font-family: var(--font-main);
+  font-size: var(--text-body-size);
+  font-style: normal;
+  font-weight: var(--text-body-weight);
+  line-height: var(--text-body-line);
+}
+
+.widgetbar-card__username {
+  margin: 0;
+  color: var(--color-blue);
+  font-family: var(--font-main);
+  font-size: var(--text-body-size);
+  font-style: normal;
+  font-weight: var(--text-body-weight);
+  line-height: var(--text-body-line);
+  text-decoration: none;
+}
+
+.widgetbar-card__username:hover {
+  text-decoration: underline;
+}
+
+.widgetbar-card__link {
+  color: var(--color-clickable);
+  font-family: var(--font-main);
+  font-size: var(--text-body-size);
+  font-style: normal;
+  font-weight: var(--text-body-weight);
+  line-height: var(--text-body-line);
+  text-decoration: none;
+}
+
+.widgetbar-card__link:hover {
+  text-decoration: underline;
+}
+
+.widgetbar-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.widgetbar-person__avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #f1cc4f;
+}
+
+.widgetbar-card__event {
+  margin: 0;
+  min-height: 44px;
+  color: var(--color-almost-black);
+  font-family: var(--font-main);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.widgetbar-weather-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.widgetbar-weather-row__icon {
+  width: 18px;
+  display: inline-flex;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-almost-black);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.widgetbar-card--weather {
+  gap: 10px;
+}
+
+.widgetbar-card__post-link {
+  color: var(--color-almost-black);
+  font-family: var(--font-main);
+  font-size: var(--text-body-size);
+  font-style: normal;
+  font-weight: var(--text-body-weight);
+  line-height: var(--text-body-line);
+  text-decoration: none;
+}
+
+.widgetbar-card__post-link:hover {
+  text-decoration: underline;
+}
+
+.widgetbar-card__events {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

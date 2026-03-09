@@ -1,5 +1,6 @@
 import { renderHeader } from "../../components/header/header.js";
 import { renderSidebar } from "../../components/sidebar/sidebar.js";
+import { renderWidgetbar } from "../../components/widgetbar/widgetbar.js";
 
 export function renderFeed() {
   const posts = Array.from({ length: 30 })
@@ -29,11 +30,7 @@ export function renderFeed() {
         </section>
 
         <aside class="feed-layout__right">
-          <div class="info-card">
-            <h3 class="info-card__title">Популярные пользователи</h3>
-            <p class="info-card__text">Иван Иванов</p>
-            <p class="info-card__text">Петр Петров</p>
-          </div>
+          ${renderWidgetbar()}
         </aside>
       </main>
     </div>

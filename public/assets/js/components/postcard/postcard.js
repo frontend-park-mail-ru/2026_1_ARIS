@@ -1,3 +1,5 @@
+import { mockSession } from "../../mock/session.js";
+
 /**
  * Renders a postcard footer item.
  * @param {Object} options
@@ -5,14 +7,31 @@
  * @param {number} options.count
  * @returns {string}
  */
-function renderPostcardStat({ icon, count }) {
+function renderPostcardStat({ icon, count, action }) {
+  const isAuthorised = mockSession.user !== null;
+
+  if (isAuthorised) {
+    return `
+        <button
+            type="button"
+            class="postcard__stat postcard__stat-button"
+            data-action="${action}"
+            aria-label="${action}"
+        >
+        <span class="postcard__stat-icon" aria-hidden="true">
+            <img src="${icon}" alt="">
+        </span>
+        <span class="postcard__stat-count">${count}</span>
+        </button>
+    `;
+  }
   return `
-    <div class="postcard__stat">
-      <span class="postcard__stat-icon" aria-hidden="true">
-        <img src="${icon}" alt="">
-      </span>
-      <span class="postcard__stat-count">${count}</span>
-    </div>
+    <a href="/login" data-link class="postcard__stat postcard__stat-link" aria-label="${action}">
+        <span class="postcard__stat-icon" aria-hidden="true">
+            <img src="${icon}" alt="">
+        </span>
+        <span class="postcard__stat-count">${count}</span>
+    </a>
   `;
 }
 

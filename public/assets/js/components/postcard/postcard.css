@@ -185,6 +185,33 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 4px;
+}
+
+.postcard__stat-link,
+.postcard__stat-button {
+  color: inherit;
+  text-decoration: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.postcard__stat-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.postcard__stat-link:hover,
+.postcard__stat-button:hover {
+  opacity: 0.75;
+}
+
+.postcard__stat-link:active,
+.postcard__stat-button:active {
+  transform: translateY(1px);
 }
 
 .postcard__stat-icon {

@@ -1,12 +1,15 @@
 .auth-form {
   display: flex;
-  width: 340px;
-  padding: 24px 28px 32px;
+  width: 487px;
+  padding: 70px 60px;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 30px;
+  border-radius: 20px;
   box-sizing: border-box;
+  border: 1px solid rgb(255 255 255 / 54%);
   background: #fff;
+  box-shadow: 0 4px 4px rgb(0 0 0 / 15%);
 }
 
 .auth-form__logo {
@@ -47,15 +50,16 @@
   display: flex;
   width: 100%;
   flex-direction: column;
+  gap: 10px;
   align-items: center;
-  gap: 16px;
 }
 
 .auth-form__actions {
   display: flex;
   width: 100%;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
+  margin-top: 30px;
 }
 
 .auth-form__input-control {
@@ -111,5 +115,28 @@
 }
 
 .auth-form__error--hidden {
+  visibility: hidden;
+}
+
+.auth-form__field-group {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+}
+
+.auth-form__field-error {
+  width: 100%;
+  min-height: 17px;
+  margin: 6px 0 0;
+  color: var(--color-error-text);
+  font-family: var(--font-main);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.auth-form__field-error--hidden {
   visibility: hidden;
 }

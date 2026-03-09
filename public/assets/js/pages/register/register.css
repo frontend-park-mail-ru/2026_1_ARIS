@@ -1,1 +1,13 @@
-/* TODO: register page styles */
+.register-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.register-page__content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #b5b8cf 0%, #aeb6d4 40%, #7a82c9 100%);
+}

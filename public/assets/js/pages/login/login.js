@@ -1,5 +1,6 @@
 import { renderHeader } from "../../components/header/header.js";
 import { renderButton } from "../../components/button/button.js";
+import { renderEyeToggle } from "../../components/eye-toggle/eye-toggle.js";
 
 export function renderLogin() {
   return `
@@ -37,13 +38,10 @@ export function renderLogin() {
                   placeholder="Пароль"
                 >
 
-                <button
-                  type="button"
-                  class="login-card__eye"
-                  aria-label="Показать пароль"
-                >
-                  <img src="assets/img/icons/eye-off-thin.svg" alt="">
-                </button>
+              ${renderEyeToggle({
+                isVisible: false,
+                className: "login-card__eye",
+              })}
               </div>
 
             </div>

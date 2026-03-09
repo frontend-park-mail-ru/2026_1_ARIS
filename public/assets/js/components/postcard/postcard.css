@@ -286,3 +286,13 @@
   align-items: flex-start;
   width: 568px;
 }
+
+.postcard__text a {
+  color: var(--color-clickable);
+  text-decoration: none;
+  font-weight: var(--text-clickable-weight);
+}
+
+.postcard__text a:hover {
+  text-decoration: underline;
+}

@@ -12,8 +12,10 @@ function renderSidebarItem({ href, label, icon, isActive = false }) {
 
   return `
     <a href="${href}" data-link class="${itemClass}">
-      <span class="sidebar-item__icon" aria-hidden="true">${icon}</span>
-      <span class="sidebar-item__label">${label}</span>
+        <span class="sidebar-item__icon" aria-hidden="true">
+            <img src="${icon}" alt="">
+    </span>
+    <span class="sidebar-item__label">${label}</span>
     </a>
   `;
 }
@@ -29,32 +31,32 @@ export function renderSidebar() {
         ${renderSidebarItem({
           href: "/feed",
           label: "Лента",
-          icon: "⌂",
+          icon: "/assets/img/icons/home.svg",
           isActive: true,
         })}
 
         ${renderSidebarItem({
           href: "/profile",
           label: "Профиль",
-          icon: "◌",
+          icon: "/assets/img/icons/profile.svg",
         })}
 
         ${renderSidebarItem({
           href: "/profile",
           label: "Друзья",
-          icon: "◎",
+          icon: "/assets/img/icons/friends.svg",
         })}
 
         ${renderSidebarItem({
           href: "/login",
           label: "Чаты",
-          icon: "◔",
+          icon: "/assets/img/icons/chat.svg",
         })}
 
         ${renderSidebarItem({
           href: "/profile",
           label: "Настройки",
-          icon: "⚙",
+          icon: "/assets/img/icons/settings.svg",
         })}
       </section>
 
@@ -64,14 +66,14 @@ export function renderSidebar() {
         ${renderSidebarItem({
           href: "/feed",
           label: "Для вас",
-          icon: "★",
+          icon: "/assets/img/icons/star.svg",
           isActive: true,
         })}
 
         ${renderSidebarItem({
           href: "/feed",
           label: "По времени",
-          icon: "◷",
+          icon: "/assets/img/icons/clock.svg",
         })}
       </section>
     </aside>

@@ -45,7 +45,6 @@
 .postcard__text {
   width: 568px;
   margin: 0;
-  white-space: pre-line;
   color: var(--color-black);
   font-family: var(--font-main);
   font-size: var(--text-body-size);
@@ -243,4 +242,47 @@
   margin: 0;
   white-space: nowrap;
   text-align: right;
+}
+
+.postcard__text--collapsed {
+  white-space: normal;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.postcard__text:not(.postcard__text--collapsed) {
+  white-space: pre-line;
+}
+
+.postcard__expand {
+  margin-top: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-clickable);
+  font-family: var(--font-main);
+  font-size: var(--text-clickable-size);
+  font-style: normal;
+  cursor: pointer;
+  font-weight: var(--text-clickable-weight);
+  line-height: var(--text-clickable-line);
+}
+
+.postcard__expand:hover {
+  text-decoration: underline;
+}
+
+.postcard__expand--hidden {
+  display: none;
+}
+
+.postcard__text-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 568px;
 }

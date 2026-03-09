@@ -1,3 +1,5 @@
+import { initPostcardExpand } from "../components/postcard/postcard.js";
+
 function normalisePath(p) {
   const noTrailing = (p || "/").replace(/\/+$/g, "");
   return noTrailing === "" ? "/" : noTrailing;
@@ -16,6 +18,7 @@ export function createRouter(root, routes) {
 
     document.title = route.title;
     root.innerHTML = route.render();
+    initPostcardExpand(root);
   }
 
   function navigate(to) {

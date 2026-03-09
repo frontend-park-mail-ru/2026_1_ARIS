@@ -148,7 +148,10 @@ export function renderPostcard(post) {
         <h2 class="postcard__author">${post.author}</h2>
       </header>
 
-      <p class="postcard__text">${post.text}</p>
+        <div class="postcard__text-container">
+            <p class="postcard__text postcard__text--collapsed">${post.text}</p>
+            <button type="button" class="postcard__expand">читать полностью</button>
+        </div>
 
       ${renderPostcardMedia(post.images)}
 
@@ -172,4 +175,38 @@ export function renderPostcard(post) {
       </footer>
     </article>
   `;
+}
+
+export function initPostcardExpand(root = document) {
+  requestAnimationFrame(() => {
+    const containers = root.querySelectorAll(".postcard__text-container");
+
+    containers.forEach((container) => {
+      const text = container.querySelector(".postcard__text");
+      const button = container.querySelector(".postcard__expand");
+
+      if (!text || !button) return;
+
+      const isOverflowing = text.scrollHeight > text.clientHeight + 1;
+
+      if (!isOverflowing) {
+        button.classList.add("postcard__expand--hidden");
+      }
+    });
+  });
+
+  if (root.__postcardExpandBound) return;
+
+  root.addEventListener("click", (event) => {
+    const button = event.target.closest(".postcard__expand");
+    if (!button) return;
+
+    const container = button.closest(".postcard__text-container");
+    const text = container.querySelector(".postcard__text");
+
+    text.classList.remove("postcard__text--collapsed");
+    button.remove();
+  });
+
+  root.__postcardExpandBound = true;
 }

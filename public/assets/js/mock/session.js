@@ -1,6 +1,7 @@
 export const mockSession = {
-  user: {
-    id: 1,
-    name: "Сергей Шульгиненко",
-  },
+  user: null,
+  //  {
+  //   id: 1,
+  //    name: "Сергей Шульгиненко",
+  //  },
 };

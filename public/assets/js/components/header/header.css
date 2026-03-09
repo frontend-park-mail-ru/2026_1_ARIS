@@ -69,7 +69,7 @@
   font-size: var(--text-input-size);
   font-style: normal;
   font-weight: var(--text-input-weight);
-  line-height: normal;
+  line-height: var(--text-input-line);
   letter-spacing: var(--text-input-letter-spacing);
 }
 

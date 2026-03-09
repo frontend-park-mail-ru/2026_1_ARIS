@@ -25,7 +25,6 @@
   color: var(--color-black);
   font-family: var(--font-main);
   font-size: var(--text-card-title-size);
-  font-style: normal;
   font-weight: var(--text-card-title-weight);
   line-height: var(--text-card-title-line);
 }
@@ -35,9 +34,9 @@
   color: var(--color-almost-black);
   font-family: var(--font-main);
   font-size: var(--text-body-size);
-  font-style: normal;
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-line);
+  letter-spacing: var(--text-body-letter-spacing);
 }
 
 .widgetbar-card__username {
@@ -45,7 +44,6 @@
   color: var(--color-blue);
   font-family: var(--font-main);
   font-size: var(--text-body-size);
-  font-style: normal;
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-line);
   text-decoration: none;
@@ -59,7 +57,6 @@
   color: var(--color-clickable);
   font-family: var(--font-main);
   font-size: var(--text-body-size);
-  font-style: normal;
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-line);
   text-decoration: none;

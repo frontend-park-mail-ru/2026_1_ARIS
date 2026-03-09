@@ -28,37 +28,48 @@
   /* ===== TYPOGRAPHY ===== */
 
   --font-main: inter, arial, sans-serif;
+
+  /* Menu */
   --text-menu-size: 15px;
-  --text-menu-line: 22px;
   --text-menu-weight: 500;
-  --text-menu-letter-spacing: 0.02em;
+  --text-menu-line: 22px;
+
+  /* Body */
   --text-body-size: 15px;
   --text-body-weight: 500;
-  --text-body-line: auto;
-  --text-body-letter-spacing: 0;
+  --text-body-line: normal;
+  --text-body-letter-spacing: 0.02em;
+
+  /* Author */
   --text-author-size: 15px;
-  --text-author-weight: 500;
+  --text-author-weight: 600;
+  --text-author-line: normal;
+
+  /* CardTitle */
   --text-card-title-size: 17px;
-  --text-card-title-line: 22px;
   --text-card-title-weight: 700;
+  --text-card-title-line: 22px;
+
+  /* Counters */
   --text-counters-size: 13px;
-  --text-counters-line: 18px;
   --text-counters-weight: 500;
-  --text-username-size: 24px;
+  --text-counters-line: 18px;
+
+  /* Username */
+  --text-username-size: 15px;
   --text-username-weight: 500;
-  --text-username-letter-spacing: 0.02em;
-  --text-username-widget-size: 15px;
-  --text-username-widget-weight: 600;
+  --text-username-line: normal;
+
+  /* Clickable */
   --text-clickable-size: 15px;
   --text-clickable-weight: 500;
   --text-clickable-line: normal;
-  --text-clickable-letter-spacing: 0;
+
+  /* Input */
   --text-input-size: 18px;
   --text-input-weight: 500;
+  --text-input-line: normal;
   --text-input-letter-spacing: 0.02em;
-  --text-error-size: 18px;
-  --text-error-weight: 500;
-  --text-error-letter-spacing: 0.02em;
 
   /* ===== RADIUSES ===== */
 

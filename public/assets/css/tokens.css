@@ -1,0 +1,41 @@
+:root {
+  /* ===== COLORS ===== */
+
+  --color-black: #000;
+  --color-almost-black: #111827;
+  --color-blue: #1d4ed8;
+  --color-clickable: #9333ea;
+  --color-card-gradient: radial-gradient(141.49% 141.42% at 0% 0%, #efeffa 0%, #f4f4ff 100%);
+
+  /* ===== TYPOGRAPHY ===== */
+
+  --font-main: inter, arial, sans-serif;
+
+  /* Menu */
+  --text-menu-size: 15px;
+  --text-menu-line: 22px;
+
+  /* Body */
+  --text-body-size: 15px;
+
+  /* Author */
+  --text-author-size: 15px;
+
+  /* CardTitle */
+  --text-card-title-size: 17px;
+  --text-card-title-line: 22px;
+
+  /* Counters */
+  --text-counters-size: 13px;
+  --text-counters-line: 18px;
+
+  /* Username */
+  --text-username-size: 15px;
+
+  /* Clickable */
+  --text-clickable-size: 15px;
+
+  /* ===== SHADOWS ===== */
+
+  --shadow-card: 0 4px 12px rgb(0 0 0 / 50%);
+}

@@ -8,7 +8,9 @@
 function renderPostcardStat({ icon, count }) {
   return `
     <div class="postcard__stat">
-      <span class="postcard__stat-icon" aria-hidden="true">${icon}</span>
+      <span class="postcard__stat-icon" aria-hidden="true">
+        <img src="${icon}" alt="">
+      </span>
       <span class="postcard__stat-count">${count}</span>
     </div>
   `;
@@ -133,9 +135,18 @@ export function renderPostcard(post) {
 
       <footer class="postcard__footer">
         <div class="postcard__stats">
-          ${renderPostcardStat({ icon: "♡", count: post.likes })}
-          ${renderPostcardStat({ icon: "💬", count: post.comments })}
-          ${renderPostcardStat({ icon: "↻", count: post.reposts })}
+          ${renderPostcardStat({
+            icon: "assets/img/icons/heart.svg",
+            count: post.likes,
+          })}
+          ${renderPostcardStat({
+            icon: "assets/img/icons/repost.svg",
+            count: post.reposts,
+          })}
+          ${renderPostcardStat({
+            icon: "assets/img/icons/comment.svg",
+            count: post.comments,
+          })}
         </div>
 
         <p class="postcard__time">${post.time}</p>

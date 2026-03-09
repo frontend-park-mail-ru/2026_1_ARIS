@@ -194,8 +194,12 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 16px;
-  line-height: 1;
+}
+
+.postcard__stat-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .postcard__stat-count,

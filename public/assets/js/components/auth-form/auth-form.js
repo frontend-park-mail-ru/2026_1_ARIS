@@ -125,7 +125,7 @@ export function renderAuthForm({
   const isLogin = mode === "login";
 
   return `
-    <section class="auth-form">
+    <section class="auth-form" data-mode="${mode}">
       <img class="auth-form__logo" src="assets/img/logo.svg" alt="ARIS">
 
       <h1 class="auth-form__title">${isLogin ? "Вход" : "Регистрация"}</h1>

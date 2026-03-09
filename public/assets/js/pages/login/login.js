@@ -1,37 +1,77 @@
-import { renderLogo } from "../../components/logo/logo.js";
+import { renderHeader } from "../../components/header/header.js";
 import { renderButton } from "../../components/button/button.js";
-import { renderInput } from "../../components/input/input.js";
 
 export function renderLogin() {
   return `
-    <section>
-      ${renderLogo()}
-      <h1>Войти</h1>
-      <p>TODO: страница авторизации</p>
+    <div class="login-page">
+      ${renderHeader()}
 
-      <div class="login-form">
+      <main class="login-page__content">
+        <section class="login-card">
+          <img
+            class="login-card__logo"
+            src="assets/img/icons/logo-auth.svg"
+            alt="ARIS"
+          >
 
-        ${renderInput({
-          name: "email",
-          type: "email",
-          placeholder: "Введите email",
-          required: true,
-        })}
+          <h1 class="login-card__title">Вход</h1>
 
-        ${renderInput({
-          name: "password",
-          type: "password",
-          placeholder: "Введите пароль",
-          required: true,
-        })}
+          <p class="login-card__subtitle">
+            Введите логин и пароль
+          </p>
 
-        ${renderButton({
-          text: "Войти",
-          type: "submit",
-          variant: "primary",
-        })}
-      </div>
+          <form class="login-card__form">
 
-    </section>
+            <div class="login-card__fields">
+
+              <input
+                class="login-card__input"
+                type="text"
+                placeholder="Логин"
+              >
+
+              <div class="login-card__password">
+                <input
+                  class="login-card__input login-card__input--password"
+                  type="password"
+                  placeholder="Пароль"
+                >
+
+                <button
+                  type="button"
+                  class="login-card__eye"
+                  aria-label="Показать пароль"
+                >
+                  <img src="assets/img/icons/eye-off-thin.svg" alt="">
+                </button>
+              </div>
+
+            </div>
+
+            <div class="login-card__actions">
+
+            ${renderButton({
+              text: "Продолжить",
+              variant: "primary",
+              tag: "button",
+              type: "submit",
+              className: "login-card__submit",
+            })}
+
+            ${renderButton({
+              text: "Создать аккаунт",
+              variant: "secondary",
+              tag: "link",
+              href: "/register",
+              withDataLink: true,
+              className: "login-card__register",
+            })}
+
+            </div>
+
+          </form>
+        </section>
+      </main>
+    </div>
   `;
 }

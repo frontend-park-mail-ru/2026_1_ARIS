@@ -1,19 +1,30 @@
 export function renderButton({
   text,
   variant = "primary",
+  tag = "button",
+  href = "#",
   type = "button",
-  disabled = false,
-  attrs = "",
-  block = false,
-} = {}) {
-  const blockClass = block ? " button--block" : "";
+  className = "",
+  withDataLink = false,
+}) {
+  const classes = `button button--${variant}${className ? ` ${className}` : ""}`;
+
+  if (tag === "link") {
+    return `
+      <a
+        href="${href}"
+        class="${classes}"
+        ${withDataLink ? "data-link" : ""}
+      >
+        ${text}
+      </a>
+    `;
+  }
 
   return `
     <button
-      class="button button--${variant}${blockClass}"
       type="${type}"
-      ${disabled ? "disabled" : ""}
-      ${attrs}
+      class="${classes}"
     >
       ${text}
     </button>

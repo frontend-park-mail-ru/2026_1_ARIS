@@ -6,8 +6,6 @@
   --color-blue: #1d4ed8;
   --color-clickable: #9333ea;
   --color-card-gradient: radial-gradient(141.49% 141.42% at 0% 0%, #efeffa 0%, #f4f4ff 100%);
-
-  /* ===== COLOURS (VARIABLES) ===== */
   --color-primary: #4a51d0;
   --color-primary-hover: #3239c3;
   --color-primary-active: #2a30a2;
@@ -15,8 +13,12 @@
   --color-background: #f3f6f7;
   --color-variant-light: #cbd2de;
   --color-variant-medium: #939bbc;
+  --color-input-border: #cbd2de;
+  --color-input-placeholder: #6d707e;
+  --color-input-text: #030a38;
   --color-input-fill: #e1e6ee;
   --color-input-error-fill: #fed7d7;
+  --color-input-error-border: #c66;
 
   /* ===== TYPOGRAPHY ===== */
 

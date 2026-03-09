@@ -17,6 +17,7 @@
   align-items: center;
   flex-shrink: 0;
   text-decoration: none;
+  transform: translateX(-10px);
 }
 
 .header__logo {

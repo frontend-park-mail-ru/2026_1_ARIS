@@ -1,12 +1,9 @@
-import { renderHeader } from "../../components/header/header.js";
 import { renderButton } from "../../components/button/button.js";
-import { renderEyeToggle } from "../../components/eye-toggle/eye-toggle.js";
 import { renderInput } from "../../components/input/input.js";
 
 export function renderLogin() {
   return `
     <div class="login-page">
-      ${renderHeader()}
 
       <main class="login-page__content">
         <section class="login-card">

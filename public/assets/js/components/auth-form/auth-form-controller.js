@@ -372,7 +372,7 @@ async function handleSubmit(event) {
 
   try {
     if (mode === "login") {
-      await loginUser({
+      const user = await loginUser({
         login: values.login,
         password: values.password,
       });

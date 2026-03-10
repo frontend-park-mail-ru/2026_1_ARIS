@@ -21,7 +21,7 @@ const mockFeedPosts = [
     likes: 128,
     comments: 14,
     reposts: 6,
-    images: ["https://picsum.photos/seed/aris-post-1/800/600"],
+    images: ["/assets/img/mock/aris-post-1.jpg"],
   },
   {
     author: "Иван Хвостов",

@@ -1,4 +1,4 @@
-const API_BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8080" : "";
+const API_BASE_URL = "http://localhost:8080";
 
 async function parseJson(response) {
   const text = await response.text();
@@ -24,6 +24,7 @@ export async function loginUser(payload) {
   });
 
   const data = await parseJson(response);
+  console.log(response.ok);
 
   if (!response.ok) {
     const error = new Error(data.error || "login failed");
@@ -31,6 +32,8 @@ export async function loginUser(payload) {
     error.data = data;
     throw error;
   }
+
+  console.log(data);
 
   return data;
 }
@@ -88,14 +91,7 @@ export async function getCurrentUser() {
     credentials: "include",
   });
 
-  const data = await parseJson(response);
+  if (!response.ok) return null;
 
-  if (!response.ok) {
-    const error = new Error(data.error || "get current user failed");
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-
-  return data;
+  return await parseJson(response);
 }

@@ -43,9 +43,7 @@ function renderGuestHeader() {
  * @returns {string}
  */
 function renderAuthorisedHeader() {
-  const fullName = mockSession.user
-    ? `${mockSession.user.firstName} ${mockSession.user.lastName}`
-    : "";
+  const fullName = `${mockSession.user.firstName} ${mockSession.user.lastName}`;
 
   return `
     <div class="header__inner header__inner--authorised">
@@ -64,15 +62,10 @@ function renderAuthorisedHeader() {
         >
       </label>
 
-        <div class="header__user">
-          <span class="header__username">${fullName}</span>
-
-          <button class="header__logout" data-logout>
-            Выйти
-          </button>
-
-          <div class="header__avatar" aria-hidden="true"></div>
-        </div>
+      <div class="header__user">
+        <span class="header__username">${fullName}</span>
+        <div class="header__avatar" aria-hidden="true"></div>
+      </div>
     </div>
   `;
 }

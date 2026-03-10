@@ -145,7 +145,9 @@ export function renderPostcard(post) {
     <article class="postcard">
       <header class="postcard__header">
         <div class="postcard__avatar" aria-hidden="true"></div>
-        <h2 class="postcard__author">${post.author}</h2>
+        <a href="/profile" class="postcard__author widgetbar-card__username">
+  ${post.author}
+</a>
       </header>
 
         <div class="postcard__text-container">

@@ -9,6 +9,7 @@ function renderAuthField({
   withToggle = false,
   isVisible = false,
   errorText = "",
+  attributes = "",
 }) {
   const hasError = Boolean(errorText);
 
@@ -22,6 +23,7 @@ function renderAuthField({
         withToggle,
         isVisible,
         className: "auth-form__input-control",
+        attributes,
       })}
 
       <p class="auth-form__field-error${hasError ? "" : " auth-form__field-error--hidden"}">
@@ -82,6 +84,7 @@ function renderRegisterFields() {
       name: "birthDate",
       placeholder: "Дата рождения (дд/мм/гггг)",
       state: "default",
+      attributes: 'inputmode="numeric" maxlength="10" data-mask="date"',
     })}
 
     ${renderAuthField({

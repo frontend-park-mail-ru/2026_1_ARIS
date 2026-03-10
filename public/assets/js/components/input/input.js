@@ -10,6 +10,7 @@ export function renderInput({
   isVisible = false,
   disabled = false,
   className = "",
+  attributes = "",
 } = {}) {
   const inputType = type === "password" && isVisible ? "text" : type;
 
@@ -33,6 +34,7 @@ export function renderInput({
         placeholder="${placeholder}"
         value="${value}"
         ${disabled ? "disabled" : ""}
+        ${attributes}
       >
       ${
         withToggle

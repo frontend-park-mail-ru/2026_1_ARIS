@@ -1,7 +1,7 @@
 .input {
   position: relative;
   display: flex;
-  width: 367px;
+  width: 100%;
   height: 49px;
   padding: 10px 15px;
   align-items: center;
@@ -30,13 +30,12 @@
   line-height: 1;
   letter-spacing: 0.02em;
   appearance: none;
-  appearance: none;
 }
 
 .input__field::placeholder {
   color: #6d707e;
   font-family: Inter, Arial, sans-serif;
-  font-size: 24px;
+  font-size: 20px;
   font-style: normal;
   font-weight: 400;
   line-height: 1;

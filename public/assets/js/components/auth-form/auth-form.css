@@ -1,7 +1,7 @@
 .auth-form {
   display: flex;
   width: min(487px, 100%);
-  padding: 40px 32px;
+  padding: 40px 48px;
   flex-direction: column;
   align-items: center;
   gap: 24px;
@@ -64,7 +64,7 @@
 }
 
 .auth-form__input-control {
-  align-self: center;
+  width: 100%;
 }
 
 .auth-form__bottom-text {
@@ -82,9 +82,9 @@
 }
 
 .auth-form__bottom-login {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 45px;
+  width: auto;
+  height: 36px;
+  padding: 0 16px;
 }
 
 .auth-form__submit,
@@ -140,7 +140,7 @@
 
 .auth-form__bottom-row {
   display: flex;
-  width: 100%;
+  align-self: center;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }

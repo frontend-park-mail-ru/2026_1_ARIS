@@ -130,3 +130,11 @@
   flex-direction: column;
   gap: 12px;
 }
+
+.widgetbar-stub-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}

@@ -1,3 +1,11 @@
+function renderStubButton(text, className) {
+  return `
+    <button type="button" class="${className} widgetbar-stub-button">
+      ${text}
+    </button>
+  `;
+}
+
 function renderPopularUsersWidget() {
   return `
     <section class="widgetbar-card">
@@ -33,17 +41,17 @@ function renderKnownPeopleWidget() {
 
       <div class="widgetbar-person">
         <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-link class="widgetbar-card__username">Иван Иванов</a>
+        ${renderStubButton("Иван Иванов", "widgetbar-card__username")}
       </div>
 
       <div class="widgetbar-person">
         <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-link class="widgetbar-card__username">Петр Петров</a>
+        ${renderStubButton("Петр Петров", "widgetbar-card__username")}
       </div>
 
       <div class="widgetbar-person">
         <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-link class="widgetbar-card__username">Алексей Алексеев</a>
+        ${renderStubButton("Алексей Алексеев", "widgetbar-card__username")}
       </div>
     </section>
   `;
@@ -56,19 +64,19 @@ function renderEventsWidget() {
 
       <div class="widgetbar-card__events">
         <p class="widgetbar-card__event">
-          <a href="/login" data-link class="widgetbar-card__username">Михаил Маваши</a>
+          ${renderStubButton("Михаил Маваши", "widgetbar-card__username")}
           <span class="widgetbar-card__text"> поставил лайк вашему </span>
-          <a href="/login" data-link class="widgetbar-card__link">посту</a>
+          ${renderStubButton("посту", "widgetbar-card__link")}
         </p>
 
         <p class="widgetbar-card__event">
-          <a href="/login" data-link class="widgetbar-card__username">Мария Иванова</a>
+          ${renderStubButton("Мария Иванова", "widgetbar-card__username")}
           <span class="widgetbar-card__text"> добавила </span>
-          <a href="/login" data-link class="widgetbar-card__link">фото</a>
+          ${renderStubButton("фото", "widgetbar-card__link")}
         </p>
 
         <p class="widgetbar-card__event">
-          <a href="/login" data-link class="widgetbar-card__username">Дмитрий Соколов</a>
+          ${renderStubButton("Дмитрий Соколов", "widgetbar-card__username")}
           <span class="widgetbar-card__text"> подписался на вас</span>
         </p>
       </div>
@@ -101,17 +109,17 @@ function renderAuthorisedPopularPostsWidget() {
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные посты</h3>
 
-      <a href="/login" data-link class="widgetbar-card__post-link">
-        Как научиться подтягиваться 20 раз? Советы по калистенике для матерых и ...
-      </a>
+      ${renderStubButton(
+        "Как научиться подтягиваться 20 раз? Советы по калистенике для матерых и ...",
+        "widgetbar-card__post-link",
+      )}
 
-      <a href="/login" data-link class="widgetbar-card__post-link">
-        Почему Rust заменяет C++
-      </a>
+      ${renderStubButton("Почему Rust заменяет C++", "widgetbar-card__post-link")}
 
-      <a href="/login" data-link class="widgetbar-card__post-link">
-        Лучшие книги по ML. Чем машинное обучение по своей сути отличается от к...
-      </a>
+      ${renderStubButton(
+        "Лучшие книги по ML. Чем машинное обучение по своей сути отличается от к...",
+        "widgetbar-card__post-link",
+      )}
     </section>
   `;
 }

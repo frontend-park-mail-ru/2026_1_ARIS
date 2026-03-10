@@ -21,12 +21,12 @@
 }
 
 .header__inner--authorised {
-  grid-template-columns: 240px 630px 300px;
+  grid-template-columns: 240px 630px 350px;
   column-gap: 24px;
 }
 
 .header__inner--guest {
-  grid-template-columns: 240px 514px 300px;
+  grid-template-columns: 240px 514px 350px;
   column-gap: 24px;
 }
 
@@ -88,8 +88,7 @@
 
 .header__user {
   display: flex;
-  width: 300px;
-  padding-left: 20px;
+  width: 420px;
   align-items: center;
   justify-content: flex-end;
   gap: 15px;

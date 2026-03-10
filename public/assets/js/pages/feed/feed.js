@@ -125,10 +125,10 @@ function renderGuestFeed() {
         comments: 167,
         reposts: 88,
         images: [
-          "https://picsum.photos/seed/aris-team-1/600/400",
-          "https://picsum.photos/seed/aris-team-2/600/400",
-          "https://picsum.photos/seed/aris-team-3/600/400",
-          "https://picsum.photos/seed/aris-team-4/600/400",
+          "/assets/img/mock/1.jpg",
+          "/assets/img/mock/2.jpg",
+          "/assets/img/mock/3.jpg",
+          "/assets/img/mock/4.jpg",
         ],
       })}
     </section>

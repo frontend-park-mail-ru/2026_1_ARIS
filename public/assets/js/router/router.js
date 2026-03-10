@@ -1,6 +1,7 @@
 import { initPostcardExpand } from "../components/postcard/postcard.js";
 import { initAuthForm } from "../components/auth-form/auth-form-controller.js";
 import { initAuthModal } from "../components/auth-modal/auth-modal-controller.js";
+import { initEyeToggle } from "../components/eye-toggle/eye-toggle-controller.js";
 
 function normalisePath(p) {
   const noTrailing = (p || "/").replace(/\/+$/g, "");
@@ -23,6 +24,7 @@ export function createRouter(root, routes) {
     initAuthForm(document);
     initPostcardExpand(root);
     initAuthModal(document);
+    initEyeToggle(document);
   }
 
   function navigate(to) {

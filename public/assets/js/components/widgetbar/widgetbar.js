@@ -5,22 +5,22 @@ function renderPopularUsersWidget() {
 
       <div class="widgetbar-person">
         <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-link class="widgetbar-card__username">Сергей Шульгиненко</a>
+        <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">Сергей Шульгиненко</a>
       </div>
 
       <div class="widgetbar-person">
         <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-link class="widgetbar-card__username">Анна Опарина</a>
+        <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">Анна Опарина</a>
       </div>
 
       <div class="widgetbar-person">
         <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-link class="widgetbar-card__username">Иван Хвостов</a>
+        <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">Иван Хвостов</a>
       </div>
 
       <div class="widgetbar-person">
         <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-link class="widgetbar-card__username">Ринат Байков</a>
+        <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">Ринат Байков</a>
       </div>
     </section>
   `;
@@ -81,15 +81,15 @@ function renderGuestPopularPostsWidget() {
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные посты</h3>
 
-      <a href="/login" data-link class="widgetbar-card__post-link">
+      <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
         Веб-разработка для начинающих: как создать свою социальную сеть
       </a>
 
-      <a href="/login" data-link class="widgetbar-card__post-link">
+      <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
         JavaScript как язык программирования в 2026?
       </a>
 
-      <a href="/login" data-link class="widgetbar-card__post-link">
+      <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
         Лучшие вузы России
       </a>
     </section>
@@ -124,17 +124,23 @@ function renderWeatherWidget() {
       <p class="widgetbar-card__text">Днем: -7°C, ночью -17°C</p>
 
       <div class="widgetbar-weather-row">
-        <span class="widgetbar-weather-row__icon">☁</span>
+        <span class="widgetbar-weather-row__icon">
+          <img src="/assets/img/icons/weather-cloud.svg" alt="">
+        </span>
         <span class="widgetbar-card__text">Пасмурно</span>
       </div>
 
       <div class="widgetbar-weather-row">
-        <span class="widgetbar-weather-row__icon">☀</span>
+        <span class="widgetbar-weather-row__icon">
+          <img src="/assets/img/icons/sunrise.svg" alt="">
+        </span>
         <span class="widgetbar-card__text">Восход: 07:19</span>
       </div>
 
       <div class="widgetbar-weather-row">
-        <span class="widgetbar-weather-row__icon">☾</span>
+        <span class="widgetbar-weather-row__icon">
+          <img src="/assets/img/icons/sunset.svg" alt="">
+        </span>
         <span class="widgetbar-card__text">Заход: 18:13</span>
       </div>
     </section>

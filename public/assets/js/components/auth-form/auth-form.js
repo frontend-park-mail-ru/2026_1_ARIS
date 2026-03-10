@@ -121,8 +121,10 @@ export function renderAuthForm({
   mode,
   hasError = false,
   errorText = "Неверный логин или пароль",
+  context = "page",
 }) {
   const isLogin = mode === "login";
+  const isModal = context === "modal";
 
   return `
     <section class="auth-form" data-mode="${mode}">
@@ -164,37 +166,70 @@ export function renderAuthForm({
       ${
         isLogin
           ? `
-            ${renderButton({
-              text: "Создать аккаунт",
-              variant: "secondary",
-              tag: "link",
-              href: "/register",
-              withDataLink: true,
-              className: "auth-form__secondary-link",
-            })}
+            ${
+              isModal
+                ? renderButton({
+                    text: "Создать аккаунт",
+                    variant: "secondary",
+                    tag: "button",
+                    type: "button",
+                    className: "auth-form__secondary-link",
+                    attributes: 'data-switch-auth-mode="register"',
+                  })
+                : renderButton({
+                    text: "Создать аккаунт",
+                    variant: "secondary",
+                    tag: "link",
+                    href: "/register",
+                    withDataLink: true,
+                    className: "auth-form__secondary-link",
+                  })
+            }
           `
           : `
             <div class="auth-form__bottom-row">
             <p class="auth-form__bottom-text">Уже есть аккаунт?</p>
 
-            ${renderButton({
-              text: "Войти",
-              variant: "surface",
-              tag: "link",
-              href: "/login",
-              withDataLink: true,
-              className: "auth-form__bottom-login",
-            })}
+            ${
+              isModal
+                ? renderButton({
+                    text: "Войти",
+                    variant: "surface",
+                    tag: "button",
+                    type: "button",
+                    className: "auth-form__bottom-login",
+                    attributes: 'data-switch-auth-mode="login"',
+                  })
+                : renderButton({
+                    text: "Войти",
+                    variant: "surface",
+                    tag: "link",
+                    href: "/login",
+                    withDataLink: true,
+                    className: "auth-form__bottom-login",
+                  })
+            }
             </div>
 
-            ${renderButton({
-              text: "Сначала посмотреть",
-              variant: "secondary",
-              tag: "link",
-              href: "/feed",
-              withDataLink: true,
-              className: "auth-form__secondary-link",
-            })}
+            ${
+              isModal
+                ? renderButton({
+                    text: "Сначала посмотреть",
+                    variant: "secondary",
+                    tag: "button",
+                    type: "button",
+                    className: "auth-form__secondary-link",
+                    attributes: "data-auth-modal-close",
+                  })
+                : renderButton({
+                    text: "Сначала посмотреть",
+                    variant: "secondary",
+                    tag: "link",
+                    href: "/feed",
+                    withDataLink: true,
+                    className: "auth-form__secondary-link",
+                  })
+            }
           `
       }
     </section>

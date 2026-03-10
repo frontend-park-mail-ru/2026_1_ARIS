@@ -6,15 +6,18 @@ export function renderButton({
   type = "button",
   className = "",
   withDataLink = false,
+  attributes = "",
 }) {
   const classes = `button button--${variant}${className ? ` ${className}` : ""}`;
+  const dataLinkAttr = withDataLink ? "data-link" : "";
+  const extraAttrs = [dataLinkAttr, attributes].filter(Boolean).join(" ");
 
   if (tag === "link") {
     return `
       <a
         href="${href}"
         class="${classes}"
-        ${withDataLink ? "data-link" : ""}
+        ${extraAttrs}
       >
         ${text}
       </a>
@@ -25,6 +28,7 @@ export function renderButton({
     <button
       type="${type}"
       class="${classes}"
+      ${extraAttrs}
     >
       ${text}
     </button>

@@ -16,19 +16,17 @@ function renderGuestHeader() {
         ${renderButton({
           text: "Регистрация",
           variant: "primary",
-          tag: "link",
-          href: "/register",
-          withDataLink: true,
-          className: "header__guest-register",
+          tag: "button",
+          type: "button",
+          attributes: 'data-open-auth-modal="register"',
         })}
 
         ${renderButton({
           text: "Войти",
           variant: "secondary",
-          tag: "link",
-          href: "/login",
-          withDataLink: true,
-          className: "header__guest-login",
+          tag: "button",
+          type: "button",
+          attributes: 'data-open-auth-modal="login"',
         })}
       </div>
 

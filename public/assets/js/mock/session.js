@@ -2,6 +2,7 @@ import { getCurrentUser } from "../api/auth.js";
 
 export const mockSession = {
   user: null,
+  feedMode: "by-time",
 };
 
 export function setSessionUser(user) {

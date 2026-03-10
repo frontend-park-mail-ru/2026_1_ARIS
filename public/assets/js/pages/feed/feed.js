@@ -17,7 +17,7 @@ const mockFeedPosts = [
   {
     author: "Анна Смирнова",
     time: "2 ч назад",
-    text: "Пост с одной фотографией. Картинка должна занимать весь медиаблок.",
+    text: "Пост с одной фотографией. Картинка должна занимать весь медиаблок. Также можно здесь написать побольше текста, чтобы проверить как у нас происходит расширение блока с текстом. В идеале - должны остаться 2 строчки, а остальные скрыться. Посмотрим, как будет в реальности",
     likes: 128,
     comments: 14,
     reposts: 6,
@@ -39,7 +39,7 @@ const mockFeedPosts = [
     likes: 512,
     comments: 42,
     reposts: 19,
-    images: ["/assets/img/4.jpg", "/assets/img/5.jpg", "/assets/img/6.jpg"],
+    images: ["/assets/img/mock/4.jpg", "/assets/img/mock/5.jpg", "/assets/img/mock/6.jpg"],
   },
   {
     author: "Сергей Шульгиненко",
@@ -48,7 +48,12 @@ const mockFeedPosts = [
     likes: 1024,
     comments: 64,
     reposts: 21,
-    images: ["/assets/img/7.jpg", "/assets/img/8.jpg", "/assets/img/9.jpg", "/assets/img/10.jpg"],
+    images: [
+      "/assets/img/mock/7.jpg",
+      "/assets/img/mock/8.jpg",
+      "/assets/img/mock/9.jpg",
+      "/assets/img/mock/10.jpg",
+    ],
   },
   {
     author: "Анна Опарина",
@@ -58,11 +63,11 @@ const mockFeedPosts = [
     comments: 53,
     reposts: 17,
     images: [
-      "/assets/img/11.jpg",
-      "/assets/img/12.jpg",
-      "/assets/img/13.jpg",
-      "/assets/img/14.jpg",
-      "/assets/img/15.jpg",
+      "/assets/img/mock/11.jpg",
+      "/assets/img/mock/12.jpg",
+      "/assets/img/mock/13.jpg",
+      "/assets/img/mock/14.jpg",
+      "/assets/img/mock/15.jpg",
     ],
   },
   {
@@ -73,12 +78,12 @@ const mockFeedPosts = [
     comments: 89,
     reposts: 33,
     images: [
-      "/assets/img/16.jpg",
-      "/assets/img/17.jpg",
-      "/assets/img/18.jpg",
-      "/assets/img/19.jpg",
-      "/assets/img/20.jpg",
-      "/assets/img/21.jpg",
+      "/assets/img/mock/16.jpg",
+      "/assets/img/mock/17.jpg",
+      "/assets/img/mock/18.jpg",
+      "/assets/img/mock/19.jpg",
+      "/assets/img/mock/20.jpg",
+      "/assets/img/mock/21.jpg",
     ],
   },
 ];

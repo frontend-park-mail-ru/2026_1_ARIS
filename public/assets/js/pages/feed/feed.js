@@ -21,7 +21,7 @@ const mockFeedPosts = [
     likes: 128,
     comments: 14,
     reposts: 6,
-    images: ["/assets/img/mock/aris-post-1.jpg"],
+    images: ["/assets/img/mock/1.jpg"],
   },
   {
     author: "Иван Хвостов",

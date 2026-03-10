@@ -26,7 +26,7 @@ function renderPostcardStat({ icon, count, action }) {
     `;
   }
   return `
-    <a href="/login" data-link class="postcard__stat postcard__stat-link" aria-label="${action}">
+    <a href="/login" data-open-auth-modal="login" class="postcard__stat postcard__stat-link" aria-label="${action}">
         <span class="postcard__stat-icon" aria-hidden="true">
             <img src="${icon}" alt="">
         </span>

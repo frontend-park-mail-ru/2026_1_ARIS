@@ -7,11 +7,11 @@
  * @param {boolean} [options.isActive=false]
  * @returns {string}
  */
-function renderSidebarItem({ href, label, icon, isActive = false }) {
+function renderSidebarItem({ href, label, icon, isActive = false, attributes = "" }) {
   const itemClass = isActive ? "sidebar-item sidebar-item--active" : "sidebar-item";
 
   return `
-    <a href="${href}" data-link class="${itemClass}">
+    <a href="${href}" ${attributes} class="${itemClass}">
         <span class="sidebar-item__icon" aria-hidden="true">
             <img src="${icon}" alt="">
     </span>
@@ -36,27 +36,31 @@ export function renderSidebar() {
         })}
 
         ${renderSidebarItem({
-          href: "/profile",
+          href: "/login",
           label: "Профиль",
           icon: "/assets/img/icons/profile.svg",
+          attributes: 'data-open-auth-modal="login"',
         })}
 
         ${renderSidebarItem({
           href: "/profile",
           label: "Друзья",
           icon: "/assets/img/icons/friends.svg",
+          attributes: 'data-open-auth-modal="login"',
         })}
 
         ${renderSidebarItem({
           href: "/login",
           label: "Чаты",
           icon: "/assets/img/icons/chat.svg",
+          attributes: 'data-open-auth-modal="login"',
         })}
 
         ${renderSidebarItem({
           href: "/profile",
           label: "Настройки",
           icon: "/assets/img/icons/settings.svg",
+          attributes: 'data-open-auth-modal="login"',
         })}
       </section>
 

@@ -1,5 +1,7 @@
 import { mockSession } from "../../mock/session.js";
 import { renderButton } from "../button/button.js";
+import { logoutUser } from "../../api/auth.js";
+import { setSessionUser } from "../../mock/session.js";
 
 /**
  * Renders header for guest user.
@@ -64,6 +66,11 @@ function renderAuthorisedHeader() {
 
       <div class="header__user">
         <span class="header__username">${fullName}</span>
+
+        <button class="header__logout" data-logout>
+          Выйти
+        </button>
+
         <div class="header__avatar" aria-hidden="true"></div>
       </div>
     </div>
@@ -82,4 +89,21 @@ export function renderHeader() {
       ${isAuthorised ? renderAuthorisedHeader() : renderGuestHeader()}
     </header>
   `;
+}
+
+export function initHeader() {
+  document.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-logout]");
+    if (!btn) return;
+
+    try {
+      await logoutUser();
+
+      setSessionUser(null);
+
+      window.location.href = "/";
+    } catch (e) {
+      console.error("Logout error:", e);
+    }
+  });
 }

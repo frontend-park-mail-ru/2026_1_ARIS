@@ -3,7 +3,8 @@ import { renderLogin } from "./pages/login/login.js";
 import { renderRegister } from "./pages/register/register.js";
 import { renderFeed } from "./pages/feed/feed.js";
 import { renderProfile } from "./pages/profile/profile.js";
-import { initSession } from "./mock/session.js"; // ← добавить импорт
+import { initSession } from "./mock/session.js";
+import { initHeader } from "./components/header/header.js";
 
 const root = document.getElementById("app");
 
@@ -15,7 +16,7 @@ const router = createRouter(root, [
   { path: "/profile", title: "ARISNET — Profile", render: renderProfile },
 ]);
 
-// ← заменить router.render() на это:
 initSession().then(() => {
   router.render();
+  initHeader();
 });

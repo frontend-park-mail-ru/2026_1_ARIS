@@ -1,7 +1,11 @@
 export const mockSession = {
   user: null,
-  // user: {
-  //   id: 1,
-  //   name: "Сергей Шульгиненко",
-  // },
 };
+
+export function setSessionUser(user) {
+  mockSession.user = user;
+}
+
+export function clearSessionUser() {
+  mockSession.user = null;
+}

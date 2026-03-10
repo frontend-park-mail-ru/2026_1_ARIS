@@ -43,6 +43,8 @@ function renderGuestHeader() {
  * @returns {string}
  */
 function renderAuthorisedHeader() {
+  const fullName = `${mockSession.user.firstName} ${mockSession.user.lastName}`;
+
   return `
     <div class="header__inner header__inner--authorised">
       <a href="/feed" data-link class="header__logo-link">
@@ -61,7 +63,7 @@ function renderAuthorisedHeader() {
       </label>
 
       <div class="header__user">
-        <span class="header__username">Сергей Шульгиненко</span>
+        <span class="header__username">${fullName}</span>
         <div class="header__avatar" aria-hidden="true"></div>
       </div>
     </div>

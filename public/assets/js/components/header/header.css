@@ -21,8 +21,9 @@
 }
 
 .header__inner--authorised {
-  grid-template-columns: 240px 1fr 350px;
+  grid-template-columns: 240px 1fr 520px;
   column-gap: 24px;
+  margin-left: 3px;
 }
 
 .header__inner--guest {
@@ -95,6 +96,8 @@
   gap: 15px;
   box-sizing: border-box;
   text-decoration: none;
+  margin-right: 43px;
+  min-width: 0;
 }
 
 .header__username {
@@ -109,6 +112,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .header__avatar {
@@ -154,10 +159,13 @@
 
 .header__logout {
   border: none;
+  display: flex;
   background: transparent;
   cursor: pointer;
   font-size: 14px;
   color: #666;
+  flex-shrink: 0;
+  margin-top: 8px;
 }
 
 .header__logout:hover {

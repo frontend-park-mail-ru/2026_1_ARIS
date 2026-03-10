@@ -27,7 +27,7 @@
 }
 
 .header__inner--guest {
-  grid-template-columns: 240px 514px 280px;
+  grid-template-columns: 240px 1fr 320px;
   column-gap: 24px;
 }
 
@@ -140,7 +140,9 @@
 }
 
 .header__guest-actions {
+  justify-content: center;
   display: flex;
+  margin-left: 30px;
   width: 514px;
   align-items: center;
   gap: 24px;
@@ -170,4 +172,23 @@
 
 .header__logout:hover {
   text-decoration: underline;
+}
+
+.header__inner--guest .header__user {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 15px;
+  width: 100%;
+  min-width: 0;
+  justify-self: end;
+}
+
+.header__inner--guest .header__username {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: right;
 }

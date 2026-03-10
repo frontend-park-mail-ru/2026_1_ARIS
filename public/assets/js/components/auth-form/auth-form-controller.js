@@ -1,4 +1,6 @@
 import { loginUser, registerUser } from "../../api/auth.js";
+import { setSessionUser } from "../../mock/session.js";
+import { closeAuthModal } from "../auth-modal/auth-modal-controller.js";
 
 const FIELD_ORDER = ["firstName", "lastName", "birthDate", "login", "password", "repeatPassword"];
 
@@ -253,6 +255,34 @@ function clearFieldState(form) {
   });
 }
 
+function clearFormError(form) {
+  const errorNode = form.querySelector(".auth-form__error");
+  if (!errorNode) return;
+
+  errorNode.textContent = " ";
+  errorNode.classList.add("auth-form__error--hidden");
+}
+
+function showFormError(form, message) {
+  const errorNode = form.querySelector(".auth-form__error");
+  if (!errorNode) return;
+
+  errorNode.textContent = message;
+  errorNode.classList.remove("auth-form__error--hidden");
+}
+
+function markFieldsAsError(form, fieldNames) {
+  fieldNames.forEach((name) => {
+    const group = getFieldGroup(form, name);
+    if (!group) return;
+
+    const inputWrapper = group.querySelector(".input");
+    if (inputWrapper) {
+      inputWrapper.classList.add("input--error");
+    }
+  });
+}
+
 function renderTouchedFieldErrors(form, errors) {
   clearFieldState(form);
 
@@ -337,7 +367,7 @@ async function handleSubmit(event) {
     renderAllFieldErrors(form, errors);
     return;
   }
-
+  clearFormError(form);
   clearFieldState(form);
 
   try {
@@ -347,12 +377,19 @@ async function handleSubmit(event) {
         password: values.password,
       });
 
+      setSessionUser({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      });
+
+      closeAuthModal();
       navigate("/feed");
       return;
     }
 
     if (mode === "register") {
-      await registerUser({
+      const profile = await registerUser({
         firstName: values.firstName,
         lastName: values.lastName,
         birthday: values.birthDate,
@@ -361,9 +398,21 @@ async function handleSubmit(event) {
         password2: values.repeatPassword,
       });
 
+      setSessionUser({
+        id: profile.id,
+        firstName: values.firstName,
+        lastName: values.lastName,
+      });
+
+      closeAuthModal();
       navigate("/feed");
     }
   } catch (error) {
+    if (mode === "login") {
+      showFormError(form, "Неверный логин или пароль");
+      markFieldsAsError(form, ["login", "password"]);
+    }
+
     console.error("Auth error:", error);
   }
 }
@@ -388,6 +437,7 @@ export function initAuthForm(root = document) {
     const errors = getValidationErrors(authForm.dataset.mode, values, isSubmitAttempted);
 
     renderTouchedFieldErrors(form, errors);
+    clearFormError(form);
   });
 
   root.addEventListener("input", (event) => {

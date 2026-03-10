@@ -8,6 +8,10 @@ export function setSessionUser(user) {
   mockSession.user = user;
 }
 
+export function setFeedMode(mode) {
+  mockSession.feedMode = mode;
+}
+
 export function clearSessionUser() {
   mockSession.user = null;
 }

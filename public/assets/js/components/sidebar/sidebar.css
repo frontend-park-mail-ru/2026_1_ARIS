@@ -97,8 +97,16 @@
 
 .sidebar-item--button {
   border: none;
-  background: none;
   width: 100%;
   text-align: left;
   cursor: pointer;
+  background: transparent;
+}
+
+.sidebar-item--button.sidebar-item--active {
+  background: var(--color-active-item-bg);
+}
+
+.sidebar-item--button.sidebar-item--active:hover {
+  background: var(--color-active-item-bg);
 }

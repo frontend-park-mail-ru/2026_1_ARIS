@@ -132,9 +132,11 @@ function renderGuestFeed() {
  * @returns {string}
  */
 function renderAuthorisedFeed() {
+  const posts = mockSession.feedMode === "for-you" ? [...mockFeedPosts].reverse() : mockFeedPosts;
+
   return `
     <section class="feed-layout__center">
-      ${mockFeedPosts.map(renderPostcard).join("")}
+      ${posts.map(renderPostcard).join("")}
     </section>
   `;
 }

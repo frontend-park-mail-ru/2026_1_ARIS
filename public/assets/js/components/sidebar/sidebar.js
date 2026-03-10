@@ -1,3 +1,5 @@
+import { mockSession } from "../../mock/session.js";
+
 /**
  * Renders a sidebar navigation item.
  * @param {Object} options
@@ -44,6 +46,8 @@ function renderSidebarItem({
  * @returns {string}
  */
 export function renderSidebar({ isAuthorised = false } = {}) {
+  const isForYouActive = mockSession.feedMode === "for-you";
+  const isByTimeActive = mockSession.feedMode === "by-time";
   return `
     <aside class="sidebar">
       <section class="sidebar-card sidebar-card--menu">
@@ -88,23 +92,24 @@ export function renderSidebar({ isAuthorised = false } = {}) {
       </section>
 
       <section class="sidebar-card sidebar-card--feed-type">
-        <h3 class="sidebar-card__title">Тип ленты</h3>
+  <h3 class="sidebar-card__title">Тип ленты</h3>
 
-        ${renderSidebarItem({
-          href: "/feed",
-          label: "Для вас",
-          icon: "/assets/img/icons/star.svg",
-          isActive: true,
-          attributes: 'data-feed-mode="for-you"',
-        })}
+  ${renderSidebarItem({
+    label: "Для вас",
+    icon: "/assets/img/icons/star.svg",
+    isActive: isForYouActive,
+    isStub: true,
+    attributes: 'data-feed-mode="for-you"',
+  })}
 
-        ${renderSidebarItem({
-          href: "/feed",
-          label: "По времени",
-          icon: "/assets/img/icons/clock.svg",
-          attributes: 'data-feed-mode="by-time"',
-        })}
-      </section>
+  ${renderSidebarItem({
+    label: "По времени",
+    icon: "/assets/img/icons/clock.svg",
+    isActive: isByTimeActive,
+    isStub: true,
+    attributes: 'data-feed-mode="by-time"',
+  })}
+</section>
     </aside>
   `;
 }

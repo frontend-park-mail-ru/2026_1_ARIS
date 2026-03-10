@@ -94,3 +94,11 @@
   line-height: 22px;
   letter-spacing: 0.3px;
 }
+
+.sidebar-item--button {
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}

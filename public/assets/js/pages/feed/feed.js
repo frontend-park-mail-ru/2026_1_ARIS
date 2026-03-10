@@ -160,7 +160,7 @@ export function renderFeed() {
 
       <main class="feed-layout">
         <aside class="feed-layout__left">
-          ${renderSidebar()}
+          ${renderSidebar({ isAuthorised: mockSession.user !== null })}
         </aside>
 
         ${isAuthorised ? renderAuthorisedFeed() : renderGuestFeed()}

@@ -7,15 +7,33 @@
  * @param {boolean} [options.isActive=false]
  * @returns {string}
  */
-function renderSidebarItem({ href, label, icon, isActive = false, attributes = "" }) {
+function renderSidebarItem({
+  href = "#",
+  label,
+  icon,
+  isActive = false,
+  isStub = false,
+  attributes = "",
+}) {
   const itemClass = isActive ? "sidebar-item sidebar-item--active" : "sidebar-item";
 
-  return `
-    <a href="${href}" ${attributes} class="${itemClass}">
+  if (isStub) {
+    return `
+      <button type="button" class="${itemClass} sidebar-item--button" ${attributes}>
         <span class="sidebar-item__icon" aria-hidden="true">
-            <img src="${icon}" alt="">
-    </span>
-    <span class="sidebar-item__label">${label}</span>
+          <img src="${icon}" alt="">
+        </span>
+        <span class="sidebar-item__label">${label}</span>
+      </button>
+    `;
+  }
+
+  return `
+    <a href="${href}" data-link class="${itemClass}" ${attributes}>
+      <span class="sidebar-item__icon" aria-hidden="true">
+        <img src="${icon}" alt="">
+      </span>
+      <span class="sidebar-item__label">${label}</span>
     </a>
   `;
 }
@@ -24,7 +42,7 @@ function renderSidebarItem({ href, label, icon, isActive = false, attributes = "
  * Renders the left sidebar.
  * @returns {string}
  */
-export function renderSidebar() {
+export function renderSidebar({ isAuthorised = false } = {}) {
   return `
     <aside class="sidebar">
       <section class="sidebar-card sidebar-card--menu">
@@ -39,28 +57,32 @@ export function renderSidebar() {
           href: "/login",
           label: "Профиль",
           icon: "/assets/img/icons/profile.svg",
-          attributes: 'data-open-auth-modal="login"',
+          attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+          isStub: isAuthorised,
         })}
 
         ${renderSidebarItem({
           href: "/profile",
           label: "Друзья",
           icon: "/assets/img/icons/friends.svg",
-          attributes: 'data-open-auth-modal="login"',
+          attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+          isStub: isAuthorised,
         })}
 
         ${renderSidebarItem({
           href: "/login",
           label: "Чаты",
           icon: "/assets/img/icons/chat.svg",
-          attributes: 'data-open-auth-modal="login"',
+          attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+          isStub: isAuthorised,
         })}
 
         ${renderSidebarItem({
           href: "/profile",
           label: "Настройки",
           icon: "/assets/img/icons/settings.svg",
-          attributes: 'data-open-auth-modal="login"',
+          attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+          isStub: isAuthorised,
         })}
       </section>
 

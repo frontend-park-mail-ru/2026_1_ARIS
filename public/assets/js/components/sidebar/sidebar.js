@@ -16,8 +16,9 @@ function renderSidebarItem({
   attributes = "",
 }) {
   const itemClass = isActive ? "sidebar-item sidebar-item--active" : "sidebar-item";
+  const isModalTrigger = attributes.includes("data-open-auth-modal");
 
-  if (isStub) {
+  if (isStub || isModalTrigger) {
     return `
       <button type="button" class="${itemClass} sidebar-item--button" ${attributes}>
         <span class="sidebar-item__icon" aria-hidden="true">
@@ -94,12 +95,14 @@ export function renderSidebar({ isAuthorised = false } = {}) {
           label: "Для вас",
           icon: "/assets/img/icons/star.svg",
           isActive: true,
+          attributes: 'data-feed-mode="for-you"',
         })}
 
         ${renderSidebarItem({
           href: "/feed",
           label: "По времени",
           icon: "/assets/img/icons/clock.svg",
+          attributes: 'data-feed-mode="by-time"',
         })}
       </section>
     </aside>

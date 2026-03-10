@@ -1,0 +1,153 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  height: 100px;
+  background: #fff;
+  border-bottom: 1px solid #d9d9d9;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.header__inner {
+  height: 100%;
+  display: grid;
+  align-items: center;
+  width: 100%;
+  min-width: 1458px;
+  padding: 0 120px;
+  box-sizing: border-box;
+}
+
+.header__inner--authorised {
+  grid-template-columns: 240px 1fr 350px;
+  column-gap: 24px;
+}
+
+.header__inner--guest {
+  grid-template-columns: 240px 514px 280px;
+  column-gap: 24px;
+}
+
+.header__logo-link {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  text-decoration: none;
+}
+
+.header__logo {
+  display: block;
+  width: 152px;
+  height: 51px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 4px 4px rgb(0 0 0 / 25%));
+}
+
+.header__search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: start;
+  width: 100%;
+  height: 40px;
+  margin-left: 0;
+  padding: 0 26px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--color-search-bg);
+}
+
+.header__search-input {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-input-text);
+  font-family: var(--font-main);
+  font-size: var(--text-input-size);
+  font-style: normal;
+  font-weight: var(--text-input-weight);
+  line-height: normal;
+  letter-spacing: var(--text-input-letter-spacing);
+}
+
+.header__search-input::placeholder {
+  color: var(--color-input-placeholder);
+  font-family: var(--font-main);
+  font-size: var(--text-input-size);
+  font-style: normal;
+  font-weight: var(--text-input-weight);
+  line-height: normal;
+  letter-spacing: var(--text-input-letter-spacing);
+}
+
+.header__user {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: 15px;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
+.header__username {
+  color: #000;
+  text-align: right;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 0.48px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header__avatar {
+  width: 62px;
+  height: 62px;
+  flex-shrink: 0;
+  border-radius: 31px;
+  background: #f1cc4f;
+}
+
+.header__search-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.header__search-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.header__guest-actions {
+  display: flex;
+  width: 514px;
+  align-items: center;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+.header__guest-register {
+  width: 311px;
+  height: 68px;
+}
+
+.header__guest-login {
+  width: 179px;
+  height: 68px;
+}

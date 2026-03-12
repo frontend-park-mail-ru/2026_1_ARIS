@@ -17,7 +17,6 @@ export function clearSessionUser() {
   mockSession.user = null;
 }
 
-// Новая функция — проверяет сессию при загрузке страницы
 export async function initSession() {
   const user = await getCurrentUser();
   if (user) {

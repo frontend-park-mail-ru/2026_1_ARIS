@@ -3,6 +3,7 @@ import { renderSidebar } from "../../components/sidebar/sidebar.js";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar.js";
 import { mockSession } from "../../mock/session.js";
 import { renderPostcard } from "../../components/postcard/postcard.js";
+import { getFeed } from "../../api/feed.js";
 
 const mockFeedPosts = [
   {
@@ -127,12 +128,13 @@ const guestFeedPosts = [
  * Renders the guest feed.
  * @returns {string}
  */
-function renderGuestFeed() {
+async function renderGuestFeed() {
   const posts = mockSession.feedMode === "for-you" ? [...guestFeedPosts].reverse() : guestFeedPosts;
+  const getPosts = await getFeed();
 
   return `
     <section class="feed-layout__center">
-      ${posts.map(renderPostcard).join("")}
+      ${getPosts.posts.map(renderPostcard).join("")}
     </section>
   `;
 }
@@ -141,12 +143,13 @@ function renderGuestFeed() {
  * Renders the authorised feed.
  * @returns {string}
  */
-function renderAuthorisedFeed() {
+async function renderAuthorisedFeed() {
   const posts = mockSession.feedMode === "for-you" ? [...mockFeedPosts].reverse() : mockFeedPosts;
+  const getPosts = await getFeed();
 
   return `
     <section class="feed-layout__center">
-      ${posts.map(renderPostcard).join("")}
+      ${getPosts.posts.reverse().map(renderPostcard).join("")}
     </section>
   `;
 }
@@ -155,7 +158,7 @@ function renderAuthorisedFeed() {
  * Renders the feed page.
  * @returns {string}
  */
-export function renderFeed() {
+export async function renderFeed() {
   const isAuthorised = mockSession.user !== null;
 
   return `
@@ -167,7 +170,7 @@ export function renderFeed() {
           ${renderSidebar({ isAuthorised: mockSession.user !== null })}
         </aside>
 
-        ${isAuthorised ? renderAuthorisedFeed() : renderGuestFeed()}
+        ${isAuthorised ? await renderAuthorisedFeed() : await renderGuestFeed()}
 
         <aside class="feed-layout__right">
           ${renderWidgetbar({ isAuthorised })}

@@ -49,7 +49,7 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--single">
-          <img class="postcard__media-item" src="${images[0]}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0]["mediaLink"])}" alt="">
         </div>
       </div>
     `;
@@ -59,8 +59,8 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--double">
-          <img class="postcard__media-item" src="${images[0]}" alt="">
-          <img class="postcard__media-item" src="${images[1]}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1]["mediaLink"])}" alt="">
         </div>
       </div>
     `;
@@ -70,9 +70,9 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--triple">
-          <img class="postcard__media-item postcard__media-item--featured" src="${images[0]}" alt="">
-          <img class="postcard__media-item" src="${images[1]}" alt="">
-          <img class="postcard__media-item" src="${images[2]}" alt="">
+          <img class="postcard__media-item postcard__media-item--featured" src="/image-proxy?url=${encodeURIComponent(images[0]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2]["mediaLink"])}" alt="">
         </div>
       </div>
     `;
@@ -84,7 +84,10 @@ function renderPostcardMedia(images = []) {
         <div class="postcard__media-grid postcard__media-grid--quad">
           ${images
             .slice(0, 4)
-            .map((image) => `<img class="postcard__media-item" src="${image}" alt="">`)
+            .map(
+              (image) =>
+                `<img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(image["mediaLink"])}" alt="">`,
+            )
             .join("")}
         </div>
       </div>
@@ -95,14 +98,14 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media postcard__media--five">
         <div class="postcard__media-row postcard__media-row--top">
-          <img class="postcard__media-item" src="${images[0]}" alt="">
-          <img class="postcard__media-item" src="${images[1]}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1]["mediaLink"])}" alt="">
         </div>
 
         <div class="postcard__media-row postcard__media-row--bottom">
-          <img class="postcard__media-item" src="${images[2]}" alt="">
-          <img class="postcard__media-item" src="${images[3]}" alt="">
-          <img class="postcard__media-item" src="${images[4]}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[3]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[4]["mediaLink"])}" alt="">
         </div>
       </div>
     `;
@@ -111,16 +114,16 @@ function renderPostcardMedia(images = []) {
   return `
     <div class="postcard__media postcard__media--five-plus">
       <div class="postcard__media-row postcard__media-row--top">
-        <img class="postcard__media-item" src="${images[0]}" alt="">
-        <img class="postcard__media-item" src="${images[1]}" alt="">
-        <img class="postcard__media-item" src="${images[2]}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0]["mediaLink"])}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1]["mediaLink"])}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2]["mediaLink"])}" alt="">
       </div>
 
       <div class="postcard__media-row postcard__media-row--bottom">
-        <img class="postcard__media-item" src="${images[3]}" alt="">
-        <img class="postcard__media-item" src="${images[4]}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[3]["mediaLink"])}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[4]["mediaLink"])}" alt="">
         <div class="postcard__media-overlay">
-          <img class="postcard__media-item" src="${images[5]}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[5]["mediaLink"])}" alt="">
           <span class="postcard__media-overlay-count">+${images.length - 5}</span>
         </div>
       </div>
@@ -146,7 +149,7 @@ export function renderPostcard(post) {
       <header class="postcard__header">
         <div class="postcard__avatar" aria-hidden="true"></div>
         <a href="/profile" class="postcard__author widgetbar-card__username">
-  ${post.author}
+  ${post.author.firstName} ${post.author.lastName}
 </a>
       </header>
 
@@ -155,7 +158,7 @@ export function renderPostcard(post) {
             <button type="button" class="postcard__expand">читать полностью</button>
         </div>
 
-      ${renderPostcardMedia(post.images)}
+      ${renderPostcardMedia(post.medias)}
 
       <footer class="postcard__footer">
         <div class="postcard__stats">
@@ -173,7 +176,7 @@ export function renderPostcard(post) {
           })}
         </div>
 
-        <p class="postcard__time">${post.time}</p>
+        <p class="postcard__time">${post.createdAt.slice(0, 10)}</p>
       </footer>
     </article>
   `;

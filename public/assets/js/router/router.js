@@ -10,7 +10,7 @@ function normalisePath(p) {
 }
 
 export function createRouter(root, routes) {
-  function render() {
+  async function render() {
     const path = normalisePath(window.location.pathname);
     const route = routes.find((r) => normalisePath(r.path) === path);
 
@@ -21,7 +21,7 @@ export function createRouter(root, routes) {
     }
 
     document.title = route.title;
-    root.innerHTML = route.render();
+    root.innerHTML = await route.render();
     initAuthForm(document);
     initPostcardExpand(root);
     initAuthModal(document);
@@ -29,13 +29,12 @@ export function createRouter(root, routes) {
     initInputMasks(document);
   }
 
-  function navigate(to) {
+  async function navigate(to) {
     if (normalisePath(window.location.pathname) !== normalisePath(to)) {
       window.history.pushState({}, "", to);
     }
-
     window.scrollTo(0, 0);
-    render();
+    await render();
   }
 
   document.addEventListener("click", (e) => {

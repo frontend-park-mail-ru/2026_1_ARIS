@@ -297,3 +297,10 @@
 .postcard__text a:hover {
   text-decoration: underline;
 }
+
+.postcard__author.widgetbar-stub-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}

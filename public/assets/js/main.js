@@ -5,7 +5,7 @@ import { renderFeed, refreshFeedCenter } from "./pages/feed/feed.js";
 import { renderProfile } from "./pages/profile/profile.js";
 import { initSession } from "./mock/session.js";
 import { initHeader } from "./components/header/header.js";
-import { initSidebar } from "./components/sidebar/sidebar.js";
+import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar.js";
 
 const root = document.getElementById("app");
 
@@ -24,6 +24,8 @@ initSession().then(() => {
 });
 
 window.addEventListener("feedmodechange", () => {
+  refreshSidebar();
+
   refreshFeedCenter().catch((error) => {
     console.error(error);
   });

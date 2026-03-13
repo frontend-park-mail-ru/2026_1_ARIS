@@ -136,3 +136,17 @@ export function initSidebar(root = document) {
 
   root.__sidebarBound = true;
 }
+
+export function refreshSidebar() {
+  const sidebar = document.querySelector(".sidebar");
+  if (!sidebar) return;
+
+  const isAuthorised = mockSession.user !== null;
+  const template = document.createElement("template");
+  template.innerHTML = renderSidebar({ isAuthorised }).trim();
+
+  const newSidebar = template.content.firstElementChild;
+  if (!newSidebar) return;
+
+  sidebar.replaceWith(newSidebar);
+}

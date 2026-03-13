@@ -156,13 +156,26 @@ export function renderPostcard(post) {
     <article class="postcard">
       <header class="postcard__header">
         <img class="postcard__avatar" src="/image-proxy?url=${encodeURIComponent(post.avatar)}" alt="${displayName}">
-        <a
-          href="${mockSession.user ? "/profile" : "/login"}"
-          ${mockSession.user ? "" : 'data-open-auth-modal="login"'}
-          class="postcard__author widgetbar-card__username"
-        >
-          ${displayName}
-        </a>
+${
+  mockSession.user
+    ? `
+      <button
+        type="button"
+        class="postcard__author widgetbar-card__username widgetbar-stub-button"
+      >
+        ${displayName}
+      </button>
+    `
+    : `
+      <a
+        href="/login"
+        data-open-auth-modal="login"
+        class="postcard__author widgetbar-card__username"
+      >
+        ${displayName}
+      </a>
+    `
+}
       </header>
 
       <div class="postcard__text-container">

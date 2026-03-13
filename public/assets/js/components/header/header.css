@@ -93,7 +93,7 @@
   align-items: center;
   justify-content: flex-end;
   justify-self: end;
-  gap: 15px;
+  gap: 12px;
   box-sizing: border-box;
   text-decoration: none;
   margin-right: 43px;
@@ -105,7 +105,7 @@
   text-align: right;
   font-family: Inter, Arial, sans-serif;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.3px;
   max-width: 220px;
   line-height: 1.2;
@@ -118,7 +118,8 @@
   width: 62px;
   height: 62px;
   flex-shrink: 0;
-  border-radius: 31px;
+  border-radius: 50%;
+  object-fit: cover;
   background: #f1cc4f;
 }
 
@@ -165,7 +166,6 @@
   font-size: 14px;
   color: #666;
   flex-shrink: 0;
-  margin-top: 8px;
 }
 
 .header__logout:hover {

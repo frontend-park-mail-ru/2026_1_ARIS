@@ -51,7 +51,7 @@
   align-items: center;
   gap: 10px;
   justify-self: start;
-  width: 420px;
+  width: 320px;
   height: 40px;
   margin-left: 0;
   padding: 0 26px;
@@ -104,16 +104,14 @@
   color: #000;
   text-align: right;
   font-family: Inter, Arial, sans-serif;
-  font-size: 24px;
-  font-style: normal;
+  font-size: 16px;
   font-weight: 500;
-  line-height: normal;
-  letter-spacing: 0.48px;
+  letter-spacing: 0.3px;
+  max-width: 220px;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
-  flex: 1 1 auto;
 }
 
 .header__avatar {
@@ -142,7 +140,7 @@
 .header__guest-actions {
   justify-content: center;
   display: flex;
-  margin-left: 30px;
+  margin-left: -58px;
   width: 514px;
   align-items: center;
   gap: 24px;

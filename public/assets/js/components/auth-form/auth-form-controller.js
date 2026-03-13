@@ -2,7 +2,15 @@ import { loginUser, registerUser } from "../../api/auth.js";
 import { setSessionUser } from "../../mock/session.js";
 import { closeAuthModal } from "../auth-modal/auth-modal-controller.js";
 
-const FIELD_ORDER = ["firstName", "lastName", "birthDate", "login", "password", "repeatPassword"];
+const FIELD_ORDER = [
+  "firstName",
+  "lastName",
+  "gender",
+  "birthDate",
+  "login",
+  "password",
+  "repeatPassword",
+];
 
 function getFormValues(form) {
   const formData = new FormData(form);
@@ -10,6 +18,7 @@ function getFormValues(form) {
   return {
     firstName: String(formData.get("firstName") || "").trim(),
     lastName: String(formData.get("lastName") || "").trim(),
+    gender: String(formData.get("gender") || "").trim(),
     birthDate: String(formData.get("birthDate") || "").trim(),
     login: String(formData.get("login") || "").trim(),
     password: String(formData.get("password") || "").trim(),
@@ -40,6 +49,12 @@ function getDaysInMonth(month, year) {
   return days[month - 1];
 }
 
+function normalizeName(value) {
+  if (!value) return value;
+
+  const lower = value.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
 function detectAlphabet(value) {
   if (/^[A-Za-z-]+$/.test(value)) {
     return "latin";
@@ -55,10 +70,6 @@ function detectAlphabet(value) {
 function validateName(value, label, isSubmitAttempted = false) {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
-  }
-
-  if (value.length < 2) {
-    return `${label} должно содержать минимум 2 символа`;
   }
 
   if (value.length > 12) {
@@ -77,7 +88,7 @@ function validateName(value, label, isSubmitAttempted = false) {
   const hasCyrillic = /[А-Яа-яЁё]/u.test(value);
 
   if (hasLatin && hasCyrillic) {
-    return "Нельзя смешивать русский и английский";
+    return "В этом поле нельзя смешивать русский и английский языки";
   }
 
   return "";
@@ -107,22 +118,97 @@ function validateBirthDate(value, isSubmitAttempted = false) {
     return isSubmitAttempted ? "Обязательное поле" : "";
   }
 
-  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-    return value.length === 10 ? "Дата должна быть в формате дд/мм/гггг" : "";
+  if (!/^[\d/]*$/.test(value)) {
+    return "Дата должна быть в формате дд/мм/гггг";
   }
 
-  const [dayString, monthString, yearString] = value.split("/");
+  const parts = value.split("/");
+
+  if (parts.length > 3) {
+    return "Дата должна быть в формате дд/мм/гггг";
+  }
+
+  const [dayString = "", monthString = "", yearString = ""] = parts;
+
+  if (dayString.length > 2 || monthString.length > 2 || yearString.length > 4) {
+    return "Дата должна быть в формате дд/мм/гггг";
+  }
+
+  if (dayString.length === 2) {
+    const day = Number(dayString);
+    if (day < 1 || day > 31) {
+      return "Некорректный день";
+    }
+  }
+
+  if (monthString.length === 2) {
+    const month = Number(monthString);
+    if (month < 1 || month > 12) {
+      return "Некорректный месяц";
+    }
+  }
+
+  if (dayString.length === 2 && monthString.length === 2) {
+    const day = Number(dayString);
+    const month = Number(monthString);
+
+    const maxDaysWithoutYear = {
+      1: 31,
+      2: 29,
+      3: 31,
+      4: 30,
+      5: 31,
+      6: 30,
+      7: 31,
+      8: 31,
+      9: 30,
+      10: 31,
+      11: 30,
+      12: 31,
+    };
+
+    const maxDay = maxDaysWithoutYear[month];
+
+    if (month >= 1 && month <= 12 && day > maxDay) {
+      if (month === 2) {
+        return "В феврале максимум 29 дней";
+      }
+
+      return `В этом месяце ${maxDay} дней`;
+    }
+  }
+
+  if (yearString.length === 4) {
+    const year = Number(yearString);
+    const now = new Date();
+
+    if (year < 1900 || year > now.getFullYear()) {
+      return "Некорректный год";
+    }
+  }
+  if (yearString.length > 0 && yearString.length < 4) {
+    return "Введите год в формате гггг";
+  }
+  if (value.length < 10) {
+    return isSubmitAttempted ? "Введите дату рождения в формате дд/мм/гггг" : "";
+  }
+
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+    return "Дата должна быть в формате дд/мм/гггг";
+  }
+
   const day = Number(dayString);
   const month = Number(monthString);
   const year = Number(yearString);
 
-  if (month < 1 || month > 12) {
-    return "Некорректный месяц";
-  }
-
   const maxDay = getDaysInMonth(month, year);
-  if (day < 1 || day > maxDay) {
-    return "Некорректная дата";
+
+  if (day > maxDay) {
+    if (month === 2) {
+      return `В феврале ${year} года ${maxDay} дней`;
+    }
+
+    return `В этом месяце ${maxDay} дней`;
   }
 
   const birthDate = new Date(year, month - 1, day);
@@ -145,6 +231,14 @@ function validateBirthDate(value, isSubmitAttempted = false) {
   return "";
 }
 
+function validateGender(value) {
+  if (!value) {
+    return "Выберите пол";
+  }
+
+  return "";
+}
+
 function validateLogin(value, isSubmitAttempted = false) {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
@@ -154,12 +248,16 @@ function validateLogin(value, isSubmitAttempted = false) {
     return "В логине не должно быть пробелов";
   }
 
-  if (!/^[a-zA-Z0-9_]+$/.test(value)) {
-    return "Логин может содержать только латинские буквы, цифры и _";
+  if (!/^[a-zA-Z0-9]+$/.test(value)) {
+    return "В логине могут быть только латинские буквы и цифры";
   }
 
   if (value.length < 6) {
     return "Логин слишком короткий (мин. 6 символов)";
+  }
+
+  if (value.length > 12) {
+    return "Логин может содержать максимум 12 символов";
   }
 
   return "";
@@ -172,6 +270,10 @@ function validatePassword(value, isSubmitAttempted = false) {
 
   if (value.length < 7) {
     return "Пароль слишком короткий (мин. 7 символов)";
+  }
+
+  if (value.length > 20) {
+    return "Пароль может содержать максимум 20 символов";
   }
 
   return "";
@@ -193,6 +295,7 @@ function validateRegisterForm(values, isSubmitAttempted = false) {
   const errors = {
     firstName: validateName(values.firstName, "Имя", isSubmitAttempted),
     lastName: validateName(values.lastName, "Фамилия", isSubmitAttempted),
+    gender: validateGender(values.gender, isSubmitAttempted),
     birthDate: validateBirthDate(values.birthDate, isSubmitAttempted),
     login: validateLogin(values.login, isSubmitAttempted),
     password: validatePassword(values.password, isSubmitAttempted),
@@ -228,12 +331,12 @@ function getValidationErrors(mode, values, isSubmitAttempted = false) {
 }
 
 function getFieldGroup(form, name) {
-  const input = form.querySelector(`.input__field[name="${name}"]`);
-  if (!(input instanceof HTMLElement)) {
+  const field = form.querySelector(`.input__field[name="${name}"]`);
+  if (!(field instanceof HTMLElement)) {
     return null;
   }
 
-  return input.closest(".auth-form__field-group");
+  return field.closest(".auth-form__field-group");
 }
 
 function clearFieldState(form) {
@@ -297,7 +400,10 @@ function renderTouchedFieldErrors(form, errors) {
     if (!group) return;
 
     const input = form.querySelector(`.input__field[name="${name}"]`);
-    const value = input instanceof HTMLInputElement ? input.value.trim() : "";
+    const value =
+      input instanceof HTMLInputElement || input instanceof HTMLSelectElement
+        ? input.value.trim()
+        : "";
     if (!isSubmitAttempted && !value) return;
 
     const errorNode = group.querySelector(".auth-form__field-error");
@@ -390,9 +496,10 @@ async function handleSubmit(event) {
 
     if (mode === "register") {
       const profile = await registerUser({
-        firstName: values.firstName,
-        lastName: values.lastName,
+        firstName: normalizeName(values.firstName),
+        lastName: normalizeName(values.lastName),
         birthday: values.birthDate,
+        gender: Number(values.gender),
         login: values.login,
         password1: values.password,
         password2: values.repeatPassword,
@@ -400,8 +507,8 @@ async function handleSubmit(event) {
 
       setSessionUser({
         id: profile.id,
-        firstName: values.firstName,
-        lastName: values.lastName,
+        firstName: normalizeName(values.firstName),
+        lastName: normalizeName(values.lastName),
       });
 
       closeAuthModal();
@@ -413,6 +520,24 @@ async function handleSubmit(event) {
       markFieldsAsError(form, ["login", "password"]);
     }
 
+    if (mode === "register") {
+      const message = String(error?.message || "").toLowerCase();
+
+      if (message.includes("login already registered")) {
+        const group = getFieldGroup(form, "login");
+        const errorNode = group?.querySelector(".auth-form__field-error");
+
+        if (errorNode) {
+          errorNode.textContent = "Такой логин уже существует";
+          errorNode.classList.remove("auth-form__field-error--hidden");
+        }
+
+        markFieldsAsError(form, ["login"]);
+      } else {
+        showFormError(form, "Не удалось зарегистрироваться");
+      }
+    }
+
     console.error("Auth error:", error);
   }
 }
@@ -422,7 +547,7 @@ export function initAuthForm(root = document) {
 
   root.addEventListener("focusout", (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
 
     const form = target.closest(".auth-form__form");
     if (!(form instanceof HTMLFormElement)) return;
@@ -442,7 +567,7 @@ export function initAuthForm(root = document) {
 
   root.addEventListener("input", (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
 
     const form = target.closest(".auth-form__form");
     if (!(form instanceof HTMLFormElement)) return;

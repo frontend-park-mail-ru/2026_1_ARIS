@@ -8,6 +8,7 @@ export function renderEyeToggle({ isVisible = false, className = "" } = {}) {
   return `
     <button
       type="button"
+      tabindex="-1"
       class="eye-toggle ${stateClass}${className ? ` ${className}` : ""}"
       aria-label="${isVisible ? "Скрыть пароль" : "Показать пароль"}"
       aria-pressed="${isVisible ? "true" : "false"}"

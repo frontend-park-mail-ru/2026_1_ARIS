@@ -1,3 +1,7 @@
+import { getSuggestedUsers, getPublicPopularUsers, getLatestEvents } from "../../api/users.js";
+
+import { getPopularPosts, getPublicPopularPosts } from "../../api/feed.js";
+
 function renderStubButton(text, className) {
   return `
     <button type="button" class="${className} widgetbar-stub-button">
@@ -6,120 +10,145 @@ function renderStubButton(text, className) {
   `;
 }
 
-function renderPopularUsersWidget() {
+async function renderPopularUsersWidget() {
+  const response = await getPublicPopularUsers();
+
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные пользователи</h3>
 
-      <div class="widgetbar-person">
-        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">Сергей Шульгиненко</a>
-      </div>
-
-      <div class="widgetbar-person">
-        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">Анна Опарина</a>
-      </div>
-
-      <div class="widgetbar-person">
-        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">Иван Хвостов</a>
-      </div>
-
-      <div class="widgetbar-person">
-        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">Ринат Байков</a>
-      </div>
+      ${response.items
+        .map(
+          (user) => `
+          <div class="widgetbar-person">
+            ${
+              user.avatarLink
+                ? `<img class="widgetbar-person__avatar" src="/image-proxy?url=${encodeURIComponent(user.avatarLink)}" alt="${user.username}">`
+                : `<div class="widgetbar-person__avatar"></div>`
+            }
+            <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">
+              ${user.firstName} ${user.lastName}
+            </a>
+          </div>
+        `,
+        )
+        .join("")}
     </section>
   `;
 }
 
-function renderKnownPeopleWidget() {
+async function renderKnownPeopleWidget() {
+  const response = await getSuggestedUsers();
+
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Возможно, вы знакомы:</h3>
 
-      <div class="widgetbar-person">
-        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        ${renderStubButton("Иван Иванов", "widgetbar-card__username")}
-      </div>
-
-      <div class="widgetbar-person">
-        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        ${renderStubButton("Петр Петров", "widgetbar-card__username")}
-      </div>
-
-      <div class="widgetbar-person">
-        <div class="widgetbar-person__avatar" aria-hidden="true"></div>
-        ${renderStubButton("Алексей Алексеев", "widgetbar-card__username")}
-      </div>
+      ${response.items
+        .slice(0, 4)
+        .map(
+          (user) => `
+            <div class="widgetbar-person">
+            <img
+              class="widgetbar-person__avatar"
+              src="${
+                user.avatarLink
+                  ? `/image-proxy?url=${encodeURIComponent(user.avatarLink)}`
+                  : `/assets/img/default-avatar.png`
+              }"
+              alt="${user.username}"
+            >
+              ${renderStubButton(`${user.firstName} ${user.lastName}`, "widgetbar-card__username")}
+            </div>
+          `,
+        )
+        .join("")}
     </section>
   `;
 }
 
-function renderEventsWidget() {
+async function renderEventsWidget() {
+  const response = await getLatestEvents();
+
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Последние события</h3>
 
       <div class="widgetbar-card__events">
-        <p class="widgetbar-card__event">
-          ${renderStubButton("Михаил Маваши", "widgetbar-card__username")}
-          <span class="widgetbar-card__text"> поставил лайк вашему </span>
-          ${renderStubButton("посту", "widgetbar-card__link")}
-        </p>
+        ${response.items
+          .map((user) => {
+            const userButton = renderStubButton(
+              `${user.firstName} ${user.lastName}`,
+              "widgetbar-card__username",
+            );
 
-        <p class="widgetbar-card__event">
-          ${renderStubButton("Мария Иванова", "widgetbar-card__username")}
-          <span class="widgetbar-card__text"> добавила </span>
-          ${renderStubButton("фото", "widgetbar-card__link")}
-        </p>
+            if (user.type === 1) {
+              return `
+                <p class="widgetbar-card__event">
+                  ${userButton}
+                  <span class="widgetbar-card__text"> поставил лайк вашему </span>
+                  ${renderStubButton("посту", "widgetbar-card__link")}
+                </p>
+              `;
+            }
 
-        <p class="widgetbar-card__event">
-          ${renderStubButton("Дмитрий Соколов", "widgetbar-card__username")}
-          <span class="widgetbar-card__text"> подписался на вас</span>
-        </p>
+            if (user.type === 2) {
+              return `
+                <p class="widgetbar-card__event">
+                  ${userButton}
+                  <span class="widgetbar-card__text"> добавил </span>
+                  ${renderStubButton("фото", "widgetbar-card__link")}
+                </p>
+              `;
+            }
+
+            return `
+              <p class="widgetbar-card__event">
+                ${userButton}
+                <span class="widgetbar-card__text"> подписался на вас</span>
+              </p>
+            `;
+          })
+          .join("")}
       </div>
     </section>
   `;
 }
 
-function renderGuestPopularPostsWidget() {
+async function renderGuestPopularPostsWidget() {
+  const response = await getPublicPopularPosts();
+
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные посты</h3>
 
+${(Array.isArray(response.items) ? response.items : [])
+  .map(
+    (post) => `
       <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
-        Веб-разработка для начинающих: как создать свою социальную сеть
+        ${post.title}
       </a>
-
-      <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
-        JavaScript как язык программирования в 2026?
-      </a>
-
-      <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
-        Лучшие вузы России
-      </a>
+    `,
+  )
+  .join("")}
     </section>
   `;
 }
 
-function renderAuthorisedPopularPostsWidget() {
+async function renderAuthorisedPopularPostsWidget() {
+  const response = await getPopularPosts();
+
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные посты</h3>
 
-      ${renderStubButton(
-        "Как научиться подтягиваться 20 раз? Советы по калистенике для матерых и ...",
-        "widgetbar-card__post-link",
-      )}
-
-      ${renderStubButton("Почему Rust заменяет C++", "widgetbar-card__post-link")}
-
-      ${renderStubButton(
-        "Лучшие книги по ML. Чем машинное обучение по своей сути отличается от к...",
-        "widgetbar-card__post-link",
-      )}
+${(Array.isArray(response.items) ? response.items : [])
+  .map(
+    (post) => `
+      ${renderStubButton(post.title, "widgetbar-card__post-link")}
+    `,
+  )
+  .join("")}
     </section>
   `;
 }
@@ -159,21 +188,22 @@ function renderWeatherWidget() {
  * Renders the widgetbar.
  * @returns {string}
  */
-export function renderWidgetbar({ isAuthorised }) {
+export async function renderWidgetbar({ isAuthorised }) {
+  console.log("renderWidgetbar called");
   if (isAuthorised) {
     return `
     <aside class="widgetbar">
-      ${renderKnownPeopleWidget()}
-      ${renderEventsWidget()}
-      ${renderAuthorisedPopularPostsWidget()}
+      ${await renderKnownPeopleWidget()}
+      ${await renderEventsWidget()}
+      ${await renderAuthorisedPopularPostsWidget()}
       ${renderWeatherWidget()}
     </aside>
   `;
   }
   return `
     <aside class="widgetbar">
-      ${renderPopularUsersWidget()}
-      ${renderGuestPopularPostsWidget()}
+      ${await renderPopularUsersWidget()}
+      ${await renderGuestPopularPostsWidget()}
       ${renderWeatherWidget()}
     </aside>
   `;

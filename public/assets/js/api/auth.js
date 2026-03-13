@@ -49,6 +49,7 @@ export async function registerUser(payload) {
       firstName: payload.firstName,
       lastName: payload.lastName,
       birthday: payload.birthday,
+      gender: payload.gender,
       login: payload.login,
       password1: payload.password1,
       password2: payload.password2,

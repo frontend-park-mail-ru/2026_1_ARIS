@@ -1,11 +1,11 @@
 import { createRouter } from "./router/router.js";
 import { renderLogin } from "./pages/login/login.js";
 import { renderRegister } from "./pages/register/register.js";
-import { renderFeed } from "./pages/feed/feed.js";
+import { renderFeed, refreshFeedCenter } from "./pages/feed/feed.js";
 import { renderProfile } from "./pages/profile/profile.js";
 import { initSession } from "./mock/session.js";
 import { initHeader } from "./components/header/header.js";
-import { setFeedMode } from "./mock/session.js";
+import { initSidebar } from "./components/sidebar/sidebar.js";
 
 const root = document.getElementById("app");
 
@@ -20,13 +20,11 @@ const router = createRouter(root, [
 initSession().then(() => {
   router.render();
   initHeader();
+  initSidebar();
 });
 
-document.addEventListener("click", (event) => {
-  const control = event.target.closest("[data-feed-mode]");
-  if (!control) return;
-
-  event.preventDefault();
-  setFeedMode(control.dataset.feedMode);
-  window.dispatchEvent(new PopStateEvent("popstate"));
+window.addEventListener("feedmodechange", () => {
+  refreshFeedCenter().catch((error) => {
+    console.error(error);
+  });
 });

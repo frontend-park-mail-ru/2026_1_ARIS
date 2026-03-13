@@ -1,4 +1,4 @@
-import { mockSession } from "../../mock/session.js";
+import { mockSession, setFeedMode } from "../../mock/session.js";
 
 /**
  * Renders a sidebar navigation item.
@@ -112,4 +112,27 @@ export function renderSidebar({ isAuthorised = false } = {}) {
 </section>
     </aside>
   `;
+}
+
+export function initSidebar(root = document) {
+  if (root.__sidebarBound) return;
+
+  root.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const button = target.closest("[data-feed-mode]");
+    if (!button) return;
+
+    event.preventDefault();
+
+    const mode = button.getAttribute("data-feed-mode");
+    if (mode !== "for-you" && mode !== "by-time") return;
+
+    setFeedMode(mode);
+
+    window.dispatchEvent(new CustomEvent("feedmodechange"));
+  });
+
+  root.__sidebarBound = true;
 }

@@ -32,9 +32,9 @@ function renderGuestHeader() {
         })}
       </div>
 
-      <a href="/login" data-link class="header__user">
+      <a href="/login" data-open-auth-modal="login" class="header__user">
         <span class="header__username">Твоя страничка</span>
-        <div class="header__avatar" aria-hidden="true"></div>
+        <img class="header__avatar" src="assets/img/default-avatar.png" alt="Гостевой профиль">
       </a>
     </div>
   `;
@@ -71,7 +71,11 @@ function renderAuthorisedHeader() {
           Выйти
         </button>
 
-        <div class="header__avatar" aria-hidden="true"></div>
+        ${
+          mockSession.user.avatarLink
+            ? `<img class="header__avatar" src="/image-proxy?url=${encodeURIComponent(mockSession.user.avatarLink)}" alt="${fullName}">`
+            : `<img class="header__avatar" src="assets/img/default-avatar.png" alt="${fullName}">`
+        }
       </div>
     </div>
   `;

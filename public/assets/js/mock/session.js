@@ -1,8 +1,10 @@
 import { getCurrentUser } from "../api/auth.js";
 
+const savedFeedMode = localStorage.getItem("feedMode");
+
 export const mockSession = {
   user: null,
-  feedMode: "by-time",
+  feedMode: savedFeedMode === "for-you" ? "for-you" : "by-time",
 };
 
 export function setSessionUser(user) {
@@ -11,6 +13,7 @@ export function setSessionUser(user) {
 
 export function setFeedMode(mode) {
   mockSession.feedMode = mode;
+  localStorage.setItem("feedMode", mode);
 }
 
 export function clearSessionUser() {

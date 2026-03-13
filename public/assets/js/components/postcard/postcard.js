@@ -5,6 +5,7 @@ import { mockSession } from "../../mock/session.js";
  * @param {Object} options
  * @param {string} options.icon
  * @param {number} options.count
+ * @param {string} options.action
  * @returns {string}
  */
 function renderPostcardStat({ icon, count, action }) {
@@ -12,25 +13,26 @@ function renderPostcardStat({ icon, count, action }) {
 
   if (isAuthorised) {
     return `
-        <button
-            type="button"
-            class="postcard__stat postcard__stat-button"
-            data-action="${action}"
-            aria-label="${action}"
-        >
+      <button
+        type="button"
+        class="postcard__stat postcard__stat-button"
+        data-action="${action}"
+        aria-label="${action}"
+      >
         <span class="postcard__stat-icon" aria-hidden="true">
-            <img src="${icon}" alt="">
+          <img src="${icon}" alt="">
         </span>
         <span class="postcard__stat-count">${count}</span>
-        </button>
+      </button>
     `;
   }
+
   return `
     <a href="/login" data-open-auth-modal="login" class="postcard__stat postcard__stat-link" aria-label="${action}">
-        <span class="postcard__stat-icon" aria-hidden="true">
-            <img src="${icon}" alt="">
-        </span>
-        <span class="postcard__stat-count">${count}</span>
+      <span class="postcard__stat-icon" aria-hidden="true">
+        <img src="${icon}" alt="">
+      </span>
+      <span class="postcard__stat-count">${count}</span>
     </a>
   `;
 }
@@ -49,7 +51,7 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--single">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0])}" alt="">
         </div>
       </div>
     `;
@@ -59,8 +61,8 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--double">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0]["mediaLink"])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1])}" alt="">
         </div>
       </div>
     `;
@@ -70,9 +72,9 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--triple">
-          <img class="postcard__media-item postcard__media-item--featured" src="/image-proxy?url=${encodeURIComponent(images[0]["mediaLink"])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1]["mediaLink"])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2]["mediaLink"])}" alt="">
+          <img class="postcard__media-item postcard__media-item--featured" src="/image-proxy?url=${encodeURIComponent(images[0])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2])}" alt="">
         </div>
       </div>
     `;
@@ -86,7 +88,7 @@ function renderPostcardMedia(images = []) {
             .slice(0, 4)
             .map(
               (image) =>
-                `<img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(image["mediaLink"])}" alt="">`,
+                `<img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(image)}" alt="">`,
             )
             .join("")}
         </div>
@@ -98,14 +100,14 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media postcard__media--five">
         <div class="postcard__media-row postcard__media-row--top">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0]["mediaLink"])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1])}" alt="">
         </div>
 
         <div class="postcard__media-row postcard__media-row--bottom">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2]["mediaLink"])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[3]["mediaLink"])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[4]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[3])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[4])}" alt="">
         </div>
       </div>
     `;
@@ -114,16 +116,16 @@ function renderPostcardMedia(images = []) {
   return `
     <div class="postcard__media postcard__media--five-plus">
       <div class="postcard__media-row postcard__media-row--top">
-        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0]["mediaLink"])}" alt="">
-        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1]["mediaLink"])}" alt="">
-        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2]["mediaLink"])}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0])}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1])}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2])}" alt="">
       </div>
 
       <div class="postcard__media-row postcard__media-row--bottom">
-        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[3]["mediaLink"])}" alt="">
-        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[4]["mediaLink"])}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[3])}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[4])}" alt="">
         <div class="postcard__media-overlay">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[5]["mediaLink"])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[5])}" alt="">
           <span class="postcard__media-overlay-count">+${images.length - 5}</span>
         </div>
       </div>
@@ -135,6 +137,9 @@ function renderPostcardMedia(images = []) {
  * Renders a postcard.
  * @param {Object} post
  * @param {string} post.author
+ * @param {string} post.firstName
+ * @param {string} post.lastName
+ * @param {string} post.avatar
  * @param {string} post.text
  * @param {string} post.time
  * @param {number} post.likes
@@ -144,39 +149,49 @@ function renderPostcardMedia(images = []) {
  * @returns {string}
  */
 export function renderPostcard(post) {
+  const displayName =
+    `${post.firstName || ""} ${post.lastName || ""}`.trim() || post.author || "Пользователь";
+
   return `
     <article class="postcard">
       <header class="postcard__header">
-        <div class="postcard__avatar" aria-hidden="true"></div>
-        <a href="/profile" class="postcard__author widgetbar-card__username">
-  ${post.author.firstName} ${post.author.lastName}
-</a>
+        <img class="postcard__avatar" src="/image-proxy?url=${encodeURIComponent(post.avatar)}" alt="${displayName}">
+        <a
+          href="${mockSession.user ? "/profile" : "/login"}"
+          ${mockSession.user ? "" : 'data-open-auth-modal="login"'}
+          class="postcard__author widgetbar-card__username"
+        >
+          ${displayName}
+        </a>
       </header>
 
-        <div class="postcard__text-container">
-            <p class="postcard__text postcard__text--collapsed">${post.text}</p>
-            <button type="button" class="postcard__expand">читать полностью</button>
-        </div>
+      <div class="postcard__text-container">
+        <p class="postcard__text postcard__text--collapsed">${post.text}</p>
+        <button type="button" class="postcard__expand">читать полностью</button>
+      </div>
 
-      ${renderPostcardMedia(post.medias)}
+      ${renderPostcardMedia(post.images)}
 
       <footer class="postcard__footer">
         <div class="postcard__stats">
           ${renderPostcardStat({
             icon: "assets/img/icons/heart.svg",
             count: post.likes,
+            action: "like",
           })}
           ${renderPostcardStat({
             icon: "assets/img/icons/repost.svg",
             count: post.reposts,
+            action: "repost",
           })}
           ${renderPostcardStat({
             icon: "assets/img/icons/comment.svg",
             count: post.comments,
+            action: "comment",
           })}
         </div>
 
-        <p class="postcard__time">${post.createdAt.slice(0, 10)}</p>
+        <p class="postcard__time">${post.time}</p>
       </footer>
     </article>
   `;

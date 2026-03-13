@@ -1,5 +1,11 @@
 const API_BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8080" : "";
 
+/**
+ * Parses JSON response body safely.
+ *
+ * @param {Response} response
+ * @returns {Promise<Object>}
+ */
 async function parseJson(response) {
   const text = await response.text();
 
@@ -10,6 +16,15 @@ async function parseJson(response) {
   }
 }
 
+/**
+ * Sends login request to the backend.
+ *
+ * @param {Object} payload
+ * @param {string} payload.login
+ * @param {string} payload.password
+ * @returns {Promise<Object>}
+ * @throws {Error}
+ */
 export async function loginUser(payload) {
   const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
     method: "POST",
@@ -38,6 +53,20 @@ export async function loginUser(payload) {
   return data;
 }
 
+/**
+ * Sends registration request to the backend.
+ *
+ * @param {Object} payload
+ * @param {string} payload.firstName
+ * @param {string} payload.lastName
+ * @param {string} payload.birthday
+ * @param {number} payload.gender
+ * @param {string} payload.login
+ * @param {string} payload.password1
+ * @param {string} payload.password2
+ * @returns {Promise<Object>}
+ * @throws {Error}
+ */
 export async function registerUser(payload) {
   const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
     method: "POST",
@@ -68,6 +97,12 @@ export async function registerUser(payload) {
   return data;
 }
 
+/**
+ * Sends logout request to the backend.
+ *
+ * @returns {Promise<Object>}
+ * @throws {Error}
+ */
 export async function logoutUser() {
   const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
     method: "POST",
@@ -86,6 +121,11 @@ export async function logoutUser() {
   return data;
 }
 
+/**
+ * Requests current authorised user from the backend.
+ *
+ * @returns {Promise<Object|null>}
+ */
 export async function getCurrentUser() {
   const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
     method: "GET",

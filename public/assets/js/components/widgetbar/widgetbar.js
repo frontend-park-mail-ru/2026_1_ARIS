@@ -1,7 +1,12 @@
 import { getSuggestedUsers, getPublicPopularUsers, getLatestEvents } from "../../api/users.js";
-
 import { getPopularPosts, getPublicPopularPosts } from "../../api/feed.js";
 
+/**
+ * Renders a stub button.
+ * @param {string} text
+ * @param {string} className
+ * @returns {string}
+ */
 function renderStubButton(text, className) {
   return `
     <button type="button" class="${className} widgetbar-stub-button">
@@ -10,6 +15,10 @@ function renderStubButton(text, className) {
   `;
 }
 
+/**
+ * Renders popular users widget for guests.
+ * @returns {Promise<string>}
+ */
 async function renderPopularUsersWidget() {
   const response = await getPublicPopularUsers();
 
@@ -20,23 +29,27 @@ async function renderPopularUsersWidget() {
       ${response.items
         .map(
           (user) => `
-          <div class="widgetbar-person">
-            ${
-              user.avatarLink
-                ? `<img class="widgetbar-person__avatar" src="/image-proxy?url=${encodeURIComponent(user.avatarLink)}" alt="${user.username}">`
-                : `<div class="widgetbar-person__avatar"></div>`
-            }
-            <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">
-              ${user.firstName} ${user.lastName}
-            </a>
-          </div>
-        `,
+            <div class="widgetbar-person">
+              ${
+                user.avatarLink
+                  ? `<img class="widgetbar-person__avatar" src="/image-proxy?url=${encodeURIComponent(user.avatarLink)}" alt="${user.username}">`
+                  : `<div class="widgetbar-person__avatar"></div>`
+              }
+              <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">
+                ${user.firstName} ${user.lastName}
+              </a>
+            </div>
+          `,
         )
         .join("")}
     </section>
   `;
 }
 
+/**
+ * Renders known people widget.
+ * @returns {Promise<string>}
+ */
 async function renderKnownPeopleWidget() {
   const response = await getSuggestedUsers();
 
@@ -49,15 +62,15 @@ async function renderKnownPeopleWidget() {
         .map(
           (user) => `
             <div class="widgetbar-person">
-            <img
-              class="widgetbar-person__avatar"
-              src="${
-                user.avatarLink
-                  ? `/image-proxy?url=${encodeURIComponent(user.avatarLink)}`
-                  : `/assets/img/default-avatar.png`
-              }"
-              alt="${user.username}"
-            >
+              <img
+                class="widgetbar-person__avatar"
+                src="${
+                  user.avatarLink
+                    ? `/image-proxy?url=${encodeURIComponent(user.avatarLink)}`
+                    : `/assets/img/default-avatar.png`
+                }"
+                alt="${user.username}"
+              >
               ${renderStubButton(`${user.firstName} ${user.lastName}`, "widgetbar-card__username")}
             </div>
           `,
@@ -67,6 +80,10 @@ async function renderKnownPeopleWidget() {
   `;
 }
 
+/**
+ * Renders latest events widget.
+ * @returns {Promise<string>}
+ */
 async function renderEventsWidget() {
   const response = await getLatestEvents();
 
@@ -115,6 +132,10 @@ async function renderEventsWidget() {
   `;
 }
 
+/**
+ * Renders guest popular posts widget.
+ * @returns {Promise<string>}
+ */
 async function renderGuestPopularPostsWidget() {
   const response = await getPublicPopularPosts();
 
@@ -122,19 +143,23 @@ async function renderGuestPopularPostsWidget() {
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные посты</h3>
 
-${(Array.isArray(response.items) ? response.items : [])
-  .map(
-    (post) => `
-      <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
-        ${post.title}
-      </a>
-    `,
-  )
-  .join("")}
+      ${(Array.isArray(response.items) ? response.items : [])
+        .map(
+          (post) => `
+            <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
+              ${post.title}
+            </a>
+          `,
+        )
+        .join("")}
     </section>
   `;
 }
 
+/**
+ * Renders authorised popular posts widget.
+ * @returns {Promise<string>}
+ */
 async function renderAuthorisedPopularPostsWidget() {
   const response = await getPopularPosts();
 
@@ -142,17 +167,21 @@ async function renderAuthorisedPopularPostsWidget() {
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные посты</h3>
 
-${(Array.isArray(response.items) ? response.items : [])
-  .map(
-    (post) => `
-      ${renderStubButton(post.title, "widgetbar-card__post-link")}
-    `,
-  )
-  .join("")}
+      ${(Array.isArray(response.items) ? response.items : [])
+        .map(
+          (post) => `
+            ${renderStubButton(post.title, "widgetbar-card__post-link")}
+          `,
+        )
+        .join("")}
     </section>
   `;
 }
 
+/**
+ * Renders weather widget.
+ * @returns {string}
+ */
 function renderWeatherWidget() {
   return `
     <section class="widgetbar-card widgetbar-card--weather">
@@ -186,20 +215,24 @@ function renderWeatherWidget() {
 
 /**
  * Renders the widgetbar.
- * @returns {string}
+ * @param {Object} options
+ * @param {boolean} options.isAuthorised
+ * @returns {Promise<string>}
  */
 export async function renderWidgetbar({ isAuthorised }) {
   console.log("renderWidgetbar called");
+
   if (isAuthorised) {
     return `
-    <aside class="widgetbar">
-      ${await renderKnownPeopleWidget()}
-      ${await renderEventsWidget()}
-      ${await renderAuthorisedPopularPostsWidget()}
-      ${renderWeatherWidget()}
-    </aside>
-  `;
+      <aside class="widgetbar">
+        ${await renderKnownPeopleWidget()}
+        ${await renderEventsWidget()}
+        ${await renderAuthorisedPopularPostsWidget()}
+        ${renderWeatherWidget()}
+      </aside>
+    `;
   }
+
   return `
     <aside class="widgetbar">
       ${await renderPopularUsersWidget()}

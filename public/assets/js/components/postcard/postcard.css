@@ -36,7 +36,6 @@
   margin: 0;
   text-decoration: none;
   color: var(--color-username-blue);
-  font-family: var(--font-main);
   font-size: var(--text-author-size);
   font-weight: var(--text-author-weight);
   line-height: var(--text-author-line);
@@ -46,7 +45,6 @@
   width: 568px;
   margin: 0;
   color: var(--color-black);
-  font-family: var(--font-main);
   font-size: var(--text-body-size);
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-line);
@@ -159,7 +157,6 @@
   align-items: center;
   justify-content: center;
   color: var(--color-header-bg);
-  font-family: var(--font-main);
   font-size: var(--text-card-title-size);
   font-weight: var(--text-card-title-weight);
   line-height: var(--text-card-title-line);
@@ -230,7 +227,6 @@
 .postcard__stat-count,
 .postcard__time {
   color: var(--color-text-secondary);
-  font-family: var(--font-main);
   font-size: var(--text-counters-size);
   font-weight: var(--text-counters-weight);
   line-height: var(--text-counters-line);
@@ -262,7 +258,6 @@
   background: none;
   border: none;
   color: var(--color-clickable);
-  font-family: var(--font-main);
   font-size: var(--text-clickable-size);
   cursor: pointer;
   font-weight: var(--text-clickable-weight);

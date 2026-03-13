@@ -34,7 +34,11 @@ function renderGuestHeader() {
 
       <a href="/login" data-open-auth-modal="login" class="header__user">
         <span class="header__username">Твоя страничка</span>
-        <img class="header__avatar" src="assets/img/default-avatar.png" alt="Гостевой профиль">
+        <img
+          class="header__avatar"
+          src="assets/img/default-avatar.png"
+          alt="Гостевой профиль"
+        >
       </a>
     </div>
   `;
@@ -57,6 +61,7 @@ function renderAuthorisedHeader() {
         <span class="header__search-icon" aria-hidden="true">
           <img src="assets/img/icons/search.svg" alt="">
         </span>
+
         <input
           class="header__search-input"
           type="text"
@@ -73,7 +78,9 @@ function renderAuthorisedHeader() {
 
         ${
           mockSession.user.avatarLink
-            ? `<img class="header__avatar" src="/image-proxy?url=${encodeURIComponent(mockSession.user.avatarLink)}" alt="${fullName}">`
+            ? `<img class="header__avatar" src="/image-proxy?url=${encodeURIComponent(
+                mockSession.user.avatarLink,
+              )}" alt="${fullName}">`
             : `<img class="header__avatar" src="assets/img/default-avatar.png" alt="${fullName}">`
         }
       </div>
@@ -82,7 +89,7 @@ function renderAuthorisedHeader() {
 }
 
 /**
- * Renders page header.
+ * Renders page header depending on user auth state.
  * @returns {string}
  */
 export function renderHeader() {
@@ -95,6 +102,10 @@ export function renderHeader() {
   `;
 }
 
+/**
+ * Initializes header behaviour (logout handler).
+ * @returns {void}
+ */
 export function initHeader() {
   document.addEventListener("click", async (event) => {
     const btn = event.target.closest("[data-logout]");

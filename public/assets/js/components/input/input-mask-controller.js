@@ -1,3 +1,8 @@
+/**
+ * Formats a raw date string into dd/mm/yyyy form.
+ * @param {string} digits
+ * @returns {string}
+ */
 function formatDateDigits(digits) {
   const clean = digits.replace(/\D/g, "").slice(0, 8);
 
@@ -12,11 +17,22 @@ function formatDateDigits(digits) {
   return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
 }
 
+/**
+ * Applies date mask formatting to an input element.
+ * @param {HTMLInputElement} input
+ * @returns {void}
+ */
 function handleDateMaskInput(input) {
   const digitsOnly = input.value.replace(/\D/g, "").slice(0, 8);
   input.value = formatDateDigits(digitsOnly);
 }
 
+/**
+ * Restricts key input for a date-masked field.
+ * @param {KeyboardEvent} event
+ * @param {HTMLInputElement} input
+ * @returns {void}
+ */
 function handleDateMaskKeyDown(event, input) {
   const allowedKeys = [
     "Backspace",
@@ -47,6 +63,12 @@ function handleDateMaskKeyDown(event, input) {
   }
 }
 
+/**
+ * Handles paste action for a date-masked input.
+ * @param {ClipboardEvent} event
+ * @param {HTMLInputElement} input
+ * @returns {void}
+ */
 function handleDateMaskPaste(event, input) {
   event.preventDefault();
 
@@ -59,6 +81,11 @@ function handleDateMaskPaste(event, input) {
   input.value = formatDateDigits(nextDigits);
 }
 
+/**
+ * Initializes input masks inside the given root.
+ * @param {Document|HTMLElement} [root=document]
+ * @returns {void}
+ */
 export function initInputMasks(root = document) {
   if (root.__inputMasksBound) return;
 

@@ -2,6 +2,11 @@ import { renderButton } from "../button/button.js";
 import { renderAuthForm } from "../auth-form/auth-form.js";
 import { renderAuthModal } from "./auth-modal.js";
 
+/**
+ * Traps focus inside the auth modal when navigating with the Tab key.
+ * @param {KeyboardEvent} event
+ * @returns {void}
+ */
 function trapFocusInModal(event) {
   if (event.key !== "Tab") return;
 
@@ -32,6 +37,10 @@ function trapFocusInModal(event) {
   }
 }
 
+/**
+ * Returns the modal root element, creating it if necessary.
+ * @returns {HTMLElement}
+ */
 function getModalRoot() {
   let modalRoot = document.getElementById("modal-root");
 
@@ -44,10 +53,16 @@ function getModalRoot() {
   return modalRoot;
 }
 
+/**
+ * Opens the auth modal in the specified mode.
+ * @param {"login"|"register"} [mode="login"]
+ * @returns {void}
+ */
 export function openAuthModal(mode = "login") {
   const modalRoot = getModalRoot();
   modalRoot.innerHTML = renderAuthModal({ mode });
   document.body.classList.add("modal-open");
+
   const modal = modalRoot.querySelector("[data-auth-modal]");
   const firstFocusable = modal?.querySelector(
     'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
@@ -58,12 +73,21 @@ export function openAuthModal(mode = "login") {
   }
 }
 
+/**
+ * Closes the auth modal.
+ * @returns {void}
+ */
 export function closeAuthModal() {
   const modalRoot = getModalRoot();
   modalRoot.innerHTML = "";
   document.body.classList.remove("modal-open");
 }
 
+/**
+ * Switches the auth modal content to the specified mode.
+ * @param {"login"|"register"} mode
+ * @returns {void}
+ */
 function switchAuthModalMode(mode) {
   const modal = document.querySelector("[data-auth-modal]");
   if (!modal) return;
@@ -72,21 +96,26 @@ function switchAuthModalMode(mode) {
   if (!content) return;
 
   content.innerHTML = `
-  <div class="auth-modal__panel">
-    ${renderButton({
-      text: "×",
-      variant: "surface",
-      tag: "button",
-      type: "button",
-      className: "auth-modal__close",
-      attributes: 'aria-label="Закрыть" data-auth-modal-close',
-    })}
+    <div class="auth-modal__panel">
+      ${renderButton({
+        text: "×",
+        variant: "surface",
+        tag: "button",
+        type: "button",
+        className: "auth-modal__close",
+        attributes: 'aria-label="Закрыть" data-auth-modal-close',
+      })}
 
-    ${renderAuthForm({ mode, context: "modal" })}
-  </div>
-`;
+      ${renderAuthForm({ mode, context: "modal" })}
+    </div>
+  `;
 }
 
+/**
+ * Initializes auth modal event handlers.
+ * @param {Document|HTMLElement} [root=document]
+ * @returns {void}
+ */
 export function initAuthModal(root = document) {
   if (root.__authModalBound) return;
 

@@ -20,7 +20,7 @@
 }
 
 .header__inner--authorised {
-  grid-template-columns: 240px 1fr 520px;
+  grid-template-columns: 240px 1fr 320px;
   column-gap: 24px;
   margin-left: 5px;
 }

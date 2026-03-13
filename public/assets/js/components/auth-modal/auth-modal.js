@@ -1,6 +1,12 @@
 import { renderButton } from "../button/button.js";
 import { renderAuthForm } from "../auth-form/auth-form.js";
 
+/**
+ * Renders the authentication modal.
+ * @param {Object} [options]
+ * @param {"login"|"register"} [options.mode="login"]
+ * @returns {string}
+ */
 export function renderAuthModal({ mode = "login" } = {}) {
   return `
     <div class="auth-modal" data-auth-modal>

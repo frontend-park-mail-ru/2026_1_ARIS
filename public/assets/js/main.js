@@ -23,6 +23,10 @@ initSession().then(() => {
   initSidebar();
 });
 
+/**
+ * Handles feed mode changes by refreshing sidebar and feed content.
+ * @returns {void}
+ */
 window.addEventListener("feedmodechange", () => {
   refreshSidebar();
 

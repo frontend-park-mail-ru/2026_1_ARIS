@@ -44,7 +44,7 @@
 
   /* Author */
   --text-author-size: var(--text-username-size);
-  --text-author-weight: var(--text-username-weight);
+  --text-author-weight: 500;
   --text-author-line: var(--text-username-line);
 
   /* CardTitle */
@@ -64,14 +64,13 @@
 
   /* Clickable */
   --text-clickable-size: var(--text-body-size);
-  --text-clickable-weight: var(--text-body-weight);
+  --text-clickable-weight: 500;
   --text-clickable-line: var(--text-body-line);
 
   /* Input */
   --text-input-size: 18px;
   --text-input-weight: 500;
   --text-input-line: normal;
-  --text-input-letter-spacing: 0.02em;
 
   /* ===== RADIUSES ===== */
 

@@ -1,5 +1,11 @@
 const API_BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8080" : "";
 
+/**
+ * Parses JSON response body safely.
+ *
+ * @param {Response} response
+ * @returns {Promise<Object>}
+ */
 async function parseJson(response) {
   const text = await response.text();
 
@@ -10,6 +16,15 @@ async function parseJson(response) {
   }
 }
 
+/**
+ * Requests authorised user feed from the backend.
+ *
+ * @param {Object} [options={}]
+ * @param {string} [options.cursor=""]
+ * @param {number} [options.limit=20]
+ * @returns {Promise<Object>}
+ * @throws {Error}
+ */
 export async function getFeed({ cursor = "", limit = 20 } = {}) {
   const params = new URLSearchParams();
 
@@ -41,6 +56,15 @@ export async function getFeed({ cursor = "", limit = 20 } = {}) {
   return data;
 }
 
+/**
+ * Requests public feed from the backend.
+ *
+ * @param {Object} [options={}]
+ * @param {string} [options.cursor=""]
+ * @param {number} [options.limit=20]
+ * @returns {Promise<Object>}
+ * @throws {Error}
+ */
 export async function getPublicFeed({ cursor = "", limit = 20 } = {}) {
   const params = new URLSearchParams();
 
@@ -72,6 +96,12 @@ export async function getPublicFeed({ cursor = "", limit = 20 } = {}) {
   return data;
 }
 
+/**
+ * Formats ISO date string into relative time.
+ *
+ * @param {string} isoString
+ * @returns {string}
+ */
 function formatRelativeTime(isoString) {
   const createdAt = new Date(isoString);
   const now = new Date();
@@ -87,6 +117,12 @@ function formatRelativeTime(isoString) {
   return `${diffDays} д назад`;
 }
 
+/**
+ * Maps backend feed item to postcard view model.
+ *
+ * @param {Object} item
+ * @returns {Object}
+ */
 export function mapFeedItemToPostcard(item) {
   return {
     id: item?.id || "",
@@ -106,6 +142,12 @@ export function mapFeedItemToPostcard(item) {
   };
 }
 
+/**
+ * Maps backend feed response to frontend feed model.
+ *
+ * @param {Object} response
+ * @returns {Object}
+ */
 export function mapFeedResponse(response) {
   return {
     items: Array.isArray(response?.posts) ? response.posts.map(mapFeedItemToPostcard) : [],
@@ -114,6 +156,12 @@ export function mapFeedResponse(response) {
   };
 }
 
+/**
+ * Requests popular posts for authorised user widget.
+ *
+ * @returns {Promise<Object>}
+ * @throws {Error}
+ */
 export async function getPopularPosts() {
   const response = await fetch(`${API_BASE_URL}/api/posts/popular`, {
     method: "GET",
@@ -132,6 +180,12 @@ export async function getPopularPosts() {
   return data;
 }
 
+/**
+ * Requests popular posts for public widget.
+ *
+ * @returns {Promise<Object>}
+ * @throws {Error}
+ */
 export async function getPublicPopularPosts() {
   const response = await fetch(`${API_BASE_URL}/api/public/popular-posts`, {
     method: "GET",

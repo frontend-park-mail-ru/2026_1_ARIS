@@ -5,6 +5,11 @@ import { mockSession } from "../../mock/session.js";
 import { renderPostcard } from "../../components/postcard/postcard.js";
 import { getFeed, getPublicFeed, mapFeedResponse } from "../../api/feed.js";
 
+/**
+ * Sorts feed items.
+ * @param {Array<Object>} items
+ * @returns {Array<Object>}
+ */
 function sortFeedItems(items) {
   if (mockSession.feedMode === "for-you") {
     const shuffled = [...items];
@@ -24,6 +29,11 @@ function sortFeedItems(items) {
   });
 }
 
+/**
+ * Returns sorted feed items.
+ * @param {Array<Object>} items
+ * @returns {Array<Object>}
+ */
 function getSortedFeedItems(items) {
   const result = [...items];
 
@@ -41,7 +51,7 @@ function getSortedFeedItems(items) {
 
 /**
  * Renders the guest feed.
- * @returns {string}
+ * @returns {Promise<string>}
  */
 async function renderGuestFeed() {
   const response = await getPublicFeed({ limit: 2 });
@@ -58,7 +68,7 @@ async function renderGuestFeed() {
 
 /**
  * Renders the authorised feed.
- * @returns {string}
+ * @returns {Promise<string>}
  */
 async function renderAuthorisedFeed() {
   const response = await getFeed({ limit: 8 });
@@ -75,7 +85,7 @@ async function renderAuthorisedFeed() {
 
 /**
  * Renders the feed page.
- * @returns {string}
+ * @returns {Promise<string>}
  */
 export async function renderFeed() {
   const isAuthorised = mockSession.user !== null;
@@ -99,6 +109,10 @@ export async function renderFeed() {
   `;
 }
 
+/**
+ * Refreshes feed center in place.
+ * @returns {Promise<void>}
+ */
 export async function refreshFeedCenter() {
   const center = document.querySelector(".feed-layout__center");
   if (!center) return;

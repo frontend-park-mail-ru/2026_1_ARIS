@@ -12,6 +12,12 @@ const FIELD_ORDER = [
   "repeatPassword",
 ];
 
+/**
+ * Extracts and normalizes auth form values.
+ *
+ * @param {HTMLFormElement} form
+ * @returns {Object}
+ */
 function getFormValues(form) {
   const formData = new FormData(form);
 
@@ -26,6 +32,12 @@ function getFormValues(form) {
   };
 }
 
+/**
+ * Returns touched field names stored in form dataset.
+ *
+ * @param {HTMLFormElement} form
+ * @returns {string[]}
+ */
 function getTouchedFields(form) {
   try {
     return JSON.parse(form.dataset.touchedFields || "[]");
@@ -34,27 +46,61 @@ function getTouchedFields(form) {
   }
 }
 
+/**
+ * Marks field as touched.
+ *
+ * @param {HTMLFormElement} form
+ * @param {string} fieldName
+ * @returns {void}
+ */
 function setTouchedField(form, fieldName) {
   const touched = new Set(getTouchedFields(form));
   touched.add(fieldName);
   form.dataset.touchedFields = JSON.stringify([...touched]);
 }
 
+/**
+ * Checks whether a year is leap.
+ *
+ * @param {number} year
+ * @returns {boolean}
+ */
 function isLeapYear(year) {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
+/**
+ * Returns number of days in a month.
+ *
+ * @param {number} month
+ * @param {number} year
+ * @returns {number}
+ */
 function getDaysInMonth(month, year) {
   const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
   return days[month - 1];
 }
 
+/**
+ * Normalizes a name to Capitalized format.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
 function normalizeName(value) {
   if (!value) return value;
 
   const lower = value.toLowerCase();
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
+
+/**
+ * Detects alphabet used in a string.
+ *
+ * @param {string} value
+ * @returns {("latin"|"cyrillic"|null)}
+ */
 function detectAlphabet(value) {
   if (/^[A-Za-z-]+$/.test(value)) {
     return "latin";
@@ -67,6 +113,14 @@ function detectAlphabet(value) {
   return null;
 }
 
+/**
+ * Validates first name or last name field.
+ *
+ * @param {string} value
+ * @param {string} label
+ * @param {boolean} [isSubmitAttempted=false]
+ * @returns {string}
+ */
 function validateName(value, label, isSubmitAttempted = false) {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
@@ -94,6 +148,13 @@ function validateName(value, label, isSubmitAttempted = false) {
   return "";
 }
 
+/**
+ * Validates that first and last names use the same alphabet.
+ *
+ * @param {string} firstName
+ * @param {string} lastName
+ * @returns {string}
+ */
 function validateAlphabetConsistency(firstName, lastName) {
   if (!firstName || !lastName) {
     return "";
@@ -113,6 +174,13 @@ function validateAlphabetConsistency(firstName, lastName) {
   return "";
 }
 
+/**
+ * Validates birth date field.
+ *
+ * @param {string} value
+ * @param {boolean} [isSubmitAttempted=false]
+ * @returns {string}
+ */
 function validateBirthDate(value, isSubmitAttempted = false) {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
@@ -136,6 +204,7 @@ function validateBirthDate(value, isSubmitAttempted = false) {
 
   if (dayString.length === 2) {
     const day = Number(dayString);
+
     if (day < 1 || day > 31) {
       return "Некорректный день";
     }
@@ -143,6 +212,7 @@ function validateBirthDate(value, isSubmitAttempted = false) {
 
   if (monthString.length === 2) {
     const month = Number(monthString);
+
     if (month < 1 || month > 12) {
       return "Некорректный месяц";
     }
@@ -186,9 +256,11 @@ function validateBirthDate(value, isSubmitAttempted = false) {
       return "Некорректный год";
     }
   }
+
   if (yearString.length > 0 && yearString.length < 4) {
     return "Введите год в формате гггг";
   }
+
   if (value.length < 10) {
     return isSubmitAttempted ? "Введите дату рождения в формате дд/мм/гггг" : "";
   }
@@ -219,11 +291,13 @@ function validateBirthDate(value, isSubmitAttempted = false) {
   }
 
   const ageLimit = new Date(year + 12, month - 1, day);
+
   if (ageLimit > now) {
     return "Вам должно быть не меньше 12 лет";
   }
 
   const maxAgeLimit = new Date(year + 130, month - 1, day);
+
   if (maxAgeLimit < now) {
     return "Возраст не может превышать 130 лет";
   }
@@ -231,6 +305,12 @@ function validateBirthDate(value, isSubmitAttempted = false) {
   return "";
 }
 
+/**
+ * Validates gender field.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
 function validateGender(value) {
   if (!value) {
     return "Выберите пол";
@@ -239,6 +319,13 @@ function validateGender(value) {
   return "";
 }
 
+/**
+ * Validates login field.
+ *
+ * @param {string} value
+ * @param {boolean} [isSubmitAttempted=false]
+ * @returns {string}
+ */
 function validateLogin(value, isSubmitAttempted = false) {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
@@ -263,6 +350,13 @@ function validateLogin(value, isSubmitAttempted = false) {
   return "";
 }
 
+/**
+ * Validates password field.
+ *
+ * @param {string} value
+ * @param {boolean} [isSubmitAttempted=false]
+ * @returns {string}
+ */
 function validatePassword(value, isSubmitAttempted = false) {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
@@ -279,6 +373,14 @@ function validatePassword(value, isSubmitAttempted = false) {
   return "";
 }
 
+/**
+ * Validates repeated password field.
+ *
+ * @param {string} password
+ * @param {string} repeatPassword
+ * @param {boolean} [isSubmitAttempted=false]
+ * @returns {string}
+ */
 function validateRepeatPassword(password, repeatPassword, isSubmitAttempted = false) {
   if (!repeatPassword) {
     return isSubmitAttempted ? "Обязательное поле" : "";
@@ -291,6 +393,13 @@ function validateRepeatPassword(password, repeatPassword, isSubmitAttempted = fa
   return "";
 }
 
+/**
+ * Validates register form values.
+ *
+ * @param {Object} values
+ * @param {boolean} [isSubmitAttempted=false]
+ * @returns {Object}
+ */
 function validateRegisterForm(values, isSubmitAttempted = false) {
   const errors = {
     firstName: validateName(values.firstName, "Имя", isSubmitAttempted),
@@ -315,6 +424,13 @@ function validateRegisterForm(values, isSubmitAttempted = false) {
   return errors;
 }
 
+/**
+ * Validates login form values.
+ *
+ * @param {Object} values
+ * @param {boolean} [isSubmitAttempted=false]
+ * @returns {Object}
+ */
 function validateLoginForm(values, isSubmitAttempted = false) {
   return {
     login: values.login ? "" : isSubmitAttempted ? "Обязательное поле" : "",
@@ -322,6 +438,14 @@ function validateLoginForm(values, isSubmitAttempted = false) {
   };
 }
 
+/**
+ * Returns validation errors for current auth mode.
+ *
+ * @param {"login"|"register"} mode
+ * @param {Object} values
+ * @param {boolean} [isSubmitAttempted=false]
+ * @returns {Object}
+ */
 function getValidationErrors(mode, values, isSubmitAttempted = false) {
   if (mode === "register") {
     return validateRegisterForm(values, isSubmitAttempted);
@@ -330,8 +454,16 @@ function getValidationErrors(mode, values, isSubmitAttempted = false) {
   return validateLoginForm(values, isSubmitAttempted);
 }
 
+/**
+ * Returns field group element by field name.
+ *
+ * @param {HTMLFormElement} form
+ * @param {string} name
+ * @returns {Element|null}
+ */
 function getFieldGroup(form, name) {
   const field = form.querySelector(`.input__field[name="${name}"]`);
+
   if (!(field instanceof HTMLElement)) {
     return null;
   }
@@ -339,6 +471,12 @@ function getFieldGroup(form, name) {
   return field.closest(".auth-form__field-group");
 }
 
+/**
+ * Clears field-level error state for all fields.
+ *
+ * @param {HTMLFormElement} form
+ * @returns {void}
+ */
 function clearFieldState(form) {
   FIELD_ORDER.forEach((name) => {
     const group = getFieldGroup(form, name);
@@ -358,6 +496,12 @@ function clearFieldState(form) {
   });
 }
 
+/**
+ * Clears form-level error message.
+ *
+ * @param {HTMLFormElement} form
+ * @returns {void}
+ */
 function clearFormError(form) {
   const errorNode = form.querySelector(".auth-form__error");
   if (!errorNode) return;
@@ -366,6 +510,13 @@ function clearFormError(form) {
   errorNode.classList.add("auth-form__error--hidden");
 }
 
+/**
+ * Shows form-level error message.
+ *
+ * @param {HTMLFormElement} form
+ * @param {string} message
+ * @returns {void}
+ */
 function showFormError(form, message) {
   const errorNode = form.querySelector(".auth-form__error");
   if (!errorNode) return;
@@ -374,6 +525,13 @@ function showFormError(form, message) {
   errorNode.classList.remove("auth-form__error--hidden");
 }
 
+/**
+ * Marks selected fields as invalid.
+ *
+ * @param {HTMLFormElement} form
+ * @param {string[]} fieldNames
+ * @returns {void}
+ */
 function markFieldsAsError(form, fieldNames) {
   fieldNames.forEach((name) => {
     const group = getFieldGroup(form, name);
@@ -386,6 +544,13 @@ function markFieldsAsError(form, fieldNames) {
   });
 }
 
+/**
+ * Renders validation errors only for touched fields.
+ *
+ * @param {HTMLFormElement} form
+ * @param {Object} errors
+ * @returns {void}
+ */
 function renderTouchedFieldErrors(form, errors) {
   clearFieldState(form);
 
@@ -404,6 +569,7 @@ function renderTouchedFieldErrors(form, errors) {
       input instanceof HTMLInputElement || input instanceof HTMLSelectElement
         ? input.value.trim()
         : "";
+
     if (!isSubmitAttempted && !value) return;
 
     const errorNode = group.querySelector(".auth-form__field-error");
@@ -420,6 +586,13 @@ function renderTouchedFieldErrors(form, errors) {
   });
 }
 
+/**
+ * Renders validation errors for all fields.
+ *
+ * @param {HTMLFormElement} form
+ * @param {Object} errors
+ * @returns {void}
+ */
 function renderAllFieldErrors(form, errors) {
   clearFieldState(form);
 
@@ -444,15 +617,33 @@ function renderAllFieldErrors(form, errors) {
   });
 }
 
+/**
+ * Checks whether error object contains any validation errors.
+ *
+ * @param {Object} errors
+ * @returns {boolean}
+ */
 function hasErrors(errors) {
   return Object.values(errors).some(Boolean);
 }
 
+/**
+ * Navigates SPA to the given path.
+ *
+ * @param {string} path
+ * @returns {void}
+ */
 function navigate(path) {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+/**
+ * Handles auth form submit.
+ *
+ * @param {SubmitEvent} event
+ * @returns {Promise<void>}
+ */
 async function handleSubmit(event) {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
@@ -473,6 +664,7 @@ async function handleSubmit(event) {
     renderAllFieldErrors(form, errors);
     return;
   }
+
   clearFormError(form);
   clearFieldState(form);
 
@@ -542,12 +734,21 @@ async function handleSubmit(event) {
   }
 }
 
+/**
+ * Initializes auth form validation and submit handlers.
+ *
+ * @param {Document|HTMLElement} [root=document]
+ * @returns {void}
+ */
 export function initAuthForm(root = document) {
   if (root.__authFormBound) return;
 
   root.addEventListener("focusout", (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
+
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
+      return;
+    }
 
     const form = target.closest(".auth-form__form");
     if (!(form instanceof HTMLFormElement)) return;
@@ -567,7 +768,10 @@ export function initAuthForm(root = document) {
 
   root.addEventListener("input", (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
+
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
+      return;
+    }
 
     const form = target.closest(".auth-form__form");
     if (!(form instanceof HTMLFormElement)) return;

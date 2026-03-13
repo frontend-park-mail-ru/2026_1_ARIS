@@ -155,27 +155,31 @@ export function renderPostcard(post) {
   return `
     <article class="postcard">
       <header class="postcard__header">
-        <img class="postcard__avatar" src="/image-proxy?url=${encodeURIComponent(post.avatar)}" alt="${displayName}">
-${
-  mockSession.user
-    ? `
-      <button
-        type="button"
-        class="postcard__author widgetbar-card__username widgetbar-stub-button"
-      >
-        ${displayName}
-      </button>
-    `
-    : `
-      <a
-        href="/login"
-        data-open-auth-modal="login"
-        class="postcard__author widgetbar-card__username"
-      >
-        ${displayName}
-      </a>
-    `
-}
+        <img
+          class="postcard__avatar"
+          src="/image-proxy?url=${encodeURIComponent(post.avatar)}"
+          alt="${displayName}"
+        >
+        ${
+          mockSession.user
+            ? `
+              <button
+                type="button"
+                class="postcard__author widgetbar-card__username widgetbar-stub-button"
+              >
+                ${displayName}
+              </button>
+            `
+            : `
+              <a
+                href="/login"
+                data-open-auth-modal="login"
+                class="postcard__author widgetbar-card__username"
+              >
+                ${displayName}
+              </a>
+            `
+        }
       </header>
 
       <div class="postcard__text-container">
@@ -210,6 +214,11 @@ ${
   `;
 }
 
+/**
+ * Initializes postcard expand behavior.
+ * @param {Document|HTMLElement} [root=document]
+ * @returns {void}
+ */
 export function initPostcardExpand(root = document) {
   requestAnimationFrame(() => {
     const containers = root.querySelectorAll(".postcard__text-container");

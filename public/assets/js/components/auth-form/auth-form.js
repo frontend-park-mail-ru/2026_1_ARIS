@@ -1,6 +1,20 @@
 import { renderButton } from "../button/button.js";
 import { renderInput } from "../input/input.js";
 
+/**
+ * Renders a single auth form field with input and error area.
+ *
+ * @param {Object} options
+ * @param {string} options.type
+ * @param {string} options.name
+ * @param {string} options.placeholder
+ * @param {string} [options.state="default"]
+ * @param {boolean} [options.withToggle=false]
+ * @param {boolean} [options.isVisible=false]
+ * @param {string} [options.errorText=""]
+ * @param {string} [options.attributes=""]
+ * @returns {string}
+ */
 function renderAuthField({
   type,
   name,
@@ -34,7 +48,9 @@ function renderAuthField({
 }
 
 /**
- * Renders auth form in login mode.
+ * Renders auth form fields for login mode.
+ *
+ * @param {boolean} hasError
  * @returns {string}
  */
 function renderLoginFields(hasError) {
@@ -59,6 +75,11 @@ function renderLoginFields(hasError) {
   `;
 }
 
+/**
+ * Renders gender select field.
+ *
+ * @returns {string}
+ */
 function renderGenderField() {
   return `
     <div class="auth-form__field-group">
@@ -78,7 +99,8 @@ function renderGenderField() {
 }
 
 /**
- * Renders auth form in register mode.
+ * Renders auth form fields for register mode.
+ *
  * @returns {string}
  */
 function renderRegisterFields() {
@@ -157,8 +179,6 @@ function renderRegisterFields() {
         attributes: 'data-switch-auth-mode="login"',
       })}
 
-
-
       ${renderButton({
         text: "Войти без регистрации",
         variant: "secondary",
@@ -173,8 +193,12 @@ function renderRegisterFields() {
 
 /**
  * Renders auth form.
+ *
  * @param {Object} options
  * @param {"login"|"register"} options.mode
+ * @param {boolean} [options.hasError=false]
+ * @param {string} [options.errorText="Неверный логин или пароль"]
+ * @param {string} [options.context="page"]
  * @returns {string}
  */
 export function renderAuthForm({
@@ -189,73 +213,72 @@ export function renderAuthForm({
   return `
     <section class="auth-form" data-mode="${mode}">
       <div class="auth-form__header">
-  <img class="auth-form__logo" src="assets/img/logo.svg" alt="ARIS">
+        <img class="auth-form__logo" src="assets/img/logo.svg" alt="ARIS">
 
-  <div class="auth-form__header-text">
-    <h1 class="auth-form__title">${isLogin ? "Вход" : "Регистрация"}</h1>
+        <div class="auth-form__header-text">
+          <h1 class="auth-form__title">${isLogin ? "Вход" : "Регистрация"}</h1>
 
-    <p class="auth-form__subtitle">
-      ${isLogin ? "Введите логин и пароль" : "Все поля обязательны"}
-    </p>
-  </div>
-</div>
+          <p class="auth-form__subtitle">
+            ${isLogin ? "Введите логин и пароль" : "Все поля обязательны"}
+          </p>
+        </div>
+      </div>
 
       <form class="auth-form__form" novalidate>
         <div class="auth-form__fields">
           ${isLogin ? renderLoginFields(hasError) : renderRegisterFields()}
         </div>
 
-
         ${
           isLogin
             ? `
-                <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
+              <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
                 ${errorText}
-                </p>
+              </p>
             `
             : ""
         }
 
-${
-  isLogin
-    ? `
-      <div class="auth-form__actions">
-        ${renderButton({
-          text: "Продолжить",
-          variant: "primary",
-          tag: "button",
-          type: "submit",
-          className: "auth-form__submit",
-        })}
-      </div>
-    `
-    : ""
-}
+        ${
+          isLogin
+            ? `
+              <div class="auth-form__actions">
+                ${renderButton({
+                  text: "Продолжить",
+                  variant: "primary",
+                  tag: "button",
+                  type: "submit",
+                  className: "auth-form__submit",
+                })}
+              </div>
+            `
+            : ""
+        }
       </form>
 
       ${
         isLogin
           ? `
-      ${
-        isModal
-          ? renderButton({
-              text: "Создать аккаунт",
-              variant: "secondary",
-              tag: "button",
-              type: "button",
-              className: "auth-form__secondary-link",
-              attributes: 'data-switch-auth-mode="register"',
-            })
-          : renderButton({
-              text: "Создать аккаунт",
-              variant: "secondary",
-              tag: "link",
-              href: "/register",
-              withDataLink: true,
-              className: "auth-form__secondary-link",
-            })
-      }
-    `
+            ${
+              isModal
+                ? renderButton({
+                    text: "Создать аккаунт",
+                    variant: "secondary",
+                    tag: "button",
+                    type: "button",
+                    className: "auth-form__secondary-link",
+                    attributes: 'data-switch-auth-mode="register"',
+                  })
+                : renderButton({
+                    text: "Создать аккаунт",
+                    variant: "secondary",
+                    tag: "link",
+                    href: "/register",
+                    withDataLink: true,
+                    className: "auth-form__secondary-link",
+                  })
+            }
+          `
           : ""
       }
     </section>

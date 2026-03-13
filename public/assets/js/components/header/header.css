@@ -87,8 +87,7 @@
 }
 
 .header__user {
-  display: flex;
-  width: 100%;
+  display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   justify-self: end;
@@ -102,7 +101,7 @@
 .header__username {
   color: #000;
   text-align: right;
-  font-family: Inter, Arial, sans-serif;
+  font-family: var(--font-main);
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.3px;

@@ -89,7 +89,7 @@
 
 .header__user {
   position: absolute;
-  left: 1100px;
+  left: 1125px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;

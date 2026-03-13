@@ -1,0 +1,19 @@
+@import url("../js/components/button/button.css");
+@import url("../js/components/logo/logo.css");
+@import url("../js/components/input/input.css");
+@import url("../js/pages/login/login.css");
+@import url("../js/pages/feed/feed.css");
+
+body {
+  font-family: var(--font-main);
+  font-size: var(--text-body-size);
+  font-weight: var(--text-body-weight);
+  line-height: var(--text-body-line);
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  margin: 0;
+  padding: 0;
+}

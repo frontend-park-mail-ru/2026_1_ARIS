@@ -1,0 +1,59 @@
+{
+  "name": "arisfront",
+  "version": "1.0.0",
+  "description": "Проект \"ARISNET\" команды АРИС",
+  "main": "index.js",
+  "scripts": {
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server/index.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:css": "stylelint \"public/**/*.css\"",
+    "lint:css:fix": "stylelint \"public/**/*.css\" --fix",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "**/*.js": [
+      "prettier --write",
+      "eslint"
+    ],
+    "**/*.css": [
+      "prettier --write",
+      "stylelint --fix"
+    ],
+    "**/*.html": [
+      "prettier --write"
+    ],
+    "**/*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/frontend-park-mail-ru/2026_1_ARIS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/frontend-park-mail-ru/2026_1_ARIS/issues"
+  },
+  "homepage": "https://github.com/frontend-park-mail-ru/2026_1_ARIS#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "morgan": "^1.10.1"
+  },
+  "devDependencies": {
+    "eslint": "^10.0.2",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.2",
+    "prettier": "^3.8.1",
+    "stylelint": "^17.4.0",
+    "stylelint-config-standard": "^40.0.0"
+  }
+}

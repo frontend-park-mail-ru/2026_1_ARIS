@@ -1,0 +1,281 @@
+.auth-form {
+  position: relative;
+  display: flex;
+  width: min(487px, 100%);
+  padding: 40px 48px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 24px;
+  border-radius: 20px;
+  box-sizing: border-box;
+  border: 1px solid rgb(255 255 255 / 54%);
+  border-top: 1px solid rgb(0 0 0 / 8%);
+  background: #fff;
+  box-shadow:
+    0 20px 40px rgb(0 0 0 / 18%),
+    0 2px 6px rgb(0 0 0 / 8%);
+  margin: auto 0;
+}
+
+/* широкая форма только для регистрации */
+
+.auth-form[data-mode="register"] {
+  width: min(860px, 100%);
+}
+
+/* header */
+
+/* header */
+
+.auth-form__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.auth-form__logo {
+  display: block;
+  width: 110px;
+  height: auto;
+}
+
+.auth-form__header-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.auth-form__title {
+  margin: 0;
+  color: var(--color-black);
+  font-family: var(--font-main);
+  font-size: 24px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.auth-form__subtitle {
+  margin: 0;
+  color: var(--color-black);
+  font-family: var(--font-main);
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* special header only for register */
+
+.auth-form[data-mode="register"] .auth-form__header {
+  position: relative;
+  min-height: 88px;
+  justify-content: center;
+}
+
+.auth-form[data-mode="register"] .auth-form__logo {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.auth-form[data-mode="register"] .auth-form__header-text {
+  align-items: center;
+  justify-content: center;
+}
+
+/* form */
+
+.auth-form__form {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-form__fields {
+  width: 100%;
+}
+
+/* inputs */
+
+.auth-form__input-control {
+  width: 100%;
+}
+
+/* errors */
+
+.auth-form__error {
+  width: 100%;
+  margin: 0;
+  min-height: 19px;
+  color: var(--color-error-text);
+  font-family: var(--font-main);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.auth-form__error--hidden {
+  visibility: hidden;
+}
+
+.auth-form__field-group {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.auth-form__field-error {
+  width: 100%;
+  min-height: 34px;
+  margin: 6px 0 0;
+  color: var(--color-error-text);
+  font-family: var(--font-main);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.auth-form__field-error--hidden {
+  visibility: hidden;
+}
+
+/* grid register */
+
+.auth-form__register-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 56px;
+  width: 100%;
+  align-items: start;
+}
+
+.auth-form__register-grid > :nth-child(1) {
+  grid-column: 1;
+  grid-row: 1;
+} /* Имя */
+.auth-form__register-grid > :nth-child(2) {
+  grid-column: 1;
+  grid-row: 2;
+} /* Фамилия */
+.auth-form__register-grid > :nth-child(3) {
+  grid-column: 1;
+  grid-row: 3;
+} /* Пол */
+.auth-form__register-grid > :nth-child(4) {
+  grid-column: 1;
+  grid-row: 4;
+} /* Дата рождения */
+
+.auth-form__register-grid > :nth-child(5) {
+  grid-column: 2;
+  grid-row: 1;
+} /* Логин */
+.auth-form__register-grid > :nth-child(6) {
+  grid-column: 2;
+  grid-row: 2;
+} /* Пароль */
+.auth-form__register-grid > :nth-child(7) {
+  grid-column: 2;
+  grid-row: 3;
+} /* Повторите пароль */
+.auth-form__register-grid > :nth-child(8) {
+  grid-column: 2;
+  grid-row: 4;
+} /* Уже есть аккаунт */
+
+.auth-form__register-grid > :nth-child(9) {
+  grid-column: 1;
+  grid-row: 5;
+} /* Зарегистрироваться */
+.auth-form__register-grid > :nth-child(10) {
+  grid-column: 2;
+  grid-row: 5;
+} /* Войти без регистрации */
+
+/* already have account */
+
+.auth-form__register-inline-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 49px;
+}
+
+.auth-form__bottom-text {
+  margin: 0;
+  white-space: nowrap;
+  color: var(--color-black);
+  font-family: var(--font-main);
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.auth-form__bottom-login {
+  width: auto;
+  height: 36px;
+  padding: 0 16px;
+}
+
+/* buttons */
+
+.auth-form__submit,
+.auth-form__secondary-link {
+  width: 100%;
+}
+
+.auth-form__secondary-link {
+  text-align: center;
+  text-decoration: none;
+}
+
+.auth-form__actions--register,
+.auth-form__actions--register .auth-form__submit,
+.auth-form__secondary-link--register {
+  width: 100%;
+}
+
+/* gender select */
+
+.auth-form__select {
+  position: relative;
+}
+
+.auth-form__select-field {
+  height: 100%;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+  color: #030a38;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.auth-form__select-field:required:invalid {
+  color: #6d707e;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.auth-form__select::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid #6d707e;
+  border-bottom: 2px solid #6d707e;
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}

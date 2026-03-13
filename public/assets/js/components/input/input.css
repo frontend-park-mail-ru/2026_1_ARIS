@@ -1,0 +1,116 @@
+.input {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 49px;
+  padding: 10px 15px;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid var(--color-input-border);
+  background: var(--color-input-fill);
+}
+
+.input__field {
+  height: 100%;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  box-sizing: border-box;
+  background: transparent;
+  color: #030a38;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  appearance: none;
+}
+
+.input__field::placeholder {
+  color: #6d707e;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  opacity: 1;
+}
+
+.input:hover {
+  border-color: #000f66;
+  background: var(--color-input-fill);
+}
+
+.input:focus-within {
+  border-color: #000f66;
+  background: var(--color-input-fill);
+}
+
+.input--error {
+  border-color: #c66;
+  background: #fed7d7;
+}
+
+.input--error:hover,
+.input--error:focus-within {
+  border-color: #c66;
+  background: #fed7d7;
+}
+
+.input--error .input__field,
+.input--error .input__field::placeholder {
+  color: #030a38;
+}
+
+.input--inactive {
+  border-color: var(--color-input-border);
+  background: var(--color-input-fill);
+}
+
+.input--inactive .input__field {
+  color: #030a38;
+}
+
+.input--disabled {
+  border-color: var(--color-input-border);
+  background: var(--color-input-fill);
+}
+
+.input--disabled:hover,
+.input--disabled:focus-within {
+  border-color: var(--color-input-border);
+  background: var(--color-input-fill);
+}
+
+.input--disabled .input__field,
+.input--disabled .input__field::placeholder {
+  color: var(--color-input-placeholder);
+}
+
+.input__field:disabled {
+  cursor: default;
+}
+
+.input--with-toggle {
+  padding-right: 8px;
+}
+
+.input__toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.input--password .input__field {
+  padding-right: 12px;
+}
+
+.input:focus-within .input__field {
+  color: var(--color-input-text);
+}

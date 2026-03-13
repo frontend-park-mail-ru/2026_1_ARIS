@@ -1,0 +1,110 @@
+.sidebar {
+  display: flex;
+  width: 240px;
+  padding: 0 10px 0 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.sidebar-card {
+  display: flex;
+  width: 220px;
+  padding: 20px;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  border-radius: var(--radius-card);
+  background: var(--color-card-gradient);
+  box-shadow: var(--shadow-card);
+}
+
+.sidebar-card--feed-type {
+  position: sticky;
+  top: 116px;
+}
+
+.sidebar-card__title {
+  width: 100%;
+  margin: 0;
+  color: var(--color-black);
+  font-family: var(--font-main);
+  font-size: var(--text-card-title-size);
+  font-weight: var(--text-card-title-weight);
+  line-height: var(--text-card-title-line);
+}
+
+.sidebar-item {
+  display: flex;
+  padding: 5px 10px;
+  align-items: center;
+  gap: 10px;
+  align-self: stretch;
+  text-decoration: none;
+  border-radius: 8px;
+  box-sizing: border-box;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.sidebar-item:hover {
+  background: var(--color-active-item-hover);
+}
+
+.sidebar-item--active {
+  padding: 5px 8px;
+  background: var(--color-active-item-bg);
+}
+
+.sidebar-item:active {
+  transform: translateY(1px);
+}
+
+.sidebar-item--active:hover {
+  background: var(--color-active-item-bg);
+}
+
+.sidebar-item__icon {
+  width: 25px;
+  height: 25px;
+  min-width: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-item__icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sidebar-item__label {
+  color: var(--color-almost-black);
+  font-family: var(--font-main);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  letter-spacing: 0.3px;
+}
+
+.sidebar-item--button {
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+}
+
+.sidebar-item--button.sidebar-item--active {
+  background: var(--color-active-item-bg);
+}
+
+.sidebar-item--button.sidebar-item--active:hover {
+  background: var(--color-active-item-bg);
+}

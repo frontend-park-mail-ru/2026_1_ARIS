@@ -17,9 +17,9 @@
   align-items: center;
   gap: 5px;
   box-sizing: border-box;
-  border-radius: 20px;
-  background: radial-gradient(141.49% 141.42% at 0% 0%, #efeffa 0%, #f4f4ff 100%);
-  box-shadow: 0 4px 12px 0 rgb(0 0 0 / 50%);
+  border-radius: var(--radius-card);
+  background: var(--color-card-gradient);
+  box-shadow: var(--shadow-card);
 }
 
 .sidebar-card--feed-type {
@@ -30,12 +30,11 @@
 .sidebar-card__title {
   width: 100%;
   margin: 0;
-  color: #000;
-  font-family: Inter, Arial, sans-serif;
-  font-size: 17px;
-  font-style: normal;
-  font-weight: 700;
-  line-height: 22px;
+  color: var(--color-black);
+  font-family: var(--font-main);
+  font-size: var(--text-card-title-size);
+  font-weight: var(--text-card-title-weight);
+  line-height: var(--text-card-title-line);
 }
 
 .sidebar-item {
@@ -58,7 +57,7 @@
 
 .sidebar-item--active {
   padding: 5px 8px;
-  background: #afb4e1;
+  background: var(--color-active-item-bg);
 }
 
 .sidebar-item:active {
@@ -86,10 +85,9 @@
 }
 
 .sidebar-item__label {
-  color: #111827;
-  font-family: Inter, Arial, sans-serif;
+  color: var(--color-almost-black);
+  font-family: var(--font-main);
   font-size: 15px;
-  font-style: normal;
   font-weight: 500;
   line-height: 22px;
   letter-spacing: 0.3px;

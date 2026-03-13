@@ -23,7 +23,7 @@
   height: 48px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #f1cc4f;
+  background: var(--color-avatar-placeholder);
 }
 
 .postcard__author {
@@ -38,7 +38,6 @@
   color: var(--color-username-blue);
   font-family: var(--font-main);
   font-size: var(--text-author-size);
-  font-style: normal;
   font-weight: var(--text-author-weight);
   line-height: var(--text-author-line);
 }
@@ -49,7 +48,6 @@
   color: var(--color-black);
   font-family: var(--font-main);
   font-size: var(--text-body-size);
-  font-style: normal;
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-line);
   letter-spacing: var(--text-body-letter-spacing);
@@ -231,10 +229,9 @@
 
 .postcard__stat-count,
 .postcard__time {
-  color: #4b5563;
+  color: var(--color-text-secondary);
   font-family: var(--font-main);
   font-size: var(--text-counters-size);
-  font-style: normal;
   font-weight: var(--text-counters-weight);
   line-height: var(--text-counters-line);
 }
@@ -267,7 +264,6 @@
   color: var(--color-clickable);
   font-family: var(--font-main);
   font-size: var(--text-clickable-size);
-  font-style: normal;
   cursor: pointer;
   font-weight: var(--text-clickable-weight);
   line-height: var(--text-clickable-line);

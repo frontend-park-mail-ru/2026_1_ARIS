@@ -15,7 +15,6 @@
   display: grid;
   align-items: center;
   width: 100%;
-  min-width: 1458px;
   padding: 0 120px;
   box-sizing: border-box;
 }

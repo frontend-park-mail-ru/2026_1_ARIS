@@ -20,6 +20,7 @@ import { renderProfile } from "./pages/profile/profile.js";
 import { initSession } from "./mock/session.js";
 import { initHeader } from "./components/header/header.js";
 import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar.js";
+import "./styles/main.css";
 
 const root = document.getElementById("app");
 

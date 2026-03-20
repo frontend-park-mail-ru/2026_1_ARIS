@@ -1,5 +1,3 @@
-const API_BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8080" : "";
-
 /**
  * Parses JSON response body safely.
  *
@@ -37,7 +35,7 @@ export async function getFeed({ cursor = "", limit = 20 } = {}) {
   }
 
   const query = params.toString();
-  const url = `${API_BASE_URL}/api/feed${query ? `?${query}` : ""}`;
+  const url = `/api/feed${query ? `?${query}` : ""}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -163,7 +161,7 @@ export function mapFeedResponse(response) {
  * @throws {Error}
  */
 export async function getPopularPosts() {
-  const response = await fetch(`${API_BASE_URL}/api/posts/popular`, {
+  const response = await fetch("/api/posts/popular", {
     method: "GET",
     credentials: "include",
   });
@@ -187,7 +185,7 @@ export async function getPopularPosts() {
  * @throws {Error}
  */
 export async function getPublicPopularPosts() {
-  const response = await fetch(`${API_BASE_URL}/api/public/popular-posts`, {
+  const response = await fetch("/api/public/popular-posts", {
     method: "GET",
     credentials: "include",
   });

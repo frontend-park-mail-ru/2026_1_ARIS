@@ -1,3 +1,17 @@
+import "./styles/tokens.css";
+import "./styles/main.css";
+
+import "./components/sidebar/sidebar.css";
+import "./components/header/header.css";
+import "./pages/feed/feed.css";
+import "./components/widgetbar/widgetbar.css";
+import "./components/postcard/postcard.css";
+import "./pages/login/login.css";
+import "./components/eye-toggle/eye-toggle.css";
+import "./pages/register/register.css";
+import "./components/auth-modal/auth-modal.css";
+import "./components/auth-form/auth-form.css";
+
 import { createRouter } from "./router/router.js";
 import { renderLogin } from "./pages/login/login.js";
 import { renderRegister } from "./pages/register/register.js";

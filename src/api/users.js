@@ -1,5 +1,3 @@
-const API_BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8080" : "";
-
 /**
  * Requests suggested users for the authorised user widget.
  *
@@ -7,7 +5,7 @@ const API_BASE_URL = window.location.hostname === "localhost" ? "http://localhos
  * @throws {Error}
  */
 export async function getSuggestedUsers() {
-  const response = await fetch(`${API_BASE_URL}/api/users/suggested`, {
+  const response = await fetch("/api/users/suggested", {
     credentials: "include",
   });
 
@@ -25,7 +23,7 @@ export async function getSuggestedUsers() {
  * @throws {Error}
  */
 export async function getPublicPopularUsers() {
-  const response = await fetch(`${API_BASE_URL}/api/public/popular-users`, {
+  const response = await fetch("/api/public/popular-users", {
     credentials: "include",
   });
 
@@ -43,7 +41,7 @@ export async function getPublicPopularUsers() {
  * @throws {Error}
  */
 export async function getLatestEvents() {
-  const response = await fetch(`${API_BASE_URL}/api/users/latest-events`, {
+  const response = await fetch("/api/users/latest-events", {
     credentials: "include",
   });
 

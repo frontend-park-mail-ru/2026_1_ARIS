@@ -1,5 +1,3 @@
-const API_BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8080" : "";
-
 /**
  * Parses JSON response body safely.
  *
@@ -26,7 +24,7 @@ async function parseJson(response) {
  * @throws {Error}
  */
 export async function loginUser(payload) {
-  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+  const response = await fetch("/api/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -39,7 +37,6 @@ export async function loginUser(payload) {
   });
 
   const data = await parseJson(response);
-  console.log(response.ok);
 
   if (!response.ok) {
     const error = new Error(data.error || "login failed");
@@ -47,8 +44,6 @@ export async function loginUser(payload) {
     error.data = data;
     throw error;
   }
-
-  console.log(data);
 
   return data;
 }
@@ -68,7 +63,7 @@ export async function loginUser(payload) {
  * @throws {Error}
  */
 export async function registerUser(payload) {
-  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+  const response = await fetch("/api/auth/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -104,7 +99,7 @@ export async function registerUser(payload) {
  * @throws {Error}
  */
 export async function logoutUser() {
-  const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+  const response = await fetch("/api/auth/logout", {
     method: "POST",
     credentials: "include",
   });
@@ -127,7 +122,7 @@ export async function logoutUser() {
  * @returns {Promise<Object|null>}
  */
 export async function getCurrentUser() {
-  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+  const response = await fetch("/api/auth/me", {
     method: "GET",
     credentials: "include",
   });

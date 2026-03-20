@@ -1,16 +1,20 @@
 import "./styles/tokens.css";
 import "./styles/main.css";
 
+import "./components/button/button.css";
+import "./components/header/header.scss";
+import "./components/input/input.css";
+import "./components/logo/logo.css";
 import "./components/sidebar/sidebar.css";
-import "./components/header/header.css";
-import "./pages/feed/feed.css";
 import "./components/widgetbar/widgetbar.css";
 import "./components/postcard/postcard.css";
-import "./pages/login/login.css";
-import "./components/eye-toggle/eye-toggle.css";
-import "./pages/register/register.css";
 import "./components/auth-modal/auth-modal.css";
 import "./components/auth-form/auth-form.css";
+import "./components/eye-toggle/eye-toggle.css";
+
+import "./pages/feed/feed.css";
+import "./pages/login/login.css";
+import "./pages/register/register.css";
 
 import { createRouter } from "./router/router.js";
 import { renderLogin } from "./pages/login/login.js";
@@ -20,7 +24,6 @@ import { renderProfile } from "./pages/profile/profile.js";
 import { initSession } from "./mock/session.js";
 import { initHeader } from "./components/header/header.js";
 import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar.js";
-import "./styles/main.css";
 
 const root = document.getElementById("app");
 

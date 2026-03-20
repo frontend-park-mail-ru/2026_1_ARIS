@@ -75,7 +75,7 @@ export async function getPublicFeed({ cursor = "", limit = 20 } = {}) {
   }
 
   const query = params.toString();
-  const url = `${API_BASE_URL}/api/public/feed${query ? `?${query}` : ""}`;
+  const url = `/api/public/feed${query ? `?${query}` : ""}`;
 
   const response = await fetch(url, {
     method: "GET",

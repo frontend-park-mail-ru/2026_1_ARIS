@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "./config.js";
+
 /**
  * Requests suggested users for the authorised user widget.
  *

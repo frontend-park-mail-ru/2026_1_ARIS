@@ -23,7 +23,6 @@
 .widgetbar-card__title {
   margin: 0;
   color: var(--color-black);
-  font-family: var(--font-main);
   font-size: var(--text-card-title-size);
   font-weight: var(--text-card-title-weight);
   line-height: var(--text-card-title-line);
@@ -32,7 +31,6 @@
 .widgetbar-card__text {
   margin: 0;
   color: var(--color-almost-black);
-  font-family: var(--font-main);
   font-size: var(--text-body-size);
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-line);
@@ -41,11 +39,10 @@
 
 .widgetbar-card__username {
   margin: 0;
-  color: var(--color-blue);
-  font-family: var(--font-main);
-  font-size: var(--text-body-size);
-  font-weight: var(--text-body-weight);
-  line-height: var(--text-body-line);
+  color: var(--color-username-blue);
+  font-size: var(--text-author-size);
+  font-weight: var(--text-author-weight);
+  line-height: var(--text-author-line);
   text-decoration: none;
 }
 
@@ -55,7 +52,6 @@
 
 .widgetbar-card__link {
   color: var(--color-clickable);
-  font-family: var(--font-main);
   font-size: var(--text-body-size);
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-line);
@@ -77,18 +73,16 @@
   height: 32px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #f1cc4f;
+  background: var(--color-avatar-placeholder);
 }
 
 .widgetbar-card__event {
   margin: 0;
   min-height: 44px;
   color: var(--color-almost-black);
-  font-family: var(--font-main);
-  font-size: 15px;
-  font-style: normal;
-  font-weight: 500;
-  line-height: 22px;
+  font-size: var(--text-body-size);
+  font-weight: var(--text-body-weight);
+  line-height: var(--text-body-line);
 }
 
 .widgetbar-weather-row {
@@ -113,9 +107,7 @@
 
 .widgetbar-card__post-link {
   color: var(--color-almost-black);
-  font-family: var(--font-main);
   font-size: var(--text-body-size);
-  font-style: normal;
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-line);
   text-decoration: none;
@@ -129,4 +121,12 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.widgetbar-stub-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
 }

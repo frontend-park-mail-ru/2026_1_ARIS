@@ -4,13 +4,28 @@ import { initAuthModal } from "../components/auth-modal/auth-modal-controller.js
 import { initEyeToggle } from "../components/eye-toggle/eye-toggle-controller.js";
 import { initInputMasks } from "../components/input/input-mask-controller.js";
 
+/**
+ * Normalises a route path by removing trailing slashes.
+ * @param {string} p
+ * @returns {string}
+ */
 function normalisePath(p) {
   const noTrailing = (p || "/").replace(/\/+$/g, "");
   return noTrailing === "" ? "/" : noTrailing;
 }
 
+/**
+ * Creates the application router.
+ * @param {HTMLElement} root
+ * @param {Array<Object>} routes
+ * @returns {{render: function(): Promise<void>, navigate: function(string): Promise<void>}}
+ */
 export function createRouter(root, routes) {
-  function render() {
+  /**
+   * Renders the current route.
+   * @returns {Promise<void>}
+   */
+  async function render() {
     const path = normalisePath(window.location.pathname);
     const route = routes.find((r) => normalisePath(r.path) === path);
 
@@ -21,7 +36,7 @@ export function createRouter(root, routes) {
     }
 
     document.title = route.title;
-    root.innerHTML = route.render();
+    root.innerHTML = await route.render();
     initAuthForm(document);
     initPostcardExpand(root);
     initAuthModal(document);
@@ -29,13 +44,18 @@ export function createRouter(root, routes) {
     initInputMasks(document);
   }
 
-  function navigate(to) {
+  /**
+   * Navigates to the specified route.
+   * @param {string} to
+   * @returns {Promise<void>}
+   */
+  async function navigate(to) {
     if (normalisePath(window.location.pathname) !== normalisePath(to)) {
       window.history.pushState({}, "", to);
     }
 
     window.scrollTo(0, 0);
-    render();
+    await render();
   }
 
   document.addEventListener("click", (e) => {

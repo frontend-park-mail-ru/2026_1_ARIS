@@ -1,5 +1,7 @@
 import { mockSession } from "../../mock/session.js";
 import { renderButton } from "../button/button.js";
+import { logoutUser } from "../../api/auth.js";
+import { setSessionUser } from "../../mock/session.js";
 
 /**
  * Renders header for guest user.
@@ -30,9 +32,13 @@ function renderGuestHeader() {
         })}
       </div>
 
-      <a href="/login" data-link class="header__user">
+      <a href="/login" data-open-auth-modal="login" class="header__user">
         <span class="header__username">Твоя страничка</span>
-        <div class="header__avatar" aria-hidden="true"></div>
+        <img
+          class="header__avatar"
+          src="assets/img/default-avatar.png"
+          alt="Гостевой профиль"
+        >
       </a>
     </div>
   `;
@@ -55,6 +61,7 @@ function renderAuthorisedHeader() {
         <span class="header__search-icon" aria-hidden="true">
           <img src="assets/img/icons/search.svg" alt="">
         </span>
+
         <input
           class="header__search-input"
           type="text"
@@ -64,14 +71,25 @@ function renderAuthorisedHeader() {
 
       <div class="header__user">
         <span class="header__username">${fullName}</span>
-        <div class="header__avatar" aria-hidden="true"></div>
+
+        <button class="header__logout" data-logout>
+          Выйти
+        </button>
+
+        ${
+          mockSession.user.avatarLink
+            ? `<img class="header__avatar" src="/image-proxy?url=${encodeURIComponent(
+                mockSession.user.avatarLink,
+              )}" alt="${fullName}">`
+            : `<img class="header__avatar" src="assets/img/default-avatar.png" alt="${fullName}">`
+        }
       </div>
     </div>
   `;
 }
 
 /**
- * Renders page header.
+ * Renders page header depending on user auth state.
  * @returns {string}
  */
 export function renderHeader() {
@@ -82,4 +100,25 @@ export function renderHeader() {
       ${isAuthorised ? renderAuthorisedHeader() : renderGuestHeader()}
     </header>
   `;
+}
+
+/**
+ * Initializes header behaviour (logout handler).
+ * @returns {void}
+ */
+export function initHeader() {
+  document.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-logout]");
+    if (!btn) return;
+
+    try {
+      await logoutUser();
+
+      setSessionUser(null);
+
+      window.location.href = "/";
+    } catch (e) {
+      console.error("Logout error:", e);
+    }
+  });
 }

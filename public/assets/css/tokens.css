@@ -1,9 +1,9 @@
 :root {
   /* ===== COLOURS ===== */
 
-  --color-black: #000;
+  --color-black: var(--color-almost-black);
   --color-almost-black: #111827;
-  --color-blue: #1d4ed8;
+  --color-blue: var(--color-username-blue);
   --color-username-blue: #0c44eb;
   --color-clickable: #9333ea;
   --color-primary: #4a51d0;
@@ -17,6 +17,7 @@
   --color-active-item-hover: rgb(175 180 225 / 45%);
   --color-variant-light: #cbd2de;
   --color-variant-medium: #939bbc;
+  --color-text-secondary: #4b5563;
   --color-search-bg: #d9d9d9;
   --color-input-fill: #e1e6ee;
   --color-input-border: #cbd2de;
@@ -24,29 +25,30 @@
   --color-input-placeholder: #6d707e;
   --color-input-error-fill: #fed7d7;
   --color-input-error-border: #c66;
+  --color-avatar-placeholder: #f1cc4f;
 
   /* ===== TYPOGRAPHY ===== */
 
   --font-main: inter, arial, sans-serif;
 
   /* Menu */
-  --text-menu-size: 15px;
+  --text-menu-size: 14px;
   --text-menu-weight: 500;
   --text-menu-line: 22px;
 
   /* Body */
-  --text-body-size: 15px;
-  --text-body-weight: 500;
+  --text-body-size: 14px;
+  --text-body-weight: 400;
   --text-body-line: normal;
   --text-body-letter-spacing: 0;
 
   /* Author */
-  --text-author-size: 15px;
+  --text-author-size: var(--text-username-size);
   --text-author-weight: 500;
-  --text-author-line: normal;
+  --text-author-line: var(--text-username-line);
 
   /* CardTitle */
-  --text-card-title-size: 17px;
+  --text-card-title-size: 18px;
   --text-card-title-weight: 700;
   --text-card-title-line: 22px;
 
@@ -56,20 +58,19 @@
   --text-counters-line: 18px;
 
   /* Username */
-  --text-username-size: 15px;
+  --text-username-size: var(--text-body-size);
   --text-username-weight: 500;
-  --text-username-line: normal;
+  --text-username-line: var(--text-body-line);
 
   /* Clickable */
-  --text-clickable-size: 15px;
+  --text-clickable-size: var(--text-body-size);
   --text-clickable-weight: 500;
-  --text-clickable-line: normal;
+  --text-clickable-line: var(--text-body-line);
 
   /* Input */
   --text-input-size: 18px;
   --text-input-weight: 500;
   --text-input-line: normal;
-  --text-input-letter-spacing: 0.02em;
 
   /* ===== RADIUSES ===== */
 

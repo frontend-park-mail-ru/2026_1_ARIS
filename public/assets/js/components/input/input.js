@@ -1,5 +1,20 @@
 import { renderEyeToggle } from "../eye-toggle/eye-toggle.js";
 
+/**
+ * Renders an input component.
+ * @param {Object} [options={}]
+ * @param {string} [options.type="text"]
+ * @param {string} [options.name=""]
+ * @param {string} [options.placeholder=""]
+ * @param {string} [options.value=""]
+ * @param {string} [options.state="default"]
+ * @param {boolean} [options.withToggle=false]
+ * @param {boolean} [options.isVisible=false]
+ * @param {boolean} [options.disabled=false]
+ * @param {string} [options.className=""]
+ * @param {string} [options.attributes=""]
+ * @returns {string}
+ */
 export function renderInput({
   type = "text",
   name = "",

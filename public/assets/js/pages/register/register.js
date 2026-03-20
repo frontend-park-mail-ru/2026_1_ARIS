@@ -1,5 +1,9 @@
 import { renderAuthForm } from "../../components/auth-form/auth-form.js";
 
+/**
+ * Renders the register page.
+ * @returns {string}
+ */
 export function renderRegister() {
   return `
     <div class="register-page">

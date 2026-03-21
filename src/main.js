@@ -1,27 +1,26 @@
 import "./styles/tokens.css";
 import "./styles/main.css";
+import "./styles/layout.scss";
 
-import "./components/button/button.css";
+import "./components/button/button.scss";
 import "./components/header/header.scss";
-import "./components/input/input.css";
-import "./components/logo/logo.css";
-import "./components/sidebar/sidebar.css";
-import "./components/widgetbar/widgetbar.css";
-import "./components/postcard/postcard.css";
-import "./components/auth-modal/auth-modal.css";
-import "./components/auth-form/auth-form.css";
-import "./components/eye-toggle/eye-toggle.css";
+import "./components/input/input.scss";
+import "./components/logo/logo.scss";
+import "./components/sidebar/sidebar.scss";
+import "./components/widgetbar/widgetbar.scss";
+import "./components/postcard/postcard.scss";
+import "./components/auth-modal/auth-modal.scss";
+import "./components/auth-form/auth-form.scss";
+import "./components/eye-toggle/eye-toggle.scss";
 
-import "./pages/feed/feed.css";
-import "./pages/login/login.css";
-import "./pages/register/register.css";
+import "./pages/auth/auth-page.scss";
 
 import { createRouter } from "./router/router.js";
 import { renderLogin } from "./pages/login/login.js";
 import { renderRegister } from "./pages/register/register.js";
 import { renderFeed, refreshFeedCenter } from "./pages/feed/feed.js";
 import { renderProfile } from "./pages/profile/profile.js";
-import { initSession } from "./mock/session.js";
+import { initSession } from "./state/session.js";
 import { initHeader } from "./components/header/header.js";
 import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar.js";
 
@@ -33,6 +32,7 @@ const router = createRouter(root, [
   { path: "/login", title: "ARISNET — Login", render: renderLogin },
   { path: "/register", title: "ARISNET — Register", render: renderRegister },
   { path: "/profile", title: "ARISNET — Profile", render: renderProfile },
+  { path: "/profile/:id", title: "ARISNET — Profile", render: renderProfile },
 ]);
 
 initSession().then(() => {
@@ -42,13 +42,14 @@ initSession().then(() => {
 });
 
 /**
- * Handles feed mode changes by refreshing sidebar and feed content.
+ * Handles global session state changes by refreshing UI fragments.
  * @returns {void}
  */
-window.addEventListener("feedmodechange", () => {
-  refreshSidebar();
-
-  refreshFeedCenter().catch((error) => {
+window.addEventListener("sessionchange", async () => {
+  try {
+    refreshSidebar();
+    await refreshFeedCenter();
+  } catch (error) {
     console.error(error);
-  });
+  }
 });

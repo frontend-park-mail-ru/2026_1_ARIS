@@ -1,0 +1,69 @@
+@use "../../styles/controls" as *;
+
+.button {
+  @extend %control-base;
+
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: var(--text-size-main);
+  font-weight: var(--font-weight-regular);
+
+  &:active {
+    transform: var(--control-press-transform);
+  }
+
+  &--primary {
+    border: none;
+    background: var(--color-interactive-primary);
+    color: var(--color-text-on-primary);
+
+    &:hover {
+      background: var(--color-interactive-primary-hover);
+    }
+
+    &:active {
+      background: var(--color-interactive-primary-active);
+    }
+  }
+
+  &--secondary {
+    border: var(--border-width) solid var(--color-border-strong);
+    background: var(--color-interactive-secondary);
+    color: var(--color-interactive-primary);
+
+    &:hover {
+      background: var(--color-interactive-secondary-hover);
+    }
+
+    &:active {
+      background: var(--color-interactive-secondary-active);
+    }
+  }
+
+  &--surface {
+    border: none;
+    background: var(--color-surface-card);
+    color: var(--color-interactive-primary);
+
+    &:hover {
+      background: var(--color-interactive-secondary-hover);
+    }
+
+    &:active {
+      background: var(--color-interactive-secondary-active);
+    }
+  }
+
+  &--large {
+    width: var(--button-width-large);
+  }
+
+  &--small {
+    width: var(--button-width-small);
+  }
+
+  &--full {
+    width: 100%;
+  }
+}

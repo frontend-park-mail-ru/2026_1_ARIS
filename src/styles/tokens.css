@@ -1,84 +1,115 @@
 :root {
-  /* ===== COLOURS ===== */
-
-  --color-black: var(--color-almost-black);
-  --color-almost-black: #111827;
-  --color-blue: var(--color-username-blue);
-  --color-username-blue: #0c44eb;
-  --color-clickable: #9333ea;
-  --color-primary: #4a51d0;
-  --color-primary-hover: #3239c3;
-  --color-primary-active: #2a30a2;
-  --color-error-text: #c93737;
-  --color-background: #f3f6f7;
-  --color-header-bg: #fff;
-  --color-card-gradient: radial-gradient(141.49% 141.42% at 0% 0%, #efeffa 0%, #f4f4ff 100%);
-  --color-active-item-bg: #afb4e1;
-  --color-active-item-hover: rgb(175 180 225 / 45%);
-  --color-variant-light: #cbd2de;
-  --color-variant-medium: #939bbc;
-  --color-text-secondary: #4b5563;
-  --color-search-bg: #d9d9d9;
-  --color-input-fill: #e1e6ee;
-  --color-input-border: #cbd2de;
-  --color-input-text: #030a38;
-  --color-input-placeholder: #6d707e;
-  --color-input-error-fill: #fed7d7;
-  --color-input-error-border: #c66;
-  --color-avatar-placeholder: #f1cc4f;
-
-  /* ===== TYPOGRAPHY ===== */
+  /* ================= FONT ================= */
 
   --font-main: inter, arial, sans-serif;
 
-  /* Menu */
-  --text-menu-size: 14px;
-  --text-menu-weight: 500;
-  --text-menu-line: 22px;
+  /* ================= TEXT SIZES ================= */
 
-  /* Body */
-  --text-body-size: 14px;
-  --text-body-weight: 400;
-  --text-body-line: normal;
-  --text-body-letter-spacing: 0;
+  --text-size-main: 14px;
+  --text-size-title: 18px;
+  --text-size-meta: 13px;
+  --text-size-input: 18px;
 
-  /* Author */
-  --text-author-size: var(--text-username-size);
-  --text-author-weight: 500;
-  --text-author-line: var(--text-username-line);
+  /* ================= FONT WEIGHTS ================= */
 
-  /* CardTitle */
-  --text-card-title-size: 18px;
-  --text-card-title-weight: 700;
-  --text-card-title-line: 22px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
 
-  /* Counters */
-  --text-counters-size: 13px;
-  --text-counters-weight: 500;
-  --text-counters-line: 18px;
+  /* ================= TEXT COLORS ================= */
 
-  /* Username */
-  --text-username-size: var(--text-body-size);
-  --text-username-weight: 500;
-  --text-username-line: var(--text-body-line);
+  --color-text-main: #111827;
+  --color-text-name: #0c44eb;
+  --color-text-link: #9333ea;
+  --color-text-meta: #4b5563;
+  --color-text-error: #c93737;
+  --color-text-on-primary: #f3f6f7;
+  --color-text-placeholder: #6d707e;
 
-  /* Clickable */
-  --text-clickable-size: var(--text-body-size);
-  --text-clickable-weight: 500;
-  --text-clickable-line: var(--text-body-line);
+  /* ================= SURFACES ================= */
 
-  /* Input */
-  --text-input-size: 18px;
-  --text-input-weight: 500;
-  --text-input-line: normal;
+  --color-surface-page: #f3f6f7;
+  --color-page-gradient: linear-gradient(
+    135deg,
+    #3242d3 0%,
+    #d9d7e6 35%,
+    #b4c9f2 70%,
+    #7b81f0 100%
+  );
+  --color-page-auth-gradient: linear-gradient(135deg, #b5b8cf 0%, #aeb6d4 40%, #7a82c9 100%);
+  --color-surface-card: #fff;
+  --color-surface-card-elevated: radial-gradient(
+    141.49% 141.42% at 0% 0%,
+    #efeffa 0%,
+    #f4f4ff 100%
+  );
+  --color-surface-input: #e1e6ee;
+  --color-surface-input-error: #fed7d7;
+  --color-surface-avatar-placeholder: #f1cc4f;
 
-  /* ===== RADIUSES ===== */
+  /* ================= BORDERS ================= */
+
+  --color-border-default: #cbd2de;
+  --color-border-strong: #000f66;
+  --color-border-error: #c66;
+  --border-width: 1px;
+
+  /* ================= INTERACTIVE ================= */
+
+  --color-interactive-primary: #4a51d0;
+  --color-interactive-primary-hover: #3239c3;
+  --color-interactive-primary-active: #2a30a2;
+  --color-interactive-secondary: transparent;
+  --color-interactive-secondary-hover: #cbd2de;
+  --color-interactive-secondary-active: #939bbc;
+  --color-interactive-hover: rgb(175 180 225 / 45%);
+  --color-interactive-active: #afb4e1;
+
+  /* ================= EFFECTS ================= */
+
+  --shadow-card: 0 4px 12px rgb(0 0 0 / 50%);
+
+  /* ================= RADII ================= */
 
   --radius-card: 20px;
   --radius-input: 10px;
   --radius-small: 8px;
+  --radius-round: 50%;
 
-  /* ===== EFFECTS ===== */
+  /* ================= AVATAR ================= */
 
-  --shadow-card: 0 4px 12px rgb(0 0 0 / 50%);
+  --avatar-size-sm: 44px;
+  --avatar-size-lg: 150px;
+
+  /* ================= CONTROLS ================= */
+
+  --control-height: 35px;
+  --control-padding-x: 20px;
+  --control-gap: 8px;
+  --transition-control: 0.2s ease;
+  --control-press-transform: translateY(1px);
+
+  /* ================= BUTTON SIZES ================= */
+
+  --button-width-large: 367px;
+  --button-width-small: 194px;
+
+  /* ================= APP LAYOUT ================= */
+
+  --layout-padding-x: 120px;
+  --layout-padding-top: 24px;
+  --layout-padding-bottom: 40px;
+  --layout-column-gap: 24px;
+  --layout-sidebar-width: 240px;
+  --layout-content-width: 630px;
+  --layout-widgets-width: 300px;
+  --layout-content-inner-padding-x: 5px;
+  --layout-widgets-inner-padding-left: 20px;
+  --layout-min-width: 1458px;
+  --layout-content-gap: 24px;
+  --layout-widgets-gap: 10px;
+
+  /* ================= LOGO ================= */
+  --logo-width: 152px;
+  --logo-height: 51px;
 }

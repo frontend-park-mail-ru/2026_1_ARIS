@@ -124,6 +124,7 @@ function formatRelativeTime(isoString) {
 export function mapFeedItemToPostcard(item) {
   return {
     id: item?.id || "",
+    authorId: item?.author?.id || "",
     author: item?.author?.username || "Пользователь",
     firstName: item?.author?.firstName || "",
     lastName: item?.author?.lastName || "",

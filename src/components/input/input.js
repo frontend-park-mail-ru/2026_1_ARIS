@@ -2,18 +2,19 @@ import { renderEyeToggle } from "../eye-toggle/eye-toggle.js";
 
 /**
  * Renders an input component.
+ *
  * @param {Object} [options={}]
- * @param {string} [options.type="text"]
- * @param {string} [options.name=""]
- * @param {string} [options.placeholder=""]
- * @param {string} [options.value=""]
- * @param {string} [options.state="default"]
- * @param {boolean} [options.withToggle=false]
- * @param {boolean} [options.isVisible=false]
- * @param {boolean} [options.disabled=false]
- * @param {string} [options.className=""]
- * @param {string} [options.attributes=""]
- * @returns {string}
+ * @param {string} [options.type="text"] - Input type attribute.
+ * @param {string} [options.name=""] - Input name attribute.
+ * @param {string} [options.placeholder=""] - Input placeholder text.
+ * @param {string} [options.value=""] - Input value.
+ * @param {"default"|"error"} [options.state="default"] - Visual state modifier.
+ * @param {boolean} [options.withToggle=false] - Whether to render password visibility toggle.
+ * @param {boolean} [options.isVisible=false] - Whether password is currently visible.
+ * @param {boolean} [options.disabled=false] - Whether the input is disabled.
+ * @param {string} [options.className=""] - Additional CSS classes for the root input element.
+ * @param {string} [options.attributes=""] - Additional raw HTML attributes for the input element.
+ * @returns {string} HTML string of the rendered input.
  */
 export function renderInput({
   type = "text",
@@ -27,13 +28,14 @@ export function renderInput({
   className = "",
   attributes = "",
 } = {}) {
-  const inputType = type === "password" && isVisible ? "text" : type;
+  const isPassword = type === "password";
+  const inputType = isPassword && isVisible ? "text" : type;
 
   const classes = [
     "input",
     `input--${state}`,
     withToggle ? "input--with-toggle" : "",
-    type === "password" ? "input--password" : "",
+    isPassword ? "input--password" : "",
     disabled ? "input--disabled" : "",
     className,
   ]

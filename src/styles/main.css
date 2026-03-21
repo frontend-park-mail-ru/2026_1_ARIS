@@ -1,3 +1,12 @@
+/* ================= RESET / BASE ================= */
+
+/* глобальный box-sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   font-family: var(--font-main);
   font-size: var(--text-body-size);

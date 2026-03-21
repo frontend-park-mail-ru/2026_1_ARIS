@@ -1,4 +1,4 @@
-import { mockSession, setFeedMode } from "../../mock/session.js";
+import { getFeedMode, getSessionUser, setFeedMode } from "../../state/session.js";
 
 /**
  * Renders a sidebar navigation item.
@@ -50,8 +50,8 @@ function renderSidebarItem({
  * @returns {string}
  */
 export function renderSidebar({ isAuthorised = false } = {}) {
-  const isForYouActive = mockSession.feedMode === "for-you";
-  const isByTimeActive = mockSession.feedMode === "by-time";
+  const isForYouActive = getFeedMode() === "for-you";
+  const isByTimeActive = getFeedMode() === "by-time";
 
   return `
     <aside class="sidebar">
@@ -140,8 +140,6 @@ export function initSidebar(root = document) {
     if (mode !== "for-you" && mode !== "by-time") return;
 
     setFeedMode(mode);
-
-    window.dispatchEvent(new CustomEvent("feedmodechange"));
   });
 
   root.__sidebarBound = true;
@@ -155,7 +153,7 @@ export function refreshSidebar() {
   const sidebar = document.querySelector(".sidebar");
   if (!sidebar) return;
 
-  const isAuthorised = mockSession.user !== null;
+  const isAuthorised = getSessionUser() !== null;
   const template = document.createElement("template");
   template.innerHTML = renderSidebar({ isAuthorised }).trim();
 

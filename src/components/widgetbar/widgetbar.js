@@ -2,6 +2,25 @@ import { getSuggestedUsers, getPublicPopularUsers, getLatestEvents } from "../..
 import { getPopularPosts, getPublicPopularPosts } from "../../api/feed.js";
 
 /**
+ * In-memory widgetbar cache for the current page session.
+ * It is reset only on full page reload.
+ * @type {{guest: string|null, authorised: string|null}}
+ */
+const widgetbarCache = {
+  guest: null,
+  authorised: null,
+};
+
+/**
+ * Clears widgetbar cache.
+ * @returns {void}
+ */
+export function clearWidgetbarCache() {
+  widgetbarCache.guest = null;
+  widgetbarCache.authorised = null;
+}
+
+/**
  * Renders a stub button.
  * @param {string} text
  * @param {string} className
@@ -236,23 +255,25 @@ function renderWeatherWidget() {
 }
 
 /**
- * Renders the widgetbar.
- * @param {Object} options
- * @param {boolean} options.isAuthorised
+ * Builds widgetbar markup for authorised user.
  * @returns {Promise<string>}
  */
-export async function renderWidgetbar({ isAuthorised }) {
-  if (isAuthorised) {
-    return `
-      <aside class="widgetbar">
-        ${await renderKnownPeopleWidget()}
-        ${await renderEventsWidget()}
-        ${await renderAuthorisedPopularPostsWidget()}
-        ${renderWeatherWidget()}
-      </aside>
-    `;
-  }
+async function buildAuthorisedWidgetbar() {
+  return `
+    <aside class="widgetbar">
+      ${await renderKnownPeopleWidget()}
+      ${await renderEventsWidget()}
+      ${await renderAuthorisedPopularPostsWidget()}
+      ${renderWeatherWidget()}
+    </aside>
+  `;
+}
 
+/**
+ * Builds widgetbar markup for guest user.
+ * @returns {Promise<string>}
+ */
+async function buildGuestWidgetbar() {
   return `
     <aside class="widgetbar">
       ${await renderPopularUsersWidget()}
@@ -260,4 +281,28 @@ export async function renderWidgetbar({ isAuthorised }) {
       ${renderWeatherWidget()}
     </aside>
   `;
+}
+
+/**
+ * Renders the widgetbar.
+ * Cached for the current browser page session.
+ *
+ * @param {Object} options
+ * @param {boolean} options.isAuthorised
+ * @returns {Promise<string>}
+ */
+export async function renderWidgetbar({ isAuthorised }) {
+  if (isAuthorised) {
+    if (!widgetbarCache.authorised) {
+      widgetbarCache.authorised = await buildAuthorisedWidgetbar();
+    }
+
+    return widgetbarCache.authorised;
+  }
+
+  if (!widgetbarCache.guest) {
+    widgetbarCache.guest = await buildGuestWidgetbar();
+  }
+
+  return widgetbarCache.guest;
 }

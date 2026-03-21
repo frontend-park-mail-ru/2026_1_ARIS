@@ -1,33 +1,9 @@
 import { renderHeader } from "../../components/header/header.js";
 import { renderSidebar } from "../../components/sidebar/sidebar.js";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar.js";
-import { mockSession } from "../../mock/session.js";
+import { getFeedMode, getSessionUser } from "../../state/session.js";
 import { renderPostcard } from "../../components/postcard/postcard.js";
 import { getFeed, getPublicFeed, mapFeedResponse } from "../../api/feed.js";
-
-/**
- * Sorts feed items.
- * @param {Array<Object>} items
- * @returns {Array<Object>}
- */
-function sortFeedItems(items) {
-  if (mockSession.feedMode === "for-you") {
-    const shuffled = [...items];
-
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-
-    return shuffled;
-  }
-
-  return [...items].sort((a, b) => {
-    const dateA = new Date(a.timeRaw || 0).getTime();
-    const dateB = new Date(b.timeRaw || 0).getTime();
-    return dateB - dateA;
-  });
-}
 
 /**
  * Returns sorted feed items.
@@ -37,7 +13,7 @@ function sortFeedItems(items) {
 function getSortedFeedItems(items) {
   const result = [...items];
 
-  if (mockSession.feedMode === "for-you") {
+  if (getFeedMode() === "for-you") {
     for (let i = result.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [result[i], result[j]] = [result[j], result[i]];
@@ -56,11 +32,10 @@ function getSortedFeedItems(items) {
 async function renderGuestFeed() {
   const response = await getPublicFeed({ limit: 2 });
   const mapped = mapFeedResponse(response);
-
   const posts = getSortedFeedItems(mapped.items);
 
   return `
-    <section class="feed-layout__center">
+    <section class="app-layout__center">
       ${posts.map(renderPostcard).join("")}
     </section>
   `;
@@ -73,11 +48,10 @@ async function renderGuestFeed() {
 async function renderAuthorisedFeed() {
   const response = await getFeed({ limit: 8 });
   const mapped = mapFeedResponse(response);
-
   const posts = getSortedFeedItems(mapped.items);
 
   return `
-    <section class="feed-layout__center">
+    <section class="app-layout__center">
       ${posts.map(renderPostcard).join("")}
     </section>
   `;
@@ -88,20 +62,20 @@ async function renderAuthorisedFeed() {
  * @returns {Promise<string>}
  */
 export async function renderFeed() {
-  const isAuthorised = mockSession.user !== null;
+  const isAuthorised = getSessionUser() !== null;
 
   return `
-    <div class="feed-page">
+    <div class="app-page">
       ${renderHeader()}
 
-      <main class="feed-layout">
-        <aside class="feed-layout__left">
-          ${renderSidebar({ isAuthorised: mockSession.user !== null })}
+      <main class="app-layout">
+        <aside class="app-layout__left">
+          ${renderSidebar({ isAuthorised })}
         </aside>
 
         ${isAuthorised ? await renderAuthorisedFeed() : await renderGuestFeed()}
 
-        <aside class="feed-layout__right">
+        <aside class="app-layout__right">
           ${await renderWidgetbar({ isAuthorised })}
         </aside>
       </main>
@@ -114,10 +88,10 @@ export async function renderFeed() {
  * @returns {Promise<void>}
  */
 export async function refreshFeedCenter() {
-  const center = document.querySelector(".feed-layout__center");
+  const center = document.querySelector(".app-layout__center");
   if (!center) return;
 
-  const isAuthorised = mockSession.user !== null;
+  const isAuthorised = getSessionUser() !== null;
   const html = isAuthorised ? await renderAuthorisedFeed() : await renderGuestFeed();
 
   const template = document.createElement("template");

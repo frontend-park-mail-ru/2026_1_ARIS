@@ -15,6 +15,39 @@ function normalisePath(p) {
 }
 
 /**
+ * Matches current path against route pattern and extracts params.
+ * @param {string} routePath
+ * @param {string} currentPath
+ * @returns {{matched: boolean, params: Object}}
+ */
+function matchRoute(routePath, currentPath) {
+  const routeParts = normalisePath(routePath).split("/");
+  const currentParts = normalisePath(currentPath).split("/");
+
+  if (routeParts.length !== currentParts.length) {
+    return { matched: false, params: {} };
+  }
+
+  const params = {};
+
+  for (let i = 0; i < routeParts.length; i += 1) {
+    const routePart = routeParts[i];
+    const currentPart = currentParts[i];
+
+    if (routePart.startsWith(":")) {
+      params[routePart.slice(1)] = currentPart;
+      continue;
+    }
+
+    if (routePart !== currentPart) {
+      return { matched: false, params: {} };
+    }
+  }
+
+  return { matched: true, params };
+}
+
+/**
  * Creates the application router.
  * @param {HTMLElement} root
  * @param {Array<Object>} routes
@@ -27,16 +60,29 @@ export function createRouter(root, routes) {
    */
   async function render() {
     const path = normalisePath(window.location.pathname);
-    const route = routes.find((r) => normalisePath(r.path) === path);
 
-    if (!route) {
+    let matchedRoute = null;
+    let matchedParams = {};
+
+    for (const route of routes) {
+      const { matched, params } = matchRoute(route.path, path);
+
+      if (matched) {
+        matchedRoute = route;
+        matchedParams = params;
+        break;
+      }
+    }
+
+    if (!matchedRoute) {
       document.title = "ARISNET — 404";
       root.innerHTML = "<h1>404</h1><p>Page not found</p>";
       return;
     }
 
-    document.title = route.title;
-    root.innerHTML = await route.render();
+    document.title = matchedRoute.title;
+    root.innerHTML = await matchedRoute.render(matchedParams);
+
     initAuthForm(document);
     initPostcardExpand(root);
     initAuthModal(document);

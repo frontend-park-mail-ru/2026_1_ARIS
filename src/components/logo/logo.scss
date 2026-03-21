@@ -1,0 +1,11 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+
+  &__image {
+    display: block;
+    width: var(--logo-width);
+    height: var(--logo-height);
+  }
+}

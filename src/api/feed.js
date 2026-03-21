@@ -75,7 +75,7 @@ export async function getPublicFeed({ cursor = "", limit = 20 } = {}) {
   }
 
   const query = params.toString();
-  const url = `${API_BASE_URL}/api/public/feed${query ? `?${query}` : ""}`;
+  const url = `/api/public/feed${query ? `?${query}` : ""}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -124,6 +124,7 @@ function formatRelativeTime(isoString) {
 export function mapFeedItemToPostcard(item) {
   return {
     id: item?.id || "",
+    authorId: item?.author?.id || "",
     author: item?.author?.username || "Пользователь",
     firstName: item?.author?.firstName || "",
     lastName: item?.author?.lastName || "",

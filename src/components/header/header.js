@@ -1,7 +1,6 @@
-import { mockSession } from "../../mock/session.js";
+import { clearSessionUser, getSessionUser } from "../../state/session.js";
 import { renderButton } from "../button/button.js";
 import { logoutUser } from "../../api/auth.js";
-import { setSessionUser } from "../../mock/session.js";
 
 /**
  * Renders header for guest user.
@@ -20,6 +19,7 @@ function renderGuestHeader() {
           variant: "primary",
           tag: "button",
           type: "button",
+          className: "button--large",
           attributes: 'data-open-auth-modal="register"',
         })}
 
@@ -28,6 +28,7 @@ function renderGuestHeader() {
           variant: "secondary",
           tag: "button",
           type: "button",
+          className: "button--small",
           attributes: 'data-open-auth-modal="login"',
         })}
       </div>
@@ -49,7 +50,8 @@ function renderGuestHeader() {
  * @returns {string}
  */
 function renderAuthorisedHeader() {
-  const fullName = `${mockSession.user.firstName} ${mockSession.user.lastName}`;
+  const user = getSessionUser();
+  const fullName = user ? `${user.firstName} ${user.lastName}` : "";
 
   return `
     <div class="header__inner header__inner--authorised">
@@ -77,9 +79,9 @@ function renderAuthorisedHeader() {
         </button>
 
         ${
-          mockSession.user.avatarLink
+          user?.avatarLink
             ? `<img class="header__avatar" src="/image-proxy?url=${encodeURIComponent(
-                mockSession.user.avatarLink,
+                user?.avatarLink,
               )}" alt="${fullName}">`
             : `<img class="header__avatar" src="assets/img/default-avatar.png" alt="${fullName}">`
         }
@@ -93,7 +95,7 @@ function renderAuthorisedHeader() {
  * @returns {string}
  */
 export function renderHeader() {
-  const isAuthorised = mockSession.user !== null;
+  const isAuthorised = getSessionUser() !== null;
 
   return `
     <header class="header">
@@ -104,21 +106,27 @@ export function renderHeader() {
 
 /**
  * Initializes header behaviour (logout handler).
+ * @param {Document|HTMLElement} [root=document]
  * @returns {void}
  */
-export function initHeader() {
-  document.addEventListener("click", async (event) => {
-    const btn = event.target.closest("[data-logout]");
+export function initHeader(root = document) {
+  if (root.__headerBound) return;
+
+  root.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const btn = target.closest("[data-logout]");
     if (!btn) return;
 
     try {
       await logoutUser();
-
-      setSessionUser(null);
-
+      clearSessionUser(null);
       window.location.href = "/";
-    } catch (e) {
-      console.error("Logout error:", e);
+    } catch (error) {
+      console.error("Logout error:", error);
     }
   });
+
+  root.__headerBound = true;
 }

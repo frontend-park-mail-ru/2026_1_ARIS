@@ -1,5 +1,5 @@
 import { loginUser, registerUser } from "../../api/auth.js";
-import { setSessionUser } from "../../mock/session.js";
+import { setSessionUser } from "../../state/session.js";
 import { closeAuthModal } from "../auth-modal/auth-modal-controller.js";
 
 const FIELD_ORDER = [

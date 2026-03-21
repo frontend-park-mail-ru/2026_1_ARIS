@@ -16,6 +16,21 @@ function renderStubButton(text, className) {
 }
 
 /**
+ * Renders a profile link.
+ * @param {string} text
+ * @param {string} profileId
+ * @param {string} className
+ * @returns {string}
+ */
+function renderProfileLink(text, profileId, className) {
+  return `
+    <a href="/profile/${profileId}" data-link class="${className}">
+      ${text}
+    </a>
+  `;
+}
+
+/**
  * Renders popular users widget for guests.
  * @returns {Promise<string>}
  */
@@ -35,9 +50,11 @@ async function renderPopularUsersWidget() {
                   ? `<img class="widgetbar-person__avatar" src="/image-proxy?url=${encodeURIComponent(user.avatarLink)}" alt="${user.username}">`
                   : `<div class="widgetbar-person__avatar"></div>`
               }
-              <a href="/login" data-open-auth-modal="login" class="widgetbar-card__username">
-                ${user.firstName} ${user.lastName}
-              </a>
+              ${renderProfileLink(
+                `${user.firstName} ${user.lastName}`,
+                user.id,
+                "widgetbar-card__username",
+              )}
             </div>
           `,
         )
@@ -71,7 +88,11 @@ async function renderKnownPeopleWidget() {
                 }"
                 alt="${user.username}"
               >
-              ${renderStubButton(`${user.firstName} ${user.lastName}`, "widgetbar-card__username")}
+              ${renderProfileLink(
+                `${user.firstName} ${user.lastName}`,
+                user.id,
+                "widgetbar-card__username",
+              )}
             </div>
           `,
         )
@@ -94,15 +115,16 @@ async function renderEventsWidget() {
       <div class="widgetbar-card__events">
         ${response.items
           .map((user) => {
-            const userButton = renderStubButton(
+            const userLink = renderProfileLink(
               `${user.firstName} ${user.lastName}`,
+              user.id,
               "widgetbar-card__username",
             );
 
             if (user.type === 1) {
               return `
                 <p class="widgetbar-card__event">
-                  ${userButton}
+                  ${userLink}
                   <span class="widgetbar-card__text"> поставил лайк вашему </span>
                   ${renderStubButton("посту", "widgetbar-card__link")}
                 </p>
@@ -112,7 +134,7 @@ async function renderEventsWidget() {
             if (user.type === 2) {
               return `
                 <p class="widgetbar-card__event">
-                  ${userButton}
+                  ${userLink}
                   <span class="widgetbar-card__text"> добавил </span>
                   ${renderStubButton("фото", "widgetbar-card__link")}
                 </p>
@@ -121,7 +143,7 @@ async function renderEventsWidget() {
 
             return `
               <p class="widgetbar-card__event">
-                ${userButton}
+                ${userLink}
                 <span class="widgetbar-card__text"> подписался на вас</span>
               </p>
             `;
@@ -220,8 +242,6 @@ function renderWeatherWidget() {
  * @returns {Promise<string>}
  */
 export async function renderWidgetbar({ isAuthorised }) {
-  console.log("renderWidgetbar called");
-
   if (isAuthorised) {
     return `
       <aside class="widgetbar">

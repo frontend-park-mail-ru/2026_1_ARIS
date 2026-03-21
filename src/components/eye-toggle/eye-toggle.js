@@ -1,7 +1,7 @@
 /**
  * Renders a password visibility toggle button (eye icon).
  *
- * @param {Object} [options]
+ * @param {Object} [options={}]
  * @param {boolean} [options.isVisible=false] - Whether the password is currently visible.
  * @param {string} [options.className=""] - Additional CSS classes for the button.
  * @returns {string} HTML string of the eye toggle button.

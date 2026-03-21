@@ -1,4 +1,4 @@
-import { mockSession } from "../../mock/session.js";
+import { getSessionUser } from "../../state/session.js";
 
 /**
  * Renders a postcard footer item.
@@ -9,7 +9,7 @@ import { mockSession } from "../../mock/session.js";
  * @returns {string}
  */
 function renderPostcardStat({ icon, count, action }) {
-  const isAuthorised = mockSession.user !== null;
+  const isAuthorised = getSessionUser() !== null;
 
   if (isAuthorised) {
     return `
@@ -137,6 +137,7 @@ function renderPostcardMedia(images = []) {
  * Renders a postcard.
  * @param {Object} post
  * @param {string} post.author
+ * @param {string} [post.authorId]
  * @param {string} post.firstName
  * @param {string} post.lastName
  * @param {string} post.avatar
@@ -149,6 +150,7 @@ function renderPostcardMedia(images = []) {
  * @returns {string}
  */
 export function renderPostcard(post) {
+  const sessionUser = getSessionUser();
   const displayName =
     `${post.firstName || ""} ${post.lastName || ""}`.trim() || post.author || "Пользователь";
 
@@ -160,26 +162,13 @@ export function renderPostcard(post) {
           src="/image-proxy?url=${encodeURIComponent(post.avatar)}"
           alt="${displayName}"
         >
-        ${
-          mockSession.user
-            ? `
-              <button
-                type="button"
-                class="postcard__author widgetbar-card__username widgetbar-stub-button"
-              >
-                ${displayName}
-              </button>
-            `
-            : `
-              <a
-                href="/login"
-                data-open-auth-modal="login"
-                class="postcard__author widgetbar-card__username"
-              >
-                ${displayName}
-              </a>
-            `
-        }
+        <a
+          href="${sessionUser ? `/profile/${post.authorId || ""}` : "/login"}"
+          ${sessionUser ? "data-link" : 'data-open-auth-modal="login"'}
+          class="postcard__author"
+        >
+          ${displayName}
+        </a>
       </header>
 
       <div class="postcard__text-container">

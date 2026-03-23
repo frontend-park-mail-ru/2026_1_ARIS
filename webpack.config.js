@@ -1,23 +1,22 @@
-import path from "path";
-import HtmlWebpackPlugin from "html-webpack-plugin";
-import CopyWebpackPlugin from "copy-webpack-plugin";
-import type { Configuration } from "webpack";
-import type { Configuration as DevServerConfiguration } from "webpack-dev-server";
+const path = require("path");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 
-type WebpackConfig = Configuration & {
-  devServer?: DevServerConfiguration;
-};
-
-const config: WebpackConfig = {
+/** @type {import('webpack').Configuration} */
+module.exports = {
   mode: "development",
+
   entry: "./src/main.ts",
+
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "bundle.[contenthash].js",
     clean: true,
     publicPath: "/",
   },
+
   devtool: "source-map",
+
   module: {
     rules: [
       {
@@ -40,9 +39,11 @@ const config: WebpackConfig = {
       },
     ],
   },
+
   resolve: {
     extensions: [".ts", ".js"],
   },
+
   plugins: [
     new HtmlWebpackPlugin({
       template: "./public/index.html",
@@ -56,6 +57,7 @@ const config: WebpackConfig = {
       ],
     }),
   ],
+
   devServer: {
     static: {
       directory: path.resolve(__dirname, "public"),
@@ -72,5 +74,3 @@ const config: WebpackConfig = {
     ],
   },
 };
-
-export default config;

@@ -1,19 +1,36 @@
-import { renderButton } from "../button/button.js";
-import { renderInput } from "../input/input.js";
+import { renderButton } from "../button/button";
+import { renderInput } from "../input/input";
+import type { RegisterStep, RegisterValues } from "../../state/register-draft";
+
+type AuthMode = "login" | "register";
+type AuthContext = "page" | "modal";
+type InputState = "default" | "error";
+
+type RenderAuthFieldOptions = {
+  type: string;
+  name: keyof RegisterValues | "password";
+  placeholder: string;
+  value?: string;
+  state?: InputState;
+  withToggle?: boolean;
+  isVisible?: boolean;
+  errorText?: string;
+  attributes?: string;
+};
+
+type RenderAuthFormOptions = {
+  mode: AuthMode;
+  hasError?: boolean;
+  errorText?: string;
+  context?: AuthContext;
+  registerStep?: RegisterStep;
+  registerValues?: Partial<RegisterValues>;
+};
 
 /**
  * Renders a single auth form field with input and error area.
  *
- * @param {Object} options
- * @param {string} options.type
- * @param {string} options.name
- * @param {string} options.placeholder
- * @param {string} [options.value=""]
- * @param {string} [options.state="default"]
- * @param {boolean} [options.withToggle=false]
- * @param {boolean} [options.isVisible=false]
- * @param {string} [options.errorText=""]
- * @param {string} [options.attributes=""]
+ * @param {RenderAuthFieldOptions} options
  * @returns {string}
  */
 function renderAuthField({
@@ -26,7 +43,7 @@ function renderAuthField({
   isVisible = false,
   errorText = "",
   attributes = "",
-}) {
+}: RenderAuthFieldOptions): string {
   const hasError = Boolean(errorText);
 
   return `
@@ -54,11 +71,11 @@ function renderAuthField({
  * Renders login fields.
  *
  * @param {boolean} hasError
- * @param {Object} [values={}]
+ * @param {Partial<RegisterValues>} [values={}]
  * @returns {string}
  */
-function renderLoginFields(hasError, values = {}) {
-  const state = hasError ? "error" : "default";
+function renderLoginFields(hasError: boolean, values: Partial<RegisterValues> = {}): string {
+  const state: InputState = hasError ? "error" : "default";
 
   return `
     ${renderAuthField({
@@ -84,10 +101,10 @@ function renderLoginFields(hasError, values = {}) {
 /**
  * Renders gender select field.
  *
- * @param {Object} [values={}]
+ * @param {Partial<RegisterValues>} [values={}]
  * @returns {string}
  */
-function renderGenderField(values = {}) {
+function renderGenderField(values: Partial<RegisterValues> = {}): string {
   return `
     <div class="auth-form__field-group">
       <label class="input input--default auth-form__input-control auth-form__select">
@@ -106,10 +123,10 @@ function renderGenderField(values = {}) {
 /**
  * Renders register step progress.
  *
- * @param {number} step
+ * @param {RegisterStep} step
  * @returns {string}
  */
-function renderRegisterProgress(step) {
+function renderRegisterProgress(step: RegisterStep): string {
   return `
     <div class="auth-form__progress" aria-label="Прогресс регистрации">
       <div class="auth-form__progress-item ${step === 1 ? "auth-form__progress-item--active" : "auth-form__progress-item--done"}">
@@ -130,10 +147,10 @@ function renderRegisterProgress(step) {
 /**
  * Renders register step one fields.
  *
- * @param {Object} values
+ * @param {Partial<RegisterValues>} values
  * @returns {string}
  */
-function renderRegisterStepOne(values = {}) {
+function renderRegisterStepOne(values: Partial<RegisterValues> = {}): string {
   return `
     <div class="auth-form__step-grid">
       ${renderAuthField({
@@ -193,10 +210,10 @@ function renderRegisterStepOne(values = {}) {
 /**
  * Renders register step two fields.
  *
- * @param {Object} values
+ * @param {Partial<RegisterValues>} values
  * @returns {string}
  */
-function renderRegisterStepTwo(values = {}) {
+function renderRegisterStepTwo(values: Partial<RegisterValues> = {}): string {
   return `
     <div class="auth-form__step-grid">
       ${renderAuthField({
@@ -253,11 +270,14 @@ function renderRegisterStepTwo(values = {}) {
 /**
  * Renders register fields by current step.
  *
- * @param {number} step
- * @param {Object} values
+ * @param {RegisterStep} step
+ * @param {Partial<RegisterValues>} values
  * @returns {string}
  */
-function renderRegisterFields(step, values) {
+function renderRegisterFields(
+  step: RegisterStep,
+  values: Partial<RegisterValues>,
+): string {
   return `
     ${renderRegisterProgress(step)}
     ${step === 1 ? renderRegisterStepOne(values) : renderRegisterStepTwo(values)}
@@ -267,13 +287,7 @@ function renderRegisterFields(step, values) {
 /**
  * Renders auth form.
  *
- * @param {Object} options
- * @param {"login"|"register"} options.mode
- * @param {boolean} [options.hasError=false]
- * @param {string} [options.errorText="Неверный логин или пароль"]
- * @param {string} [options.context="page"]
- * @param {number} [options.registerStep=1]
- * @param {Object} [options.registerValues={}]
+ * @param {RenderAuthFormOptions} options
  * @returns {string}
  */
 export function renderAuthForm({
@@ -283,7 +297,7 @@ export function renderAuthForm({
   context = "page",
   registerStep = 1,
   registerValues = {},
-}) {
+}: RenderAuthFormOptions): string {
   const isLogin = mode === "login";
   const isModal = context === "modal";
   const isRegisterStepTwo = mode === "register" && registerStep === 2;

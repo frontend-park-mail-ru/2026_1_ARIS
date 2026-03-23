@@ -1,20 +1,25 @@
-import { renderEyeToggle } from "../eye-toggle/eye-toggle.js";
+import { renderEyeToggle } from "../eye-toggle/eye-toggle";
+
+type InputState = "default" | "error";
+
+type RenderInputOptions = {
+  type?: string;
+  name?: string;
+  placeholder?: string;
+  value?: string;
+  state?: InputState;
+  withToggle?: boolean;
+  isVisible?: boolean;
+  disabled?: boolean;
+  className?: string;
+  attributes?: string;
+};
 
 /**
  * Renders an input component.
  *
- * @param {Object} [options={}]
- * @param {string} [options.type="text"] - Input type attribute.
- * @param {string} [options.name=""] - Input name attribute.
- * @param {string} [options.placeholder=""] - Input placeholder text.
- * @param {string} [options.value=""] - Input value.
- * @param {"default"|"error"} [options.state="default"] - Visual state modifier.
- * @param {boolean} [options.withToggle=false] - Whether to render password visibility toggle.
- * @param {boolean} [options.isVisible=false] - Whether password is currently visible.
- * @param {boolean} [options.disabled=false] - Whether the input is disabled.
- * @param {string} [options.className=""] - Additional CSS classes for the root input element.
- * @param {string} [options.attributes=""] - Additional raw HTML attributes for the input element.
- * @returns {string} HTML string of the rendered input.
+ * @param {RenderInputOptions} [options={}]
+ * @returns {string}
  */
 export function renderInput({
   type = "text",
@@ -27,7 +32,7 @@ export function renderInput({
   disabled = false,
   className = "",
   attributes = "",
-} = {}) {
+}: RenderInputOptions = {}): string {
   const isPassword = type === "password";
   const inputType = isPassword && isVisible ? "text" : type;
 

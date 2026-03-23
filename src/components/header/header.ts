@@ -1,12 +1,23 @@
-import { clearSessionUser, getSessionUser } from "../../state/session.js";
-import { renderButton } from "../button/button.js";
-import { logoutUser } from "../../api/auth.js";
+import { clearSessionUser, getSessionUser } from "../../state/session";
+import { renderButton } from "../button/button";
+import { logoutUser } from "../../api/auth";
+
+/**
+ * User session type (минимально необходимый)
+ */
+type SessionUser = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatarLink?: string;
+} | null;
 
 /**
  * Renders header for guest user.
+ *
  * @returns {string}
  */
-function renderGuestHeader() {
+function renderGuestHeader(): string {
   return `
     <div class="header__inner header__inner--guest">
       <a href="/feed" data-link class="header__logo-link">
@@ -47,11 +58,19 @@ function renderGuestHeader() {
 
 /**
  * Renders header for authorised user.
+ *
  * @returns {string}
  */
-function renderAuthorisedHeader() {
-  const user = getSessionUser();
-  const fullName = user ? `${user.firstName} ${user.lastName}` : "";
+function renderAuthorisedHeader(): string {
+  const user = getSessionUser() as SessionUser;
+
+  const fullName = user
+    ? `${user.firstName} ${user.lastName}`
+    : "";
+
+  const avatarSrc = user?.avatarLink
+    ? `/image-proxy?url=${encodeURIComponent(user.avatarLink)}`
+    : "assets/img/default-avatar.png";
 
   return `
     <div class="header__inner header__inner--authorised">
@@ -78,13 +97,11 @@ function renderAuthorisedHeader() {
           Выйти
         </button>
 
-        ${
-          user?.avatarLink
-            ? `<img class="header__avatar" src="/image-proxy?url=${encodeURIComponent(
-                user?.avatarLink,
-              )}" alt="${fullName}">`
-            : `<img class="header__avatar" src="assets/img/default-avatar.png" alt="${fullName}">`
-        }
+        <img
+          class="header__avatar"
+          src="${avatarSrc}"
+          alt="${fullName}"
+        >
       </div>
     </div>
   `;
@@ -92,9 +109,10 @@ function renderAuthorisedHeader() {
 
 /**
  * Renders page header depending on user auth state.
+ *
  * @returns {string}
  */
-export function renderHeader() {
+export function renderHeader(): string {
   const isAuthorised = getSessionUser() !== null;
 
   return `
@@ -106,13 +124,16 @@ export function renderHeader() {
 
 /**
  * Initializes header behaviour (logout handler).
- * @param {Document|HTMLElement} [root=document]
+ *
+ * @param {Document | HTMLElement} [root=document]
  * @returns {void}
  */
-export function initHeader(root = document) {
-  if (root.__headerBound) return;
+export function initHeader(root: Document | HTMLElement = document): void {
+  const rootEl = root as Document & { __headerBound?: boolean };
 
-  root.addEventListener("click", async (event) => {
+  if (rootEl.__headerBound) return;
+
+  root.addEventListener("click", async (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
@@ -121,12 +142,12 @@ export function initHeader(root = document) {
 
     try {
       await logoutUser();
-      clearSessionUser(null);
+      clearSessionUser();
       window.location.href = "/";
     } catch (error) {
       console.error("Logout error:", error);
     }
   });
 
-  root.__headerBound = true;
+  rootEl.__headerBound = true;
 }

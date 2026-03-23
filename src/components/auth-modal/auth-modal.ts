@@ -1,14 +1,26 @@
-import { renderButton } from "../button/button.js";
-import { renderAuthForm } from "../auth-form/auth-form.js";
+import { renderButton } from "../button/button";
+import { renderAuthForm } from "../auth-form/auth-form";
+import type { RegisterDraft } from "../../state/register-draft";
+
+type AuthMode = "login" | "register";
+
+type RenderAuthModalOptions = {
+  mode?: AuthMode;
+  registerDraft?: RegisterDraft | null;
+};
 
 /**
  * Renders the authentication modal.
+ *
  * @param {Object} [options]
  * @param {"login"|"register"} [options.mode="login"]
- * @param {Object|null} [options.registerDraft=null]
+ * @param {RegisterDraft|null} [options.registerDraft=null]
  * @returns {string}
  */
-export function renderAuthModal({ mode = "login", registerDraft = null } = {}) {
+export function renderAuthModal({
+  mode = "login",
+  registerDraft = null,
+}: RenderAuthModalOptions = {}): string {
   return `
     <div class="auth-modal" data-auth-modal>
       <div class="auth-modal__overlay" data-auth-modal-close></div>

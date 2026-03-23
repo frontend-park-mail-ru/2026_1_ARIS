@@ -1,10 +1,16 @@
-const path = require("path");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const CopyWebpackPlugin = require("copy-webpack-plugin");
+import path from "path";
+import HtmlWebpackPlugin from "html-webpack-plugin";
+import CopyWebpackPlugin from "copy-webpack-plugin";
+import type { Configuration } from "webpack";
+import type { Configuration as DevServerConfiguration } from "webpack-dev-server";
 
-module.exports = {
+type WebpackConfig = Configuration & {
+  devServer?: DevServerConfiguration;
+};
+
+const config: WebpackConfig = {
   mode: "development",
-  entry: "./src/main.js",
+  entry: "./src/main.ts",
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "bundle.[contenthash].js",
@@ -27,10 +33,15 @@ module.exports = {
         test: /\.scss$/i,
         use: ["style-loader", "css-loader", "postcss-loader", "sass-loader"],
       },
+      {
+        test: /\.ts$/,
+        use: "ts-loader",
+        exclude: /node_modules/,
+      },
     ],
   },
   resolve: {
-    extensions: [".js"],
+    extensions: [".ts", ".js"],
   },
   plugins: [
     new HtmlWebpackPlugin({
@@ -61,3 +72,5 @@ module.exports = {
     ],
   },
 };
+
+export default config;

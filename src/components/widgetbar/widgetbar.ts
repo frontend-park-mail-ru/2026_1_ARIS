@@ -1,32 +1,58 @@
-import { getSuggestedUsers, getPublicPopularUsers, getLatestEvents } from "../../api/users.js";
-import { getPopularPosts, getPublicPopularPosts } from "../../api/feed.js";
+import { getSuggestedUsers, getPublicPopularUsers, getLatestEvents } from "../../api/users";
+import { getPopularPosts, getPublicPopularPosts } from "../../api/feed";
+
+type WidgetbarCache = {
+  guest: string | null;
+  authorised: string | null;
+};
+
+type WidgetbarUser = {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  avatarLink?: string;
+};
+
+type WidgetbarEventUser = WidgetbarUser & {
+  type: number;
+};
+
+type WidgetbarPost = {
+  title: string;
+};
+
+type RenderWidgetbarOptions = {
+  isAuthorised: boolean;
+};
 
 /**
  * In-memory widgetbar cache for the current page session.
  * It is reset only on full page reload.
- * @type {{guest: string|null, authorised: string|null}}
  */
-const widgetbarCache = {
+const widgetbarCache: WidgetbarCache = {
   guest: null,
   authorised: null,
 };
 
 /**
  * Clears widgetbar cache.
+ *
  * @returns {void}
  */
-export function clearWidgetbarCache() {
+export function clearWidgetbarCache(): void {
   widgetbarCache.guest = null;
   widgetbarCache.authorised = null;
 }
 
 /**
  * Renders a stub button.
+ *
  * @param {string} text
  * @param {string} className
  * @returns {string}
  */
-function renderStubButton(text, className) {
+function renderStubButton(text: string, className: string): string {
   return `
     <button type="button" class="${className} widgetbar-stub-button">
       ${text}
@@ -36,12 +62,13 @@ function renderStubButton(text, className) {
 
 /**
  * Renders a profile link.
+ *
  * @param {string} text
  * @param {string} profileId
  * @param {string} className
  * @returns {string}
  */
-function renderProfileLink(text, profileId, className) {
+function renderProfileLink(text: string, profileId: string, className: string): string {
   return `
     <a href="/profile/${profileId}" data-link class="${className}">
       ${text}
@@ -51,16 +78,18 @@ function renderProfileLink(text, profileId, className) {
 
 /**
  * Renders popular users widget for guests.
+ *
  * @returns {Promise<string>}
  */
-async function renderPopularUsersWidget() {
-  const response = await getPublicPopularUsers();
+async function renderPopularUsersWidget(): Promise<string> {
+  const response = (await getPublicPopularUsers()) as { items?: WidgetbarUser[] };
+  const items = Array.isArray(response.items) ? response.items : [];
 
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные пользователи</h3>
 
-      ${response.items
+      ${items
         .map(
           (user) => `
             <div class="widgetbar-person">
@@ -84,16 +113,18 @@ async function renderPopularUsersWidget() {
 
 /**
  * Renders known people widget.
+ *
  * @returns {Promise<string>}
  */
-async function renderKnownPeopleWidget() {
-  const response = await getSuggestedUsers();
+async function renderKnownPeopleWidget(): Promise<string> {
+  const response = (await getSuggestedUsers()) as { items?: WidgetbarUser[] };
+  const items = Array.isArray(response.items) ? response.items : [];
 
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Возможно, вы знакомы:</h3>
 
-      ${response.items
+      ${items
         .slice(0, 4)
         .map(
           (user) => `
@@ -122,17 +153,19 @@ async function renderKnownPeopleWidget() {
 
 /**
  * Renders latest events widget.
+ *
  * @returns {Promise<string>}
  */
-async function renderEventsWidget() {
-  const response = await getLatestEvents();
+async function renderEventsWidget(): Promise<string> {
+  const response = (await getLatestEvents()) as { items?: WidgetbarEventUser[] };
+  const items = Array.isArray(response.items) ? response.items : [];
 
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Последние события</h3>
 
       <div class="widgetbar-card__events">
-        ${response.items
+        ${items
           .map((user) => {
             const userLink = renderProfileLink(
               `${user.firstName} ${user.lastName}`,
@@ -175,16 +208,18 @@ async function renderEventsWidget() {
 
 /**
  * Renders guest popular posts widget.
+ *
  * @returns {Promise<string>}
  */
-async function renderGuestPopularPostsWidget() {
-  const response = await getPublicPopularPosts();
+async function renderGuestPopularPostsWidget(): Promise<string> {
+  const response = (await getPublicPopularPosts()) as { items?: WidgetbarPost[] };
+  const items = Array.isArray(response.items) ? response.items : [];
 
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные посты</h3>
 
-      ${(Array.isArray(response.items) ? response.items : [])
+      ${items
         .map(
           (post) => `
             <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
@@ -199,16 +234,18 @@ async function renderGuestPopularPostsWidget() {
 
 /**
  * Renders authorised popular posts widget.
+ *
  * @returns {Promise<string>}
  */
-async function renderAuthorisedPopularPostsWidget() {
-  const response = await getPopularPosts();
+async function renderAuthorisedPopularPostsWidget(): Promise<string> {
+  const response = (await getPopularPosts()) as { items?: WidgetbarPost[] };
+  const items = Array.isArray(response.items) ? response.items : [];
 
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Популярные посты</h3>
 
-      ${(Array.isArray(response.items) ? response.items : [])
+      ${items
         .map(
           (post) => `
             ${renderStubButton(post.title, "widgetbar-card__post-link")}
@@ -221,9 +258,10 @@ async function renderAuthorisedPopularPostsWidget() {
 
 /**
  * Renders weather widget.
+ *
  * @returns {string}
  */
-function renderWeatherWidget() {
+function renderWeatherWidget(): string {
   return `
     <section class="widgetbar-card widgetbar-card--weather">
       <h3 class="widgetbar-card__title">Сегодня — Москва</h3>
@@ -256,9 +294,10 @@ function renderWeatherWidget() {
 
 /**
  * Builds widgetbar markup for authorised user.
+ *
  * @returns {Promise<string>}
  */
-async function buildAuthorisedWidgetbar() {
+async function buildAuthorisedWidgetbar(): Promise<string> {
   return `
     <aside class="widgetbar">
       ${await renderKnownPeopleWidget()}
@@ -271,9 +310,10 @@ async function buildAuthorisedWidgetbar() {
 
 /**
  * Builds widgetbar markup for guest user.
+ *
  * @returns {Promise<string>}
  */
-async function buildGuestWidgetbar() {
+async function buildGuestWidgetbar(): Promise<string> {
   return `
     <aside class="widgetbar">
       ${await renderPopularUsersWidget()}
@@ -287,11 +327,12 @@ async function buildGuestWidgetbar() {
  * Renders the widgetbar.
  * Cached for the current browser page session.
  *
- * @param {Object} options
- * @param {boolean} options.isAuthorised
+ * @param {RenderWidgetbarOptions} options
  * @returns {Promise<string>}
  */
-export async function renderWidgetbar({ isAuthorised }) {
+export async function renderWidgetbar({
+  isAuthorised,
+}: RenderWidgetbarOptions): Promise<string> {
   if (isAuthorised) {
     if (!widgetbarCache.authorised) {
       widgetbarCache.authorised = await buildAuthorisedWidgetbar();

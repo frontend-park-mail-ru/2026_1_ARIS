@@ -9,9 +9,9 @@
 
 body {
   font-family: var(--font-main);
-  font-size: var(--text-body-size);
-  font-weight: var(--text-body-weight);
-  line-height: var(--text-body-line);
+  font-size: var(--text-size-main);
+  font-weight: var(--font-weight-regular);
+  line-height: normal;
   margin: 0;
   padding: 0;
 }

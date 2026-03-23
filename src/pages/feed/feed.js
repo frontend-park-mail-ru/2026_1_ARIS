@@ -6,7 +6,39 @@ import { renderPostcard } from "../../components/postcard/postcard.js";
 import { getFeed, getPublicFeed, mapFeedResponse } from "../../api/feed.js";
 
 /**
- * Returns sorted feed items.
+ * In-memory feed cache for the current browser page session.
+ * It is reset only on full page reload.
+ * @type {{
+ *   guest: {"by-time": string|null, "for-you": string|null},
+ *   authorised: {"by-time": string|null, "for-you": string|null}
+ * }}
+ */
+const feedCache = {
+  guest: {
+    "by-time": null,
+    "for-you": null,
+  },
+  authorised: {
+    "by-time": null,
+    "for-you": null,
+  },
+};
+
+/**
+ * Clears feed cache.
+ * @returns {void}
+ */
+export function clearFeedCache() {
+  feedCache.guest["by-time"] = null;
+  feedCache.guest["for-you"] = null;
+  feedCache.authorised["by-time"] = null;
+  feedCache.authorised["for-you"] = null;
+}
+
+/**
+ * Returns sorted feed items for the current feed mode.
+ * "for-you" is shuffled once and then cached by the caller.
+ *
  * @param {Array<Object>} items
  * @returns {Array<Object>}
  */
@@ -26,10 +58,10 @@ function getSortedFeedItems(items) {
 }
 
 /**
- * Renders the guest feed.
+ * Builds guest feed center markup.
  * @returns {Promise<string>}
  */
-async function renderGuestFeed() {
+async function buildGuestFeed() {
   const response = await getPublicFeed({ limit: 2 });
   const mapped = mapFeedResponse(response);
   const posts = getSortedFeedItems(mapped.items);
@@ -42,10 +74,10 @@ async function renderGuestFeed() {
 }
 
 /**
- * Renders the authorised feed.
+ * Builds authorised feed center markup.
  * @returns {Promise<string>}
  */
-async function renderAuthorisedFeed() {
+async function buildAuthorisedFeed() {
   const response = await getFeed({ limit: 8 });
   const mapped = mapFeedResponse(response);
   const posts = getSortedFeedItems(mapped.items);
@@ -55,6 +87,27 @@ async function renderAuthorisedFeed() {
       ${posts.map(renderPostcard).join("")}
     </section>
   `;
+}
+
+/**
+ *  * Returns cached feed center markup for the current auth state and feed mode.
+ * Builds and caches it on first request.
+ *
+ * @param {boolean} isAuthorised
+ * @returns {Promise<string>}
+ */
+async function getCachedFeed(isAuthorised) {
+  const authKey = isAuthorised ? "authorised" : "guest";
+  const modeKey = getFeedMode();
+
+  if (feedCache[authKey][modeKey]) {
+    return feedCache[authKey][modeKey];
+  }
+
+  const html = isAuthorised ? await buildAuthorisedFeed() : await buildGuestFeed();
+  feedCache[authKey][modeKey] = html;
+
+  return html;
 }
 
 /**
@@ -73,7 +126,7 @@ export async function renderFeed() {
           ${renderSidebar({ isAuthorised })}
         </aside>
 
-        ${isAuthorised ? await renderAuthorisedFeed() : await renderGuestFeed()}
+        ${await getCachedFeed(isAuthorised)}
 
         <aside class="app-layout__right">
           ${await renderWidgetbar({ isAuthorised })}
@@ -92,7 +145,7 @@ export async function refreshFeedCenter() {
   if (!center) return;
 
   const isAuthorised = getSessionUser() !== null;
-  const html = isAuthorised ? await renderAuthorisedFeed() : await renderGuestFeed();
+  const html = await getCachedFeed(isAuthorised);
 
   const template = document.createElement("template");
   template.innerHTML = html.trim();

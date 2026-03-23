@@ -1,5 +1,3 @@
-import { API_BASE_URL } from "./config.js";
-
 /**
  * Parses JSON response body safely.
  *
@@ -132,4 +130,40 @@ export async function getCurrentUser() {
   if (!response.ok) return null;
 
   return await parseJson(response);
+}
+
+/**
+ * Validates register step one on the backend.
+ *
+ * @param {Object} payload
+ * @param {string} payload.login
+ * @param {string} payload.password1
+ * @param {string} payload.password2
+ * @returns {Promise<Object>}
+ * @throws {Error}
+ */
+export async function validateRegisterStepOne(payload) {
+  const response = await fetch("/api/auth/register/step-one", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      login: payload.login,
+      password1: payload.password1,
+      password2: payload.password2,
+    }),
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    const error = new Error(data.error || "register step one validation failed");
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+
+  return data;
 }

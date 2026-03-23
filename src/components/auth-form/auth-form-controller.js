@@ -1,6 +1,8 @@
-import { loginUser, registerUser } from "../../api/auth.js";
+import { loginUser, registerUser, validateRegisterStepOne } from "../../api/auth.js";
 import { setSessionUser } from "../../state/session.js";
 import { closeAuthModal } from "../auth-modal/auth-modal-controller.js";
+import { renderAuthForm } from "./auth-form.js";
+import { registerDraft, resetRegisterDraft } from "../../state/register-draft.js";
 
 const FIELD_ORDER = [
   "firstName",
@@ -19,17 +21,66 @@ const FIELD_ORDER = [
  * @returns {Object}
  */
 function getFormValues(form) {
-  const formData = new FormData(form);
+  const result = {};
 
+  FIELD_ORDER.forEach((name) => {
+    const field = form.querySelector(`.input__field[name="${name}"]`);
+
+    if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+      result[name] = field.value.trim();
+    }
+  });
+
+  return result;
+}
+
+const REGISTER_STEP_FIELDS = {
+  1: ["login", "password", "repeatPassword"],
+  2: ["firstName", "lastName", "gender", "birthDate"],
+};
+
+/**
+ * Returns current register step from auth form dataset.
+ *
+ * @param {HTMLElement} authForm
+ * @returns {number}
+ */
+function getRegisterStep(authForm) {
+  const step = Number(authForm.dataset.registerStep || "1");
+  return step === 2 ? 2 : 1;
+}
+
+/**
+ * Returns register fields visible on the specified step.
+ *
+ * @param {number} step
+ * @returns {string[]}
+ */
+function getRegisterStepFields(step) {
+  return REGISTER_STEP_FIELDS[step] || REGISTER_STEP_FIELDS[1];
+}
+
+/**
+ * Returns merged register values from draft and current form.
+ *
+ * @param {HTMLFormElement} form
+ * @returns {Object}
+ */
+function getRegisterValues(form) {
   return {
-    firstName: String(formData.get("firstName") || "").trim(),
-    lastName: String(formData.get("lastName") || "").trim(),
-    gender: String(formData.get("gender") || "").trim(),
-    birthDate: String(formData.get("birthDate") || "").trim(),
-    login: String(formData.get("login") || "").trim(),
-    password: String(formData.get("password") || "").trim(),
-    repeatPassword: String(formData.get("repeatPassword") || "").trim(),
+    ...registerDraft.values,
+    ...getFormValues(form),
   };
+}
+
+/**
+ * Saves current form values into register draft.
+ *
+ * @param {HTMLFormElement} form
+ * @returns {void}
+ */
+function syncRegisterDraft(form) {
+  registerDraft.values = getRegisterValues(form);
 }
 
 /**
@@ -47,7 +98,7 @@ function getTouchedFields(form) {
 }
 
 /**
- * Marks field as touched.
+ * Marks login field as touched.
  *
  * @param {HTMLFormElement} form
  * @param {string} fieldName
@@ -57,6 +108,80 @@ function setTouchedField(form, fieldName) {
   const touched = new Set(getTouchedFields(form));
   touched.add(fieldName);
   form.dataset.touchedFields = JSON.stringify([...touched]);
+}
+
+/**
+ * Marks register field as touched.
+ *
+ * @param {string} fieldName
+ * @returns {void}
+ */
+function setRegisterTouchedField(fieldName) {
+  const touched = new Set(registerDraft.touchedFields);
+  touched.add(fieldName);
+  registerDraft.touchedFields = [...touched];
+}
+
+/**
+ * Writes current register draft state into form dataset.
+ *
+ * @param {HTMLFormElement} form
+ * @returns {void}
+ */
+function syncRegisterFormDataset(form) {
+  form.dataset.touchedFields = JSON.stringify(registerDraft.touchedFields);
+  form.dataset.submitAttempted = registerDraft.submitAttempted ? "true" : "false";
+}
+
+/**
+ * Returns auth form context.
+ *
+ * @param {HTMLElement} authForm
+ * @returns {"modal"|"page"}
+ */
+function getAuthFormContext(authForm) {
+  return authForm.closest(".auth-modal") ? "modal" : "page";
+}
+
+/**
+ * Rerenders register form in place preserving draft values and touched state.
+ *
+ * @param {HTMLElement} authForm
+ * @returns {HTMLFormElement|null}
+ */
+function rerenderRegisterForm(authForm) {
+  const context = getAuthFormContext(authForm);
+  const template = document.createElement("template");
+
+  template.innerHTML = renderAuthForm({
+    mode: "register",
+    context,
+    registerStep: registerDraft.step,
+    registerValues: registerDraft.values,
+  }).trim();
+
+  const newAuthForm = template.content.firstElementChild;
+  if (!(newAuthForm instanceof HTMLElement)) {
+    return null;
+  }
+
+  authForm.replaceWith(newAuthForm);
+
+  const newForm = newAuthForm.querySelector(".auth-form__form");
+  if (!(newForm instanceof HTMLFormElement)) {
+    return null;
+  }
+
+  syncRegisterFormDataset(newForm);
+
+  requestAnimationFrame(() => {
+    const firstField = newForm.querySelector(".input__field");
+    if (firstField instanceof HTMLElement) {
+      firstField.focus();
+    }
+  });
+
+  return newForm;
 }
 
 /**
@@ -78,7 +203,6 @@ function isLeapYear(year) {
  */
 function getDaysInMonth(month, year) {
   const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
   return days[month - 1];
 }
 
@@ -252,7 +376,7 @@ function validateBirthDate(value, isSubmitAttempted = false) {
     const year = Number(yearString);
     const now = new Date();
 
-    if (year < 1900 || year > now.getFullYear()) {
+    if (year > now.getFullYear()) {
       return "Некорректный год";
     }
   }
@@ -309,18 +433,19 @@ function validateBirthDate(value, isSubmitAttempted = false) {
  * Validates gender field.
  *
  * @param {string} value
+ * @param {boolean} [isSubmitAttempted=false]
  * @returns {string}
  */
-function validateGender(value) {
+function validateGender(value, isSubmitAttempted = false) {
   if (!value) {
-    return "Выберите пол";
+    return isSubmitAttempted ? "Выберите пол" : "";
   }
 
   return "";
 }
 
 /**
- * Validates login field.
+ * Validates login field
  *
  * @param {string} value
  * @param {boolean} [isSubmitAttempted=false]
@@ -425,6 +550,24 @@ function validateRegisterForm(values, isSubmitAttempted = false) {
 }
 
 /**
+ * Returns validation errors only for current register step.
+ *
+ * @param {Object} values
+ * @param {number} step
+ * @param {boolean} [isSubmitAttempted=false]
+ * @returns {Object}
+ */
+function validateRegisterStep(values, step, isSubmitAttempted = false) {
+  const stepFields = getRegisterStepFields(step);
+  const allErrors = validateRegisterForm(values, isSubmitAttempted);
+
+  return stepFields.reduce((acc, fieldName) => {
+    acc[fieldName] = allErrors[fieldName];
+    return acc;
+  }, {});
+}
+
+/**
  * Validates login form values.
  *
  * @param {Object} values
@@ -444,11 +587,12 @@ function validateLoginForm(values, isSubmitAttempted = false) {
  * @param {"login"|"register"} mode
  * @param {Object} values
  * @param {boolean} [isSubmitAttempted=false]
+ * @param {number} [registerStep=1]
  * @returns {Object}
  */
-function getValidationErrors(mode, values, isSubmitAttempted = false) {
+function getValidationErrors(mode, values, isSubmitAttempted = false, registerStep = 1) {
   if (mode === "register") {
-    return validateRegisterForm(values, isSubmitAttempted);
+    return validateRegisterStep(values, registerStep, isSubmitAttempted);
   }
 
   return validateLoginForm(values, isSubmitAttempted);
@@ -545,32 +689,20 @@ function markFieldsAsError(form, fieldNames) {
 }
 
 /**
- * Renders validation errors only for touched fields.
+ * Renders server-side field errors for visible fields.
  *
  * @param {HTMLFormElement} form
- * @param {Object} errors
+ * @param {Object} errorsByField
  * @returns {void}
  */
-function renderTouchedFieldErrors(form, errors) {
+function renderServerFieldErrors(form, errorsByField) {
   clearFieldState(form);
 
-  const touchedFields = getTouchedFields(form);
-  const isSubmitAttempted = form.dataset.submitAttempted === "true";
-
-  touchedFields.forEach((name) => {
-    const message = errors[name];
+  Object.entries(errorsByField).forEach(([name, message]) => {
     if (!message) return;
 
     const group = getFieldGroup(form, name);
     if (!group) return;
-
-    const input = form.querySelector(`.input__field[name="${name}"]`);
-    const value =
-      input instanceof HTMLInputElement || input instanceof HTMLSelectElement
-        ? input.value.trim()
-        : "";
-
-    if (!isSubmitAttempted && !value) return;
 
     const errorNode = group.querySelector(".auth-form__field-error");
     const inputWrapper = group.querySelector(".input");
@@ -580,14 +712,81 @@ function renderTouchedFieldErrors(form, errors) {
       errorNode.classList.remove("auth-form__field-error--hidden");
     }
 
-    if (isSubmitAttempted && inputWrapper) {
+    if (inputWrapper) {
       inputWrapper.classList.add("input--error");
+    }
+  });
+}
+/**
+ * Returns touched fields for current mode.
+ *
+ * @param {HTMLFormElement} form
+ * @param {"login"|"register"} mode
+ * @returns {string[]}
+ */
+function getActiveTouchedFields(form, mode) {
+  return mode === "register" ? registerDraft.touchedFields : getTouchedFields(form);
+}
+
+/**
+ * Renders validation errors only for touched fields.
+ *
+ * @param {HTMLFormElement} form
+ * @param {Object} errors
+ * @param {"login"|"register"} mode
+ * @returns {void}
+ */
+function renderTouchedFieldErrors(form, errors, mode) {
+  clearFieldState(form);
+
+  const touchedFields = getActiveTouchedFields(form, mode);
+  const isSubmitAttempted =
+    mode === "register" ? registerDraft.submitAttempted : form.dataset.submitAttempted === "true";
+
+  touchedFields.forEach((name) => {
+    const group = getFieldGroup(form, name);
+    if (!group) return;
+
+    const input = form.querySelector(`.input__field[name="${name}"]`);
+    const value =
+      input instanceof HTMLInputElement || input instanceof HTMLSelectElement
+        ? input.value.trim()
+        : "";
+
+    const message = errors[name];
+    const errorNode = group.querySelector(".auth-form__field-error");
+    const inputWrapper = group.querySelector(".input");
+
+    if (!isSubmitAttempted && !value && !message) return;
+
+    if (message) {
+      if (errorNode) {
+        errorNode.textContent = message;
+        errorNode.classList.remove("auth-form__field-error--hidden");
+      }
+
+      if (inputWrapper) {
+        inputWrapper.classList.add("input--error");
+      }
+
+      return;
+    }
+
+    if (value) {
+      if (errorNode) {
+        errorNode.textContent = " ";
+        errorNode.classList.add("auth-form__field-error--hidden");
+      }
+
+      if (inputWrapper) {
+        inputWrapper.classList.remove("input--error");
+      }
     }
   });
 }
 
 /**
- * Renders validation errors for all fields.
+ * Renders validation errors for all visible fields.
  *
  * @param {HTMLFormElement} form
  * @param {Object} errors
@@ -639,6 +838,100 @@ function navigate(path) {
 }
 
 /**
+ * Handles register next step action.
+ *
+ * @param {HTMLFormElement} form
+ * @param {HTMLElement} authForm
+ * @returns {void}
+ */
+async function handleRegisterNext(form, authForm) {
+  syncRegisterDraft(form);
+  registerDraft.submitAttempted = true;
+
+  const values = registerDraft.values;
+  const errors = validateRegisterStep(values, 1, true);
+
+  if (hasErrors(errors)) {
+    syncRegisterFormDataset(form);
+    renderAllFieldErrors(form, errors);
+    return;
+  }
+  clearFormError(form);
+  clearFieldState(form);
+
+  try {
+    const result = await validateRegisterStepOne({
+      login: values.login,
+      password1: values.password,
+      password2: values.repeatPassword,
+    });
+
+    const serverErrors = result?.errors || {};
+
+    if (Object.keys(serverErrors).length > 0) {
+      syncRegisterFormDataset(form);
+      renderServerFieldErrors(form, {
+        login: serverErrors.login || "",
+        password: serverErrors.password1 || "",
+        repeatPassword: serverErrors.password2 || "",
+      });
+      return;
+    }
+  } catch (error) {
+    const serverErrors = error?.data?.errors || {};
+
+    if (Object.keys(serverErrors).length > 0) {
+      syncRegisterFormDataset(form);
+      renderServerFieldErrors(form, {
+        login: serverErrors.login || "",
+        password: serverErrors.password1 || "",
+        repeatPassword: serverErrors.password2 || "",
+      });
+      return;
+    }
+
+    if (error?.status === 409) {
+      syncRegisterFormDataset(form);
+      renderServerFieldErrors(form, {
+        login: error?.data?.error || "Такой логин уже существует",
+      });
+      return;
+    }
+
+    showFormError(form, "Не удалось проверить данные первого шага");
+    return;
+  }
+
+  registerDraft.step = 2;
+  registerDraft.submitAttempted = false;
+
+  const nextForm = rerenderRegisterForm(authForm);
+  if (!nextForm) return;
+
+  const stepErrors = validateRegisterStep(registerDraft.values, 2, false);
+  renderTouchedFieldErrors(nextForm, stepErrors, "register");
+}
+
+/**
+ * Handles register previous step action.
+ *
+ * @param {HTMLFormElement} form
+ * @param {HTMLElement} authForm
+ * @returns {void}
+ */
+function handleRegisterPrev(form, authForm) {
+  syncRegisterDraft(form);
+  registerDraft.step = 1;
+  registerDraft.submitAttempted = false;
+
+  const prevForm = rerenderRegisterForm(authForm);
+  if (!prevForm) return;
+
+  const stepErrors = validateRegisterStep(registerDraft.values, 1, false);
+  renderTouchedFieldErrors(prevForm, stepErrors, "register");
+}
+
+/**
  * Handles auth form submit.
  *
  * @param {SubmitEvent} event
@@ -655,21 +948,21 @@ async function handleSubmit(event) {
   if (!(authForm instanceof HTMLElement)) return;
 
   const mode = authForm.dataset.mode;
-  const values = getFormValues(form);
+  if (mode === "login") {
+    const values = getFormValues(form);
 
-  form.dataset.submitAttempted = "true";
-  const errors = getValidationErrors(mode, values, true);
+    form.dataset.submitAttempted = "true";
+    const errors = getValidationErrors(mode, values, true);
 
-  if (hasErrors(errors)) {
-    renderAllFieldErrors(form, errors);
-    return;
-  }
+    if (hasErrors(errors)) {
+      renderAllFieldErrors(form, errors);
+      return;
+    }
 
-  clearFormError(form);
-  clearFieldState(form);
+    clearFormError(form);
+    clearFieldState(form);
 
-  try {
-    if (mode === "login") {
+    try {
       const user = await loginUser({
         login: values.login,
         password: values.password,
@@ -679,55 +972,94 @@ async function handleSubmit(event) {
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
+        avatarLink: user.avatarLink || "",
       });
 
       closeAuthModal();
       navigate("/feed");
-      return;
-    }
-
-    if (mode === "register") {
-      const profile = await registerUser({
-        firstName: normalizeName(values.firstName),
-        lastName: normalizeName(values.lastName),
-        birthday: values.birthDate,
-        gender: Number(values.gender),
-        login: values.login,
-        password1: values.password,
-        password2: values.repeatPassword,
-      });
-
-      setSessionUser({
-        id: profile.id,
-        firstName: normalizeName(values.firstName),
-        lastName: normalizeName(values.lastName),
-      });
-
-      closeAuthModal();
-      navigate("/feed");
-    }
-  } catch (error) {
-    if (mode === "login") {
+    } catch (error) {
       showFormError(form, "Неверный логин или пароль");
       markFieldsAsError(form, ["login", "password"]);
+      console.error("Auth error:", error);
     }
 
-    if (mode === "register") {
-      const message = String(error?.message || "").toLowerCase();
+    return;
+  }
 
-      if (message.includes("login already registered")) {
-        const group = getFieldGroup(form, "login");
-        const errorNode = group?.querySelector(".auth-form__field-error");
+  syncRegisterDraft(form);
+  registerDraft.submitAttempted = true;
 
-        if (errorNode) {
-          errorNode.textContent = "Такой логин уже существует";
-          errorNode.classList.remove("auth-form__field-error--hidden");
-        }
+  const values = registerDraft.values;
+  const currentStep = getRegisterStep(authForm);
+  const currentStepErrors = validateRegisterStep(values, currentStep, true);
+  const allErrors = validateRegisterForm(values, true);
 
-        markFieldsAsError(form, ["login"]);
-      } else {
-        showFormError(form, "Не удалось зарегистрироваться");
+  if (hasErrors(currentStepErrors)) {
+    syncRegisterFormDataset(form);
+    renderAllFieldErrors(form, currentStepErrors);
+    return;
+  }
+
+  const stepOneHasErrors = getRegisterStepFields(1).some((fieldName) => allErrors[fieldName]);
+  if (stepOneHasErrors) {
+    registerDraft.step = 1;
+    registerDraft.submitAttempted = true;
+
+    const stepOneForm = rerenderRegisterForm(authForm);
+    if (!stepOneForm) return;
+
+    renderAllFieldErrors(stepOneForm, validateRegisterStep(values, 1, true));
+    return;
+  }
+
+  clearFormError(form);
+  clearFieldState(form);
+
+  try {
+    const profile = await registerUser({
+      firstName: normalizeName(values.firstName),
+      lastName: normalizeName(values.lastName),
+      birthday: values.birthDate,
+      gender: Number(values.gender),
+      login: values.login,
+      password1: values.password,
+      password2: values.repeatPassword,
+    });
+
+    setSessionUser({
+      id: profile.id,
+      firstName: normalizeName(values.firstName),
+      lastName: normalizeName(values.lastName),
+      avatarLink: profile.avatarLink || "",
+    });
+
+    resetRegisterDraft();
+    closeAuthModal();
+    navigate("/feed");
+  } catch (error) {
+    const message = String(error?.message || "").toLowerCase();
+
+    if (message.includes("login already exists")) {
+      registerDraft.step = 1;
+      registerDraft.submitAttempted = true;
+
+      const stepOneForm = rerenderRegisterForm(authForm);
+      if (!stepOneForm) return;
+
+      const stepErrors = validateRegisterStep(values, 1, true);
+      renderAllFieldErrors(stepOneForm, stepErrors);
+
+      const group = getFieldGroup(stepOneForm, "login");
+      const errorNode = group?.querySelector(".auth-form__field-error");
+
+      if (errorNode) {
+        errorNode.textContent = "Такой логин уже существует";
+        errorNode.classList.remove("auth-form__field-error--hidden");
       }
+
+      markFieldsAsError(stepOneForm, ["login"]);
+    } else {
+      showFormError(form, "Не удалось зарегистрироваться");
     }
 
     console.error("Auth error:", error);
@@ -742,6 +1074,41 @@ async function handleSubmit(event) {
  */
 export function initAuthForm(root = document) {
   if (root.__authFormBound) return;
+  root.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const nextButton = target.closest("[data-register-next]");
+    if (nextButton) {
+      event.preventDefault();
+
+      const form = nextButton.closest(".auth-form__form");
+      const authForm = nextButton.closest(".auth-form");
+
+      if (!(form instanceof HTMLFormElement) || !(authForm instanceof HTMLElement)) {
+        return;
+      }
+
+      handleRegisterNext(form, authForm).catch((error) => {
+        console.error(error);
+      });
+      return;
+    }
+
+    const prevButton = target.closest("[data-register-prev]");
+    if (prevButton) {
+      event.preventDefault();
+
+      const form = prevButton.closest(".auth-form__form");
+      const authForm = prevButton.closest(".auth-form");
+
+      if (!(form instanceof HTMLFormElement) || !(authForm instanceof HTMLElement)) {
+        return;
+      }
+
+      handleRegisterPrev(form, authForm);
+    }
+  });
 
   root.addEventListener("focusout", (event) => {
     const target = event.target;
@@ -755,14 +1122,29 @@ export function initAuthForm(root = document) {
 
     const authForm = form.closest(".auth-form");
     if (!(authForm instanceof HTMLElement)) return;
+    const mode = authForm.dataset.mode;
+
+    if (mode === "register") {
+      syncRegisterDraft(form);
+      setRegisterTouchedField(target.name);
+      syncRegisterFormDataset(form);
+
+      const values = registerDraft.values;
+      const registerStep = getRegisterStep(authForm);
+      const errors = getValidationErrors(mode, values, registerDraft.submitAttempted, registerStep);
+
+      renderTouchedFieldErrors(form, errors, mode);
+      clearFormError(form);
+      return;
+    }
 
     setTouchedField(form, target.name);
 
     const isSubmitAttempted = form.dataset.submitAttempted === "true";
     const values = getFormValues(form);
-    const errors = getValidationErrors(authForm.dataset.mode, values, isSubmitAttempted);
+    const errors = getValidationErrors(mode, values, isSubmitAttempted);
 
-    renderTouchedFieldErrors(form, errors);
+    renderTouchedFieldErrors(form, errors, mode);
     clearFormError(form);
   });
 
@@ -778,14 +1160,28 @@ export function initAuthForm(root = document) {
 
     const authForm = form.closest(".auth-form");
     if (!(authForm instanceof HTMLElement)) return;
+    const mode = authForm.dataset.mode;
+
+    if (mode === "register") {
+      syncRegisterDraft(form);
+      setRegisterTouchedField(target.name);
+      syncRegisterFormDataset(form);
+
+      const values = registerDraft.values;
+      const registerStep = getRegisterStep(authForm);
+      const errors = getValidationErrors(mode, values, registerDraft.submitAttempted, registerStep);
+
+      renderTouchedFieldErrors(form, errors, mode);
+      return;
+    }
 
     setTouchedField(form, target.name);
 
     const isSubmitAttempted = form.dataset.submitAttempted === "true";
     const values = getFormValues(form);
-    const errors = getValidationErrors(authForm.dataset.mode, values, isSubmitAttempted);
+    const errors = getValidationErrors(mode, values, isSubmitAttempted);
 
-    renderTouchedFieldErrors(form, errors);
+    renderTouchedFieldErrors(form, errors, mode);
   });
 
   root.addEventListener("submit", (event) => {

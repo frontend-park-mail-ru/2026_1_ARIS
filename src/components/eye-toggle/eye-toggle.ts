@@ -1,12 +1,18 @@
+type RenderEyeToggleOptions = {
+  isVisible?: boolean;
+  className?: string;
+};
+
 /**
  * Renders a password visibility toggle button (eye icon).
  *
- * @param {Object} [options={}]
- * @param {boolean} [options.isVisible=false] - Whether the password is currently visible.
- * @param {string} [options.className=""] - Additional CSS classes for the button.
- * @returns {string} HTML string of the eye toggle button.
+ * @param {RenderEyeToggleOptions} [options={}]
+ * @returns {string}
  */
-export function renderEyeToggle({ isVisible = false, className = "" } = {}) {
+export function renderEyeToggle({
+  isVisible = false,
+  className = "",
+}: RenderEyeToggleOptions = {}): string {
   const iconSrc = isVisible
     ? "assets/img/icons/eye-on-thin.svg"
     : "assets/img/icons/eye-off-thin.svg";

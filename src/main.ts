@@ -15,16 +15,20 @@ import "./components/eye-toggle/eye-toggle.scss";
 
 import "./pages/auth/auth-page.scss";
 
-import { createRouter } from "./router/router.js";
-import { renderLogin } from "./pages/login/login.js";
-import { renderRegister } from "./pages/register/register.js";
-import { renderFeed, refreshFeedCenter } from "./pages/feed/feed.js";
-import { renderProfile } from "./pages/profile/profile.js";
-import { initSession } from "./state/session.js";
-import { initHeader } from "./components/header/header.js";
-import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar.js";
+import { createRouter } from "./router/router";
+import { renderLogin } from "./pages/login/login";
+import { renderRegister } from "./pages/register/register";
+import { renderFeed, refreshFeedCenter } from "./pages/feed/feed";
+import { renderProfile } from "./pages/profile/profile";
+import { initSession } from "./state/session";
+import { initHeader } from "./components/header/header";
+import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar";
 
 const root = document.getElementById("app");
+
+if (!(root instanceof HTMLElement)) {
+  throw new Error('Root element "#app" not found');
+}
 
 const router = createRouter(root, [
   { path: "/", title: "ARISNET — Feed", render: renderFeed },
@@ -35,15 +39,14 @@ const router = createRouter(root, [
   { path: "/profile/:id", title: "ARISNET — Profile", render: renderProfile },
 ]);
 
-initSession().then(() => {
-  router.render();
+void initSession().then(() => {
+  void router.render();
   initHeader();
   initSidebar();
 });
 
 /**
  * Handles global session state changes by refreshing UI fragments.
- * @returns {void}
  */
 window.addEventListener("sessionchange", async () => {
   try {

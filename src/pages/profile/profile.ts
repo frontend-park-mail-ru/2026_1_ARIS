@@ -1,15 +1,20 @@
-import { getSessionUser } from "../../state/session.js";
+import { getSessionUser } from "../../state/session";
+
+type ProfileParams = {
+  id?: string;
+};
 
 /**
  * Renders profile page.
- * @param {Object} [params={}]
- * @param {string} [params.id]
+ *
+ * @param {ProfileParams} [params={}]
  * @returns {string}
  */
-export function renderProfile(params = {}) {
+export function renderProfile(params: ProfileParams = {}): string {
   const user = getSessionUser();
-  const profileId = params.id || user?.id || "";
-  const isOwnProfile = Boolean(user?.id) && profileId === user.id;
+
+  const profileId = params.id ?? user?.id ?? "";
+  const isOwnProfile = Boolean(user?.id) && profileId === user?.id;
 
   const title = isOwnProfile ? "Мой профиль" : "Профиль пользователя";
   const subtitle = profileId ? `ID профиля: ${profileId}` : "Профиль не найден";

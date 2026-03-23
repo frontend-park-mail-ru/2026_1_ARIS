@@ -1,14 +1,37 @@
-import { getSessionUser } from "../../state/session.js";
+import { getSessionUser } from "../../state/session";
+
+type PostcardPost = {
+  id?: string;
+  author?: string;
+  authorId?: string;
+  firstName?: string;
+  lastName?: string;
+  avatar: string;
+  text: string;
+  time: string;
+  likes: number;
+  comments: number;
+  reposts: number;
+  images?: string[];
+};
+
+type PostcardStatOptions = {
+  icon: string;
+  count: number;
+  action: string;
+};
+
+type PostcardRoot = (Document | HTMLElement) & {
+  __postcardExpandBound?: boolean;
+};
 
 /**
  * Renders a postcard footer item.
- * @param {Object} options
- * @param {string} options.icon
- * @param {number} options.count
- * @param {string} options.action
+ *
+ * @param {PostcardStatOptions} options
  * @returns {string}
  */
-function renderPostcardStat({ icon, count, action }) {
+function renderPostcardStat({ icon, count, action }: PostcardStatOptions): string {
   const isAuthorised = getSessionUser() !== null;
 
   if (isAuthorised) {
@@ -39,11 +62,12 @@ function renderPostcardStat({ icon, count, action }) {
 
 /**
  * Renders postcard media block.
+ *
  * @param {string[]} images
  * @returns {string}
  */
-function renderPostcardMedia(images = []) {
-  if (!images || images.length === 0) {
+function renderPostcardMedia(images: string[] = []): string {
+  if (images.length === 0) {
     return "";
   }
 
@@ -51,7 +75,7 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--single">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0] ?? "")}" alt="">
         </div>
       </div>
     `;
@@ -61,8 +85,8 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--double">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0] ?? "")}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1] ?? "")}" alt="">
         </div>
       </div>
     `;
@@ -72,9 +96,9 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--triple">
-          <img class="postcard__media-item postcard__media-item--featured" src="/image-proxy?url=${encodeURIComponent(images[0])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2])}" alt="">
+          <img class="postcard__media-item postcard__media-item--featured" src="/image-proxy?url=${encodeURIComponent(images[0] ?? "")}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1] ?? "")}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2] ?? "")}" alt="">
         </div>
       </div>
     `;
@@ -100,14 +124,14 @@ function renderPostcardMedia(images = []) {
     return `
       <div class="postcard__media postcard__media--five">
         <div class="postcard__media-row postcard__media-row--top">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0] ?? "")}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1] ?? "")}" alt="">
         </div>
 
         <div class="postcard__media-row postcard__media-row--bottom">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[3])}" alt="">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[4])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2] ?? "")}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[3] ?? "")}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[4] ?? "")}" alt="">
         </div>
       </div>
     `;
@@ -116,16 +140,16 @@ function renderPostcardMedia(images = []) {
   return `
     <div class="postcard__media postcard__media--five-plus">
       <div class="postcard__media-row postcard__media-row--top">
-        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0])}" alt="">
-        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1])}" alt="">
-        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2])}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[0] ?? "")}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[1] ?? "")}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[2] ?? "")}" alt="">
       </div>
 
       <div class="postcard__media-row postcard__media-row--bottom">
-        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[3])}" alt="">
-        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[4])}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[3] ?? "")}" alt="">
+        <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[4] ?? "")}" alt="">
         <div class="postcard__media-overlay">
-          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[5])}" alt="">
+          <img class="postcard__media-item" src="/image-proxy?url=${encodeURIComponent(images[5] ?? "")}" alt="">
           <span class="postcard__media-overlay-count">+${images.length - 5}</span>
         </div>
       </div>
@@ -135,21 +159,11 @@ function renderPostcardMedia(images = []) {
 
 /**
  * Renders a postcard.
- * @param {Object} post
- * @param {string} post.author
- * @param {string} [post.authorId]
- * @param {string} post.firstName
- * @param {string} post.lastName
- * @param {string} post.avatar
- * @param {string} post.text
- * @param {string} post.time
- * @param {number} post.likes
- * @param {number} post.comments
- * @param {number} post.reposts
- * @param {string[]} [post.images]
+ *
+ * @param {PostcardPost} post
  * @returns {string}
  */
-export function renderPostcard(post) {
+export function renderPostcard(post: PostcardPost): string {
   const sessionUser = getSessionUser();
   const displayName =
     `${post.firstName || ""} ${post.lastName || ""}`.trim() || post.author || "Пользователь";
@@ -176,7 +190,7 @@ export function renderPostcard(post) {
         <button type="button" class="postcard__expand">читать полностью</button>
       </div>
 
-      ${renderPostcardMedia(post.images)}
+      ${renderPostcardMedia(post.images || [])}
 
       <footer class="postcard__footer">
         <div class="postcard__stats">
@@ -205,10 +219,11 @@ export function renderPostcard(post) {
 
 /**
  * Initializes postcard expand behavior.
+ *
  * @param {Document|HTMLElement} [root=document]
  * @returns {void}
  */
-export function initPostcardExpand(root = document) {
+export function initPostcardExpand(root: Document | HTMLElement = document): void {
   requestAnimationFrame(() => {
     const containers = root.querySelectorAll(".postcard__text-container");
 
@@ -216,7 +231,7 @@ export function initPostcardExpand(root = document) {
       const text = container.querySelector(".postcard__text");
       const button = container.querySelector(".postcard__expand");
 
-      if (!text || !button) return;
+      if (!(text instanceof HTMLElement) || !(button instanceof HTMLElement)) return;
 
       const isOverflowing = text.scrollHeight > text.clientHeight + 1;
 
@@ -226,18 +241,25 @@ export function initPostcardExpand(root = document) {
     });
   });
 
-  if (root.__postcardExpandBound) return;
+  const bindableRoot = root as PostcardRoot;
+  if (bindableRoot.__postcardExpandBound) return;
 
-  root.addEventListener("click", (event) => {
-    const button = event.target.closest(".postcard__expand");
+  root.addEventListener("click", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const button = target.closest(".postcard__expand");
     if (!button) return;
 
     const container = button.closest(".postcard__text-container");
+    if (!(container instanceof HTMLElement)) return;
+
     const text = container.querySelector(".postcard__text");
+    if (!(text instanceof HTMLElement)) return;
 
     text.classList.remove("postcard__text--collapsed");
     button.remove();
   });
 
-  root.__postcardExpandBound = true;
+  bindableRoot.__postcardExpandBound = true;
 }

@@ -3,7 +3,7 @@
  * @param {string} digits
  * @returns {string}
  */
-function formatDateDigits(digits) {
+function formatDateDigits(digits: string): string {
   const clean = digits.replace(/\D/g, "").slice(0, 8);
 
   if (clean.length <= 2) {
@@ -19,21 +19,16 @@ function formatDateDigits(digits) {
 
 /**
  * Applies date mask formatting to an input element.
- * @param {HTMLInputElement} input
- * @returns {void}
  */
-function handleDateMaskInput(input) {
+function handleDateMaskInput(input: HTMLInputElement): void {
   const digitsOnly = input.value.replace(/\D/g, "").slice(0, 8);
   input.value = formatDateDigits(digitsOnly);
 }
 
 /**
  * Restricts key input for a date-masked field.
- * @param {KeyboardEvent} event
- * @param {HTMLInputElement} input
- * @returns {void}
  */
-function handleDateMaskKeyDown(event, input) {
+function handleDateMaskKeyDown(event: KeyboardEvent, input: HTMLInputElement): void {
   const allowedKeys = [
     "Backspace",
     "Delete",
@@ -65,11 +60,8 @@ function handleDateMaskKeyDown(event, input) {
 
 /**
  * Handles paste action for a date-masked input.
- * @param {ClipboardEvent} event
- * @param {HTMLInputElement} input
- * @returns {void}
  */
-function handleDateMaskPaste(event, input) {
+function handleDateMaskPaste(event: ClipboardEvent, input: HTMLInputElement): void {
   event.preventDefault();
 
   const pastedText = event.clipboardData?.getData("text") ?? "";
@@ -81,23 +73,26 @@ function handleDateMaskPaste(event, input) {
   input.value = formatDateDigits(nextDigits);
 }
 
+type MaskRoot = (Document | HTMLElement) & {
+  __inputMasksBound?: boolean;
+};
+
 /**
  * Initializes input masks inside the given root.
- * @param {Document|HTMLElement} [root=document]
- * @returns {void}
  */
-export function initInputMasks(root = document) {
-  if (root.__inputMasksBound) return;
+export function initInputMasks(root: Document | HTMLElement = document): void {
+  const bindableRoot = root as MaskRoot;
+  if (bindableRoot.__inputMasksBound) return;
 
-  root.addEventListener("keydown", (event) => {
+  root.addEventListener("keydown", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     if (target.dataset.mask !== "date") return;
 
-    handleDateMaskKeyDown(event, target);
+    handleDateMaskKeyDown(event as KeyboardEvent, target);
   });
 
-  root.addEventListener("input", (event) => {
+  root.addEventListener("input", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     if (target.dataset.mask !== "date") return;
@@ -105,13 +100,13 @@ export function initInputMasks(root = document) {
     handleDateMaskInput(target);
   });
 
-  root.addEventListener("paste", (event) => {
+  root.addEventListener("paste", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     if (target.dataset.mask !== "date") return;
 
-    handleDateMaskPaste(event, target);
+    handleDateMaskPaste(event as ClipboardEvent, target);
   });
 
-  root.__inputMasksBound = true;
+  bindableRoot.__inputMasksBound = true;
 }

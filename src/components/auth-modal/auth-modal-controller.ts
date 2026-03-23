@@ -1,19 +1,27 @@
-import { renderAuthModal } from "./auth-modal.js";
-import { registerDraft } from "../../state/register-draft.js";
+import { renderAuthModal } from "./auth-modal";
+import { registerDraft } from "../../state/register-draft";
+
+type AuthMode = "login" | "register";
+
+type BindableRoot = (Document | HTMLElement) & {
+  __authModalBound?: boolean;
+};
 
 let isPointerDownOutsidePanel = false;
+
 /**
  * Traps focus inside the auth modal when navigating with the Tab key.
+ *
  * @param {KeyboardEvent} event
  * @returns {void}
  */
-function trapFocusInModal(event) {
+function trapFocusInModal(event: KeyboardEvent): void {
   if (event.key !== "Tab") return;
 
   const modal = document.querySelector("[data-auth-modal]");
-  if (!modal) return;
+  if (!(modal instanceof HTMLElement)) return;
 
-  const focusableElements = modal.querySelectorAll(
+  const focusableElements = modal.querySelectorAll<HTMLElement>(
     'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
   );
 
@@ -22,6 +30,8 @@ function trapFocusInModal(event) {
   const firstElement = focusableElements[0];
   const lastElement = focusableElements[focusableElements.length - 1];
   const activeElement = document.activeElement;
+
+  if (!firstElement || !lastElement) return;
 
   if (event.shiftKey) {
     if (activeElement === firstElement) {
@@ -39,9 +49,10 @@ function trapFocusInModal(event) {
 
 /**
  * Returns the modal root element, creating it if necessary.
+ *
  * @returns {HTMLElement}
  */
-function getModalRoot() {
+function getModalRoot(): HTMLElement {
   let modalRoot = document.getElementById("modal-root");
 
   if (!modalRoot) {
@@ -54,20 +65,16 @@ function getModalRoot() {
 }
 
 /**
- * Opens the auth modal in the specified mode.
- * @param {"login"|"register"} [mode="login"]
+ * Focuses the first available focusable element inside the modal.
+ *
+ * @param {HTMLElement} modalRoot
  * @returns {void}
  */
-export function openAuthModal(mode = "login") {
-  const modalRoot = getModalRoot();
-  modalRoot.innerHTML = renderAuthModal({
-    mode,
-    registerDraft,
-  });
-  document.body.classList.add("modal-open");
-
+function focusFirstModalElement(modalRoot: HTMLElement): void {
   const modal = modalRoot.querySelector("[data-auth-modal]");
-  const firstFocusable = modal?.querySelector(
+  if (!(modal instanceof HTMLElement)) return;
+
+  const firstFocusable = modal.querySelector(
     'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
   );
 
@@ -77,10 +84,29 @@ export function openAuthModal(mode = "login") {
 }
 
 /**
- * Closes the auth modal.
+ * Opens the auth modal in the specified mode.
+ *
+ * @param {"login"|"register"} [mode="login"]
  * @returns {void}
  */
-export function closeAuthModal() {
+export function openAuthModal(mode: AuthMode = "login"): void {
+  const modalRoot = getModalRoot();
+
+  modalRoot.innerHTML = renderAuthModal({
+    mode,
+    registerDraft,
+  });
+
+  document.body.classList.add("modal-open");
+  focusFirstModalElement(modalRoot);
+}
+
+/**
+ * Closes the auth modal.
+ *
+ * @returns {void}
+ */
+export function closeAuthModal(): void {
   const modalRoot = getModalRoot();
   modalRoot.innerHTML = "";
   document.body.classList.remove("modal-open");
@@ -88,35 +114,32 @@ export function closeAuthModal() {
 
 /**
  * Switches the auth modal content to the specified mode.
+ *
  * @param {"login"|"register"} mode
  * @returns {void}
  */
-function switchAuthModalMode(mode) {
+function switchAuthModalMode(mode: AuthMode): void {
   const modalRoot = getModalRoot();
+
   modalRoot.innerHTML = renderAuthModal({
     mode,
     registerDraft,
   });
 
-  const modal = modalRoot.querySelector("[data-auth-modal]");
-  const firstFocusable = modal?.querySelector(
-    'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
-  );
-
-  if (firstFocusable instanceof HTMLElement) {
-    firstFocusable.focus();
-  }
+  focusFirstModalElement(modalRoot);
 }
 
 /**
  * Initializes auth modal event handlers.
+ *
  * @param {Document|HTMLElement} [root=document]
  * @returns {void}
  */
-export function initAuthModal(root = document) {
-  if (root.__authModalBound) return;
+export function initAuthModal(root: Document | HTMLElement = document): void {
+  const bindableRoot = root as BindableRoot;
+  if (bindableRoot.__authModalBound) return;
 
-  root.addEventListener("mousedown", (event) => {
+  root.addEventListener("mousedown", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
@@ -126,15 +149,15 @@ export function initAuthModal(root = document) {
     isPointerDownOutsidePanel = Boolean(modal && !panel);
   });
 
-  root.addEventListener("click", (event) => {
+  root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
     const openButton = target.closest("[data-open-auth-modal]");
     if (openButton) {
       event.preventDefault();
-      const mode = openButton.getAttribute("data-open-auth-modal") || "login";
-      openAuthModal(mode);
+      const mode = openButton.getAttribute("data-open-auth-modal");
+      openAuthModal(mode === "register" ? "register" : "login");
       return;
     }
 
@@ -142,11 +165,13 @@ export function initAuthModal(root = document) {
     if (switchButton) {
       event.preventDefault();
       const mode = switchButton.getAttribute("data-switch-auth-mode");
+
       if (mode === "login" || mode === "register") {
         switchAuthModalMode(mode);
       }
       return;
     }
+
     const modal = target.closest("[data-auth-modal]");
     const panel = target.closest(".auth-modal__panel");
 
@@ -158,6 +183,7 @@ export function initAuthModal(root = document) {
     }
 
     isPointerDownOutsidePanel = false;
+
     const closeButton = target.closest("[data-auth-modal-close]");
     if (closeButton) {
       event.preventDefault();
@@ -165,7 +191,7 @@ export function initAuthModal(root = document) {
     }
   });
 
-  document.addEventListener("keydown", (event) => {
+  document.addEventListener("keydown", (event: KeyboardEvent) => {
     if (event.key === "Escape") {
       closeAuthModal();
       return;
@@ -174,5 +200,5 @@ export function initAuthModal(root = document) {
     trapFocusInModal(event);
   });
 
-  root.__authModalBound = true;
+  bindableRoot.__authModalBound = true;
 }

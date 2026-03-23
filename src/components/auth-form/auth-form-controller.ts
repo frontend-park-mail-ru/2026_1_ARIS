@@ -1,8 +1,20 @@
-import { loginUser, registerUser, validateRegisterStepOne } from "../../api/auth.js";
-import { setSessionUser } from "../../state/session.js";
-import { closeAuthModal } from "../auth-modal/auth-modal-controller.js";
-import { renderAuthForm } from "./auth-form.js";
-import { registerDraft, resetRegisterDraft } from "../../state/register-draft.js";
+import {
+  ApiError,
+  loginUser,
+  registerUser,
+  validateRegisterStepOne,
+} from "../../api/auth";
+import { setSessionUser } from "../../state/session";
+import { closeAuthModal } from "../auth-modal/auth-modal-controller";
+import { renderAuthForm } from "./auth-form";
+import {
+  registerDraft,
+  resetRegisterDraft,
+  type RegisterStep,
+  type RegisterValues,
+} from "../../state/register-draft";
+
+type AuthMode = "login" | "register";
 
 const FIELD_ORDER = [
   "firstName",
@@ -12,16 +24,37 @@ const FIELD_ORDER = [
   "login",
   "password",
   "repeatPassword",
-];
+] as const;
+
+type ValidationErrors = Record<FieldName, string>;
+
+type ServerFieldErrors = Partial<Record<"login" | "password1" | "password2", string>>;
+
+type FieldName = (typeof FIELD_ORDER)[number];
+
+const REGISTER_STEP_FIELDS: Record<RegisterStep, readonly FieldName[]> = {
+  1: ["login", "password", "repeatPassword"],
+  2: ["firstName", "lastName", "gender", "birthDate"],
+};
+
+const EMPTY_VALIDATION_ERRORS: ValidationErrors = {
+  firstName: "",
+  lastName: "",
+  gender: "",
+  birthDate: "",
+  login: "",
+  password: "",
+  repeatPassword: "",
+};
 
 /**
  * Extracts and normalizes auth form values.
  *
  * @param {HTMLFormElement} form
- * @returns {Object}
+ * @returns {Partial<RegisterValues>}
  */
-function getFormValues(form) {
-  const result = {};
+function getFormValues(form: HTMLFormElement): Partial<RegisterValues> {
+  const result: Partial<RegisterValues> = {};
 
   FIELD_ORDER.forEach((name) => {
     const field = form.querySelector(`.input__field[name="${name}"]`);
@@ -34,18 +67,13 @@ function getFormValues(form) {
   return result;
 }
 
-const REGISTER_STEP_FIELDS = {
-  1: ["login", "password", "repeatPassword"],
-  2: ["firstName", "lastName", "gender", "birthDate"],
-};
-
 /**
  * Returns current register step from auth form dataset.
  *
  * @param {HTMLElement} authForm
- * @returns {number}
+ * @returns {RegisterStep}
  */
-function getRegisterStep(authForm) {
+function getRegisterStep(authForm: HTMLElement): RegisterStep {
   const step = Number(authForm.dataset.registerStep || "1");
   return step === 2 ? 2 : 1;
 }
@@ -53,20 +81,20 @@ function getRegisterStep(authForm) {
 /**
  * Returns register fields visible on the specified step.
  *
- * @param {number} step
- * @returns {string[]}
+ * @param {RegisterStep} step
+ * @returns {FieldName[]}
  */
-function getRegisterStepFields(step) {
-  return REGISTER_STEP_FIELDS[step] || REGISTER_STEP_FIELDS[1];
+function getRegisterStepFields(step: RegisterStep): readonly FieldName[] {
+  return REGISTER_STEP_FIELDS[step];
 }
 
 /**
  * Returns merged register values from draft and current form.
  *
  * @param {HTMLFormElement} form
- * @returns {Object}
+ * @returns {RegisterValues}
  */
-function getRegisterValues(form) {
+function getRegisterValues(form: HTMLFormElement): RegisterValues {
   return {
     ...registerDraft.values,
     ...getFormValues(form),
@@ -79,7 +107,7 @@ function getRegisterValues(form) {
  * @param {HTMLFormElement} form
  * @returns {void}
  */
-function syncRegisterDraft(form) {
+function syncRegisterDraft(form: HTMLFormElement): void {
   registerDraft.values = getRegisterValues(form);
 }
 
@@ -89,9 +117,9 @@ function syncRegisterDraft(form) {
  * @param {HTMLFormElement} form
  * @returns {string[]}
  */
-function getTouchedFields(form) {
+function getTouchedFields(form: HTMLFormElement): string[] {
   try {
-    return JSON.parse(form.dataset.touchedFields || "[]");
+    return JSON.parse(form.dataset.touchedFields || "[]") as string[];
   } catch {
     return [];
   }
@@ -104,7 +132,7 @@ function getTouchedFields(form) {
  * @param {string} fieldName
  * @returns {void}
  */
-function setTouchedField(form, fieldName) {
+function setTouchedField(form: HTMLFormElement, fieldName: string): void {
   const touched = new Set(getTouchedFields(form));
   touched.add(fieldName);
   form.dataset.touchedFields = JSON.stringify([...touched]);
@@ -116,7 +144,7 @@ function setTouchedField(form, fieldName) {
  * @param {string} fieldName
  * @returns {void}
  */
-function setRegisterTouchedField(fieldName) {
+function setRegisterTouchedField(fieldName: string): void {
   const touched = new Set(registerDraft.touchedFields);
   touched.add(fieldName);
   registerDraft.touchedFields = [...touched];
@@ -128,7 +156,7 @@ function setRegisterTouchedField(fieldName) {
  * @param {HTMLFormElement} form
  * @returns {void}
  */
-function syncRegisterFormDataset(form) {
+function syncRegisterFormDataset(form: HTMLFormElement): void {
   form.dataset.touchedFields = JSON.stringify(registerDraft.touchedFields);
   form.dataset.submitAttempted = registerDraft.submitAttempted ? "true" : "false";
 }
@@ -139,7 +167,7 @@ function syncRegisterFormDataset(form) {
  * @param {HTMLElement} authForm
  * @returns {"modal"|"page"}
  */
-function getAuthFormContext(authForm) {
+function getAuthFormContext(authForm: HTMLElement): "modal" | "page" {
   return authForm.closest(".auth-modal") ? "modal" : "page";
 }
 
@@ -149,7 +177,7 @@ function getAuthFormContext(authForm) {
  * @param {HTMLElement} authForm
  * @returns {HTMLFormElement|null}
  */
-function rerenderRegisterForm(authForm) {
+function rerenderRegisterForm(authForm: HTMLElement): HTMLFormElement | null {
   const context = getAuthFormContext(authForm);
   const template = document.createElement("template");
 
@@ -190,7 +218,7 @@ function rerenderRegisterForm(authForm) {
  * @param {number} year
  * @returns {boolean}
  */
-function isLeapYear(year) {
+function isLeapYear(year: number): boolean {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
@@ -201,9 +229,9 @@ function isLeapYear(year) {
  * @param {number} year
  * @returns {number}
  */
-function getDaysInMonth(month, year) {
+function getDaysInMonth(month: number, year: number): number {
   const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return days[month - 1];
+  return days[month - 1] ?? 31;
 }
 
 /**
@@ -212,7 +240,7 @@ function getDaysInMonth(month, year) {
  * @param {string} value
  * @returns {string}
  */
-function normalizeName(value) {
+function normalizeName(value: string): string {
   if (!value) return value;
 
   const lower = value.toLowerCase();
@@ -223,9 +251,9 @@ function normalizeName(value) {
  * Detects alphabet used in a string.
  *
  * @param {string} value
- * @returns {("latin"|"cyrillic"|null)}
+ * @returns {"latin"|"cyrillic"|null}
  */
-function detectAlphabet(value) {
+function detectAlphabet(value: string): "latin" | "cyrillic" | null {
   if (/^[A-Za-z-]+$/.test(value)) {
     return "latin";
   }
@@ -245,7 +273,7 @@ function detectAlphabet(value) {
  * @param {boolean} [isSubmitAttempted=false]
  * @returns {string}
  */
-function validateName(value, label, isSubmitAttempted = false) {
+function validateName(value: string, label: string, isSubmitAttempted = false): string {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
   }
@@ -279,7 +307,7 @@ function validateName(value, label, isSubmitAttempted = false) {
  * @param {string} lastName
  * @returns {string}
  */
-function validateAlphabetConsistency(firstName, lastName) {
+function validateAlphabetConsistency(firstName: string, lastName: string): string {
   if (!firstName || !lastName) {
     return "";
   }
@@ -305,7 +333,7 @@ function validateAlphabetConsistency(firstName, lastName) {
  * @param {boolean} [isSubmitAttempted=false]
  * @returns {string}
  */
-function validateBirthDate(value, isSubmitAttempted = false) {
+function validateBirthDate(value: string, isSubmitAttempted = false): string {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
   }
@@ -346,7 +374,7 @@ function validateBirthDate(value, isSubmitAttempted = false) {
     const day = Number(dayString);
     const month = Number(monthString);
 
-    const maxDaysWithoutYear = {
+    const maxDaysWithoutYear: Record<number, number> = {
       1: 31,
       2: 29,
       3: 31,
@@ -363,7 +391,7 @@ function validateBirthDate(value, isSubmitAttempted = false) {
 
     const maxDay = maxDaysWithoutYear[month];
 
-    if (month >= 1 && month <= 12 && day > maxDay) {
+    if (month >= 1 && month <= 12 && maxDay && day > maxDay) {
       if (month === 2) {
         return "В феврале максимум 29 дней";
       }
@@ -436,7 +464,7 @@ function validateBirthDate(value, isSubmitAttempted = false) {
  * @param {boolean} [isSubmitAttempted=false]
  * @returns {string}
  */
-function validateGender(value, isSubmitAttempted = false) {
+function validateGender(value: string, isSubmitAttempted = false): string {
   if (!value) {
     return isSubmitAttempted ? "Выберите пол" : "";
   }
@@ -445,13 +473,13 @@ function validateGender(value, isSubmitAttempted = false) {
 }
 
 /**
- * Validates login field
+ * Validates login field.
  *
  * @param {string} value
  * @param {boolean} [isSubmitAttempted=false]
  * @returns {string}
  */
-function validateLogin(value, isSubmitAttempted = false) {
+function validateLogin(value: string, isSubmitAttempted = false): string {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
   }
@@ -482,7 +510,7 @@ function validateLogin(value, isSubmitAttempted = false) {
  * @param {boolean} [isSubmitAttempted=false]
  * @returns {string}
  */
-function validatePassword(value, isSubmitAttempted = false) {
+function validatePassword(value: string, isSubmitAttempted = false): string {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
   }
@@ -506,7 +534,11 @@ function validatePassword(value, isSubmitAttempted = false) {
  * @param {boolean} [isSubmitAttempted=false]
  * @returns {string}
  */
-function validateRepeatPassword(password, repeatPassword, isSubmitAttempted = false) {
+function validateRepeatPassword(
+  password: string,
+  repeatPassword: string,
+  isSubmitAttempted = false,
+): string {
   if (!repeatPassword) {
     return isSubmitAttempted ? "Обязательное поле" : "";
   }
@@ -521,12 +553,13 @@ function validateRepeatPassword(password, repeatPassword, isSubmitAttempted = fa
 /**
  * Validates register form values.
  *
- * @param {Object} values
+ * @param {RegisterValues} values
  * @param {boolean} [isSubmitAttempted=false]
- * @returns {Object}
+ * @returns {ValidationErrors}
  */
-function validateRegisterForm(values, isSubmitAttempted = false) {
-  const errors = {
+function validateRegisterForm(values: RegisterValues, isSubmitAttempted = false): ValidationErrors {
+  const errors: ValidationErrors = {
+    ...EMPTY_VALIDATION_ERRORS,
     firstName: validateName(values.firstName, "Имя", isSubmitAttempted),
     lastName: validateName(values.lastName, "Фамилия", isSubmitAttempted),
     gender: validateGender(values.gender, isSubmitAttempted),
@@ -552,30 +585,40 @@ function validateRegisterForm(values, isSubmitAttempted = false) {
 /**
  * Returns validation errors only for current register step.
  *
- * @param {Object} values
- * @param {number} step
+ * @param {RegisterValues} values
+ * @param {RegisterStep} step
  * @param {boolean} [isSubmitAttempted=false]
- * @returns {Object}
+ * @returns {ValidationErrors}
  */
-function validateRegisterStep(values, step, isSubmitAttempted = false) {
+function validateRegisterStep(
+  values: RegisterValues,
+  step: RegisterStep,
+  isSubmitAttempted = false,
+): ValidationErrors {
   const stepFields = getRegisterStepFields(step);
   const allErrors = validateRegisterForm(values, isSubmitAttempted);
+  const stepErrors: ValidationErrors = { ...EMPTY_VALIDATION_ERRORS };
 
-  return stepFields.reduce((acc, fieldName) => {
-    acc[fieldName] = allErrors[fieldName];
-    return acc;
-  }, {});
+  stepFields.forEach((fieldName) => {
+    stepErrors[fieldName] = allErrors[fieldName];
+  });
+
+  return stepErrors;
 }
 
 /**
  * Validates login form values.
  *
- * @param {Object} values
+ * @param {Partial<RegisterValues>} values
  * @param {boolean} [isSubmitAttempted=false]
- * @returns {Object}
+ * @returns {ValidationErrors}
  */
-function validateLoginForm(values, isSubmitAttempted = false) {
+function validateLoginForm(
+  values: Partial<RegisterValues>,
+  isSubmitAttempted = false,
+): ValidationErrors {
   return {
+    ...EMPTY_VALIDATION_ERRORS,
     login: values.login ? "" : isSubmitAttempted ? "Обязательное поле" : "",
     password: values.password ? "" : isSubmitAttempted ? "Обязательное поле" : "",
   };
@@ -585,14 +628,19 @@ function validateLoginForm(values, isSubmitAttempted = false) {
  * Returns validation errors for current auth mode.
  *
  * @param {"login"|"register"} mode
- * @param {Object} values
+ * @param {RegisterValues | Partial<RegisterValues>} values
  * @param {boolean} [isSubmitAttempted=false]
- * @param {number} [registerStep=1]
- * @returns {Object}
+ * @param {RegisterStep} [registerStep=1]
+ * @returns {ValidationErrors}
  */
-function getValidationErrors(mode, values, isSubmitAttempted = false, registerStep = 1) {
+function getValidationErrors(
+  mode: AuthMode,
+  values: RegisterValues | Partial<RegisterValues>,
+  isSubmitAttempted = false,
+  registerStep: RegisterStep = 1,
+): ValidationErrors {
   if (mode === "register") {
-    return validateRegisterStep(values, registerStep, isSubmitAttempted);
+    return validateRegisterStep(values as RegisterValues, registerStep, isSubmitAttempted);
   }
 
   return validateLoginForm(values, isSubmitAttempted);
@@ -605,7 +653,7 @@ function getValidationErrors(mode, values, isSubmitAttempted = false, registerSt
  * @param {string} name
  * @returns {Element|null}
  */
-function getFieldGroup(form, name) {
+function getFieldGroup(form: HTMLFormElement, name: string): Element | null {
   const field = form.querySelector(`.input__field[name="${name}"]`);
 
   if (!(field instanceof HTMLElement)) {
@@ -621,7 +669,7 @@ function getFieldGroup(form, name) {
  * @param {HTMLFormElement} form
  * @returns {void}
  */
-function clearFieldState(form) {
+function clearFieldState(form: HTMLFormElement): void {
   FIELD_ORDER.forEach((name) => {
     const group = getFieldGroup(form, name);
     if (!group) return;
@@ -646,7 +694,7 @@ function clearFieldState(form) {
  * @param {HTMLFormElement} form
  * @returns {void}
  */
-function clearFormError(form) {
+function clearFormError(form: HTMLFormElement): void {
   const errorNode = form.querySelector(".auth-form__error");
   if (!errorNode) return;
 
@@ -661,11 +709,11 @@ function clearFormError(form) {
  * @param {string} message
  * @returns {void}
  */
-function showFormError(form, message) {
+function showFormError(form: HTMLFormElement, message: string): void {
   const errorNode = form.querySelector(".auth-form__error");
   if (!errorNode) return;
 
-  errorNode.textContent = message;
+  errorNode.textContent = message ?? "";
   errorNode.classList.remove("auth-form__error--hidden");
 }
 
@@ -676,7 +724,7 @@ function showFormError(form, message) {
  * @param {string[]} fieldNames
  * @returns {void}
  */
-function markFieldsAsError(form, fieldNames) {
+function markFieldsAsError(form: HTMLFormElement, fieldNames: string[]): void {
   fieldNames.forEach((name) => {
     const group = getFieldGroup(form, name);
     if (!group) return;
@@ -692,10 +740,13 @@ function markFieldsAsError(form, fieldNames) {
  * Renders server-side field errors for visible fields.
  *
  * @param {HTMLFormElement} form
- * @param {Object} errorsByField
+ * @param {Partial<Record<FieldName, string>>} errorsByField
  * @returns {void}
  */
-function renderServerFieldErrors(form, errorsByField) {
+function renderServerFieldErrors(
+  form: HTMLFormElement,
+  errorsByField: Partial<Record<FieldName, string>>,
+): void {
   clearFieldState(form);
 
   Object.entries(errorsByField).forEach(([name, message]) => {
@@ -708,7 +759,7 @@ function renderServerFieldErrors(form, errorsByField) {
     const inputWrapper = group.querySelector(".input");
 
     if (errorNode) {
-      errorNode.textContent = message;
+      errorNode.textContent = message ?? "";
       errorNode.classList.remove("auth-form__field-error--hidden");
     }
 
@@ -717,6 +768,7 @@ function renderServerFieldErrors(form, errorsByField) {
     }
   });
 }
+
 /**
  * Returns touched fields for current mode.
  *
@@ -724,7 +776,7 @@ function renderServerFieldErrors(form, errorsByField) {
  * @param {"login"|"register"} mode
  * @returns {string[]}
  */
-function getActiveTouchedFields(form, mode) {
+function getActiveTouchedFields(form: HTMLFormElement, mode: AuthMode): string[] {
   return mode === "register" ? registerDraft.touchedFields : getTouchedFields(form);
 }
 
@@ -732,11 +784,15 @@ function getActiveTouchedFields(form, mode) {
  * Renders validation errors only for touched fields.
  *
  * @param {HTMLFormElement} form
- * @param {Object} errors
+ * @param {ValidationErrors} errors
  * @param {"login"|"register"} mode
  * @returns {void}
  */
-function renderTouchedFieldErrors(form, errors, mode) {
+function renderTouchedFieldErrors(
+  form: HTMLFormElement,
+  errors: ValidationErrors,
+  mode: AuthMode,
+): void {
   clearFieldState(form);
 
   const touchedFields = getActiveTouchedFields(form, mode);
@@ -753,7 +809,7 @@ function renderTouchedFieldErrors(form, errors, mode) {
         ? input.value.trim()
         : "";
 
-    const message = errors[name];
+    const message = errors[name as FieldName];
     const errorNode = group.querySelector(".auth-form__field-error");
     const inputWrapper = group.querySelector(".input");
 
@@ -761,7 +817,7 @@ function renderTouchedFieldErrors(form, errors, mode) {
 
     if (message) {
       if (errorNode) {
-        errorNode.textContent = message;
+        errorNode.textContent = message ?? "";
         errorNode.classList.remove("auth-form__field-error--hidden");
       }
 
@@ -789,10 +845,10 @@ function renderTouchedFieldErrors(form, errors, mode) {
  * Renders validation errors for all visible fields.
  *
  * @param {HTMLFormElement} form
- * @param {Object} errors
+ * @param {ValidationErrors} errors
  * @returns {void}
  */
-function renderAllFieldErrors(form, errors) {
+function renderAllFieldErrors(form: HTMLFormElement, errors: ValidationErrors): void {
   clearFieldState(form);
 
   FIELD_ORDER.forEach((name) => {
@@ -806,7 +862,7 @@ function renderAllFieldErrors(form, errors) {
     const inputWrapper = group.querySelector(".input");
 
     if (errorNode) {
-      errorNode.textContent = message;
+      errorNode.textContent = message ?? "";
       errorNode.classList.remove("auth-form__field-error--hidden");
     }
 
@@ -819,10 +875,10 @@ function renderAllFieldErrors(form, errors) {
 /**
  * Checks whether error object contains any validation errors.
  *
- * @param {Object} errors
+ * @param {ValidationErrors} errors
  * @returns {boolean}
  */
-function hasErrors(errors) {
+function hasErrors(errors: ValidationErrors): boolean {
   return Object.values(errors).some(Boolean);
 }
 
@@ -832,9 +888,67 @@ function hasErrors(errors) {
  * @param {string} path
  * @returns {void}
  */
-function navigate(path) {
+function navigate(path: string): void {
   window.history.pushState({}, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+/**
+ * Extracts backend validation errors from ApiError.
+ *
+ * @param {unknown} error
+ * @returns {ServerFieldErrors}
+ */
+function getApiErrorFieldErrors(error: unknown): ServerFieldErrors {
+  if (!(error instanceof ApiError)) {
+    return {};
+  }
+
+  const data = error.data;
+
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "errors" in data &&
+    typeof data.errors === "object" &&
+    data.errors !== null
+  ) {
+    return data.errors as ServerFieldErrors;
+  }
+
+  return {};
+}
+
+/**
+ * Extracts backend error message from ApiError.
+ *
+ * @param {unknown} error
+ * @returns {string}
+ */
+function getApiErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "";
+}
+
+/**
+ * Extracts backend status from ApiError.
+ *
+ * @param {unknown} error
+ * @returns {number|undefined}
+ */
+function getApiErrorStatus(error: unknown): number | undefined {
+  if (error instanceof ApiError) {
+    return error.status;
+  }
+
+  return undefined;
 }
 
 /**
@@ -842,9 +956,9 @@ function navigate(path) {
  *
  * @param {HTMLFormElement} form
  * @param {HTMLElement} authForm
- * @returns {void}
+ * @returns {Promise<void>}
  */
-async function handleRegisterNext(form, authForm) {
+async function handleRegisterNext(form: HTMLFormElement, authForm: HTMLElement): Promise<void> {
   syncRegisterDraft(form);
   registerDraft.submitAttempted = true;
 
@@ -856,6 +970,7 @@ async function handleRegisterNext(form, authForm) {
     renderAllFieldErrors(form, errors);
     return;
   }
+
   clearFormError(form);
   clearFieldState(form);
 
@@ -866,7 +981,7 @@ async function handleRegisterNext(form, authForm) {
       password2: values.repeatPassword,
     });
 
-    const serverErrors = result?.errors || {};
+    const serverErrors = result.errors || {};
 
     if (Object.keys(serverErrors).length > 0) {
       syncRegisterFormDataset(form);
@@ -877,8 +992,8 @@ async function handleRegisterNext(form, authForm) {
       });
       return;
     }
-  } catch (error) {
-    const serverErrors = error?.data?.errors || {};
+  } catch (error: unknown) {
+    const serverErrors = getApiErrorFieldErrors(error);
 
     if (Object.keys(serverErrors).length > 0) {
       syncRegisterFormDataset(form);
@@ -890,10 +1005,10 @@ async function handleRegisterNext(form, authForm) {
       return;
     }
 
-    if (error?.status === 409) {
+    if (getApiErrorStatus(error) === 409) {
       syncRegisterFormDataset(form);
       renderServerFieldErrors(form, {
-        login: error?.data?.error || "Такой логин уже существует",
+        login: getApiErrorMessage(error) || "Такой логин уже существует",
       });
       return;
     }
@@ -919,7 +1034,7 @@ async function handleRegisterNext(form, authForm) {
  * @param {HTMLElement} authForm
  * @returns {void}
  */
-function handleRegisterPrev(form, authForm) {
+function handleRegisterPrev(form: HTMLFormElement, authForm: HTMLElement): void {
   syncRegisterDraft(form);
   registerDraft.step = 1;
   registerDraft.submitAttempted = false;
@@ -937,7 +1052,7 @@ function handleRegisterPrev(form, authForm) {
  * @param {SubmitEvent} event
  * @returns {Promise<void>}
  */
-async function handleSubmit(event) {
+async function handleSubmit(event: SubmitEvent): Promise<void> {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
   if (!form.matches(".auth-form__form")) return;
@@ -947,7 +1062,9 @@ async function handleSubmit(event) {
   const authForm = form.closest(".auth-form");
   if (!(authForm instanceof HTMLElement)) return;
 
-  const mode = authForm.dataset.mode;
+  const mode = authForm.dataset.mode as AuthMode | undefined;
+  if (!mode) return;
+
   if (mode === "login") {
     const values = getFormValues(form);
 
@@ -964,8 +1081,8 @@ async function handleSubmit(event) {
 
     try {
       const user = await loginUser({
-        login: values.login,
-        password: values.password,
+        login: values.login || "",
+        password: values.password || "",
       });
 
       setSessionUser({
@@ -977,7 +1094,7 @@ async function handleSubmit(event) {
 
       closeAuthModal();
       navigate("/feed");
-    } catch (error) {
+    } catch (error: unknown) {
       showFormError(form, "Неверный логин или пароль");
       markFieldsAsError(form, ["login", "password"]);
       console.error("Auth error:", error);
@@ -1036,8 +1153,8 @@ async function handleSubmit(event) {
     resetRegisterDraft();
     closeAuthModal();
     navigate("/feed");
-  } catch (error) {
-    const message = String(error?.message || "").toLowerCase();
+  } catch (error: unknown) {
+    const message = getApiErrorMessage(error).toLowerCase();
 
     if (message.includes("login already exists")) {
       registerDraft.step = 1;
@@ -1072,9 +1189,10 @@ async function handleSubmit(event) {
  * @param {Document|HTMLElement} [root=document]
  * @returns {void}
  */
-export function initAuthForm(root = document) {
-  if (root.__authFormBound) return;
-  root.addEventListener("click", (event) => {
+export function initAuthForm(root: Document | HTMLElement = document): void {
+  if ((root as typeof root & { __authFormBound?: boolean }).__authFormBound) return;
+
+  root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
@@ -1089,7 +1207,7 @@ export function initAuthForm(root = document) {
         return;
       }
 
-      handleRegisterNext(form, authForm).catch((error) => {
+      handleRegisterNext(form, authForm).catch((error: unknown) => {
         console.error(error);
       });
       return;
@@ -1110,7 +1228,7 @@ export function initAuthForm(root = document) {
     }
   });
 
-  root.addEventListener("focusout", (event) => {
+  root.addEventListener("focusout", (event: Event) => {
     const target = event.target;
 
     if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
@@ -1122,7 +1240,9 @@ export function initAuthForm(root = document) {
 
     const authForm = form.closest(".auth-form");
     if (!(authForm instanceof HTMLElement)) return;
-    const mode = authForm.dataset.mode;
+
+    const mode = authForm.dataset.mode as AuthMode | undefined;
+    if (!mode) return;
 
     if (mode === "register") {
       syncRegisterDraft(form);
@@ -1148,7 +1268,7 @@ export function initAuthForm(root = document) {
     clearFormError(form);
   });
 
-  root.addEventListener("input", (event) => {
+  root.addEventListener("input", (event: Event) => {
     const target = event.target;
 
     if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
@@ -1160,7 +1280,9 @@ export function initAuthForm(root = document) {
 
     const authForm = form.closest(".auth-form");
     if (!(authForm instanceof HTMLElement)) return;
-    const mode = authForm.dataset.mode;
+
+    const mode = authForm.dataset.mode as AuthMode | undefined;
+    if (!mode) return;
 
     if (mode === "register") {
       syncRegisterDraft(form);
@@ -1184,11 +1306,11 @@ export function initAuthForm(root = document) {
     renderTouchedFieldErrors(form, errors, mode);
   });
 
-  root.addEventListener("submit", (event) => {
-    handleSubmit(event).catch((error) => {
+  root.addEventListener("submit", (event: Event) => {
+    handleSubmit(event as SubmitEvent).catch((error: unknown) => {
       console.error(error);
     });
   });
 
-  root.__authFormBound = true;
+  (root as typeof root & { __authFormBound?: boolean }).__authFormBound = true;
 }

@@ -2,16 +2,21 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 
+/** @type {import('webpack').Configuration} */
 module.exports = {
   mode: "development",
-  entry: "./src/main.js",
+
+  entry: "./src/main.ts",
+
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "bundle.[contenthash].js",
     clean: true,
     publicPath: "/",
   },
+
   devtool: "source-map",
+
   module: {
     rules: [
       {
@@ -27,11 +32,18 @@ module.exports = {
         test: /\.scss$/i,
         use: ["style-loader", "css-loader", "postcss-loader", "sass-loader"],
       },
+      {
+        test: /\.ts$/,
+        use: "ts-loader",
+        exclude: /node_modules/,
+      },
     ],
   },
+
   resolve: {
-    extensions: [".js"],
+    extensions: [".ts", ".js"],
   },
+
   plugins: [
     new HtmlWebpackPlugin({
       template: "./public/index.html",
@@ -45,6 +57,7 @@ module.exports = {
       ],
     }),
   ],
+
   devServer: {
     static: {
       directory: path.resolve(__dirname, "public"),

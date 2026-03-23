@@ -1,14 +1,26 @@
-import { getFeedMode, getSessionUser, setFeedMode } from "../../state/session.js";
+import { getFeedMode, getSessionUser, setFeedMode, type FeedMode } from "../../state/session";
+
+type SidebarItemOptions = {
+  href?: string;
+  label: string;
+  icon: string;
+  isActive?: boolean;
+  isStub?: boolean;
+  attributes?: string;
+};
+
+type RenderSidebarOptions = {
+  isAuthorised?: boolean;
+};
+
+type SidebarRoot = (Document | HTMLElement) & {
+  __sidebarBound?: boolean;
+};
 
 /**
  * Renders a sidebar navigation item.
- * @param {Object} options
- * @param {string} [options.href="#"]
- * @param {string} options.label
- * @param {string} options.icon
- * @param {boolean} [options.isActive=false]
- * @param {boolean} [options.isStub=false]
- * @param {string} [options.attributes=""]
+ *
+ * @param {SidebarItemOptions} options
  * @returns {string}
  */
 function renderSidebarItem({
@@ -18,7 +30,7 @@ function renderSidebarItem({
   isActive = false,
   isStub = false,
   attributes = "",
-}) {
+}: SidebarItemOptions): string {
   const itemClass = isActive ? "sidebar-item sidebar-item--active" : "sidebar-item";
   const isModalTrigger = attributes.includes("data-open-auth-modal");
 
@@ -45,11 +57,11 @@ function renderSidebarItem({
 
 /**
  * Renders the left sidebar.
- * @param {Object} [options={}]
- * @param {boolean} [options.isAuthorised=false]
+ *
+ * @param {RenderSidebarOptions} [options={}]
  * @returns {string}
  */
-export function renderSidebar({ isAuthorised = false } = {}) {
+export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {}): string {
   const isForYouActive = getFeedMode() === "for-you";
   const isByTimeActive = getFeedMode() === "by-time";
 
@@ -121,13 +133,15 @@ export function renderSidebar({ isAuthorised = false } = {}) {
 
 /**
  * Initializes sidebar controls.
+ *
  * @param {Document|HTMLElement} [root=document]
  * @returns {void}
  */
-export function initSidebar(root = document) {
-  if (root.__sidebarBound) return;
+export function initSidebar(root: Document | HTMLElement = document): void {
+  const bindableRoot = root as SidebarRoot;
+  if (bindableRoot.__sidebarBound) return;
 
-  root.addEventListener("click", (event) => {
+  root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
@@ -139,17 +153,18 @@ export function initSidebar(root = document) {
     const mode = button.getAttribute("data-feed-mode");
     if (mode !== "for-you" && mode !== "by-time") return;
 
-    setFeedMode(mode);
+    setFeedMode(mode as FeedMode);
   });
 
-  root.__sidebarBound = true;
+  bindableRoot.__sidebarBound = true;
 }
 
 /**
  * Refreshes the sidebar in place.
+ *
  * @returns {void}
  */
-export function refreshSidebar() {
+export function refreshSidebar(): void {
   const sidebar = document.querySelector(".sidebar");
   if (!sidebar) return;
 
@@ -158,7 +173,7 @@ export function refreshSidebar() {
   template.innerHTML = renderSidebar({ isAuthorised }).trim();
 
   const newSidebar = template.content.firstElementChild;
-  if (!newSidebar) return;
+  if (!(newSidebar instanceof HTMLElement)) return;
 
   sidebar.replaceWith(newSidebar);
 }

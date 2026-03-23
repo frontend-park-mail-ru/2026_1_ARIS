@@ -1,7 +1,7 @@
-import { renderButton } from "../button/button.js";
-import { renderAuthForm } from "../auth-form/auth-form.js";
 import { renderAuthModal } from "./auth-modal.js";
+import { registerDraft } from "../../state/register-draft.js";
 
+let isPointerDownOutsidePanel = false;
 /**
  * Traps focus inside the auth modal when navigating with the Tab key.
  * @param {KeyboardEvent} event
@@ -60,7 +60,10 @@ function getModalRoot() {
  */
 export function openAuthModal(mode = "login") {
   const modalRoot = getModalRoot();
-  modalRoot.innerHTML = renderAuthModal({ mode });
+  modalRoot.innerHTML = renderAuthModal({
+    mode,
+    registerDraft,
+  });
   document.body.classList.add("modal-open");
 
   const modal = modalRoot.querySelector("[data-auth-modal]");
@@ -89,26 +92,20 @@ export function closeAuthModal() {
  * @returns {void}
  */
 function switchAuthModalMode(mode) {
-  const modal = document.querySelector("[data-auth-modal]");
-  if (!modal) return;
+  const modalRoot = getModalRoot();
+  modalRoot.innerHTML = renderAuthModal({
+    mode,
+    registerDraft,
+  });
 
-  const content = modal.querySelector(".auth-modal__content");
-  if (!content) return;
+  const modal = modalRoot.querySelector("[data-auth-modal]");
+  const firstFocusable = modal?.querySelector(
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+  );
 
-  content.innerHTML = `
-    <div class="auth-modal__panel">
-      ${renderButton({
-        text: "×",
-        variant: "surface",
-        tag: "button",
-        type: "button",
-        className: "auth-modal__close",
-        attributes: 'aria-label="Закрыть" data-auth-modal-close',
-      })}
-
-      ${renderAuthForm({ mode, context: "modal" })}
-    </div>
-  `;
+  if (firstFocusable instanceof HTMLElement) {
+    firstFocusable.focus();
+  }
 }
 
 /**
@@ -118,6 +115,16 @@ function switchAuthModalMode(mode) {
  */
 export function initAuthModal(root = document) {
   if (root.__authModalBound) return;
+
+  root.addEventListener("mousedown", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const modal = target.closest("[data-auth-modal]");
+    const panel = target.closest(".auth-modal__panel");
+
+    isPointerDownOutsidePanel = Boolean(modal && !panel);
+  });
 
   root.addEventListener("click", (event) => {
     const target = event.target;
@@ -140,7 +147,17 @@ export function initAuthModal(root = document) {
       }
       return;
     }
+    const modal = target.closest("[data-auth-modal]");
+    const panel = target.closest(".auth-modal__panel");
 
+    if (modal && !panel && isPointerDownOutsidePanel) {
+      event.preventDefault();
+      closeAuthModal();
+      isPointerDownOutsidePanel = false;
+      return;
+    }
+
+    isPointerDownOutsidePanel = false;
     const closeButton = target.closest("[data-auth-modal-close]");
     if (closeButton) {
       event.preventDefault();

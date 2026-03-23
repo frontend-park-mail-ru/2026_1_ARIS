@@ -8,6 +8,9 @@
   display: flex;
   position: relative;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   border: var(--border-width) solid var(--color-border-default);
   background: var(--color-surface-input);
 

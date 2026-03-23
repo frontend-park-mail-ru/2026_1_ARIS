@@ -8,6 +8,7 @@ import { renderInput } from "../input/input.js";
  * @param {string} options.type
  * @param {string} options.name
  * @param {string} options.placeholder
+ * @param {string} [options.value=""]
  * @param {string} [options.state="default"]
  * @param {boolean} [options.withToggle=false]
  * @param {boolean} [options.isVisible=false]
@@ -19,6 +20,7 @@ function renderAuthField({
   type,
   name,
   placeholder,
+  value = "",
   state = "default",
   withToggle = false,
   isVisible = false,
@@ -33,6 +35,7 @@ function renderAuthField({
         type,
         name,
         placeholder,
+        value,
         state,
         withToggle,
         isVisible,
@@ -48,12 +51,13 @@ function renderAuthField({
 }
 
 /**
- * Renders auth form fields for login mode.
+ * Renders login fields.
  *
  * @param {boolean} hasError
+ * @param {Object} [values={}]
  * @returns {string}
  */
-function renderLoginFields(hasError) {
+function renderLoginFields(hasError, values = {}) {
   const state = hasError ? "error" : "default";
 
   return `
@@ -61,6 +65,7 @@ function renderLoginFields(hasError) {
       type: "text",
       name: "login",
       placeholder: "Логин",
+      value: values.login || "",
       state,
     })}
 
@@ -68,6 +73,7 @@ function renderLoginFields(hasError) {
       type: "password",
       name: "password",
       placeholder: "Пароль",
+      value: values.password || "",
       state,
       withToggle: true,
       isVisible: false,
@@ -78,64 +84,63 @@ function renderLoginFields(hasError) {
 /**
  * Renders gender select field.
  *
+ * @param {Object} [values={}]
  * @returns {string}
  */
-function renderGenderField() {
+function renderGenderField(values = {}) {
   return `
     <div class="auth-form__field-group">
       <label class="input input--default auth-form__input-control auth-form__select">
         <select class="input__field auth-form__select-field" name="gender" required>
-          <option value="" selected disabled hidden>Пол</option>
-          <option value="1">Мужской</option>
-          <option value="2">Женский</option>
+          <option value="" ${!values.gender ? "selected" : ""} disabled hidden>Пол</option>
+          <option value="1" ${values.gender === "1" ? "selected" : ""}>Мужской</option>
+          <option value="2" ${values.gender === "2" ? "selected" : ""}>Женский</option>
         </select>
       </label>
 
-      <p class="auth-form__field-error auth-form__field-error--hidden">
-         
-      </p>
+      <p class="auth-form__field-error auth-form__field-error--hidden"> </p>
     </div>
   `;
 }
 
 /**
- * Renders auth form fields for register mode.
+ * Renders register step progress.
  *
+ * @param {number} step
  * @returns {string}
  */
-function renderRegisterFields() {
+function renderRegisterProgress(step) {
   return `
-    <div class="auth-form__register-grid">
-      ${renderAuthField({
-        type: "text",
-        name: "firstName",
-        placeholder: "Имя",
-        state: "default",
-        attributes: 'maxlength="20"',
-      })}
+    <div class="auth-form__progress" aria-label="Прогресс регистрации">
+      <div class="auth-form__progress-item ${step === 1 ? "auth-form__progress-item--active" : "auth-form__progress-item--done"}">
+        <span class="auth-form__progress-dot">1</span>
+        <span class="auth-form__progress-label">Аккаунт</span>
+      </div>
 
-      ${renderAuthField({
-        type: "text",
-        name: "lastName",
-        placeholder: "Фамилия",
-        state: "default",
-        attributes: 'maxlength="20"',
-      })}
+      <div class="auth-form__progress-line"></div>
 
-      ${renderGenderField()}
+      <div class="auth-form__progress-item ${step === 2 ? "auth-form__progress-item--active" : ""}">
+        <span class="auth-form__progress-dot">2</span>
+        <span class="auth-form__progress-label">Профиль</span>
+      </div>
+    </div>
+  `;
+}
 
-      ${renderAuthField({
-        type: "text",
-        name: "birthDate",
-        placeholder: "Дата рождения (дд/мм/гггг)",
-        state: "default",
-        attributes: 'inputmode="numeric" maxlength="10" data-mask="date"',
-      })}
-
+/**
+ * Renders register step one fields.
+ *
+ * @param {Object} values
+ * @returns {string}
+ */
+function renderRegisterStepOne(values = {}) {
+  return `
+    <div class="auth-form__step-grid">
       ${renderAuthField({
         type: "text",
         name: "login",
         placeholder: "Логин",
+        value: values.login || "",
         state: "default",
         attributes: 'maxlength="20"',
       })}
@@ -144,6 +149,7 @@ function renderRegisterFields() {
         type: "password",
         name: "password",
         placeholder: "Пароль",
+        value: values.password || "",
         state: "default",
         withToggle: true,
         isVisible: false,
@@ -154,13 +160,75 @@ function renderRegisterFields() {
         type: "password",
         name: "repeatPassword",
         placeholder: "Повторите пароль",
+        value: values.repeatPassword || "",
         state: "default",
         withToggle: true,
         isVisible: false,
         attributes: 'maxlength="20"',
       })}
 
-      <div class="auth-form__actions auth-form__actions--register">
+      <div class="auth-form__step-actions auth-form__step-actions--single">
+        ${renderButton({
+          text: "Далее",
+          variant: "primary",
+          tag: "button",
+          type: "button",
+          className: "auth-form__submit",
+          attributes: "data-register-next",
+        })}
+
+        ${renderButton({
+          text: "Уже есть аккаунт? Войти",
+          variant: "secondary",
+          tag: "button",
+          type: "button",
+          className: "auth-form__secondary-link",
+          attributes: 'data-switch-auth-mode="login"',
+        })}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Renders register step two fields.
+ *
+ * @param {Object} values
+ * @returns {string}
+ */
+function renderRegisterStepTwo(values = {}) {
+  return `
+    <div class="auth-form__step-grid">
+      ${renderAuthField({
+        type: "text",
+        name: "firstName",
+        placeholder: "Имя",
+        value: values.firstName || "",
+        state: "default",
+        attributes: 'maxlength="20"',
+      })}
+
+      ${renderAuthField({
+        type: "text",
+        name: "lastName",
+        placeholder: "Фамилия",
+        value: values.lastName || "",
+        state: "default",
+        attributes: 'maxlength="20"',
+      })}
+
+      ${renderGenderField(values)}
+
+      ${renderAuthField({
+        type: "text",
+        name: "birthDate",
+        placeholder: "Дата рождения (дд/мм/гггг)",
+        value: values.birthDate || "",
+        state: "default",
+        attributes: 'inputmode="numeric" maxlength="10" data-mask="date"',
+      })}
+
+      <div class="auth-form__step-actions auth-form__step-actions--single">
         ${renderButton({
           text: "Зарегистрироваться",
           variant: "primary",
@@ -168,26 +236,31 @@ function renderRegisterFields() {
           type: "submit",
           className: "auth-form__submit",
         })}
+
+        ${renderButton({
+          text: "Назад",
+          variant: "secondary",
+          tag: "button",
+          type: "button",
+          className: "auth-form__secondary-link",
+          attributes: "data-register-prev",
+        })}
       </div>
-
-      ${renderButton({
-        text: "Уже есть аккаунт?",
-        variant: "secondary",
-        tag: "button",
-        type: "button",
-        className: "auth-form__secondary-link auth-form__secondary-link--login-switch",
-        attributes: 'data-switch-auth-mode="login"',
-      })}
-
-      ${renderButton({
-        text: "Войти без регистрации",
-        variant: "secondary",
-        tag: "button",
-        type: "button",
-        className: "auth-form__secondary-link auth-form__secondary-link--register",
-        attributes: "data-auth-modal-close",
-      })}
     </div>
+  `;
+}
+
+/**
+ * Renders register fields by current step.
+ *
+ * @param {number} step
+ * @param {Object} values
+ * @returns {string}
+ */
+function renderRegisterFields(step, values) {
+  return `
+    ${renderRegisterProgress(step)}
+    ${step === 1 ? renderRegisterStepOne(values) : renderRegisterStepTwo(values)}
   `;
 }
 
@@ -199,6 +272,8 @@ function renderRegisterFields() {
  * @param {boolean} [options.hasError=false]
  * @param {string} [options.errorText="Неверный логин или пароль"]
  * @param {string} [options.context="page"]
+ * @param {number} [options.registerStep=1]
+ * @param {Object} [options.registerValues={}]
  * @returns {string}
  */
 export function renderAuthForm({
@@ -206,38 +281,52 @@ export function renderAuthForm({
   hasError = false,
   errorText = "Неверный логин или пароль",
   context = "page",
+  registerStep = 1,
+  registerValues = {},
 }) {
   const isLogin = mode === "login";
   const isModal = context === "modal";
+  const isRegisterStepTwo = mode === "register" && registerStep === 2;
 
   return `
-    <section class="auth-form" data-mode="${mode}">
+    <section
+      class="auth-form"
+      data-mode="${mode}"
+      data-context="${context}"
+      ${mode === "register" ? `data-register-step="${registerStep}"` : ""}
+    >
       <div class="auth-form__header">
         <img class="auth-form__logo" src="assets/img/logo.svg" alt="ARIS">
 
         <div class="auth-form__header-text">
-          <h1 class="auth-form__title">${isLogin ? "Вход" : "Регистрация"}</h1>
+          <h1 class="auth-form__title">
+            ${isLogin ? "Вход" : isRegisterStepTwo ? "Завершение регистрации" : "Регистрация"}
+          </h1>
 
           <p class="auth-form__subtitle">
-            ${isLogin ? "Введите логин и пароль" : "Все поля обязательны"}
+            ${
+              isLogin
+                ? "Введите логин и пароль"
+                : isRegisterStepTwo
+                  ? "Ещё немного данных о вас"
+                  : "Создайте аккаунт за пару шагов"
+            }
           </p>
         </div>
       </div>
 
       <form class="auth-form__form" novalidate>
         <div class="auth-form__fields">
-          ${isLogin ? renderLoginFields(hasError) : renderRegisterFields()}
+          ${
+            isLogin
+              ? renderLoginFields(hasError, registerValues)
+              : renderRegisterFields(registerStep, registerValues)
+          }
         </div>
 
-        ${
-          isLogin
-            ? `
-              <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
-                ${errorText}
-              </p>
-            `
-            : ""
-        }
+        <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
+          ${hasError ? errorText : " "}
+        </p>
 
         ${
           isLogin

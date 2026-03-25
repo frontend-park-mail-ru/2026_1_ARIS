@@ -53,27 +53,38 @@ type FeedResponse = {
   hasMore?: boolean;
 };
 
+type ErrorResponse = {
+  error?: string;
+};
 
+type PopularPost = {
+  title: string;
+};
+
+type PopularPostsResponse = {
+  items?: PopularPost[];
+};
 
 /**
  * Safe JSON parsing
  */
-async function parseJson(response: Response): Promise<any> {
+async function parseJson<T>(response: Response): Promise<T> {
   const text = await response.text();
 
   try {
-    return text ? JSON.parse(text) : {};
+    return text ? (JSON.parse(text) as T) : ({} as T);
   } catch {
-    return { error: text || "invalid server response" };
+    return { error: text || "invalid server response" } as T;
   }
 }
 
 /**
  * GET /api/feed
  */
-export async function getFeed(
-  { cursor = "", limit = 20 }: FeedRequestOptions = {},
-): Promise<FeedResponse> {
+export async function getFeed({
+  cursor = "",
+  limit = 20,
+}: FeedRequestOptions = {}): Promise<FeedResponse> {
   const params = new URLSearchParams();
 
   if (cursor) params.set("cursor", cursor);
@@ -83,7 +94,7 @@ export async function getFeed(
     credentials: "include",
   });
 
-  const data = await parseJson(response);
+  const data = await parseJson<FeedResponse & ErrorResponse>(response);
 
   if (!response.ok) {
     const error: ApiError = new Error(data.error || "failed to load feed");
@@ -98,9 +109,10 @@ export async function getFeed(
 /**
  * GET /api/public/feed
  */
-export async function getPublicFeed(
-  { cursor = "", limit = 20 }: FeedRequestOptions = {},
-): Promise<FeedResponse> {
+export async function getPublicFeed({
+  cursor = "",
+  limit = 20,
+}: FeedRequestOptions = {}): Promise<FeedResponse> {
   const params = new URLSearchParams();
 
   if (cursor) params.set("cursor", cursor);
@@ -110,7 +122,7 @@ export async function getPublicFeed(
     credentials: "include",
   });
 
-  const data = await parseJson(response);
+  const data = await parseJson<FeedResponse & ErrorResponse>(response);
 
   if (!response.ok) {
     const error: ApiError = new Error(data.error || "failed to load public feed");
@@ -170,9 +182,7 @@ export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
  */
 export function mapFeedResponse(response: FeedResponse) {
   return {
-    items: Array.isArray(response.posts)
-      ? response.posts.map(mapFeedItemToPostcard)
-      : [],
+    items: Array.isArray(response.posts) ? response.posts.map(mapFeedItemToPostcard) : [],
     nextCursor: response.nextCursor ?? "",
     hasMore: Boolean(response.hasMore),
   };
@@ -181,12 +191,12 @@ export function mapFeedResponse(response: FeedResponse) {
 /**
  * Popular posts (auth)
  */
-export async function getPopularPosts(): Promise<any> {
+export async function getPopularPosts(): Promise<PopularPostsResponse> {
   const response = await fetch("/api/posts/popular", {
     credentials: "include",
   });
 
-  const data = await parseJson(response);
+  const data = await parseJson<PopularPostsResponse & ErrorResponse>(response);
 
   if (!response.ok) {
     const error: ApiError = new Error(data.error || "failed to load popular posts");
@@ -201,12 +211,12 @@ export async function getPopularPosts(): Promise<any> {
 /**
  * Popular posts (public)
  */
-export async function getPublicPopularPosts(): Promise<any> {
+export async function getPublicPopularPosts(): Promise<PopularPostsResponse> {
   const response = await fetch("/api/public/popular-posts", {
     credentials: "include",
   });
 
-  const data = await parseJson(response);
+  const data = await parseJson<PopularPostsResponse & ErrorResponse>(response);
 
   if (!response.ok) {
     const error: ApiError = new Error(data.error || "failed to load public popular posts");

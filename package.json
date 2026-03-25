@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "webpack serve --config webpack.config.js",
-    "start": "node server/index.js",
+    "start": "node --import tsx server/index.ts",
     "build": "webpack --config webpack.config.js",
     "format": "prettier . --write",
     "format:check": "prettier . --check",

@@ -3,9 +3,12 @@ import morgan from "morgan";
 import path from "path";
 
 const app = express();
+const publicDir = path.resolve(__dirname, "..", "public");
+const distDir = path.resolve(__dirname, "..", "dist");
 
 app.use(morgan("dev"));
-app.use(express.static(path.resolve(__dirname, "..", "public")));
+app.use(express.static(distDir));
+app.use(express.static(publicDir));
 
 app.get("/image-proxy", async (req: Request, res: Response) => {
   const rawUrl = req.query.url;
@@ -44,7 +47,7 @@ app.get(/.*/, (req: Request, res: Response, next: NextFunction) => {
     return;
   }
 
-  res.sendFile(path.resolve(__dirname, "..", "public", "index.html"));
+  res.sendFile(path.resolve(distDir, "index.html"));
 });
 
 const port = Number(process.env.PORT || 3000);

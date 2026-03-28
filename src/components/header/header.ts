@@ -21,7 +21,7 @@ function renderGuestHeader(): string {
   return `
     <div class="header__inner header__inner--guest">
       <a href="/feed" data-link class="header__logo-link">
-        <img class="header__logo" src="assets/img/logo.svg" alt="ARIS">
+        <img class="header__logo" src="/assets/img/logo.svg" alt="ARIS">
       </a>
 
       <div class="header__guest-actions">
@@ -48,7 +48,7 @@ function renderGuestHeader(): string {
         <span class="header__username">Твоя страничка</span>
         <img
           class="header__avatar"
-          src="assets/img/default-avatar.png"
+          src="/assets/img/default-avatar.png"
           alt="Гостевой профиль"
         >
       </a>
@@ -64,23 +64,21 @@ function renderGuestHeader(): string {
 function renderAuthorisedHeader(): string {
   const user = getSessionUser() as SessionUser;
 
-  const fullName = user
-    ? `${user.firstName} ${user.lastName}`
-    : "";
+  const fullName = user ? `${user.firstName} ${user.lastName}` : "";
 
   const avatarSrc = user?.avatarLink
     ? `/image-proxy?url=${encodeURIComponent(user.avatarLink)}`
-    : "assets/img/default-avatar.png";
+    : "/assets/img/default-avatar.png";
 
   return `
     <div class="header__inner header__inner--authorised">
       <a href="/feed" data-link class="header__logo-link">
-        <img class="header__logo" src="assets/img/logo.svg" alt="ARIS">
+        <img class="header__logo" src="/assets/img/logo.svg" alt="ARIS">
       </a>
 
       <label class="header__search-box" aria-label="Поиск">
         <span class="header__search-icon" aria-hidden="true">
-          <img src="assets/img/icons/search.svg" alt="">
+          <img src="/assets/img/icons/search.svg" alt="">
         </span>
 
         <input

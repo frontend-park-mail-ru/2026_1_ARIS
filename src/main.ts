@@ -14,6 +14,7 @@ import "./components/auth-form/auth-form.scss";
 import "./components/eye-toggle/eye-toggle.scss";
 
 import "./pages/auth/auth-page.scss";
+import "./pages/profile/profile.css";
 
 import { createRouter } from "./router/router";
 import { renderLogin } from "./pages/login/login";

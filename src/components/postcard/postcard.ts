@@ -1,4 +1,5 @@
 import { getSessionUser } from "../../state/session";
+import { resolveProfilePath } from "../../pages/profile/profile-data";
 
 type PostcardPost = {
   id?: string;
@@ -25,6 +26,18 @@ type PostcardRoot = (Document | HTMLElement) & {
   __postcardExpandBound?: boolean;
 };
 
+function formatStatCount(count: number): string {
+  if (count >= 1000000) {
+    return `${Math.floor(count / 1000000)}м`;
+  }
+
+  if (count >= 1000) {
+    return `${Math.floor(count / 1000)}к`;
+  }
+
+  return String(count);
+}
+
 /**
  * Renders a postcard footer item.
  *
@@ -45,7 +58,7 @@ function renderPostcardStat({ icon, count, action }: PostcardStatOptions): strin
         <span class="postcard__stat-icon" aria-hidden="true">
           <img src="${icon}" alt="">
         </span>
-        <span class="postcard__stat-count">${count}</span>
+        <span class="postcard__stat-count">${formatStatCount(count)}</span>
       </button>
     `;
   }
@@ -55,7 +68,7 @@ function renderPostcardStat({ icon, count, action }: PostcardStatOptions): strin
       <span class="postcard__stat-icon" aria-hidden="true">
         <img src="${icon}" alt="">
       </span>
-      <span class="postcard__stat-count">${count}</span>
+      <span class="postcard__stat-count">${formatStatCount(count)}</span>
     </a>
   `;
 }
@@ -167,6 +180,12 @@ export function renderPostcard(post: PostcardPost): string {
   const sessionUser = getSessionUser();
   const displayName =
     `${post.firstName || ""} ${post.lastName || ""}`.trim() || post.author || "Пользователь";
+  const profilePath = resolveProfilePath({
+    id: post.authorId,
+    username: post.author,
+    firstName: post.firstName,
+    lastName: post.lastName,
+  });
 
   return `
     <article class="postcard">
@@ -177,7 +196,7 @@ export function renderPostcard(post: PostcardPost): string {
           alt="${displayName}"
         >
         <a
-          href="${sessionUser ? `/profile/${post.authorId || ""}` : "/login"}"
+          href="${sessionUser ? profilePath : "/login"}"
           ${sessionUser ? "data-link" : 'data-open-auth-modal="login"'}
           class="postcard__author"
         >
@@ -195,17 +214,17 @@ export function renderPostcard(post: PostcardPost): string {
       <footer class="postcard__footer">
         <div class="postcard__stats">
           ${renderPostcardStat({
-            icon: "assets/img/icons/heart.svg",
+            icon: "/assets/img/icons/heart.svg",
             count: post.likes,
             action: "like",
           })}
           ${renderPostcardStat({
-            icon: "assets/img/icons/repost.svg",
+            icon: "/assets/img/icons/repost.svg",
             count: post.reposts,
             action: "repost",
           })}
           ${renderPostcardStat({
-            icon: "assets/img/icons/comment.svg",
+            icon: "/assets/img/icons/comment.svg",
             count: post.comments,
             action: "comment",
           })}

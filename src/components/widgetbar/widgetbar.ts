@@ -1,5 +1,6 @@
 import { getSuggestedUsers, getPublicPopularUsers, getLatestEvents } from "../../api/users";
 import { getPopularPosts, getPublicPopularPosts } from "../../api/feed";
+import { resolveProfilePath } from "../../pages/profile/profile-data";
 
 type WidgetbarCache = {
   guest: string | null;
@@ -68,9 +69,22 @@ function renderStubButton(text: string, className: string): string {
  * @param {string} className
  * @returns {string}
  */
-function renderProfileLink(text: string, profileId: string, className: string): string {
+function renderProfileLink(
+  text: string,
+  user: Pick<WidgetbarUser, "id" | "username" | "firstName" | "lastName">,
+  className: string,
+): string {
   return `
-    <a href="/profile/${profileId}" data-link class="${className}">
+    <a
+      href="${resolveProfilePath({
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      })}"
+      data-link
+      class="${className}"
+    >
       ${text}
     </a>
   `;
@@ -100,7 +114,7 @@ async function renderPopularUsersWidget(): Promise<string> {
               }
               ${renderProfileLink(
                 `${user.firstName} ${user.lastName}`,
-                user.id,
+                user,
                 "widgetbar-card__username",
               )}
             </div>
@@ -140,7 +154,7 @@ async function renderKnownPeopleWidget(): Promise<string> {
               >
               ${renderProfileLink(
                 `${user.firstName} ${user.lastName}`,
-                user.id,
+                user,
                 "widgetbar-card__username",
               )}
             </div>
@@ -169,7 +183,7 @@ async function renderEventsWidget(): Promise<string> {
           .map((user) => {
             const userLink = renderProfileLink(
               `${user.firstName} ${user.lastName}`,
-              user.id,
+              user,
               "widgetbar-card__username",
             );
 
@@ -330,9 +344,7 @@ async function buildGuestWidgetbar(): Promise<string> {
  * @param {RenderWidgetbarOptions} options
  * @returns {Promise<string>}
  */
-export async function renderWidgetbar({
-  isAuthorised,
-}: RenderWidgetbarOptions): Promise<string> {
+export async function renderWidgetbar({ isAuthorised }: RenderWidgetbarOptions): Promise<string> {
   if (isAuthorised) {
     if (!widgetbarCache.authorised) {
       widgetbarCache.authorised = await buildAuthorisedWidgetbar();

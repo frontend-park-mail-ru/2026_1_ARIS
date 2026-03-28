@@ -3,6 +3,7 @@ import { initAuthForm } from "../components/auth-form/auth-form-controller";
 import { initAuthModal } from "../components/auth-modal/auth-modal-controller";
 import { initEyeToggle } from "../components/eye-toggle/eye-toggle-controller";
 import { initInputMasks } from "../components/input/input-mask-controller";
+import { initProfileToggle } from "../pages/profile/profile";
 
 type RouteParams = Record<string, string>;
 
@@ -114,6 +115,7 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
     initAuthModal(document);
     initEyeToggle(document);
     initInputMasks(document);
+    initProfileToggle(root);
   }
 
   /**

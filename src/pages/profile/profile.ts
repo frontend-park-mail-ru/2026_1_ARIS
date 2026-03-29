@@ -1,7 +1,18 @@
 import { renderHeader } from "../../components/header/header";
-import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderPostcard } from "../../components/postcard/postcard";
-import { getSessionUser } from "../../state/session";
+import { renderSidebar } from "../../components/sidebar/sidebar";
+import {
+  getMyProfile,
+  getProfileById,
+  updateMyProfile,
+  type UpdateProfilePayload,
+} from "../../api/profile";
+import { getSessionUser, setSessionUser } from "../../state/session";
+import {
+  validateAlphabetConsistency,
+  validateIsoBirthDate,
+  validateName,
+} from "../../utils/profile-validation";
 import { renderFeed } from "../feed/feed";
 import { getProfileRecordById, PROFILE_RECORDS, type ProfileRecord } from "./profile-data";
 
@@ -10,11 +21,49 @@ type ProfileParams = {
 };
 
 type ProfileRoot = (Document | HTMLElement) & {
-  __profileToggleBound?: boolean;
+  __profileInteractionsBound?: boolean;
 };
 
-type DisplayProfile = ProfileRecord & {
+type EditableProfileFields = {
+  firstName: string;
+  lastName: string;
+  bio: string;
+  gender: "male" | "female" | "";
+  birthdayDate: string;
+  nativeTown: string;
+  town: string;
+  phone: string;
+  email: string;
+  interests: string;
+  favMusic: string;
+  institution: string;
+  company: string;
+  jobTitle: string;
+};
+
+type DisplayProfile = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  status: string;
+  city: string;
+  nativeTown: string;
+  phone: string;
+  email: string;
+  birthday: string;
+  gender: string;
+  interests: string;
+  favoriteMusic: string;
+  workCompany: string;
+  workRole: string;
+  education: Array<{
+    place: string;
+  }>;
+  friends: string[];
   isOwnProfile: boolean;
+  avatarLink: string | undefined;
+  editable: EditableProfileFields;
 };
 
 type ProfilePost = {
@@ -26,6 +75,15 @@ type ProfilePost = {
   comments: number;
 };
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
@@ -34,6 +92,88 @@ function formatNamePart(value: string): string {
   if (!value) return "";
 
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+}
+
+function valueOrFallback(value: string, fallback = "Не указано"): string {
+  return value.trim() || fallback;
+}
+
+function hasVisibleValue(value?: string): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  return trimmed !== "" && trimmed !== "Не указано";
+}
+
+function normaliseDate(value?: string): string {
+  if (!value) return "";
+
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (!isoDatePattern.test(value)) {
+    return value;
+  }
+
+  const parsed = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function formatGender(value: EditableProfileFields["gender"]): string {
+  if (value === "male") return "Мужской";
+  if (value === "female") return "Женский";
+  return "Не указано";
+}
+
+function validateOptionalEmail(value: string): string {
+  if (!value) {
+    return "";
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    return "Введите корректный email";
+  }
+
+  return "";
+}
+
+function validateOptionalPhone(value: string): string {
+  if (!value) {
+    return "";
+  }
+
+  if (!/^\+[1-9]\d{1,14}$/.test(value)) {
+    return "Телефон должен быть в формате +79991234567";
+  }
+
+  return "";
+}
+
+function validateProfilePatch(
+  patch: UpdateProfilePayload,
+  sourceValues: EditableProfileFields,
+): string {
+  const firstName = patch.firstName ?? sourceValues.firstName;
+  const lastName = patch.lastName ?? sourceValues.lastName;
+
+  return (
+    validateName(patch.firstName ?? "", "Имя", false) ||
+    validateName(patch.lastName ?? "", "Фамилия", false) ||
+    validateAlphabetConsistency(firstName, lastName) ||
+    validateIsoBirthDate(patch.birthdayDate ?? "") ||
+    validateOptionalEmail(patch.email ?? "") ||
+    validateOptionalPhone(patch.phone ?? "")
+  );
 }
 
 function getFallbackIdentity(profileId: string): {
@@ -56,18 +196,54 @@ function getFallbackIdentity(profileId: string): {
   };
 }
 
-function withOptionalAvatar(value: ProfileRecord, avatarLink?: string): ProfileRecord {
-  if (!avatarLink) {
-    return value;
-  }
+function mapRecordToDisplayProfile(profile: ProfileRecord, isOwnProfile: boolean): DisplayProfile {
+  const primaryEducation = profile.education[0];
 
   return {
-    ...value,
-    avatarLink,
+    id: profile.id,
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    username: profile.username,
+    status: profile.status,
+    city: profile.city,
+    nativeTown: profile.city,
+    phone: profile.phone,
+    email: profile.email,
+    birthday: profile.birthday,
+    gender: profile.gender,
+    interests: profile.interests,
+    favoriteMusic: profile.favoriteMusic,
+    workCompany: profile.workCompany,
+    workRole: profile.workRole,
+    education: profile.education,
+    friends: profile.friends,
+    isOwnProfile,
+    avatarLink: profile.avatarLink,
+    editable: {
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      bio: profile.status,
+      gender:
+        profile.gender.toLowerCase() === "мужской"
+          ? "male"
+          : profile.gender.toLowerCase() === "женский"
+            ? "female"
+            : "",
+      birthdayDate: "",
+      nativeTown: profile.city,
+      town: profile.city,
+      phone: profile.phone === "Не указано" ? "" : profile.phone,
+      email: profile.email === "Не указано" ? "" : profile.email,
+      interests: profile.interests,
+      favMusic: profile.favoriteMusic,
+      institution: primaryEducation?.place ?? "",
+      company: profile.workCompany,
+      jobTitle: profile.workRole,
+    },
   };
 }
 
-function createFallbackProfile(profileId: string, useSessionIdentity = false): ProfileRecord {
+function createFallbackProfile(profileId: string, useSessionIdentity = false): DisplayProfile {
   const sessionUser = getSessionUser();
   const generatedIdentity = getFallbackIdentity(profileId);
   const firstName =
@@ -79,62 +255,223 @@ function createFallbackProfile(profileId: string, useSessionIdentity = false): P
   const username =
     useSessionIdentity && sessionUser?.id ? sessionUser.id : generatedIdentity.username;
 
-  return withOptionalAvatar(
-    {
-      id: profileId,
+  return {
+    id: profileId,
+    firstName,
+    lastName,
+    username,
+    status: "Собираю профиль по частям, но уже открыт для общения и новых знакомств.",
+    city: useSessionIdentity ? "Не указано" : "Москва",
+    nativeTown: useSessionIdentity ? "Не указано" : "Москва",
+    phone: useSessionIdentity ? "Не указано" : "+7 999 123-45-67",
+    email: useSessionIdentity ? "Не указано" : `${username}@arisnet.dev`,
+    birthday: useSessionIdentity ? "Не указано" : "12 марта 2001",
+    gender: "Не указано",
+    interests: "Технологии, дизайн продуктов, цифровые сообщества",
+    favoriteMusic: "The xx, ODESZA, Kedr Livanskiy",
+    workCompany: useSessionIdentity ? "ARISNET" : "ARISNET Community",
+    workRole: "Участник сообщества",
+    education: [
+      {
+        place: useSessionIdentity ? "Информация появится позже" : "МГТУ им. Н.Э. Баумана '24",
+      },
+    ],
+    friends: [],
+    isOwnProfile: useSessionIdentity && sessionUser ? profileId === sessionUser.id : false,
+    avatarLink: sessionUser?.avatarLink,
+    editable: {
       firstName,
       lastName,
-      username,
-      status: "Собираю профиль по частям, но уже открыт для общения и новых знакомств.",
-      city: useSessionIdentity ? "Не указано" : "Москва",
-      phone: useSessionIdentity ? "Не указано" : "+7 999 123-45-67",
-      email: useSessionIdentity ? "Не указано" : `${username}@arisnet.dev`,
-      birthday: useSessionIdentity ? "Не указано" : "12 марта 2001",
-      gender: useSessionIdentity ? "Не указано" : "не указано",
+      bio: "Собираю профиль по частям, но уже открыт для общения и новых знакомств.",
+      gender: "",
+      birthdayDate: "",
+      nativeTown: "",
+      town: "",
+      phone: "",
+      email: "",
       interests: "Технологии, дизайн продуктов, цифровые сообщества",
-      favoriteMusic: "The xx, ODESZA, Kedr Livanskiy",
-      favoriteMovies: "Интерстеллар, Социальная сеть, Она",
-      workCompany: useSessionIdentity ? "ARISNET" : "ARISNET Community",
-      workRole: useSessionIdentity ? "Участник сообщества" : "Участник сообщества",
-      education: [
-        {
-          place: useSessionIdentity ? "Информация появится позже" : "МГТУ им. Н.Э. Баумана '24",
-          subtitle: useSessionIdentity
-            ? "Профиль еще заполняется"
-            : "Информационные системы и технологии",
-        },
-      ],
-      friends: [],
+      favMusic: "The xx, ODESZA, Kedr Livanskiy",
+      institution: "",
+      company: useSessionIdentity ? "ARISNET" : "ARISNET Community",
+      jobTitle: "Участник сообщества",
     },
-    sessionUser?.avatarLink,
-  );
+  };
 }
 
-function resolveProfile(params: ProfileParams): DisplayProfile {
+function resolveMockProfile(params: ProfileParams): DisplayProfile {
   const sessionUser = getSessionUser();
   const profileId = params.id ?? sessionUser?.id ?? PROFILE_RECORDS[0]?.id ?? "profile";
   const ownProfileFallback =
     sessionUser && !params.id
-      ? withOptionalAvatar(
-          {
-            ...createFallbackProfile(profileId, true),
+      ? (() => {
+          const fallback = createFallbackProfile(sessionUser.id, true);
+
+          return {
+            ...fallback,
             id: sessionUser.id,
+            username: sessionUser.id,
             firstName: sessionUser.firstName,
             lastName: sessionUser.lastName,
-          },
-          sessionUser.avatarLink,
-        )
+            avatarLink: sessionUser.avatarLink,
+            isOwnProfile: true,
+            editable: {
+              ...fallback.editable,
+              firstName: sessionUser.firstName,
+              lastName: sessionUser.lastName,
+            },
+          };
+        })()
       : null;
-  const profile =
-    getProfileRecordById(profileId) ??
-    ownProfileFallback ??
-    createFallbackProfile(profileId, false);
-  const isOwnProfile = sessionUser ? profileId === sessionUser.id : false;
+  const profileRecord = getProfileRecordById(profileId);
+
+  if (profileRecord) {
+    return mapRecordToDisplayProfile(
+      profileRecord,
+      sessionUser ? profileId === sessionUser.id : false,
+    );
+  }
+
+  return ownProfileFallback ?? createFallbackProfile(profileId, !params.id);
+}
+
+function createOwnProfileFromApi(
+  profileId: string,
+  data: Awaited<ReturnType<typeof getMyProfile>>,
+): DisplayProfile {
+  const educationItem = data.education?.[0];
+  const workItem = data.work?.[0];
+  const birthdayDate = data.birthdayDate ?? data.birthday ?? data.dirthday ?? "";
+  const bio =
+    data.bio?.trim() ||
+    "Профиль уже подключен к новому API, осталось только красиво его заполнить.";
+  const genderValue = data.gender === "male" || data.gender === "female" ? data.gender : "";
+  const firstName = data.firstName || "Имя";
+  const lastName = data.lastName || "Фамилия";
 
   return {
-    ...profile,
-    isOwnProfile,
+    id: profileId,
+    firstName,
+    lastName,
+    username: profileId,
+    status: bio,
+    city: valueOrFallback(data.town ?? ""),
+    nativeTown: valueOrFallback(data.nativeTown ?? ""),
+    phone: valueOrFallback(data.phone ?? ""),
+    email: valueOrFallback(data.email ?? ""),
+    birthday: valueOrFallback(normaliseDate(birthdayDate)),
+    gender: formatGender(genderValue),
+    interests: valueOrFallback(data.interests ?? ""),
+    favoriteMusic: valueOrFallback(data.favMusic ?? ""),
+    workCompany: valueOrFallback(workItem?.company ?? ""),
+    workRole: valueOrFallback(workItem?.jobTitle ?? ""),
+    education: [
+      {
+        place: valueOrFallback(educationItem?.institution ?? ""),
+      },
+    ],
+    friends: getProfileRecordById(profileId)?.friends ?? [],
+    isOwnProfile: true,
+    avatarLink: data.imageLink || getSessionUser()?.avatarLink,
+    editable: {
+      firstName,
+      lastName,
+      bio: data.bio ?? "",
+      gender: genderValue,
+      birthdayDate,
+      nativeTown: data.nativeTown ?? "",
+      town: data.town ?? "",
+      phone: data.phone ?? "",
+      email: data.email ?? "",
+      interests: data.interests ?? "",
+      favMusic: data.favMusic ?? "",
+      institution: educationItem?.institution ?? "",
+      company: workItem?.company ?? "",
+      jobTitle: workItem?.jobTitle ?? "",
+    },
   };
+}
+
+function createPublicProfileFromApi(
+  profileId: string,
+  data: Awaited<ReturnType<typeof getProfileById>>,
+): DisplayProfile {
+  const educationItem = data.education?.[0];
+  const workItem = data.work?.[0];
+  const birthdayDate = data.birthdayDate ?? data.birthday ?? data.dirthday ?? "";
+  const bio =
+    data.bio?.trim() ||
+    "Публичный профиль загружен с бэка. Детальные поля уже приходят через прямой endpoint.";
+
+  return {
+    id: profileId,
+    firstName: data.firstName || "Имя",
+    lastName: data.lastName || "Фамилия",
+    username: profileId,
+    status: bio,
+    city: valueOrFallback(data.town ?? ""),
+    nativeTown: valueOrFallback(data.nativeTown ?? ""),
+    phone: valueOrFallback(data.phone ?? ""),
+    email: valueOrFallback(data.email ?? ""),
+    birthday: valueOrFallback(normaliseDate(birthdayDate)),
+    gender: formatGender(data.gender === "male" || data.gender === "female" ? data.gender : ""),
+    interests: valueOrFallback(data.interests ?? ""),
+    favoriteMusic: valueOrFallback(data.favMusic ?? ""),
+    workCompany: valueOrFallback(workItem?.company ?? ""),
+    workRole: valueOrFallback(workItem?.jobTitle ?? ""),
+    education: [
+      {
+        place: valueOrFallback(educationItem?.institution ?? ""),
+      },
+    ],
+    friends: [],
+    isOwnProfile: false,
+    avatarLink: data.imageLink,
+    editable: {
+      firstName: data.firstName ?? "",
+      lastName: data.lastName ?? "",
+      bio: "",
+      gender: "",
+      birthdayDate: "",
+      nativeTown: "",
+      town: "",
+      phone: "",
+      email: "",
+      interests: "",
+      favMusic: "",
+      institution: "",
+      company: "",
+      jobTitle: "",
+    },
+  };
+}
+
+async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
+  const sessionUser = getSessionUser();
+  const requestedId = params.id ?? sessionUser?.id ?? PROFILE_RECORDS[0]?.id ?? "profile";
+  const isOwnProfile = !params.id || params.id === sessionUser?.id;
+
+  if (sessionUser && isOwnProfile) {
+    try {
+      const profileData = await getMyProfile();
+      console.info("[profile] source=api scope=me id=%s", sessionUser.id, profileData);
+      return createOwnProfileFromApi(sessionUser.id, profileData);
+    } catch (error) {
+      console.error("[profile] source=api scope=me failed id=%s", sessionUser.id, error);
+    }
+  }
+
+  if (!isOwnProfile) {
+    try {
+      const profileData = await getProfileById(requestedId);
+      console.info("[profile] source=api scope=public id=%s", requestedId, profileData);
+      return createPublicProfileFromApi(requestedId, profileData);
+    } catch (error) {
+      console.error("[profile] source=api scope=public failed id=%s", requestedId, error);
+    }
+  }
+
+  console.warn("[profile] source=fallback id=%s", requestedId);
+  return resolveMockProfile(params);
 }
 
 function renderAvatar(profile: DisplayProfile, className: string): string {
@@ -143,24 +480,28 @@ function renderAvatar(profile: DisplayProfile, className: string): string {
       <img
         class="${className}"
         src="/image-proxy?url=${encodeURIComponent(profile.avatarLink)}"
-        alt="${profile.firstName} ${profile.lastName}"
+        alt="${escapeHtml(`${profile.firstName} ${profile.lastName}`)}"
       >
     `;
   }
 
   return `
     <div class="${className} ${className}--placeholder" aria-hidden="true">
-      ${getInitials(profile.firstName, profile.lastName)}
+      ${escapeHtml(getInitials(profile.firstName, profile.lastName))}
     </div>
   `;
 }
 
-function renderSection(title: string, content: string, actionLabel = ""): string {
+function renderSection(title: string, content: string, action = ""): string {
+  if (!content.trim()) {
+    return "";
+  }
+
   return `
     <section class="profile-section">
       <header class="profile-section__header">
-        <h2 class="profile-section__title">${title}</h2>
-        ${actionLabel ? `<span class="profile-section__action">${actionLabel}</span>` : ""}
+        <h2 class="profile-section__title">${escapeHtml(title)}</h2>
+        ${action}
       </header>
       <div class="profile-section__body">
         ${content}
@@ -175,9 +516,7 @@ function getProfilePosts(profile: DisplayProfile): ProfilePost[] {
       id: `${profile.id}-intro`,
       text: `${profile.status}
 
-Сейчас больше всего внимания уделяю задачам на стыке продукта и интерфейсов. Люблю, когда в решении есть и чистая логика, и нормальное визуальное ощущение от страницы.
-
-Постепенно собираю вокруг себя набор приёмов, которые помогают делать интерфейсы быстрее и спокойнее в поддержке. В какой-то момент именно это начинает экономить больше всего времени.`,
+Сейчас больше всего внимания уделяю задачам на стыке продукта и интерфейсов. Люблю, когда в решении есть и чистая логика, и нормальное визуальное ощущение от страницы.`,
       time: "1 д назад",
       likes: 324000,
       reposts: 167000,
@@ -187,7 +526,7 @@ function getProfilePosts(profile: DisplayProfile): ProfilePost[] {
       id: `${profile.id}-details`,
       text: `Сейчас фокус на направлениях: ${profile.interests}. В работе особенно интересно выстраивать понятные сценарии и не перегружать экран лишними деталями.
 
-Из того, что постоянно играет в наушниках: ${profile.favoriteMusic}. А если выключить рабочий режим, то чаще всего пересматриваю ${profile.favoriteMovies}.`,
+Из того, что постоянно играет в наушниках: ${profile.favoriteMusic}.`,
       time: "3 д назад",
       likes: 91000,
       reposts: 12000,
@@ -197,41 +536,84 @@ function getProfilePosts(profile: DisplayProfile): ProfilePost[] {
 }
 
 function renderInfoRows(profile: DisplayProfile): string {
+  const rows = [
+    hasVisibleValue(profile.gender)
+      ? `
+        <div class="profile-info-grid__row">
+          <dt>Пол</dt>
+          <dd>${escapeHtml(profile.gender)}</dd>
+        </div>
+      `
+      : "",
+    hasVisibleValue(profile.birthday)
+      ? `
+        <div class="profile-info-grid__row">
+          <dt>День рождения</dt>
+          <dd>${escapeHtml(profile.birthday)}</dd>
+        </div>
+      `
+      : "",
+    hasVisibleValue(profile.phone)
+      ? `
+        <div class="profile-info-grid__row">
+          <dt>Телефон</dt>
+          <dd>${escapeHtml(profile.phone)}</dd>
+        </div>
+      `
+      : "",
+    hasVisibleValue(profile.email)
+      ? `
+        <div class="profile-info-grid__row">
+          <dt>Email</dt>
+          <dd>${escapeHtml(profile.email)}</dd>
+        </div>
+      `
+      : "",
+    hasVisibleValue(profile.city)
+      ? `
+        <div class="profile-info-grid__row">
+          <dt>Город</dt>
+          <dd>${escapeHtml(profile.city)}</dd>
+        </div>
+      `
+      : "",
+    hasVisibleValue(profile.nativeTown)
+      ? `
+        <div class="profile-info-grid__row">
+          <dt>Родной город</dt>
+          <dd>${escapeHtml(profile.nativeTown)}</dd>
+        </div>
+      `
+      : "",
+  ]
+    .filter(Boolean)
+    .join("");
+
+  if (!rows) {
+    return "";
+  }
+
   return `
     <div class="profile-info-grid">
-      <div class="profile-info-grid__row">
-        <dt>Пол</dt>
-        <dd>${profile.gender}</dd>
-      </div>
-      <div class="profile-info-grid__row">
-        <dt>День рождения</dt>
-        <dd>${profile.birthday}</dd>
-      </div>
-      <div class="profile-info-grid__row">
-        <dt>Телефон</dt>
-        <dd>${profile.phone}</dd>
-      </div>
-      <div class="profile-info-grid__row">
-        <dt>Email</dt>
-        <dd>${profile.email}</dd>
-      </div>
-      <div class="profile-info-grid__row">
-        <dt>Город</dt>
-        <dd>${profile.city}</dd>
-      </div>
+      ${rows}
     </div>
   `;
 }
 
 function renderEducation(profile: DisplayProfile): string {
+  const items = profile.education.filter((item) => hasVisibleValue(item.place));
+
+  if (!items.length) {
+    return "";
+  }
+
   return `
     <div class="profile-stack">
-      ${profile.education
+      ${items
         .map(
           (item) => `
             <article class="profile-stack__item">
-              <h3>${item.place}</h3>
-              <p>${item.subtitle}</p>
+              <h3>${escapeHtml(item.place)}</h3>
             </article>
           `,
         )
@@ -241,31 +623,60 @@ function renderEducation(profile: DisplayProfile): string {
 }
 
 function renderWork(profile: DisplayProfile): string {
+  const hasCompany = hasVisibleValue(profile.workCompany);
+  const hasRole = hasVisibleValue(profile.workRole);
+
+  if (!hasCompany && !hasRole) {
+    return "";
+  }
+
   return `
     <div class="profile-stack">
       <article class="profile-stack__item">
-        <h3>${profile.workCompany}</h3>
-        <p>${profile.workRole}</p>
+        ${hasCompany ? `<h3>${escapeHtml(profile.workCompany)}</h3>` : ""}
+        ${hasRole ? `<p>${escapeHtml(profile.workRole)}</p>` : ""}
       </article>
     </div>
   `;
 }
 
 function renderPersonal(profile: DisplayProfile): string {
+  const rows = [
+    hasVisibleValue(profile.status)
+      ? `
+        <div class="profile-info-grid__row">
+          <dt>О себе</dt>
+          <dd>${escapeHtml(profile.status)}</dd>
+        </div>
+      `
+      : "",
+    hasVisibleValue(profile.interests)
+      ? `
+        <div class="profile-info-grid__row">
+          <dt>Интересы</dt>
+          <dd>${escapeHtml(profile.interests)}</dd>
+        </div>
+      `
+      : "",
+    hasVisibleValue(profile.favoriteMusic)
+      ? `
+        <div class="profile-info-grid__row">
+          <dt>Любимая музыка</dt>
+          <dd>${escapeHtml(profile.favoriteMusic)}</dd>
+        </div>
+      `
+      : "",
+  ]
+    .filter(Boolean)
+    .join("");
+
+  if (!rows) {
+    return "";
+  }
+
   return `
     <div class="profile-info-grid">
-      <div class="profile-info-grid__row">
-        <dt>Интересы</dt>
-        <dd>${profile.interests}</dd>
-      </div>
-      <div class="profile-info-grid__row">
-        <dt>Любимая музыка</dt>
-        <dd>${profile.favoriteMusic}</dd>
-      </div>
-      <div class="profile-info-grid__row">
-        <dt>Любимые фильмы</dt>
-        <dd>${profile.favoriteMovies}</dd>
-      </div>
+      ${rows}
     </div>
   `;
 }
@@ -284,33 +695,39 @@ function renderFriends(profile: DisplayProfile): string {
         <span>${friends.length}</span>
       </div>
 
-      <div class="profile-friends-card__list">
-        ${friends
-          .map(
-            (friend, index) => `
-              <a
-                href="/profile/${friend.id}"
-                data-link
-                class="profile-friend"
-                ${index >= previewCount ? "data-friend-extra hidden" : ""}
-              >
-                <img
-                  class="profile-friend__avatar"
-                  src="${
-                    friend.avatarLink
-                      ? `/image-proxy?url=${encodeURIComponent(friend.avatarLink)}`
-                      : "/assets/img/default-avatar.png"
-                  }"
-                  alt="${friend.firstName} ${friend.lastName}"
-                >
-                <div class="profile-friend__content">
-                  <strong>${friend.firstName} ${friend.lastName}</strong>
-                </div>
-              </a>
-            `,
-          )
-          .join("")}
-      </div>
+      ${
+        friends.length
+          ? `
+            <div class="profile-friends-card__list">
+              ${friends
+                .map(
+                  (friend, index) => `
+                    <a
+                      href="/profile/${encodeURIComponent(friend.id)}"
+                      data-link
+                      class="profile-friend"
+                      ${index >= previewCount ? "data-friend-extra hidden" : ""}
+                    >
+                      <img
+                        class="profile-friend__avatar"
+                        src="${
+                          friend.avatarLink
+                            ? `/image-proxy?url=${encodeURIComponent(friend.avatarLink)}`
+                            : "/assets/img/default-avatar.png"
+                        }"
+                        alt="${escapeHtml(`${friend.firstName} ${friend.lastName}`)}"
+                      >
+                      <div class="profile-friend__content">
+                        <strong>${escapeHtml(`${friend.firstName} ${friend.lastName}`)}</strong>
+                      </div>
+                    </a>
+                  `,
+                )
+                .join("")}
+            </div>
+          `
+          : '<p class="profile-empty-copy">Связи подтянем сюда, когда бэк добавит список друзей.</p>'
+      }
 
       ${
         hasMoreFriends
@@ -363,6 +780,124 @@ function renderProfilePosts(profile: DisplayProfile): string {
   `;
 }
 
+function renderEditorTextField(
+  name: keyof EditableProfileFields,
+  label: string,
+  value: string,
+  options: {
+    type?: "text" | "email" | "tel" | "date";
+    placeholder?: string;
+  } = {},
+): string {
+  return `
+    <label class="profile-editor__field">
+      <span>${escapeHtml(label)}</span>
+      <input
+        class="profile-editor__input"
+        type="${options.type ?? "text"}"
+        name="${name}"
+        value="${escapeHtml(value)}"
+        placeholder="${escapeHtml(options.placeholder ?? "")}"
+      >
+    </label>
+  `;
+}
+
+function renderEditorTextarea(
+  name: keyof EditableProfileFields,
+  label: string,
+  value: string,
+  placeholder = "",
+): string {
+  return `
+    <label class="profile-editor__field profile-editor__field--wide">
+      <span>${escapeHtml(label)}</span>
+      <textarea
+        class="profile-editor__textarea"
+        name="${name}"
+        rows="4"
+        placeholder="${escapeHtml(placeholder)}"
+      >${escapeHtml(value)}</textarea>
+    </label>
+  `;
+}
+
+function renderProfileEditor(profile: DisplayProfile): string {
+  if (!profile.isOwnProfile) {
+    return "";
+  }
+
+  return `
+    <section class="profile-editor" data-profile-editor hidden>
+      <form class="profile-editor__form" data-profile-edit-form>
+        <div class="profile-editor__intro">
+          <h2>Редактирование профиля</h2>
+          <p>Отправим только изменённые поля. Остальное останется как есть.</p>
+        </div>
+
+        <div class="profile-editor__grid">
+          ${renderEditorTextField("firstName", "Имя", profile.editable.firstName)}
+          ${renderEditorTextField("lastName", "Фамилия", profile.editable.lastName)}
+          ${renderEditorTextField("email", "Email", profile.editable.email, {
+            type: "email",
+            placeholder: "mail@example.com",
+          })}
+          ${renderEditorTextField("phone", "Телефон", profile.editable.phone, {
+            type: "tel",
+            placeholder: "+79991234567",
+          })}
+          ${renderEditorTextField("town", "Текущий город", profile.editable.town)}
+          ${renderEditorTextField("nativeTown", "Родной город", profile.editable.nativeTown)}
+          ${renderEditorTextField("birthdayDate", "Дата рождения", profile.editable.birthdayDate, {
+            type: "date",
+          })}
+
+          <label class="profile-editor__field">
+            <span>Пол</span>
+            <select class="profile-editor__input" name="gender">
+              <option value="" ${profile.editable.gender === "" ? "selected" : ""}>Не указывать</option>
+              <option value="male" ${profile.editable.gender === "male" ? "selected" : ""}>Мужской</option>
+              <option value="female" ${profile.editable.gender === "female" ? "selected" : ""}>Женский</option>
+            </select>
+          </label>
+
+          ${renderEditorTextField("institution", "Учебное заведение", profile.editable.institution)}
+          ${renderEditorTextField("company", "Компания", profile.editable.company)}
+          ${renderEditorTextField("jobTitle", "Роль / должность", profile.editable.jobTitle)}
+          ${renderEditorTextarea("bio", "О себе", profile.editable.bio, "Коротко о себе")}
+          ${renderEditorTextarea(
+            "interests",
+            "Интересы",
+            profile.editable.interests,
+            "Что тебе действительно интересно",
+          )}
+          ${renderEditorTextarea(
+            "favMusic",
+            "Любимая музыка",
+            profile.editable.favMusic,
+            "Артисты, жанры, плейлисты",
+          )}
+        </div>
+
+        <p class="profile-editor__message" data-profile-form-message hidden></p>
+
+        <div class="profile-editor__actions">
+          <button type="submit" class="profile-editor__button profile-editor__button--primary">
+            Сохранить изменения
+          </button>
+          <button
+            type="button"
+            class="profile-editor__button"
+            data-profile-edit-cancel
+          >
+            Отмена
+          </button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
 export async function renderProfile(params: ProfileParams = {}): Promise<string> {
   const isAuthorised = getSessionUser() !== null;
 
@@ -370,8 +905,14 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
     return renderFeed();
   }
 
-  const profile = resolveProfile(params);
-  const profileInfoAction = profile.isOwnProfile ? "[ред.]" : "";
+  const profile = await resolveProfile(params);
+  const profileInfoAction = profile.isOwnProfile
+    ? `
+        <button type="button" class="profile-section__action-button" data-profile-edit-toggle>
+          редактировать
+        </button>
+      `
+    : "";
 
   return `
     <div class="app-page">
@@ -390,8 +931,8 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
 
                 <div class="profile-card__hero-copy">
                   ${profile.isOwnProfile ? '<div class="profile-card__eyebrow">Мой профиль</div>' : ""}
-                  <h1>${profile.firstName} ${profile.lastName}</h1>
-                  <p>${profile.status}</p>
+                  <h1>${escapeHtml(`${profile.firstName} ${profile.lastName}`)}</h1>
+                  <p>${escapeHtml(profile.status)}</p>
                 </div>
               </header>
 
@@ -409,6 +950,8 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
                 </button>
               </div>
             </article>
+
+            ${renderProfileEditor(profile)}
 
             <a href="#profile-posts" class="profile-composer" data-profile-anchor>
               + Написать пост
@@ -428,10 +971,89 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
   `;
 }
 
+function readFieldValue(formData: FormData, name: keyof EditableProfileFields): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getDefaultFieldValue(form: HTMLFormElement, name: keyof EditableProfileFields): string {
+  const field = form.querySelector(`[name="${name}"]`);
+
+  if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+    return field.defaultValue.trim();
+  }
+
+  if (field instanceof HTMLSelectElement) {
+    return field.value.trim();
+  }
+
+  return "";
+}
+
+function buildProfilePatch(
+  formData: FormData,
+  sourceValues: EditableProfileFields,
+): UpdateProfilePayload {
+  const nextValues: EditableProfileFields = {
+    firstName: readFieldValue(formData, "firstName"),
+    lastName: readFieldValue(formData, "lastName"),
+    bio: readFieldValue(formData, "bio"),
+    gender: readFieldValue(formData, "gender") as EditableProfileFields["gender"],
+    birthdayDate: readFieldValue(formData, "birthdayDate"),
+    nativeTown: readFieldValue(formData, "nativeTown"),
+    town: readFieldValue(formData, "town"),
+    phone: readFieldValue(formData, "phone"),
+    email: readFieldValue(formData, "email"),
+    interests: readFieldValue(formData, "interests"),
+    favMusic: readFieldValue(formData, "favMusic"),
+    institution: readFieldValue(formData, "institution"),
+    company: readFieldValue(formData, "company"),
+    jobTitle: readFieldValue(formData, "jobTitle"),
+  };
+
+  const patch: UpdateProfilePayload = {};
+
+  (Object.keys(nextValues) as Array<keyof EditableProfileFields>).forEach((key) => {
+    if (nextValues[key] === sourceValues[key]) {
+      return;
+    }
+
+    if (key === "gender") {
+      if (nextValues.gender) {
+        patch.gender = nextValues.gender;
+      }
+
+      return;
+    }
+
+    patch[key] = nextValues[key];
+  });
+
+  return patch;
+}
+
+function toggleProfileEditor(root: ParentNode, forceExpanded?: boolean): void {
+  const editor = root.querySelector("[data-profile-editor]");
+  const button = root.querySelector("[data-profile-edit-toggle]");
+
+  if (!(editor instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const isExpanded = forceExpanded ?? editor.hidden;
+  editor.hidden = !isExpanded;
+  button.textContent = isExpanded ? "скрыть форму" : "редактировать";
+  button.setAttribute("aria-expanded", String(isExpanded));
+}
+
+async function rerenderCurrentRoute(): Promise<void> {
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
 export function initProfileToggle(root: Document | HTMLElement = document): void {
   const bindableRoot = root as ProfileRoot;
 
-  if (bindableRoot.__profileToggleBound) {
+  if (bindableRoot.__profileInteractionsBound) {
     return;
   }
 
@@ -478,5 +1100,116 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
     button.textContent = nextExpanded ? "свернуть" : "показать всех";
   });
 
-  bindableRoot.__profileToggleBound = true;
+  root.addEventListener("click", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const editButton = target.closest("[data-profile-edit-toggle]");
+    if (editButton instanceof HTMLButtonElement) {
+      toggleProfileEditor(root);
+      return;
+    }
+
+    const cancelButton = target.closest("[data-profile-edit-cancel]");
+    if (!(cancelButton instanceof HTMLButtonElement)) return;
+
+    const form = cancelButton.closest("[data-profile-edit-form]");
+
+    if (!(form instanceof HTMLFormElement)) return;
+
+    form.reset();
+    toggleProfileEditor(root, false);
+
+    const message = form.querySelector("[data-profile-form-message]");
+    if (message instanceof HTMLElement) {
+      message.hidden = true;
+      message.textContent = "";
+      message.classList.remove("is-error", "is-success");
+    }
+  });
+
+  root.addEventListener("submit", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLFormElement)) return;
+    if (!target.matches("[data-profile-edit-form]")) return;
+
+    event.preventDefault();
+
+    const submitButton = target.querySelector('button[type="submit"]');
+    const message = target.querySelector("[data-profile-form-message]");
+
+    if (!(submitButton instanceof HTMLButtonElement) || !(message instanceof HTMLElement)) {
+      return;
+    }
+
+    const sourceValues: EditableProfileFields = {
+      firstName: getDefaultFieldValue(target, "firstName"),
+      lastName: getDefaultFieldValue(target, "lastName"),
+      bio: getDefaultFieldValue(target, "bio"),
+      gender: getDefaultFieldValue(target, "gender") as EditableProfileFields["gender"],
+      birthdayDate: getDefaultFieldValue(target, "birthdayDate"),
+      nativeTown: getDefaultFieldValue(target, "nativeTown"),
+      town: getDefaultFieldValue(target, "town"),
+      phone: getDefaultFieldValue(target, "phone"),
+      email: getDefaultFieldValue(target, "email"),
+      interests: getDefaultFieldValue(target, "interests"),
+      favMusic: getDefaultFieldValue(target, "favMusic"),
+      institution: getDefaultFieldValue(target, "institution"),
+      company: getDefaultFieldValue(target, "company"),
+      jobTitle: getDefaultFieldValue(target, "jobTitle"),
+    };
+
+    const patch = buildProfilePatch(new FormData(target), sourceValues);
+
+    if (!Object.keys(patch).length) {
+      message.hidden = false;
+      message.textContent = "Изменений пока нет.";
+      message.classList.remove("is-error");
+      message.classList.add("is-success");
+      return;
+    }
+
+    const validationError = validateProfilePatch(patch, sourceValues);
+    if (validationError) {
+      message.hidden = false;
+      message.textContent = validationError;
+      message.classList.remove("is-success");
+      message.classList.add("is-error");
+      return;
+    }
+
+    message.hidden = true;
+    message.textContent = "";
+    message.classList.remove("is-error", "is-success");
+    submitButton.disabled = true;
+    submitButton.textContent = "Сохраняем...";
+
+    void updateMyProfile(patch)
+      .then(async () => {
+        const sessionUser = getSessionUser();
+
+        if (sessionUser) {
+          setSessionUser({
+            ...sessionUser,
+            firstName: patch.firstName ?? sessionUser.firstName,
+            lastName: patch.lastName ?? sessionUser.lastName,
+          });
+        }
+
+        await rerenderCurrentRoute();
+      })
+      .catch((error: unknown) => {
+        message.hidden = false;
+        message.textContent =
+          error instanceof Error ? error.message : "Не получилось сохранить изменения.";
+        message.classList.remove("is-success");
+        message.classList.add("is-error");
+      })
+      .finally(() => {
+        submitButton.disabled = false;
+        submitButton.textContent = "Сохранить изменения";
+      });
+  });
+
+  bindableRoot.__profileInteractionsBound = true;
 }

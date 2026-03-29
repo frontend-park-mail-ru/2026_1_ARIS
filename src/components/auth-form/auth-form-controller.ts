@@ -1,9 +1,4 @@
-import {
-  ApiError,
-  loginUser,
-  registerUser,
-  validateRegisterStepOne,
-} from "../../api/auth";
+import { ApiError, loginUser, registerUser, validateRegisterStepOne } from "../../api/auth";
 import { setSessionUser } from "../../state/session";
 import { closeAuthModal } from "../auth-modal/auth-modal-controller";
 import { renderAuthForm } from "./auth-form";
@@ -13,6 +8,12 @@ import {
   type RegisterStep,
   type RegisterValues,
 } from "../../state/register-draft";
+import {
+  normalizeName,
+  validateAlphabetConsistency,
+  validateBirthDate,
+  validateName,
+} from "../../utils/profile-validation";
 
 type AuthMode = "login" | "register";
 
@@ -210,251 +211,6 @@ function rerenderRegisterForm(authForm: HTMLElement): HTMLFormElement | null {
   });
 
   return newForm;
-}
-
-/**
- * Checks whether a year is leap.
- *
- * @param {number} year
- * @returns {boolean}
- */
-function isLeapYear(year: number): boolean {
-  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-}
-
-/**
- * Returns number of days in a month.
- *
- * @param {number} month
- * @param {number} year
- * @returns {number}
- */
-function getDaysInMonth(month: number, year: number): number {
-  const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return days[month - 1] ?? 31;
-}
-
-/**
- * Normalizes a name to Capitalized format.
- *
- * @param {string} value
- * @returns {string}
- */
-function normalizeName(value: string): string {
-  if (!value) return value;
-
-  const lower = value.toLowerCase();
-  return lower.charAt(0).toUpperCase() + lower.slice(1);
-}
-
-/**
- * Detects alphabet used in a string.
- *
- * @param {string} value
- * @returns {"latin"|"cyrillic"|null}
- */
-function detectAlphabet(value: string): "latin" | "cyrillic" | null {
-  if (/^[A-Za-z-]+$/.test(value)) {
-    return "latin";
-  }
-
-  if (/^[А-Яа-яЁё-]+$/u.test(value)) {
-    return "cyrillic";
-  }
-
-  return null;
-}
-
-/**
- * Validates first name or last name field.
- *
- * @param {string} value
- * @param {string} label
- * @param {boolean} [isSubmitAttempted=false]
- * @returns {string}
- */
-function validateName(value: string, label: string, isSubmitAttempted = false): string {
-  if (!value) {
-    return isSubmitAttempted ? "Обязательное поле" : "";
-  }
-
-  if (value.length > 12) {
-    return `${label} может содержать максимум 12 символов`;
-  }
-
-  if (/\d/.test(value)) {
-    return `В поле "${label.toLowerCase()}" не должно быть цифр`;
-  }
-
-  if (!/^[A-Za-zА-Яа-яЁё-]+$/u.test(value)) {
-    return `В поле "${label.toLowerCase()}" не должно быть символов`;
-  }
-
-  const hasLatin = /[A-Za-z]/.test(value);
-  const hasCyrillic = /[А-Яа-яЁё]/u.test(value);
-
-  if (hasLatin && hasCyrillic) {
-    return "В этом поле нельзя смешивать русский и английский языки";
-  }
-
-  return "";
-}
-
-/**
- * Validates that first and last names use the same alphabet.
- *
- * @param {string} firstName
- * @param {string} lastName
- * @returns {string}
- */
-function validateAlphabetConsistency(firstName: string, lastName: string): string {
-  if (!firstName || !lastName) {
-    return "";
-  }
-
-  const firstLang = detectAlphabet(firstName);
-  const lastLang = detectAlphabet(lastName);
-
-  if (!firstLang || !lastLang) {
-    return "";
-  }
-
-  if (firstLang !== lastLang) {
-    return "Имя и фамилия должны быть на одном языке";
-  }
-
-  return "";
-}
-
-/**
- * Validates birth date field.
- *
- * @param {string} value
- * @param {boolean} [isSubmitAttempted=false]
- * @returns {string}
- */
-function validateBirthDate(value: string, isSubmitAttempted = false): string {
-  if (!value) {
-    return isSubmitAttempted ? "Обязательное поле" : "";
-  }
-
-  if (!/^[\d/]*$/.test(value)) {
-    return "Дата должна быть в формате дд/мм/гггг";
-  }
-
-  const parts = value.split("/");
-
-  if (parts.length > 3) {
-    return "Дата должна быть в формате дд/мм/гггг";
-  }
-
-  const [dayString = "", monthString = "", yearString = ""] = parts;
-
-  if (dayString.length > 2 || monthString.length > 2 || yearString.length > 4) {
-    return "Дата должна быть в формате дд/мм/гггг";
-  }
-
-  if (dayString.length === 2) {
-    const day = Number(dayString);
-
-    if (day < 1 || day > 31) {
-      return "Некорректный день";
-    }
-  }
-
-  if (monthString.length === 2) {
-    const month = Number(monthString);
-
-    if (month < 1 || month > 12) {
-      return "Некорректный месяц";
-    }
-  }
-
-  if (dayString.length === 2 && monthString.length === 2) {
-    const day = Number(dayString);
-    const month = Number(monthString);
-
-    const maxDaysWithoutYear: Record<number, number> = {
-      1: 31,
-      2: 29,
-      3: 31,
-      4: 30,
-      5: 31,
-      6: 30,
-      7: 31,
-      8: 31,
-      9: 30,
-      10: 31,
-      11: 30,
-      12: 31,
-    };
-
-    const maxDay = maxDaysWithoutYear[month];
-
-    if (month >= 1 && month <= 12 && maxDay && day > maxDay) {
-      if (month === 2) {
-        return "В феврале максимум 29 дней";
-      }
-
-      return `В этом месяце ${maxDay} дней`;
-    }
-  }
-
-  if (yearString.length === 4) {
-    const year = Number(yearString);
-    const now = new Date();
-
-    if (year > now.getFullYear()) {
-      return "Некорректный год";
-    }
-  }
-
-  if (yearString.length > 0 && yearString.length < 4) {
-    return "Введите год в формате гггг";
-  }
-
-  if (value.length < 10) {
-    return isSubmitAttempted ? "Введите дату рождения в формате дд/мм/гггг" : "";
-  }
-
-  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-    return "Дата должна быть в формате дд/мм/гггг";
-  }
-
-  const day = Number(dayString);
-  const month = Number(monthString);
-  const year = Number(yearString);
-
-  const maxDay = getDaysInMonth(month, year);
-
-  if (day > maxDay) {
-    if (month === 2) {
-      return `В феврале ${year} года ${maxDay} дней`;
-    }
-
-    return `В этом месяце ${maxDay} дней`;
-  }
-
-  const birthDate = new Date(year, month - 1, day);
-  const now = new Date();
-
-  if (birthDate > now) {
-    return "Дата рождения не может быть в будущем";
-  }
-
-  const ageLimit = new Date(year + 12, month - 1, day);
-
-  if (ageLimit > now) {
-    return "Вам должно быть не меньше 12 лет";
-  }
-
-  const maxAgeLimit = new Date(year + 130, month - 1, day);
-
-  if (maxAgeLimit < now) {
-    return "Возраст не может превышать 130 лет";
-  }
-
-  return "";
 }
 
 /**
@@ -1010,6 +766,19 @@ async function handleRegisterNext(form: HTMLFormElement, authForm: HTMLElement):
       renderServerFieldErrors(form, {
         login: getApiErrorMessage(error) || "Такой логин уже существует",
       });
+      return;
+    }
+
+    // Some backend branches do not expose step-one validation yet.
+    if (getApiErrorStatus(error) === 404) {
+      registerDraft.step = 2;
+      registerDraft.submitAttempted = false;
+
+      const nextForm = rerenderRegisterForm(authForm);
+      if (!nextForm) return;
+
+      const stepErrors = validateRegisterStep(registerDraft.values, 2, false);
+      renderTouchedFieldErrors(nextForm, stepErrors, "register");
       return;
     }
 

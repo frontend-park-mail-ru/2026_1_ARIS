@@ -23,14 +23,22 @@ export type ProfileRecord = {
 };
 
 type ProfileMatchInput = {
-  id?: string | undefined;
-  username?: string | undefined;
-  firstName?: string | undefined;
-  lastName?: string | undefined;
+  id?: string | number | undefined;
+  username?: string | number | undefined;
+  firstName?: string | number | undefined;
+  lastName?: string | number | undefined;
 };
 
-function normaliseProfileValue(value?: string): string {
-  return (value ?? "").trim().toLowerCase();
+function normaliseProfileValue(value?: string | number): string {
+  if (typeof value === "string") {
+    return value.trim().toLowerCase();
+  }
+
+  if (typeof value === "number") {
+    return String(value).trim().toLowerCase();
+  }
+
+  return "";
 }
 
 export const PROFILE_RECORDS: ProfileRecord[] = [

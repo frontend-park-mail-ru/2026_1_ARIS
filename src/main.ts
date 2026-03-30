@@ -14,12 +14,14 @@ import "./components/auth-form/auth-form.scss";
 import "./components/eye-toggle/eye-toggle.scss";
 
 import "./pages/auth/auth-page.scss";
+import "./pages/chats/chats.css";
 import "./pages/profile/profile.css";
 
 import { createRouter } from "./router/router";
 import { renderLogin } from "./pages/login/login";
 import { renderRegister } from "./pages/register/register";
 import { renderFeed, refreshFeedCenter } from "./pages/feed/feed";
+import { renderChats } from "./pages/chats/chats";
 import { renderProfile } from "./pages/profile/profile";
 import { initSession } from "./state/session";
 import { initHeader } from "./components/header/header";
@@ -36,6 +38,7 @@ const router = createRouter(root, [
   { path: "/feed", title: "ARISNET — Feed", render: renderFeed },
   { path: "/login", title: "ARISNET — Login", render: renderLogin },
   { path: "/register", title: "ARISNET — Register", render: renderRegister },
+  { path: "/chats", title: "ARISNET — Chats", render: renderChats },
   { path: "/profile", title: "ARISNET — Profile", render: renderProfile },
   { path: "/profile/:id", title: "ARISNET — Profile", render: renderProfile },
 ]);

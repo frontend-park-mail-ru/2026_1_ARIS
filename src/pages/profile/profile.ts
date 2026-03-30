@@ -9,6 +9,7 @@ import {
 } from "../../api/profile";
 import { getSessionUser, setSessionUser } from "../../state/session";
 import {
+  normalizeName,
   validateAlphabetConsistency,
   validateIsoBirthDate,
   validateName,
@@ -146,14 +147,16 @@ function validateProfilePatch(
 ): ProfileFieldErrorMap {
   const firstName = patch.firstName ?? sourceValues.firstName;
   const lastName = patch.lastName ?? sourceValues.lastName;
+  const birthdayDate = patch.birthdayDate ?? sourceValues.birthdayDate;
+  const gender = patch.gender ?? sourceValues.gender;
   const errors: ProfileFieldErrorMap = {};
 
-  const firstNameError = validateName(patch.firstName ?? "", "Имя", false);
+  const firstNameError = validateName(firstName, "Имя", true);
   if (firstNameError) {
     errors.firstName = firstNameError;
   }
 
-  const lastNameError = validateName(patch.lastName ?? "", "Фамилия", false);
+  const lastNameError = validateName(lastName, "Фамилия", true);
   if (lastNameError) {
     errors.lastName = lastNameError;
   }
@@ -163,9 +166,17 @@ function validateProfilePatch(
     errors.lastName = alphabetError;
   }
 
-  const birthdayError = validateIsoBirthDate(patch.birthdayDate ?? "");
+  if (!birthdayDate) {
+    errors.birthdayDate = "Обязательное поле";
+  }
+
+  const birthdayError = validateIsoBirthDate(birthdayDate);
   if (birthdayError) {
     errors.birthdayDate = birthdayError;
+  }
+
+  if (!gender) {
+    errors.gender = "Обязательное поле";
   }
 
   const emailError = validateOptionalEmail(patch.email ?? "");
@@ -946,7 +957,6 @@ function renderProfileEditor(profile: DisplayProfile): string {
           <label class="profile-editor__field">
             <span>Пол</span>
             <select class="profile-editor__input" name="gender">
-              <option value="" ${profile.editable.gender === "" ? "selected" : ""}>Не указывать</option>
               <option value="male" ${profile.editable.gender === "male" ? "selected" : ""}>Мужской</option>
               <option value="female" ${profile.editable.gender === "female" ? "selected" : ""}>Женский</option>
             </select>
@@ -1087,8 +1097,8 @@ function buildProfilePatch(
   sourceValues: EditableProfileFields,
 ): UpdateProfilePayload {
   const nextValues: EditableProfileFields = {
-    firstName: readFieldValue(formData, "firstName"),
-    lastName: readFieldValue(formData, "lastName"),
+    firstName: normalizeName(readFieldValue(formData, "firstName")),
+    lastName: normalizeName(readFieldValue(formData, "lastName")),
     bio: readFieldValue(formData, "bio"),
     gender: readFieldValue(formData, "gender") as EditableProfileFields["gender"],
     birthdayDate: readFieldValue(formData, "birthdayDate"),

@@ -224,3 +224,51 @@ export function validateIsoBirthDate(value: string): string {
 
   return validateAgeRange(date);
 }
+
+export function validateOptionalEmail(value: string): string {
+  if (!value) {
+    return "";
+  }
+
+  if (value.length > 254) {
+    return "Введите корректный email";
+  }
+
+  const emailParts = value.split("@");
+  if (emailParts.length !== 2) {
+    return "Введите корректный email";
+  }
+
+  const [localPart, domain] = emailParts;
+
+  if (!localPart || !domain || localPart.length > 64) {
+    return "Введите корректный email";
+  }
+
+  if (localPart.includes("..") || domain.includes("..")) {
+    return "Введите корректный email";
+  }
+
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(localPart)) {
+    return "Введите корректный email";
+  }
+
+  const domainLabels = domain.split(".");
+  if (domainLabels.length < 2 || domainLabels.some((label) => !label)) {
+    return "Введите корректный email";
+  }
+
+  const topLevelDomain = domainLabels[domainLabels.length - 1] ?? "";
+  if (!/^[A-Za-z]{2,}$/.test(topLevelDomain)) {
+    return "Введите корректный email";
+  }
+
+  const isValidDomainLabel = (label: string): boolean =>
+    /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(label);
+
+  if (!domainLabels.every(isValidDomainLabel)) {
+    return "Введите корректный email";
+  }
+
+  return "";
+}

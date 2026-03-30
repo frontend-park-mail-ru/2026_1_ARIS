@@ -44,6 +44,7 @@ export type UpdateProfilePayload = {
   phone?: string;
   email?: string;
   institution?: string;
+  group?: string;
   company?: string;
   jobTitle?: string;
   interests?: string;

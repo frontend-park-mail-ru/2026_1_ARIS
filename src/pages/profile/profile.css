@@ -316,6 +316,18 @@
   font-weight: 600;
 }
 
+.profile-editor__field-error {
+  min-height: 34px;
+  margin: 0;
+  color: rgb(190 24 93);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.profile-editor__field-error--hidden {
+  visibility: hidden;
+}
+
 .profile-editor__input,
 .profile-editor__textarea {
   width: 100%;
@@ -325,9 +337,17 @@
   background: rgb(255 255 255 / 88%);
   color: var(--color-text-main);
   font: inherit;
+}
+
+.profile-editor__textarea {
   resize: vertical;
   min-height: 108px;
   line-height: 1.45;
+}
+
+.profile-editor__control--error {
+  border-color: rgb(190 24 93);
+  background: rgb(255 241 242);
 }
 
 .profile-editor__input:focus,

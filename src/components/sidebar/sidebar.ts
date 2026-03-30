@@ -17,6 +17,11 @@ type SidebarRoot = (Document | HTMLElement) & {
   __sidebarBound?: boolean;
 };
 
+function normalisePath(path: string): string {
+  const noTrailing = (path || "/").replace(/\/+$/g, "");
+  return noTrailing === "" ? "/" : noTrailing;
+}
+
 /**
  * Renders a sidebar navigation item.
  *
@@ -62,6 +67,9 @@ function renderSidebarItem({
  * @returns {string}
  */
 export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {}): string {
+  const currentPath = normalisePath(window.location.pathname);
+  const isFeedRoute = currentPath === "/" || currentPath === "/feed";
+  const isProfileRoute = currentPath === "/profile" || currentPath.startsWith("/profile/");
   const isForYouActive = getFeedMode() === "for-you";
   const isByTimeActive = getFeedMode() === "by-time";
 
@@ -72,15 +80,16 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           href: "/feed",
           label: "Лента",
           icon: "/assets/img/icons/home.svg",
-          isActive: true,
+          isActive: isFeedRoute,
         })}
 
         ${renderSidebarItem({
-          href: "/login",
+          href: "/profile",
           label: "Профиль",
           icon: "/assets/img/icons/profile.svg",
+          isActive: isProfileRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
-          isStub: isAuthorised,
+          isStub: false,
         })}
 
         ${renderSidebarItem({
@@ -108,25 +117,31 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
         })}
       </section>
 
-      <section class="sidebar-card sidebar-card--feed-type">
-        <h3 class="sidebar-card__title">Тип ленты</h3>
+      ${
+        isFeedRoute
+          ? `
+            <section class="sidebar-card sidebar-card--feed-type">
+              <h3 class="sidebar-card__title">Тип ленты</h3>
 
-        ${renderSidebarItem({
-          label: "Для вас",
-          icon: "/assets/img/icons/star.svg",
-          isActive: isForYouActive,
-          isStub: true,
-          attributes: 'data-feed-mode="for-you"',
-        })}
+              ${renderSidebarItem({
+                label: "Для вас",
+                icon: "/assets/img/icons/star.svg",
+                isActive: isForYouActive,
+                isStub: true,
+                attributes: 'data-feed-mode="for-you"',
+              })}
 
-        ${renderSidebarItem({
-          label: "По времени",
-          icon: "/assets/img/icons/clock.svg",
-          isActive: isByTimeActive,
-          isStub: true,
-          attributes: 'data-feed-mode="by-time"',
-        })}
-      </section>
+              ${renderSidebarItem({
+                label: "По времени",
+                icon: "/assets/img/icons/clock.svg",
+                isActive: isByTimeActive,
+                isStub: true,
+                attributes: 'data-feed-mode="by-time"',
+              })}
+            </section>
+          `
+          : ""
+      }
     </aside>
   `;
 }

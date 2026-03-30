@@ -7,12 +7,12 @@
   --header-search-gap: 10px;
   --header-search-height: 40px;
   --header-search-icon-size: 24px;
-  --header-user-gap: 12px;
+  --header-user-gap: 10px;
   --header-guest-actions-gap: 24px;
-  --header-username-size: 24px;
+  --header-username-size: 18px;
   --header-logout-size: 14px;
   --header-logout-color: #666666;
-  --header-avatar-size: 62px;
+  --header-avatar-size: 56px;
   --header-guest-actions-gap: 12px;
 
   --header-grid-gap: var(--layout-column-gap);
@@ -35,10 +35,17 @@
     grid-template-columns: var(--header-columns);
     column-gap: var(--header-grid-gap);
     align-items: center;
-    width: 100%;
+    width: max-content;
     height: 100%;
     min-width: var(--layout-min-width);
     padding: 0 var(--layout-padding-x);
+  }
+
+  &__inner--authorised {
+    grid-template-columns:
+      var(--layout-sidebar-width)
+      var(--layout-content-width)
+      var(--layout-widgets-width);
   }
 
   &__logo-link {
@@ -62,6 +69,7 @@
     justify-self: start;
     gap: var(--header-search-gap);
     width: var(--header-search-width);
+    max-width: 100%;
     height: var(--header-search-height);
     padding: 0 var(--header-search-padding-x);
     border-radius: var(--radius-input);
@@ -115,28 +123,36 @@
 }
 
   &__user {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name avatar"
+      "logout avatar";
     align-items: center;
-    justify-content: flex-end;
     justify-self: stretch;
-    gap: var(--header-user-gap);
+    width: 100%;
+    column-gap: var(--header-user-gap);
+    row-gap: 4px;
     min-width: 0;
+    padding-left: var(--layout-widgets-inner-padding-left);
+    box-sizing: border-box;
     text-decoration: none;
   }
 
   &__username {
+    grid-area: name;
     min-width: 0;
-    overflow: hidden;
     color: var(--color-text-main);
     text-align: right;
-    text-overflow: ellipsis;
     white-space: nowrap;
+    line-height: 1.1;
     font-size: var(--header-username-size);
     font-weight: var(--font-weight-medium);
-    flex: 1 1 auto;
   }
 
   &__avatar {
+    grid-area: avatar;
+    align-self: center;
     width: var(--header-avatar-size);
     height: var(--header-avatar-size);
     flex-shrink: 0;
@@ -145,8 +161,9 @@
   }
 
   &__logout {
+    grid-area: logout;
+    justify-self: end;
     display: flex;
-    margin-top: 8px;
     border: none;
     background: transparent;
     color: var(--header-logout-color);

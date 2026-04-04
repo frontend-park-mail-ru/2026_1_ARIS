@@ -53,6 +53,11 @@ export type SendMessagePayload = {
   text: string;
 };
 
+export type ChatMessageSocketHandlers = {
+  onMessage: (message: ChatMessage) => void;
+  onError?: ((event: Event) => void) | undefined;
+};
+
 async function parseJson<T>(response: Response): Promise<T> {
   const text = await response.text();
 
@@ -160,4 +165,40 @@ export async function sendChatMessage(
   }
 
   return mapMessage(data as RawMessage);
+}
+
+function getChatSocketUrl(chatId: string): string {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+
+  return `${protocol}//${window.location.host}/ws/${encodeURIComponent(chatId)}`;
+}
+
+export function subscribeToChatMessages(
+  chatId: string,
+  handlers: ChatMessageSocketHandlers,
+): () => void {
+  const socket = new WebSocket(getChatSocketUrl(chatId));
+
+  socket.addEventListener("message", (event: MessageEvent<string>) => {
+    try {
+      const rawMessage = JSON.parse(event.data) as RawMessage;
+      const message = mapMessage(rawMessage);
+
+      if (message.id) {
+        handlers.onMessage(message);
+      }
+    } catch (error) {
+      console.error("[chats] failed to parse websocket message", error);
+    }
+  });
+
+  if (handlers.onError) {
+    socket.addEventListener("error", handlers.onError);
+  }
+
+  return () => {
+    if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+      socket.close();
+    }
+  };
 }

@@ -67,9 +67,10 @@ module.exports = {
     open: true,
     proxy: [
       {
-        context: ["/api", "/image-proxy"],
+        context: ["/api", "/image-proxy", "/ws"],
         target: "http://localhost:8080",
         changeOrigin: true,
+        ws: true,
       },
     ],
   },

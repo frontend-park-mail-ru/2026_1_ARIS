@@ -1,6 +1,13 @@
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
-import { getChatMessages, getChats, sendChatMessage, type ChatSummary } from "../../api/chat";
+import {
+  getChatMessages,
+  getChats,
+  sendChatMessage,
+  subscribeToChatMessages,
+  type ChatMessage,
+  type ChatSummary,
+} from "../../api/chat";
 import { getSessionUser } from "../../state/session";
 import { PROFILE_RECORDS, findProfileRecord } from "../profile/profile-data";
 import { renderFeed } from "../feed/feed";
@@ -51,6 +58,7 @@ type ChatsState = {
   selectedChatId: string;
   errorMessage: string;
   loadedForUserId: string;
+  unsubscribeByChatId: Map<string, () => void>;
 };
 
 const chatsState: ChatsState = {
@@ -62,9 +70,14 @@ const chatsState: ChatsState = {
   selectedChatId: "",
   errorMessage: "",
   loadedForUserId: "",
+  unsubscribeByChatId: new Map(),
 };
 
+let chatsRoot: ParentNode = document;
+
 function resetChatsState(): void {
+  chatsState.unsubscribeByChatId.forEach((unsubscribe) => unsubscribe());
+  chatsState.unsubscribeByChatId.clear();
   chatsState.loaded = false;
   chatsState.loadingMessages = false;
   chatsState.source = "mock";
@@ -295,6 +308,82 @@ function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
     });
 }
 
+function mapMessageToViewMessage(message: ChatMessage, thread: ChatViewThread): ChatViewMessage {
+  const currentUser = getSessionUser();
+  const own = isOwnMessage(message.authorId, message.authorName);
+
+  return {
+    id: message.id,
+    text: message.text,
+    authorName:
+      message.authorName ??
+      (own
+        ? `${currentUser?.firstName ?? "Вы"} ${currentUser?.lastName ?? ""}`.trim()
+        : thread.title),
+    isOwn: own,
+    createdAt: message.createdAt,
+    avatarLink: own ? currentUser?.avatarLink : thread.avatarLink,
+  };
+}
+
+function dedupeMessagesById(messages: ChatViewMessage[]): ChatViewMessage[] {
+  const byId = new Map<string, ChatViewMessage>();
+
+  messages.forEach((message) => {
+    byId.set(message.id, message);
+  });
+
+  return Array.from(byId.values());
+}
+
+function updateThreadPreview(thread: ChatViewThread): void {
+  const messages = thread.messages ?? [];
+  const lastMessage = messages[messages.length - 1];
+
+  if (!lastMessage) {
+    return;
+  }
+
+  thread.preview = lastMessage.text;
+  thread.previewIsOwn = lastMessage.isOwn;
+  thread.timeLabel = formatMessageTime(lastMessage.createdAt);
+}
+
+function appendIncomingMessage(chatId: string, message: ChatMessage): void {
+  const thread = chatsState.threads.find((item) => item.id === chatId);
+  if (!thread || thread.source !== "api") {
+    return;
+  }
+
+  const incomingMessage = mapMessageToViewMessage(message, thread);
+  const currentMessages = thread.messages ?? [];
+  if (currentMessages.some((item) => item.id === incomingMessage.id)) {
+    return;
+  }
+
+  thread.messages = sortMessagesByCreatedAt(
+    dedupeMessagesById([...currentMessages, incomingMessage]),
+  );
+  updateThreadPreview(thread);
+  refreshChatsPage(chatsRoot);
+}
+
+function ensureChatSocketSubscribed(chatId: string): void {
+  if (chatsState.source !== "api" || chatsState.unsubscribeByChatId.has(chatId)) {
+    return;
+  }
+
+  const unsubscribe = subscribeToChatMessages(chatId, {
+    onMessage: (message) => appendIncomingMessage(chatId, message),
+    onError: () => {
+      console.info("[chats] source=ws scope=messages error", { chatId });
+    },
+  });
+
+  chatsState.unsubscribeByChatId.set(chatId, unsubscribe);
+  console.info("[chats] source=ws scope=messages connected", { chatId });
+}
+
 async function ensureMessagesLoaded(
   chatId: string,
   options: { background?: boolean } = {},
@@ -310,34 +399,12 @@ async function ensureMessagesLoaded(
 
   try {
     const messages = await getChatMessages(chatId);
-    const currentUser = getSessionUser();
 
     thread.messages = sortMessagesByCreatedAt(
-      messages.map((message) => {
-        const own = isOwnMessage(message.authorId, message.authorName);
-
-        return {
-          id: message.id,
-          text: message.text,
-          authorName:
-            message.authorName ??
-            (own
-              ? `${currentUser?.firstName ?? "Вы"} ${currentUser?.lastName ?? ""}`.trim()
-              : thread.title),
-          isOwn: own,
-          createdAt: message.createdAt,
-          avatarLink: own ? currentUser?.avatarLink : thread.avatarLink,
-        };
-      }),
+      dedupeMessagesById(messages.map((message) => mapMessageToViewMessage(message, thread))),
     );
 
-    const loadedMessages = thread.messages ?? [];
-    const lastMessage = loadedMessages[loadedMessages.length - 1];
-    if (lastMessage) {
-      thread.preview = lastMessage.text;
-      thread.previewIsOwn = lastMessage.isOwn;
-      thread.timeLabel = formatMessageTime(lastMessage.createdAt);
-    }
+    updateThreadPreview(thread);
 
     console.info("[chats] source=api scope=messages", {
       chatId,
@@ -400,7 +467,10 @@ async function ensureChatsLoaded(): Promise<void> {
   chatsState.loaded = true;
 
   await Promise.all(
-    chatsState.threads.map((thread) => ensureMessagesLoaded(thread.id, { background: true })),
+    chatsState.threads.map(async (thread) => {
+      ensureChatSocketSubscribed(thread.id);
+      await ensureMessagesLoaded(thread.id, { background: true });
+    }),
   );
 
   if (chatsState.selectedChatId) {
@@ -644,6 +714,7 @@ export async function renderChats(): Promise<string> {
 
 export function initChats(root: Document | HTMLElement = document): void {
   const bindableRoot = root as ChatRoot;
+  chatsRoot = root;
 
   if (bindableRoot.__chatsBound) {
     return;
@@ -729,19 +800,19 @@ export function initChats(root: Document | HTMLElement = document): void {
           });
 
           selectedThread.messages = sortMessagesByCreatedAt(
-            (selectedThread.messages ?? []).map((item) =>
-              item.id === optimisticMessage.id
-                ? {
-                    ...item,
-                    id: message.id,
-                    createdAt: message.createdAt,
-                  }
-                : item,
+            dedupeMessagesById(
+              (selectedThread.messages ?? []).map((item) =>
+                item.id === optimisticMessage.id
+                  ? {
+                      ...item,
+                      id: message.id,
+                      createdAt: message.createdAt,
+                    }
+                  : item,
+              ),
             ),
           );
-          selectedThread.preview = text;
-          selectedThread.previewIsOwn = true;
-          selectedThread.timeLabel = formatMessageTime(message.createdAt);
+          updateThreadPreview(selectedThread);
           refreshChatsPage(root);
         })
         .catch((error: unknown) => {

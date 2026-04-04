@@ -437,6 +437,20 @@ async function ensureMessagesLoaded(
 }
 
 async function ensureChatsLoaded(): Promise<void> {
+  const requestedChatId = getRequestedChatId();
+
+  if (chatsState.loaded) {
+    if (requestedChatId) {
+      const requestedThread = chatsState.threads.find((thread) => thread.id === requestedChatId);
+
+      if (requestedThread) {
+        chatsState.selectedChatId = requestedThread.id;
+      } else {
+        chatsState.loaded = false;
+      }
+    }
+  }
+
   if (chatsState.loaded) {
     if (chatsState.selectedChatId) {
       await ensureMessagesLoaded(chatsState.selectedChatId);
@@ -447,7 +461,6 @@ async function ensureChatsLoaded(): Promise<void> {
 
   try {
     const chats = await getChats();
-    const requestedChatId = getRequestedChatId();
     chatsState.source = "api";
     chatsState.threads = mapApiChatsToThreads(chats);
     chatsState.selectedChatId =
@@ -461,7 +474,6 @@ async function ensureChatsLoaded(): Promise<void> {
       selectedChatId: chatsState.selectedChatId,
     });
   } catch {
-    const requestedChatId = getRequestedChatId();
     chatsState.source = "mock";
     chatsState.threads = createMockThreads();
     chatsState.selectedChatId =

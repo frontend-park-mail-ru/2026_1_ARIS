@@ -5,6 +5,7 @@ import { initEyeToggle } from "../components/eye-toggle/eye-toggle-controller";
 import { initInputMasks } from "../components/input/input-mask-controller";
 import { initProfileToggle } from "../pages/profile/profile";
 import { initChats } from "../pages/chats/chats";
+import { initFriends } from "../pages/friends/friends";
 
 type RouteParams = Record<string, string>;
 
@@ -65,6 +66,19 @@ function matchRoute(routePath: string, currentPath: string): MatchResult {
       continue;
     }
 
+    const paramStartIndex = routePart.indexOf(":");
+    if (paramStartIndex > 0) {
+      const staticPrefix = routePart.slice(0, paramStartIndex);
+      const paramName = routePart.slice(paramStartIndex + 1);
+
+      if (!currentPart.startsWith(staticPrefix)) {
+        return { matched: false, params: {} };
+      }
+
+      params[paramName] = currentPart.slice(staticPrefix.length);
+      continue;
+    }
+
     if (routePart !== currentPart) {
       return { matched: false, params: {} };
     }
@@ -118,6 +132,7 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
     initInputMasks(document);
     initProfileToggle(root);
     initChats(root);
+    initFriends(root);
   }
 
   /**

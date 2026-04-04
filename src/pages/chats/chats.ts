@@ -384,6 +384,10 @@ function ensureChatSocketSubscribed(chatId: string): void {
   console.info("[chats] source=ws scope=messages connected", { chatId });
 }
 
+function getRequestedChatId(): string {
+  return new URLSearchParams(window.location.search).get("chatId") ?? "";
+}
+
 async function ensureMessagesLoaded(
   chatId: string,
   options: { background?: boolean } = {},
@@ -443,9 +447,13 @@ async function ensureChatsLoaded(): Promise<void> {
 
   try {
     const chats = await getChats();
+    const requestedChatId = getRequestedChatId();
     chatsState.source = "api";
     chatsState.threads = mapApiChatsToThreads(chats);
-    chatsState.selectedChatId = chatsState.threads[0]?.id ?? "";
+    chatsState.selectedChatId =
+      chatsState.threads.find((thread) => thread.id === requestedChatId)?.id ??
+      chatsState.threads[0]?.id ??
+      "";
     chatsState.errorMessage = "";
 
     console.info("[chats] source=api scope=list", {
@@ -453,9 +461,13 @@ async function ensureChatsLoaded(): Promise<void> {
       selectedChatId: chatsState.selectedChatId,
     });
   } catch {
+    const requestedChatId = getRequestedChatId();
     chatsState.source = "mock";
     chatsState.threads = createMockThreads();
-    chatsState.selectedChatId = chatsState.threads[0]?.id ?? "";
+    chatsState.selectedChatId =
+      chatsState.threads.find((thread) => thread.id === requestedChatId)?.id ??
+      chatsState.threads[0]?.id ??
+      "";
     chatsState.errorMessage = "";
 
     console.info("[chats] source=fallback scope=list", {

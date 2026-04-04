@@ -15,6 +15,7 @@ import "./components/eye-toggle/eye-toggle.scss";
 
 import "./pages/auth/auth-page.scss";
 import "./pages/chats/chats.css";
+import "./pages/friends/friends.css";
 import "./pages/profile/profile.css";
 
 import { createRouter } from "./router/router";
@@ -22,6 +23,7 @@ import { renderLogin } from "./pages/login/login";
 import { renderRegister } from "./pages/register/register";
 import { renderFeed, refreshFeedCenter } from "./pages/feed/feed";
 import { renderChats } from "./pages/chats/chats";
+import { renderFriends } from "./pages/friends/friends";
 import { renderProfile } from "./pages/profile/profile";
 import { initSession } from "./state/session";
 import { initHeader } from "./components/header/header";
@@ -38,9 +40,11 @@ const router = createRouter(root, [
   { path: "/feed", title: "ARISNET — Feed", render: renderFeed },
   { path: "/login", title: "ARISNET — Login", render: renderLogin },
   { path: "/register", title: "ARISNET — Register", render: renderRegister },
+  { path: "/friends", title: "ARISNET — Friends", render: renderFriends },
   { path: "/chats", title: "ARISNET — Chats", render: renderChats },
   { path: "/profile", title: "ARISNET — Profile", render: renderProfile },
   { path: "/profile/:id", title: "ARISNET — Profile", render: renderProfile },
+  { path: "/id:id", title: "ARISNET — Profile", render: renderProfile },
 ]);
 
 void initSession().then(() => {

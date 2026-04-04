@@ -16,7 +16,12 @@ import {
   validateOptionalEmail,
 } from "../../utils/profile-validation";
 import { renderFeed } from "../feed/feed";
-import { getProfileRecordById, PROFILE_RECORDS, type ProfileRecord } from "./profile-data";
+import {
+  getProfileRecordById,
+  PROFILE_RECORDS,
+  resolveProfilePath,
+  type ProfileRecord,
+} from "./profile-data";
 
 type ProfileParams = {
   id?: string;
@@ -801,7 +806,7 @@ function renderFriends(profile: DisplayProfile): string {
                 .map(
                   (friend, index) => `
                     <a
-                      href="/profile/${encodeURIComponent(friend.id)}"
+                      href="${resolveProfilePath({ id: friend.id })}"
                       data-link
                       class="profile-friend"
                       ${index >= previewCount ? "data-friend-extra hidden" : ""}

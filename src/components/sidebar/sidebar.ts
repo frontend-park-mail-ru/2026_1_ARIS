@@ -69,7 +69,11 @@ function renderSidebarItem({
 export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {}): string {
   const currentPath = normalisePath(window.location.pathname);
   const isFeedRoute = currentPath === "/" || currentPath === "/feed";
-  const isProfileRoute = currentPath === "/profile" || currentPath.startsWith("/profile/");
+  const isProfileRoute =
+    currentPath === "/profile" ||
+    currentPath.startsWith("/profile/") ||
+    /^\/id[^/]+$/.test(currentPath);
+  const isFriendsRoute = currentPath === "/friends";
   const isChatsRoute = currentPath === "/chats";
   const isForYouActive = getFeedMode() === "for-you";
   const isByTimeActive = getFeedMode() === "by-time";
@@ -94,11 +98,12 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
         })}
 
         ${renderSidebarItem({
-          href: "/profile",
+          href: "/friends",
           label: "Друзья",
           icon: "/assets/img/icons/friends.svg",
+          isActive: isFriendsRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
-          isStub: isAuthorised,
+          isStub: false,
         })}
 
         ${renderSidebarItem({

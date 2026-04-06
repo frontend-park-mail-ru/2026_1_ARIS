@@ -1,9 +1,18 @@
-import { type Friend } from "../../api/friends";
+import {
+  acceptFriendRequest,
+  declineFriendRequest,
+  deleteFriend,
+  getFriends,
+  getIncomingFriendRequests,
+  getOutgoingFriendRequests,
+  revokeFriendRequest,
+  type Friend,
+} from "../../api/friends";
+import { getProfileById } from "../../api/profile";
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
-import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
+import { clearWidgetbarCache, renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { createPrivateChat } from "../../api/chat";
-import { getProfileById, type ProfileResponse } from "../../api/profile";
 import { getSessionUser } from "../../state/session";
 import { renderFeed } from "../feed/feed";
 
@@ -11,8 +20,7 @@ type FriendsRoot = (Document | HTMLElement) & {
   __friendsBound?: boolean;
 };
 
-type MockFriend = Friend & {
-  chatUserId: string;
+type DisplayFriend = Friend & {
   educationLabel: string;
 };
 
@@ -25,16 +33,16 @@ type FriendsState = {
   errorMessage: string;
   query: string;
   activeTab: FriendsTab;
-  friends: MockFriend[];
-  incoming: MockFriend[];
-  outgoing: MockFriend[];
-  deleteModalFriend: MockFriend | null;
+  friends: DisplayFriend[];
+  incoming: DisplayFriend[];
+  outgoing: DisplayFriend[];
+  deleteModalFriend: DisplayFriend | null;
 };
 
-type MockFriendsData = {
-  friends: MockFriend[];
-  incoming: MockFriend[];
-  outgoing: MockFriend[];
+type FriendsData = {
+  friends: DisplayFriend[];
+  incoming: DisplayFriend[];
+  outgoing: DisplayFriend[];
 };
 
 const TAB_TITLES: Record<FriendsTab, string> = {
@@ -43,14 +51,8 @@ const TAB_TITLES: Record<FriendsTab, string> = {
   outgoing: "Исходящие заявки",
 };
 
-const ACCEPTED_FRIENDS_SOURCE = [
-  { profileId: "14", chatUserId: "9" },
-  { profileId: "15", chatUserId: "10" },
-  { profileId: "18", chatUserId: "13" },
-] as const;
-
-const INCOMING_FRIENDS_SOURCE = [{ profileId: "16", chatUserId: "11" }] as const;
-const OUTGOING_FRIENDS_SOURCE = [{ profileId: "17", chatUserId: "12" }] as const;
+const FRIENDS_ACTIVE_TAB_STORAGE_KEY = "friends.activeTab";
+const friendEducationCache = new Map<string, string>();
 
 const friendsState: FriendsState = {
   loaded: false,
@@ -77,76 +79,101 @@ function resetFriendsState(): void {
   friendsState.deleteModalFriend = null;
 }
 
-function formatEducationLabel(profile: ProfileResponse): string {
-  const education = profile.education?.[0];
-  return (
-    [education?.institution, education?.grade].filter(Boolean).join(" ").trim() ||
-    "МГТУ им. Н.Э. Баумана"
-  );
+export function invalidateFriendsState(): void {
+  friendsState.loaded = false;
+  friendsState.loading = false;
+  friendsState.errorMessage = "";
+  friendsState.friends = [];
+  friendsState.incoming = [];
+  friendsState.outgoing = [];
+  friendsState.deleteModalFriend = null;
+  clearWidgetbarCache();
 }
 
-function mapProfileToFriend(
-  profileId: string,
-  chatUserId: string,
-  profile: ProfileResponse,
-  status: Friend["status"],
-): MockFriend {
+function isFriendsTab(value: string | null): value is FriendsTab {
+  return value === "accepted" || value === "incoming" || value === "outgoing";
+}
+
+function getFriendsActiveTabStorageKey(userId: string): string {
+  return `${FRIENDS_ACTIVE_TAB_STORAGE_KEY}:${userId}`;
+}
+
+function restoreFriendsActiveTab(userId: string): void {
+  if (!userId) {
+    return;
+  }
+
+  try {
+    const savedTab = sessionStorage.getItem(getFriendsActiveTabStorageKey(userId));
+    if (isFriendsTab(savedTab)) {
+      friendsState.activeTab = savedTab;
+    }
+  } catch {
+    // Ignore storage access issues and keep the in-memory default tab.
+  }
+}
+
+function persistFriendsActiveTab(userId: string): void {
+  if (!userId) {
+    return;
+  }
+
+  try {
+    sessionStorage.setItem(getFriendsActiveTabStorageKey(userId), friendsState.activeTab);
+  } catch {
+    // Ignore storage access issues and keep the in-memory state only.
+  }
+}
+
+async function resolveFriendEducationLabel(friend: Friend): Promise<string> {
+  const cached = friendEducationCache.get(friend.profileId);
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const profile = await getProfileById(friend.profileId);
+    const institution = profile.education
+      ?.find((item) => item.institution?.trim())
+      ?.institution?.trim();
+
+    if (institution) {
+      friendEducationCache.set(friend.profileId, institution);
+      return institution;
+    }
+  } catch {
+    // Keep the lightweight fallback if the public profile request fails.
+  }
+
+  const fallback = friend.username ? `@${friend.username}` : "Пользователь ARIS";
+  friendEducationCache.set(friend.profileId, fallback);
+  return fallback;
+}
+
+async function mapFriendToDisplayWithProfile(friend: Friend): Promise<DisplayFriend> {
   return {
-    profileId,
-    chatUserId,
-    firstName: profile.firstName || "Пользователь",
-    lastName: profile.lastName || "",
-    username: `id${profileId}`,
-    status,
-    avatarLink: profile.imageLink,
-    educationLabel: formatEducationLabel(profile),
+    ...friend,
+    educationLabel: await resolveFriendEducationLabel(friend),
   };
 }
 
-function isVisibleFriendProfile(profile: ProfileResponse): boolean {
-  const avatarLink = profile.imageLink?.trim();
-  const fullName = `${profile.firstName} ${profile.lastName}`.trim().toLowerCase();
+async function loadFriendsFromBackend(): Promise<FriendsData> {
+  const [friends, incoming, outgoing] = await Promise.all([
+    getFriends("accepted"),
+    getIncomingFriendRequests("pending"),
+    getOutgoingFriendRequests("pending"),
+  ]);
 
-  return (
-    Boolean(
-      avatarLink &&
-      (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)),
-    ) &&
-    fullName !== "команда арис" &&
-    fullName !== "анна опарина"
-  );
-}
-
-async function loadFriendsFromBackendProfiles(): Promise<MockFriendsData> {
-  const currentUser = getSessionUser();
-  const currentUserFullName = `${currentUser?.firstName ?? ""} ${currentUser?.lastName ?? ""}`
-    .trim()
-    .toLowerCase();
-
-  async function loadFriendGroup(
-    source: ReadonlyArray<{ profileId: string; chatUserId: string }>,
-    status: Friend["status"],
-  ): Promise<MockFriend[]> {
-    const loadedFriends = await Promise.all(
-      source.map(async ({ profileId, chatUserId }) => {
-        const profile = await getProfileById(profileId);
-        const fullName = `${profile.firstName} ${profile.lastName}`.trim().toLowerCase();
-
-        if (!isVisibleFriendProfile(profile) || fullName === currentUserFullName) {
-          return null;
-        }
-
-        return mapProfileToFriend(profileId, chatUserId, profile, status);
-      }),
-    );
-
-    return loadedFriends.filter((friend): friend is MockFriend => Boolean(friend));
-  }
+  const [mappedFriends, mappedIncoming, mappedOutgoing] = await Promise.all([
+    Promise.all(friends.map(mapFriendToDisplayWithProfile)),
+    Promise.all(incoming.map(mapFriendToDisplayWithProfile)),
+    Promise.all(outgoing.map(mapFriendToDisplayWithProfile)),
+  ]);
 
   return {
-    friends: await loadFriendGroup(ACCEPTED_FRIENDS_SOURCE, "accepted"),
-    incoming: await loadFriendGroup(INCOMING_FRIENDS_SOURCE, "pending"),
-    outgoing: await loadFriendGroup(OUTGOING_FRIENDS_SOURCE, "pending"),
+    friends: mappedFriends,
+    incoming: mappedIncoming,
+    outgoing: mappedOutgoing,
   };
 }
 
@@ -171,12 +198,31 @@ function getAvatarSrc(avatarLink?: string): string {
   return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
 }
 
-function getFriendName(friend: MockFriend): string {
+function getFriendName(friend: DisplayFriend): string {
   return `${friend.firstName} ${friend.lastName}`.trim() || friend.username || "Пользователь";
 }
 
-function getFriendMeta(friend: MockFriend): string {
+function getFriendMeta(friend: DisplayFriend): string {
   return friend.educationLabel;
+}
+
+function formatFriendshipSince(createdAt?: string): string {
+  if (!createdAt) {
+    return "";
+  }
+
+  const parsed = new Date(createdAt);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+    .format(parsed)
+    .replace(/\s*г\.$/, "");
 }
 
 function getFriendsCountLabel(count: number): string {
@@ -207,7 +253,7 @@ async function ensureFriendsLoaded(force = false): Promise<void> {
   friendsState.errorMessage = "";
 
   try {
-    const data = await loadFriendsFromBackendProfiles();
+    const data = await loadFriendsFromBackend();
     friendsState.friends = data.friends;
     friendsState.incoming = data.incoming;
     friendsState.outgoing = data.outgoing;
@@ -224,7 +270,7 @@ async function ensureFriendsLoaded(force = false): Promise<void> {
   }
 }
 
-function getVisibleFriends(): MockFriend[] {
+function getVisibleFriends(): DisplayFriend[] {
   const source =
     friendsState.activeTab === "accepted"
       ? friendsState.friends
@@ -245,7 +291,7 @@ function getVisibleFriends(): MockFriend[] {
   });
 }
 
-function renderFriendActions(friend: MockFriend): string {
+function renderFriendActions(friend: DisplayFriend): string {
   if (friendsState.activeTab === "incoming") {
     return `
       <div class="friends-card__actions">
@@ -348,6 +394,7 @@ function renderDeleteModal(): string {
   }
 
   const friendName = getFriendName(friend);
+  const friendshipSince = formatFriendshipSince(friend.createdAt);
 
   return `
     <div class="friends-modal" data-friends-modal-backdrop>
@@ -359,15 +406,23 @@ function renderDeleteModal(): string {
           </button>
         </header>
 
-        <p class="friends-modal__text">
-          Вы действительно хотите удалить ${escapeHtml(friendName)} из друзей?
-        </p>
+        <div class="friends-modal__identity">
+          <img
+            class="friends-modal__avatar"
+            src="${getAvatarSrc(friend.avatarLink)}"
+            alt="${escapeHtml(friendName)}"
+          >
+          <p class="friends-modal__name">${escapeHtml(friendName)}</p>
+        </div>
 
-        <img
-          class="friends-modal__avatar"
-          src="${getAvatarSrc(friend.avatarLink)}"
-          alt="${escapeHtml(friendName)}"
-        >
+        <p class="friends-modal__text">
+          Вы действительно хотите удалить этого пользователя из друзей?
+        </p>
+        ${
+          friendshipSince
+            ? `<p class="friends-modal__hint">Вы в друзьях с ${escapeHtml(friendshipSince)} года</p>`
+            : ""
+        }
         <div class="friends-modal__actions">
           <button
             type="button"
@@ -497,7 +552,7 @@ function refreshFriendsSearchResults(root: ParentNode = document): void {
   friendsList.innerHTML = renderFriendsList();
 }
 
-function findFriendById(friendId: string): MockFriend | null {
+function findFriendById(friendId: string): DisplayFriend | null {
   return (
     friendsState.friends.find((friend) => friend.profileId === friendId) ??
     friendsState.incoming.find((friend) => friend.profileId === friendId) ??
@@ -506,46 +561,22 @@ function findFriendById(friendId: string): MockFriend | null {
   );
 }
 
-async function runFriendAction(root: ParentNode, action: () => void): Promise<void> {
+async function runFriendAction(root: ParentNode, action: () => Promise<void>): Promise<void> {
   friendsState.loading = true;
   friendsState.errorMessage = "";
   refreshFriendsPage(root);
 
-  action();
-  friendsState.deleteModalFriend = null;
-  friendsState.loading = false;
-  refreshFriendsPage(root);
-}
-
-function moveFriendBetweenLists(
-  source: MockFriend[],
-  target: MockFriend[],
-  friendId: string,
-  nextStatus: Friend["status"],
-): void {
-  const friendIndex = source.findIndex((friend) => friend.profileId === friendId);
-  if (friendIndex === -1) {
-    return;
+  try {
+    await action();
+    await ensureFriendsLoaded(true);
+    friendsState.deleteModalFriend = null;
+  } catch (error) {
+    friendsState.errorMessage =
+      error instanceof Error ? error.message : "Не удалось выполнить действие.";
+  } finally {
+    friendsState.loading = false;
+    refreshFriendsPage(root);
   }
-
-  const [friend] = source.splice(friendIndex, 1);
-  if (!friend) {
-    return;
-  }
-
-  target.unshift({
-    ...friend,
-    status: nextStatus,
-  });
-}
-
-function removeFriendFromList(source: MockFriend[], friendId: string): void {
-  const friendIndex = source.findIndex((friend) => friend.profileId === friendId);
-  if (friendIndex === -1) {
-    return;
-  }
-
-  source.splice(friendIndex, 1);
 }
 
 export async function renderFriends(): Promise<string> {
@@ -559,6 +590,7 @@ export async function renderFriends(): Promise<string> {
   if (friendsState.loadedForUserId !== currentUserId) {
     resetFriendsState();
     friendsState.loadedForUserId = currentUserId;
+    restoreFriendsActiveTab(currentUserId);
   }
 
   await ensureFriendsLoaded();
@@ -611,6 +643,7 @@ export function initFriends(root: Document | HTMLElement = document): void {
       const nextTab = tabButton.getAttribute("data-friends-tab");
       if (nextTab === "accepted" || nextTab === "incoming" || nextTab === "outgoing") {
         friendsState.activeTab = nextTab;
+        persistFriendsActiveTab(friendsState.loadedForUserId);
         friendsState.query = "";
         friendsState.deleteModalFriend = null;
         refreshFriendsPage(root);
@@ -657,30 +690,28 @@ export function initFriends(root: Document | HTMLElement = document): void {
     const deleteButton = target.closest("[data-friend-confirm-delete]");
     if (deleteButton instanceof HTMLButtonElement) {
       const friendId = deleteButton.getAttribute("data-friend-confirm-delete") ?? "";
-      void runFriendAction(root, () => removeFriendFromList(friendsState.friends, friendId));
+      void runFriendAction(root, () => deleteFriend(friendId));
       return;
     }
 
     const acceptButton = target.closest("[data-friend-accept]");
     if (acceptButton instanceof HTMLButtonElement) {
       const friendId = acceptButton.getAttribute("data-friend-accept") ?? "";
-      void runFriendAction(root, () =>
-        moveFriendBetweenLists(friendsState.incoming, friendsState.friends, friendId, "accepted"),
-      );
+      void runFriendAction(root, () => acceptFriendRequest(friendId));
       return;
     }
 
     const declineButton = target.closest("[data-friend-decline]");
     if (declineButton instanceof HTMLButtonElement) {
       const friendId = declineButton.getAttribute("data-friend-decline") ?? "";
-      void runFriendAction(root, () => removeFriendFromList(friendsState.incoming, friendId));
+      void runFriendAction(root, () => declineFriendRequest(friendId));
       return;
     }
 
     const revokeButton = target.closest("[data-friend-revoke]");
     if (revokeButton instanceof HTMLButtonElement) {
       const friendId = revokeButton.getAttribute("data-friend-revoke") ?? "";
-      void runFriendAction(root, () => removeFriendFromList(friendsState.outgoing, friendId));
+      void runFriendAction(root, () => revokeFriendRequest(friendId));
     }
   });
 

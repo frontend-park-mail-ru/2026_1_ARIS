@@ -16,6 +16,8 @@
 .chats-sidebar {
   display: flex;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   padding: 18px;
   flex-direction: column;
   gap: 16px;
@@ -63,6 +65,7 @@
 .chats-list {
   display: flex;
   min-height: 0;
+  flex: 1;
   flex-direction: column;
   gap: 6px;
   overflow-y: auto;
@@ -108,10 +111,26 @@
 .chat-bubble__avatar {
   width: 48px;
   height: 48px;
+  display: block;
   border-radius: 50%;
   object-fit: cover;
   background: #d9deef;
   flex-shrink: 0;
+}
+
+.chat-thread__avatar.avatar-fallback,
+.chat-header__avatar.avatar-fallback,
+.chat-bubble__avatar.avatar-fallback {
+  display: inline-flex !important;
+  align-self: start;
+  border: none;
+  box-shadow: none;
+  background: linear-gradient(
+    135deg,
+    rgb(54 71 203) 0%,
+    rgb(125 135 247) 56%,
+    rgb(245 203 110) 100%
+  ) !important;
 }
 
 .chat-thread__content {

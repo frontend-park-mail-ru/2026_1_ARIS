@@ -12,6 +12,7 @@ type RawFriend = {
   login?: string;
   status?: string;
   link?: string | null;
+  createdAt?: string;
 };
 
 type RawFriendsResponse = {
@@ -27,6 +28,7 @@ export type Friend = {
   username: string;
   status: FriendStatus;
   avatarLink?: string | undefined;
+  createdAt?: string | undefined;
 };
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -69,6 +71,7 @@ function mapFriend(raw: RawFriend): Friend {
     username: String(raw.login ?? ""),
     status,
     avatarLink: raw.link ?? undefined,
+    createdAt: raw.createdAt ?? undefined,
   };
 }
 
@@ -127,6 +130,18 @@ async function mutateFriendship(
 
 export function getFriends(status: FriendStatus = "accepted"): Promise<Friend[]> {
   return requestFriends(`/api/friends/${status}`, "failed to load friends");
+}
+
+export function getUserFriends(
+  profileId: string,
+  status: FriendStatus = "accepted",
+): Promise<Friend[]> {
+  const path =
+    status === "accepted"
+      ? `/api/users/${encodeURIComponent(profileId)}/friends`
+      : `/api/friends/${status}`;
+
+  return requestFriends(path, "failed to load user friends");
 }
 
 export function getIncomingFriendRequests(status: FriendStatus = "pending"): Promise<Friend[]> {

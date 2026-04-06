@@ -1,5 +1,10 @@
 import { getSuggestedUsers, getPublicPopularUsers, getLatestEvents } from "../../api/users";
 import { getPopularPosts, getPublicPopularPosts } from "../../api/feed";
+import {
+  getFriends,
+  getIncomingFriendRequests,
+  getOutgoingFriendRequests,
+} from "../../api/friends";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
 
 type WidgetbarCache = {
@@ -90,6 +95,29 @@ function renderProfileLink(
   `;
 }
 
+function getUserKey(user: WidgetbarUser): string {
+  return String(user.id || user.username || `${user.firstName}-${user.lastName}`);
+}
+
+function mergeUniqueUsers(groups: WidgetbarUser[][]): WidgetbarUser[] {
+  const seen = new Set<string>();
+  const result: WidgetbarUser[] = [];
+
+  groups.forEach((group) => {
+    group.forEach((user) => {
+      const key = getUserKey(user);
+      if (!key || seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      result.push(user);
+    });
+  });
+
+  return result;
+}
+
 /**
  * Renders popular users widget for guests.
  *
@@ -109,8 +137,8 @@ async function renderPopularUsersWidget(): Promise<string> {
             <div class="widgetbar-person">
               ${
                 user.avatarLink
-                  ? `<img class="widgetbar-person__avatar" src="/image-proxy?url=${encodeURIComponent(user.avatarLink)}" alt="${user.username}">`
-                  : `<div class="widgetbar-person__avatar"></div>`
+                  ? `<img class="widgetbar-person__avatar" src="/image-proxy?url=${encodeURIComponent(user.avatarLink)}" alt="${user.firstName} ${user.lastName}">`
+                  : `<img class="widgetbar-person__avatar" src="/assets/img/default-avatar.png" alt="${user.firstName} ${user.lastName}">`
               }
               ${renderProfileLink(
                 `${user.firstName} ${user.lastName}`,
@@ -131,14 +159,32 @@ async function renderPopularUsersWidget(): Promise<string> {
  * @returns {Promise<string>}
  */
 async function renderKnownPeopleWidget(): Promise<string> {
-  const response = (await getSuggestedUsers()) as { items?: WidgetbarUser[] };
-  const items = Array.isArray(response.items) ? response.items : [];
+  const [response, popularResponse, eventsResponse, friends, incoming, outgoing] =
+    await Promise.all([
+      getSuggestedUsers() as Promise<{ items?: WidgetbarUser[] }>,
+      getPublicPopularUsers() as Promise<{ items?: WidgetbarUser[] }>,
+      getLatestEvents() as Promise<{ items?: WidgetbarEventUser[] }>,
+      getFriends("accepted"),
+      getIncomingFriendRequests("pending"),
+      getOutgoingFriendRequests("pending"),
+    ]);
+  const suggestedItems = Array.isArray(response.items) ? response.items : [];
+  const popularItems = Array.isArray(popularResponse.items) ? popularResponse.items : [];
+  const eventItems = Array.isArray(eventsResponse.items) ? eventsResponse.items : [];
+  const items = mergeUniqueUsers([suggestedItems, popularItems, eventItems]);
+  const excludedIds = new Set(
+    [...friends, ...incoming, ...outgoing].map((user) => String(user.profileId)),
+  );
+  const filteredItems = items.filter((user) => {
+    const userId = String(user.id);
+    return !excludedIds.has(userId) && user.username !== "KomandaARIS";
+  });
 
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Возможно, вы знакомы:</h3>
 
-      ${items
+      ${filteredItems
         .slice(0, 4)
         .map(
           (user) => `
@@ -150,7 +196,7 @@ async function renderKnownPeopleWidget(): Promise<string> {
                     ? `/image-proxy?url=${encodeURIComponent(user.avatarLink)}`
                     : `/assets/img/default-avatar.png`
                 }"
-                alt="${user.username}"
+                alt="${user.firstName} ${user.lastName}"
               >
               ${renderProfileLink(
                 `${user.firstName} ${user.lastName}`,

@@ -20,3 +20,30 @@ body {
   margin: 0;
   padding: 0;
 }
+
+.avatar-fallback {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgb(54 71 203) 0%,
+    rgb(125 135 247) 56%,
+    rgb(245 203 110) 100%
+  ) !important;
+  border: 2px solid rgb(255 255 255 / 72%);
+  box-shadow: 0 8px 18px rgb(49 61 145 / 18%);
+  color: white !important;
+  font-family: inherit;
+  font-weight: 700;
+  line-height: 1 !important;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none !important;
+  vertical-align: middle;
+  overflow: hidden;
+  user-select: none;
+  flex-shrink: 0;
+  padding-top: 0 !important;
+}

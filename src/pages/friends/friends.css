@@ -125,6 +125,7 @@
 .friends-card__avatar-link {
   display: block;
   flex-shrink: 0;
+  text-decoration: none;
 }
 
 .friends-card__avatar {
@@ -133,6 +134,10 @@
   display: block;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.friends-card__avatar.avatar-fallback {
+  display: inline-flex !important;
 }
 
 .friends-card__body {
@@ -233,13 +238,29 @@
   color: #111;
 }
 
+.friends-modal__identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.friends-modal__name {
+  margin: 0;
+  color: var(--color-text-name);
+  font-size: 16px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+  text-align: left;
+}
+
 .friends-modal__avatar {
   display: block;
   width: 96px;
   height: 96px;
-  margin: 22px auto 0;
   border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .friends-modal__actions {

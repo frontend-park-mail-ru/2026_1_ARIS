@@ -28,6 +28,7 @@ import { renderProfile } from "./pages/profile/profile";
 import { initSession } from "./state/session";
 import { initHeader } from "./components/header/header";
 import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar";
+import { initAvatarFallback } from "./utils/avatar-fallback";
 
 const root = document.getElementById("app");
 
@@ -51,6 +52,7 @@ void initSession().then(() => {
   void router.render();
   initHeader();
   initSidebar();
+  initAvatarFallback(document);
 });
 
 /**

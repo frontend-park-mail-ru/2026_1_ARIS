@@ -8,6 +8,19 @@ import {
   type ChatMessage,
   type ChatSummary,
 } from "../../api/chat";
+import {
+  getFriends,
+  getIncomingFriendRequests,
+  getOutgoingFriendRequests,
+  type Friend,
+} from "../../api/friends";
+import {
+  getLatestEvents,
+  getPublicPopularUsers,
+  getSuggestedUsers,
+  type LatestEventUser,
+  type SuggestedUser,
+} from "../../api/users";
 import { getSessionUser } from "../../state/session";
 import { PROFILE_RECORDS, findProfileRecord, resolveProfilePath } from "../profile/profile-data";
 import { renderFeed } from "../feed/feed";
@@ -33,10 +46,16 @@ type ChatViewThread = {
   preview: string;
   previewIsOwn?: boolean | undefined;
   timeLabel: string;
+  createdAt?: string | undefined;
   updatedAt?: string | undefined;
   source: "api" | "mock";
   messages?: ChatViewMessage[] | undefined;
   profilePath?: string | undefined;
+};
+
+type KnownChatContact = {
+  profileId?: string | undefined;
+  avatarLink?: string | undefined;
 };
 
 type PersistedChatScrollState = {
@@ -109,6 +128,7 @@ let shouldScrollChatToBottom = false;
 let isSelectedChatPinnedToBottom = true;
 let hasHydratedPersistedChatsUiState = false;
 const chatScrollStateById = new Map<string, PersistedChatScrollState>();
+const knownChatContactsByName = new Map<string, KnownChatContact>();
 
 function resetChatsState(): void {
   chatsState.unsubscribeByChatId.forEach((unsubscribe) => unsubscribe());
@@ -123,6 +143,7 @@ function resetChatsState(): void {
   chatsState.unreadIncomingIdsByChatId.clear();
   chatsState.pendingOutgoingByChatId.clear();
   chatScrollStateById.clear();
+  knownChatContactsByName.clear();
   hasHydratedPersistedChatsUiState = false;
 }
 
@@ -247,6 +268,68 @@ function resolvePersonPath(fullName: string, profileId?: string): string {
   return resolveProfilePath({ firstName, lastName });
 }
 
+function getNormalisedPersonName(fullName: string): string {
+  return fullName.trim().toLowerCase();
+}
+
+function rememberKnownChatContacts(friends: Friend[]): void {
+  friends.forEach((friend) => {
+    const fullName = `${friend.firstName} ${friend.lastName}`.trim();
+    if (!fullName) {
+      return;
+    }
+
+    knownChatContactsByName.set(getNormalisedPersonName(fullName), {
+      profileId: friend.profileId,
+      avatarLink: friend.avatarLink,
+    });
+  });
+}
+
+function rememberKnownUserContacts(users: Array<SuggestedUser | LatestEventUser>): void {
+  users.forEach((user) => {
+    const fullName = `${user.firstName} ${user.lastName}`.trim();
+    if (!fullName) {
+      return;
+    }
+
+    knownChatContactsByName.set(getNormalisedPersonName(fullName), {
+      profileId: user.id,
+      avatarLink: user.avatarLink || undefined,
+    });
+  });
+}
+
+async function ensureKnownChatContactsLoaded(): Promise<void> {
+  if (knownChatContactsByName.size > 0) {
+    return;
+  }
+
+  try {
+    const [accepted, incoming, outgoing, suggested, latestEvents, popularUsers] = await Promise.all(
+      [
+        getFriends("accepted"),
+        getIncomingFriendRequests("pending"),
+        getOutgoingFriendRequests("pending"),
+        getSuggestedUsers(),
+        getLatestEvents(),
+        getPublicPopularUsers(),
+      ],
+    );
+
+    rememberKnownChatContacts(accepted);
+    rememberKnownChatContacts(incoming);
+    rememberKnownChatContacts(outgoing);
+    rememberKnownUserContacts(suggested.items ?? []);
+    rememberKnownUserContacts(latestEvents.items ?? []);
+    rememberKnownUserContacts(popularUsers.items ?? []);
+  } catch (error) {
+    console.info("[chats] source=api scope=contacts error", {
+      error: error instanceof Error ? error.message : "Не получилось загрузить контакты.",
+    });
+  }
+}
+
 function isOwnMessage(authorId?: string, authorName?: string): boolean {
   const currentUser = getSessionUser();
   const currentUserId = String(currentUser?.id ?? "");
@@ -315,6 +398,7 @@ function createMockThreads(): ChatViewThread[] {
       avatarLink: pavel?.avatarLink,
       preview: "у вас неплохой диплом",
       timeLabel: "22 фев. 23:45",
+      createdAt: "2026-02-22T12:50:00+03:00",
       updatedAt: "2026-02-22T23:45:00+03:00",
       source: "mock",
       profilePath: resolvePersonPath("Павел Бабкин", pavel ? String(pavel.publicId) : undefined),
@@ -359,6 +443,7 @@ function createMockThreads(): ChatViewThread[] {
       avatarLink: arina?.avatarLink,
       preview: "ого!!!!!!!!!!",
       timeLabel: "1 ч.",
+      createdAt: "2026-03-30T17:20:00+03:00",
       updatedAt: "2026-03-30T17:20:00+03:00",
       source: "mock",
       profilePath: resolvePersonPath("Арина Асхабова", arina ? String(arina.publicId) : undefined),
@@ -383,6 +468,7 @@ function createMockThreads(): ChatViewThread[] {
       avatarLink: milana?.avatarLink,
       preview: "пойдем в мафию",
       timeLabel: "1 ч.",
+      createdAt: "2026-03-30T17:05:00+03:00",
       updatedAt: "2026-03-30T17:05:00+03:00",
       source: "mock",
       profilePath: resolvePersonPath(
@@ -410,6 +496,7 @@ function createMockThreads(): ChatViewThread[] {
       avatarLink: egor?.avatarLink,
       preview: "люблю ее сильно",
       timeLabel: "1 ч.",
+      createdAt: "2026-03-30T16:45:00+03:00",
       updatedAt: "2026-03-30T16:45:00+03:00",
       source: "mock",
       profilePath: resolvePersonPath("Егор Ларкин", egor ? String(egor.publicId) : undefined),
@@ -431,6 +518,7 @@ function createMockThreads(): ChatViewThread[] {
       avatarLink: sofya?.avatarLink,
       preview: "ваши сообщения в 12...",
       timeLabel: "1 ч.",
+      createdAt: "2026-03-30T16:15:00+03:00",
       updatedAt: "2026-03-30T16:15:00+03:00",
       source: "mock",
       profilePath: resolvePersonPath(
@@ -468,8 +556,9 @@ function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
       return rightTime - leftTime;
     })
     .map((chat, index) => {
+      const knownContact = knownChatContactsByName.get(getNormalisedPersonName(chat.title || ""));
       const matchedProfile = findProfileRecord({
-        id: chat.title,
+        id: knownContact?.profileId ?? chat.title,
         firstName: chat.title.split(" ")[0] ?? "",
         lastName: chat.title.split(" ").slice(1).join(" "),
       });
@@ -477,15 +566,16 @@ function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
       return {
         id: chat.id,
         title: chat.title || `Чат ${index + 1}`,
-        avatarLink: chat.avatarLink ?? matchedProfile?.avatarLink,
+        avatarLink: chat.avatarLink ?? knownContact?.avatarLink ?? matchedProfile?.avatarLink,
         preview: "",
         previewIsOwn: false,
         timeLabel: formatChatTime(chat.updatedAt ?? chat.createdAt),
+        createdAt: chat.createdAt,
         updatedAt: chat.updatedAt ?? chat.createdAt,
         source: "api",
         profilePath: resolvePersonPath(
           chat.title || `Чат ${index + 1}`,
-          matchedProfile ? String(matchedProfile.publicId) : undefined,
+          knownContact?.profileId ?? (matchedProfile ? String(matchedProfile.publicId) : undefined),
         ),
       };
     });
@@ -602,6 +692,7 @@ function reconcilePendingOutgoing(
       ),
     ),
   );
+  syncThreadProfilePathFromMessages(thread);
   removePendingOutgoing(chatId, matchedPending.localId);
   updateThreadPreview(thread);
   sortThreadsByUpdatedAt();
@@ -621,6 +712,16 @@ function updateThreadPreview(thread: ChatViewThread): void {
   thread.previewIsOwn = lastMessage.isOwn;
   thread.timeLabel = formatMessageTime(lastMessage.createdAt);
   thread.updatedAt = lastMessage.createdAt ?? thread.updatedAt;
+}
+
+function syncThreadProfilePathFromMessages(thread: ChatViewThread): void {
+  const otherMessage = (thread.messages ?? []).find(
+    (message) => !message.isOwn && message.profilePath && message.profilePath !== "/profile",
+  );
+
+  if (otherMessage?.profilePath) {
+    thread.profilePath = otherMessage.profilePath;
+  }
 }
 
 function getMessagesFingerprint(messages: ChatViewMessage[] | undefined): string {
@@ -782,10 +883,38 @@ function getThreadUpdatedAtValue(thread: ChatViewThread): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+function getThreadCreatedAtValue(thread: ChatViewThread): number {
+  if (!thread.createdAt) {
+    return 0;
+  }
+
+  const parsed = new Date(thread.createdAt).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function hasThreadActivity(thread: ChatViewThread): boolean {
+  if ((thread.messages?.length ?? 0) > 0) {
+    return true;
+  }
+
+  if (thread.preview.trim()) {
+    return true;
+  }
+
+  return getThreadUpdatedAtValue(thread) > getThreadCreatedAtValue(thread);
+}
+
 function sortThreadsByUpdatedAt(): void {
-  chatsState.threads.sort(
-    (left, right) => getThreadUpdatedAtValue(right) - getThreadUpdatedAtValue(left),
-  );
+  chatsState.threads.sort((left, right) => {
+    const leftHasActivity = hasThreadActivity(left);
+    const rightHasActivity = hasThreadActivity(right);
+
+    if (leftHasActivity !== rightHasActivity) {
+      return leftHasActivity ? -1 : 1;
+    }
+
+    return getThreadUpdatedAtValue(right) - getThreadUpdatedAtValue(left);
+  });
 }
 
 function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
@@ -801,11 +930,13 @@ function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
       preview: existing?.preview ?? thread.preview,
       previewIsOwn: existing?.previewIsOwn ?? thread.previewIsOwn,
       timeLabel: existing?.messages?.length ? existing.timeLabel : thread.timeLabel,
+      createdAt: existing?.createdAt ?? thread.createdAt,
       updatedAt: existing?.updatedAt ?? thread.updatedAt,
       profilePath: thread.profilePath ?? existing?.profilePath,
     };
 
     if (merged.messages?.length) {
+      syncThreadProfilePathFromMessages(merged);
       updateThreadPreview(merged);
     }
 
@@ -845,6 +976,7 @@ function appendIncomingMessage(chatId: string, message: ChatMessage): void {
   thread.messages = sortMessagesByCreatedAt(
     dedupeMessagesById([...currentMessages, incomingMessage]),
   );
+  syncThreadProfilePathFromMessages(thread);
   updateThreadPreview(thread);
   sortThreadsByUpdatedAt();
   if (chatId === chatsState.selectedChatId && isSelectedChatPinnedToBottom) {
@@ -926,6 +1058,7 @@ async function ensureMessagesLoaded(
     const nextFingerprint = getMessagesFingerprint(nextMessages);
 
     thread.messages = nextMessages;
+    syncThreadProfilePathFromMessages(thread);
     updateThreadPreview(thread);
     sortThreadsByUpdatedAt();
 
@@ -998,6 +1131,7 @@ async function refreshChatsInBackground(): Promise<void> {
   }
 
   try {
+    await ensureKnownChatContactsLoaded();
     const chats = await getChats();
     const listChanged = mergeApiThreads(mapApiChatsToThreads(chats));
 
@@ -1045,6 +1179,7 @@ async function ensureChatsLoaded(): Promise<void> {
   }
 
   try {
+    await ensureKnownChatContactsLoaded();
     const chats = await getChats();
     chatsState.source = "api";
     chatsState.threads = mapApiChatsToThreads(chats);
@@ -1082,7 +1217,16 @@ async function ensureChatsLoaded(): Promise<void> {
 }
 
 function getFilteredThreads(): ChatViewThread[] {
-  return chatsState.threads;
+  const query = chatsState.query.trim().toLowerCase();
+  if (!query) {
+    return chatsState.threads;
+  }
+
+  return chatsState.threads.filter((thread) => {
+    const previewState = getThreadPreviewState(thread);
+
+    return [thread.title, previewState.text].join(" ").toLowerCase().includes(query);
+  });
 }
 
 function getThreadPreviewState(thread: ChatViewThread): {
@@ -1249,11 +1393,8 @@ function renderChatsContent(): string {
           <input
             class="chats-search__input"
             type="text"
-            value=""
+            value="${escapeHtml(chatsState.query)}"
             placeholder="Поиск по чатам"
-            readonly
-            aria-disabled="true"
-            tabindex="-1"
             data-chat-search
           >
         </label>
@@ -1329,6 +1470,11 @@ function refreshChatsPage(root: ParentNode = document): void {
     return;
   }
 
+  const searchInput = container.querySelector<HTMLInputElement>("[data-chat-search]");
+  const searchWasFocused = document.activeElement === searchInput;
+  const searchSelectionStart = searchInput?.selectionStart ?? null;
+  const searchSelectionEnd = searchInput?.selectionEnd ?? null;
+
   const currentMessagesContainer = getChatMessagesContainer(container);
   const previousScrollTop = currentMessagesContainer?.scrollTop ?? 0;
   const previousAnchor =
@@ -1351,6 +1497,17 @@ function refreshChatsPage(root: ParentNode = document): void {
   }
 
   container.replaceWith(next);
+
+  if (searchWasFocused) {
+    const nextSearchInput = next.querySelector<HTMLInputElement>("[data-chat-search]");
+    if (nextSearchInput) {
+      nextSearchInput.focus();
+
+      if (searchSelectionStart !== null && searchSelectionEnd !== null) {
+        nextSearchInput.setSelectionRange(searchSelectionStart, searchSelectionEnd);
+      }
+    }
+  }
 
   const nextMessagesContainer = getChatMessagesContainer(next);
   if (nextMessagesContainer) {
@@ -1436,6 +1593,16 @@ export function initChats(root: Document | HTMLElement = document): void {
   if (bindableRoot.__chatsBound) {
     return;
   }
+
+  root.addEventListener("input", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !target.matches("[data-chat-search]")) {
+      return;
+    }
+
+    chatsState.query = target.value;
+    refreshChatsPage(root);
+  });
 
   root.addEventListener("click", async (event: Event) => {
     const target = event.target;

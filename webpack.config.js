@@ -2,6 +2,8 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 
+const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
+
 /** @type {import('webpack').Configuration} */
 module.exports = {
   mode: "development",
@@ -68,12 +70,12 @@ module.exports = {
     proxy: [
       {
         context: ["/api", "/image-proxy"],
-        target: "http://localhost:8080",
+        target: backendUrl,
         changeOrigin: true,
       },
       {
         context: ["/ws/"],
-        target: "http://localhost:8080",
+        target: backendUrl,
         changeOrigin: true,
         ws: true,
       },

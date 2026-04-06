@@ -1474,6 +1474,10 @@ function refreshChatsPage(root: ParentNode = document): void {
   const searchWasFocused = document.activeElement === searchInput;
   const searchSelectionStart = searchInput?.selectionStart ?? null;
   const searchSelectionEnd = searchInput?.selectionEnd ?? null;
+  const composeInput = container.querySelector<HTMLInputElement>(".chat-compose__field");
+  const composeWasFocused = document.activeElement === composeInput;
+  const composeSelectionStart = composeInput?.selectionStart ?? null;
+  const composeSelectionEnd = composeInput?.selectionEnd ?? null;
 
   const currentMessagesContainer = getChatMessagesContainer(container);
   const previousScrollTop = currentMessagesContainer?.scrollTop ?? 0;
@@ -1505,6 +1509,17 @@ function refreshChatsPage(root: ParentNode = document): void {
 
       if (searchSelectionStart !== null && searchSelectionEnd !== null) {
         nextSearchInput.setSelectionRange(searchSelectionStart, searchSelectionEnd);
+      }
+    }
+  }
+
+  if (composeWasFocused) {
+    const nextComposeInput = next.querySelector<HTMLInputElement>(".chat-compose__field");
+    if (nextComposeInput) {
+      nextComposeInput.focus();
+
+      if (composeSelectionStart !== null && composeSelectionEnd !== null) {
+        nextComposeInput.setSelectionRange(composeSelectionStart, composeSelectionEnd);
       }
     }
   }
@@ -1726,6 +1741,10 @@ export function initChats(root: Document | HTMLElement = document): void {
     shouldScrollChatToBottom = true;
     target.reset();
     refreshChatsPage(root);
+    requestAnimationFrame(() => {
+      const composeInput = root.querySelector<HTMLInputElement>(".chat-compose__field");
+      composeInput?.focus();
+    });
 
     if (selectedThread.source === "api") {
       void sendChatMessage(selectedThread.id, { text })
@@ -1753,6 +1772,10 @@ export function initChats(root: Document | HTMLElement = document): void {
           updateThreadPreview(selectedThread);
           sortThreadsByUpdatedAt();
           refreshChatsPage(root);
+          requestAnimationFrame(() => {
+            const composeInput = root.querySelector<HTMLInputElement>(".chat-compose__field");
+            composeInput?.focus();
+          });
         })
         .catch((error: unknown) => {
           console.error("[chats] source=api scope=send error", error);
@@ -1761,6 +1784,10 @@ export function initChats(root: Document | HTMLElement = document): void {
           );
           removePendingOutgoing(selectedThread.id, optimisticMessage.id);
           refreshChatsPage(root);
+          requestAnimationFrame(() => {
+            const composeInput = root.querySelector<HTMLInputElement>(".chat-compose__field");
+            composeInput?.focus();
+          });
         });
     }
   });

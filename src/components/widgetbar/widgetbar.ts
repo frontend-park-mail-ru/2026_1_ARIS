@@ -6,6 +6,7 @@ import {
   getOutgoingFriendRequests,
 } from "../../api/friends";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
+import { getSessionUser } from "../../state/session";
 
 type WidgetbarCache = {
   guest: string | null;
@@ -95,8 +96,40 @@ function renderProfileLink(
   `;
 }
 
+function resolveAvatarSrc(avatarLink?: string): string {
+  if (!avatarLink) {
+    return "/assets/img/default-avatar.png";
+  }
+
+  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
+    return avatarLink;
+  }
+
+  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
+}
+
 function getUserKey(user: WidgetbarUser): string {
   return String(user.id || user.username || `${user.firstName}-${user.lastName}`);
+}
+
+function normaliseIdentity(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-zа-яё0-9]+/gi, "");
+}
+
+function isArisTeamUser(user: WidgetbarUser): boolean {
+  const identities = [
+    user.username,
+    `${user.firstName}${user.lastName}`,
+    `${user.firstName} ${user.lastName}`,
+  ].map(normaliseIdentity);
+
+  return identities.some(
+    (identity) =>
+      identity === "komandaaris" || identity === "командаарис" || identity === "aristeam",
+  );
 }
 
 function mergeUniqueUsers(groups: WidgetbarUser[][]): WidgetbarUser[] {
@@ -118,6 +151,32 @@ function mergeUniqueUsers(groups: WidgetbarUser[][]): WidgetbarUser[] {
   return result;
 }
 
+async function loadWidgetbarUsers(
+  scope: string,
+  loader: () => Promise<{ items?: WidgetbarUser[] | WidgetbarEventUser[] }>,
+): Promise<WidgetbarUser[]> {
+  try {
+    const response = await loader();
+    return Array.isArray(response.items) ? [...response.items] : [];
+  } catch (error) {
+    console.warn(`[widgetbar] source=api scope=${scope} failed`, error);
+    return [];
+  }
+}
+
+async function loadExcludedFriendIds(
+  scope: string,
+  loader: () => Promise<Array<{ profileId: string }>>,
+): Promise<string[]> {
+  try {
+    const items = await loader();
+    return items.map((user) => String(user.profileId)).filter(Boolean);
+  } catch (error) {
+    console.warn(`[widgetbar] source=api scope=${scope} failed`, error);
+    return [];
+  }
+}
+
 /**
  * Renders popular users widget for guests.
  *
@@ -137,7 +196,7 @@ async function renderPopularUsersWidget(): Promise<string> {
             <div class="widgetbar-person">
               ${
                 user.avatarLink
-                  ? `<img class="widgetbar-person__avatar" src="/image-proxy?url=${encodeURIComponent(user.avatarLink)}" alt="${user.firstName} ${user.lastName}">`
+                  ? `<img class="widgetbar-person__avatar" src="${resolveAvatarSrc(user.avatarLink)}" alt="${user.firstName} ${user.lastName}">`
                   : `<img class="widgetbar-person__avatar" src="/assets/img/default-avatar.png" alt="${user.firstName} ${user.lastName}">`
               }
               ${renderProfileLink(
@@ -159,25 +218,27 @@ async function renderPopularUsersWidget(): Promise<string> {
  * @returns {Promise<string>}
  */
 async function renderKnownPeopleWidget(): Promise<string> {
-  const [response, popularResponse, eventsResponse, friends, incoming, outgoing] =
-    await Promise.all([
-      getSuggestedUsers() as Promise<{ items?: WidgetbarUser[] }>,
-      getPublicPopularUsers() as Promise<{ items?: WidgetbarUser[] }>,
-      getLatestEvents() as Promise<{ items?: WidgetbarEventUser[] }>,
-      getFriends("accepted"),
-      getIncomingFriendRequests("pending"),
-      getOutgoingFriendRequests("pending"),
-    ]);
-  const suggestedItems = Array.isArray(response.items) ? response.items : [];
-  const popularItems = Array.isArray(popularResponse.items) ? popularResponse.items : [];
-  const eventItems = Array.isArray(eventsResponse.items) ? eventsResponse.items : [];
-  const items = mergeUniqueUsers([suggestedItems, popularItems, eventItems]);
-  const excludedIds = new Set(
-    [...friends, ...incoming, ...outgoing].map((user) => String(user.profileId)),
+  const [suggestedItems, popularItems, eventItems, friends, incoming, outgoing] = await Promise.all(
+    [
+      loadWidgetbarUsers("suggested-users", () => getSuggestedUsers()),
+      loadWidgetbarUsers("popular-users", () => getPublicPopularUsers()),
+      loadWidgetbarUsers("latest-events", () => getLatestEvents()),
+      loadExcludedFriendIds("friends", () => getFriends("accepted")),
+      loadExcludedFriendIds("incoming-friend-requests", () => getIncomingFriendRequests("pending")),
+      loadExcludedFriendIds("outgoing-friend-requests", () => getOutgoingFriendRequests("pending")),
+    ],
   );
+  const items = mergeUniqueUsers([suggestedItems, popularItems, eventItems]);
+  const excludedIds = new Set([...friends, ...incoming, ...outgoing]);
+  const currentUserId = String(getSessionUser()?.id ?? "");
   const filteredItems = items.filter((user) => {
     const userId = String(user.id);
-    return !excludedIds.has(userId) && user.username !== "KomandaARIS";
+    return (
+      Boolean(userId) &&
+      userId !== currentUserId &&
+      !excludedIds.has(userId) &&
+      !isArisTeamUser(user)
+    );
   });
 
   return `
@@ -191,11 +252,7 @@ async function renderKnownPeopleWidget(): Promise<string> {
             <div class="widgetbar-person">
               <img
                 class="widgetbar-person__avatar"
-                src="${
-                  user.avatarLink
-                    ? `/image-proxy?url=${encodeURIComponent(user.avatarLink)}`
-                    : `/assets/img/default-avatar.png`
-                }"
+                src="${resolveAvatarSrc(user.avatarLink)}"
                 alt="${user.firstName} ${user.lastName}"
               >
               ${renderProfileLink(

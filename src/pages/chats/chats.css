@@ -1,7 +1,9 @@
 .chats-page {
   display: grid;
   width: 100%;
-  min-height: 680px;
+  height: calc(100dvh - 132px);
+  min-height: 560px;
+  max-height: calc(100dvh - 132px);
   grid-template-columns: 312px minmax(0, 1fr);
   gap: 0;
   border: 1px solid rgb(108 118 214 / 18%);
@@ -162,9 +164,11 @@
 }
 
 .chat-view {
+  position: relative;
   display: flex;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   padding: 18px;
   flex-direction: column;
   gap: 14px;
@@ -182,10 +186,20 @@
 
 .chat-header__title {
   margin: 0;
-  color: #244cd6;
   font-size: 20px;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.chat-header__title-link,
+.chat-bubble__author-link {
+  color: #244cd6;
+  text-decoration: none;
+}
+
+.chat-header__title-link:hover,
+.chat-bubble__author-link:hover {
+  text-decoration: underline;
 }
 
 .chat-header__meta {
@@ -246,9 +260,78 @@
 
 .chat-compose {
   display: flex;
+  margin-top: auto;
   align-items: center;
   gap: 12px;
-  padding-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgb(138 146 190 / 22%);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0%), rgb(255 255 255 / 94%) 22%);
+}
+
+.chat-new-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgb(36 76 214 / 18%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 12px 28px rgb(36 76 214 / 16%);
+  color: #244cd6;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.chat-scroll-indicator-wrap {
+  position: absolute;
+  right: 0;
+  bottom: 82px;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.chat-scroll-button-wrap {
+  position: absolute;
+  right: 20px;
+  bottom: 82px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+}
+
+.chat-scroll-bottom-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgb(36 76 214 / 16%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 12px 28px rgb(36 76 214 / 16%);
+  color: #244cd6;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.chat-scroll-bottom-button:hover {
+  background: #f5f7ff;
+}
+
+.chat-new-indicator:hover {
+  background: #f5f7ff;
 }
 
 .chat-compose__field {

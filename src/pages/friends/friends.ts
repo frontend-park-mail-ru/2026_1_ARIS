@@ -285,7 +285,7 @@ function renderFriendActions(friend: MockFriend): string {
       <button
         type="button"
         class="friends-card__action"
-        data-friend-open-chat="${escapeHtml(friend.chatUserId)}"
+        data-friend-open-chat="${escapeHtml(friend.profileId)}"
       >
         Сообщение
       </button>

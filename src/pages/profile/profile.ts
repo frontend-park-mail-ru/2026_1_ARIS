@@ -1,6 +1,19 @@
 import { renderHeader } from "../../components/header/header";
 import { renderPostcard } from "../../components/postcard/postcard";
 import { renderSidebar } from "../../components/sidebar/sidebar";
+import { createPrivateChat } from "../../api/chat";
+import {
+  acceptFriendRequest,
+  declineFriendRequest,
+  deleteFriend,
+  getFriends,
+  getIncomingFriendRequests,
+  getOutgoingFriendRequests,
+  getUserFriends,
+  requestFriendship,
+  revokeFriendRequest,
+  type Friend,
+} from "../../api/friends";
 import {
   getMyProfile,
   getProfileById,
@@ -16,6 +29,7 @@ import {
   validateOptionalEmail,
 } from "../../utils/profile-validation";
 import { renderFeed } from "../feed/feed";
+import { invalidateFriendsState } from "../friends/friends";
 import { getProfileRecordById, PROFILE_RECORDS, type ProfileRecord } from "./profile-data";
 
 type ProfileParams = {
@@ -25,6 +39,8 @@ type ProfileParams = {
 type ProfileRoot = (Document | HTMLElement) & {
   __profileInteractionsBound?: boolean;
 };
+
+type ProfileFriendRelation = "friend" | "incoming" | "outgoing" | "none";
 
 type EditableProfileFields = {
   firstName: string;
@@ -66,10 +82,18 @@ type DisplayProfile = {
     place: string;
     subtitle: string;
   }>;
-  friends: string[];
+  friends: Friend[];
   isOwnProfile: boolean;
+  isApiBacked: boolean;
   avatarLink: string | undefined;
+  friendRelation: ProfileFriendRelation;
+  friendshipCreatedAt?: string | undefined;
   editable: EditableProfileFields;
+};
+
+type ProfileFriendState = {
+  relation: ProfileFriendRelation;
+  friendshipCreatedAt?: string | undefined;
 };
 
 type ProfilePost = {
@@ -98,6 +122,10 @@ function formatNamePart(value: string): string {
   if (!value) return "";
 
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+}
+
+function normalizeProfileId(value: unknown): string {
+  return typeof value === "string" ? value : String(value ?? "");
 }
 
 function valueOrFallback(value: string, fallback = "Не указано"): string {
@@ -133,6 +161,25 @@ function normaliseDate(value?: string): string {
     month: "long",
     year: "numeric",
   }).format(parsed);
+}
+
+function formatFriendshipDate(value?: string): string {
+  if (!value) {
+    return "";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+    .format(parsed)
+    .replace(/\s*г\.$/, "");
 }
 
 function formatGender(value: EditableProfileFields["gender"]): string {
@@ -266,12 +313,13 @@ function focusFirstProfileErrorField(form: HTMLFormElement, errors: ProfileField
   });
 }
 
-function getFallbackIdentity(profileId: string): {
+function getFallbackIdentity(profileId: string | number): {
   firstName: string;
   lastName: string;
   username: string;
 } {
-  const rawParts = profileId
+  const normalizedProfileId = normalizeProfileId(profileId);
+  const rawParts = normalizedProfileId
     .split(/[-_]/)
     .map((part) => part.trim())
     .filter(Boolean);
@@ -282,7 +330,7 @@ function getFallbackIdentity(profileId: string): {
   return {
     firstName,
     lastName,
-    username: profileId,
+    username: normalizedProfileId,
   };
 }
 
@@ -306,9 +354,22 @@ function mapRecordToDisplayProfile(profile: ProfileRecord, isOwnProfile: boolean
     workCompany: profile.workCompany,
     workRole: profile.workRole,
     education: profile.education,
-    friends: profile.friends,
+    friends: profile.friends
+      .map((friendId) => getProfileRecordById(friendId))
+      .filter((friend): friend is ProfileRecord => Boolean(friend))
+      .map((friend) => ({
+        profileId: String(friend.publicId),
+        firstName: friend.firstName,
+        lastName: friend.lastName,
+        username: friend.username,
+        status: "accepted" as const,
+        avatarLink: friend.avatarLink,
+      })),
     isOwnProfile,
+    isApiBacked: false,
     avatarLink: profile.avatarLink,
+    friendRelation: isOwnProfile ? "friend" : "none",
+    friendshipCreatedAt: undefined,
     editable: {
       firstName: profile.firstName,
       lastName: profile.lastName,
@@ -334,8 +395,12 @@ function mapRecordToDisplayProfile(profile: ProfileRecord, isOwnProfile: boolean
   };
 }
 
-function createFallbackProfile(profileId: string, useSessionIdentity = false): DisplayProfile {
+function createFallbackProfile(
+  profileId: string | number,
+  useSessionIdentity = false,
+): DisplayProfile {
   const sessionUser = getSessionUser();
+  const normalizedProfileId = normalizeProfileId(profileId);
   const generatedIdentity = getFallbackIdentity(profileId);
   const firstName =
     useSessionIdentity && sessionUser?.firstName
@@ -344,10 +409,12 @@ function createFallbackProfile(profileId: string, useSessionIdentity = false): D
   const lastName =
     useSessionIdentity && sessionUser?.lastName ? sessionUser.lastName : generatedIdentity.lastName;
   const username =
-    useSessionIdentity && sessionUser?.id ? sessionUser.id : generatedIdentity.username;
+    useSessionIdentity && sessionUser?.id
+      ? normalizeProfileId(sessionUser.id)
+      : generatedIdentity.username;
 
   return {
-    id: profileId,
+    id: normalizedProfileId,
     firstName,
     lastName,
     username,
@@ -371,8 +438,12 @@ function createFallbackProfile(profileId: string, useSessionIdentity = false): D
       },
     ],
     friends: [],
-    isOwnProfile: useSessionIdentity && sessionUser ? profileId === sessionUser.id : false,
+    isOwnProfile:
+      useSessionIdentity && sessionUser ? normalizedProfileId === sessionUser.id : false,
+    isApiBacked: useSessionIdentity && sessionUser ? true : false,
     avatarLink: sessionUser?.avatarLink,
+    friendRelation: useSessionIdentity && sessionUser ? "friend" : "none",
+    friendshipCreatedAt: undefined,
     editable: {
       firstName,
       lastName,
@@ -463,9 +534,12 @@ function createOwnProfileFromApi(
         subtitle: valueOrFallback(educationItem?.grade ?? ""),
       },
     ],
-    friends: getProfileRecordById(profileId)?.friends ?? [],
+    friends: [],
     isOwnProfile: true,
+    isApiBacked: true,
     avatarLink: data.imageLink || getSessionUser()?.avatarLink,
+    friendRelation: "friend",
+    friendshipCreatedAt: undefined,
     editable: {
       firstName,
       lastName,
@@ -519,7 +593,10 @@ function createPublicProfileFromApi(
     ],
     friends: [],
     isOwnProfile: false,
+    isApiBacked: true,
     avatarLink: data.imageLink,
+    friendRelation: "none",
+    friendshipCreatedAt: undefined,
     editable: {
       firstName: data.firstName ?? "",
       lastName: data.lastName ?? "",
@@ -540,6 +617,36 @@ function createPublicProfileFromApi(
   };
 }
 
+async function resolveProfileFriendState(profileId: string): Promise<ProfileFriendState> {
+  try {
+    const [friends, incoming, outgoing] = await Promise.all([
+      getFriends("accepted"),
+      getIncomingFriendRequests("pending"),
+      getOutgoingFriendRequests("pending"),
+    ]);
+
+    const acceptedFriend = friends.find((friend) => friend.profileId === profileId);
+    if (acceptedFriend) {
+      return {
+        relation: "friend",
+        friendshipCreatedAt: acceptedFriend.createdAt,
+      };
+    }
+
+    if (incoming.some((friend) => friend.profileId === profileId)) {
+      return { relation: "incoming" };
+    }
+
+    if (outgoing.some((friend) => friend.profileId === profileId)) {
+      return { relation: "outgoing" };
+    }
+  } catch (error) {
+    console.error("[profile] source=api scope=friends failed id=%s", profileId, error);
+  }
+
+  return { relation: "none" };
+}
+
 async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
   const sessionUser = getSessionUser();
   const requestedId = params.id ?? sessionUser?.id ?? PROFILE_RECORDS[0]?.id ?? "profile";
@@ -549,7 +656,9 @@ async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
     try {
       const profileData = await getMyProfile();
       console.info("[profile] source=api scope=me id=%s", sessionUser.id, profileData);
-      return createOwnProfileFromApi(sessionUser.id, profileData);
+      const profile = createOwnProfileFromApi(sessionUser.id, profileData);
+      profile.friends = await getFriends("accepted");
+      return profile;
     } catch (error) {
       console.error("[profile] source=api scope=me failed id=%s", sessionUser.id, error);
     }
@@ -559,7 +668,15 @@ async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
     try {
       const profileData = await getProfileById(requestedId);
       console.info("[profile] source=api scope=public id=%s", requestedId, profileData);
-      return createPublicProfileFromApi(requestedId, profileData);
+      const profile = createPublicProfileFromApi(requestedId, profileData);
+      const [friends, friendState] = await Promise.all([
+        getUserFriends(requestedId),
+        resolveProfileFriendState(requestedId),
+      ]);
+      profile.friends = friends;
+      profile.friendRelation = friendState.relation;
+      profile.friendshipCreatedAt = friendState.friendshipCreatedAt;
+      return profile;
     } catch (error) {
       console.error("[profile] source=api scope=public failed id=%s", requestedId, error);
     }
@@ -602,6 +719,155 @@ function renderSection(title: string, content: string, action = ""): string {
         ${content}
       </div>
     </section>
+  `;
+}
+
+function renderProfileFriendActions(profile: DisplayProfile): string {
+  if (profile.isOwnProfile || !profile.isApiBacked) {
+    return "";
+  }
+
+  const messageButton = `
+    <button
+      type="button"
+      class="profile-friend-action profile-friend-action--secondary"
+      data-profile-open-chat="${escapeHtml(profile.id)}"
+    >
+      Сообщение
+    </button>
+  `;
+
+  if (profile.friendRelation === "friend") {
+    return `
+      <div class="profile-friend-actions">
+        ${messageButton}
+        <button
+          type="button"
+          class="profile-friend-action profile-friend-action--danger"
+          data-profile-delete-friend="${escapeHtml(profile.id)}"
+        >
+          Удалить из друзей
+        </button>
+      </div>
+    `;
+  }
+
+  if (profile.friendRelation === "incoming") {
+    return `
+      <div class="profile-friend-actions">
+        ${messageButton}
+        <button
+          type="button"
+          class="profile-friend-action profile-friend-action--primary"
+          data-profile-accept-friend="${escapeHtml(profile.id)}"
+        >
+          Принять в друзья
+        </button>
+        <button
+          type="button"
+          class="profile-friend-action profile-friend-action--danger"
+          data-profile-decline-friend="${escapeHtml(profile.id)}"
+        >
+          Отклонить
+        </button>
+      </div>
+    `;
+  }
+
+  if (profile.friendRelation === "outgoing") {
+    return `
+      <div class="profile-friend-actions">
+        ${messageButton}
+        <div class="profile-friend-request-state">
+          <span>Запрос отправлен.</span>
+          <button
+            type="button"
+            class="profile-friend-request-cancel"
+            data-profile-revoke-friend="${escapeHtml(profile.id)}"
+          >
+            Отменить
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="profile-friend-actions">
+      ${messageButton}
+      <button
+        type="button"
+        class="profile-friend-action profile-friend-action--primary"
+        data-profile-request-friend="${escapeHtml(profile.id)}"
+      >
+        Добавить в друзья
+      </button>
+    </div>
+  `;
+}
+
+function renderDeleteFriendModal(profile: DisplayProfile): string {
+  if (profile.isOwnProfile || profile.friendRelation !== "friend") {
+    return "";
+  }
+
+  const friendName = `${profile.firstName} ${profile.lastName}`.trim() || profile.username;
+  const friendshipDate = formatFriendshipDate(profile.friendshipCreatedAt);
+  const friendshipCopy = friendshipDate ? `Вы в друзьях с ${friendshipDate} года` : "";
+
+  return `
+    <div class="profile-delete-modal" data-profile-delete-modal hidden>
+      <section
+        class="profile-delete-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Удалить из друзей"
+      >
+        <header class="profile-delete-modal__header">
+          <h2 class="profile-delete-modal__title">Удалить из друзей</h2>
+          <button
+            type="button"
+            class="profile-delete-modal__close"
+            data-profile-delete-modal-close
+            aria-label="Закрыть"
+          >
+            [X]
+          </button>
+        </header>
+
+        <div class="profile-delete-modal__identity">
+          ${renderAvatar(profile, "profile-delete-modal__avatar")}
+          <p class="profile-delete-modal__name">${escapeHtml(friendName)}</p>
+        </div>
+
+        <p class="profile-delete-modal__text">
+          Вы действительно хотите удалить этого пользователя из друзей?
+        </p>
+
+        ${
+          friendshipCopy
+            ? `<p class="profile-delete-modal__hint">${escapeHtml(friendshipCopy)}</p>`
+            : ""
+        }
+
+        <div class="profile-delete-modal__actions">
+          <button
+            type="button"
+            class="profile-delete-modal__button profile-delete-modal__button--primary"
+            data-profile-confirm-delete="${escapeHtml(profile.id)}"
+          >
+            Удалить из друзей
+          </button>
+          <button
+            type="button"
+            class="profile-delete-modal__button"
+            data-profile-delete-modal-close
+          >
+            Отмена
+          </button>
+        </div>
+      </section>
+    </div>
   `;
 }
 
@@ -780,17 +1046,22 @@ function renderPersonal(profile: DisplayProfile): string {
 }
 
 function renderFriends(profile: DisplayProfile): string {
-  const friends = profile.friends
-    .map((friendId) => getProfileRecordById(friendId))
-    .filter((friend): friend is ProfileRecord => Boolean(friend));
-  const previewCount = 3;
+  const friends = profile.friends;
+  const previewCount = 6;
   const hasMoreFriends = friends.length > previewCount;
+  const title = profile.isOwnProfile ? "Друзья" : "Друзья этого пользователя";
+  const countMarkup =
+    friends.length > 0
+      ? `<span class="profile-friends-card__count">(${friends.length})</span>`
+      : "";
 
   return `
     <section class="profile-friends-card">
       <div class="profile-friends-card__header">
-        <h2>Друзья</h2>
-        <span>${friends.length}</span>
+        <h2>
+          ${title}
+          ${countMarkup}
+        </h2>
       </div>
 
       ${
@@ -798,13 +1069,13 @@ function renderFriends(profile: DisplayProfile): string {
           ? `
             <div class="profile-friends-card__list">
               ${friends
+                .slice(0, previewCount)
                 .map(
-                  (friend, index) => `
+                  (friend) => `
                     <a
-                      href="/profile/${encodeURIComponent(friend.id)}"
+                      href="/id${encodeURIComponent(friend.profileId)}"
                       data-link
                       class="profile-friend"
-                      ${index >= previewCount ? "data-friend-extra hidden" : ""}
                     >
                       <img
                         class="profile-friend__avatar"
@@ -824,21 +1095,20 @@ function renderFriends(profile: DisplayProfile): string {
                 .join("")}
             </div>
           `
-          : ""
+          : `<p class="profile-empty-copy">Друзей пока нет</p>`
       }
 
       ${
         hasMoreFriends
           ? `
             <footer class="profile-friends-card__footer">
-              <button
-                type="button"
+              <a
+                href="/friends"
+                data-link
                 class="profile-friends-card__more"
-                data-friends-toggle
-                aria-expanded="false"
               >
                 показать всех
-              </button>
+              </a>
             </footer>
           `
           : ""
@@ -1035,6 +1305,8 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
                 <div class="profile-card__hero-copy">
                   ${profile.isOwnProfile ? '<div class="profile-card__eyebrow">Мой профиль</div>' : ""}
                   <h1>${escapeHtml(`${profile.firstName} ${profile.lastName}`)}</h1>
+                  ${hasVisibleValue(profile.status) ? `<p>${escapeHtml(profile.status)}</p>` : ""}
+                  ${renderProfileFriendActions(profile)}
                 </div>
               </header>
 
@@ -1069,6 +1341,8 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
           </div>
         </aside>
       </main>
+
+      ${renderDeleteFriendModal(profile)}
     </div>
   `;
 }
@@ -1196,6 +1470,145 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const openChatButton = target.closest("[data-profile-open-chat]");
+    if (openChatButton instanceof HTMLButtonElement) {
+      const profileId = openChatButton.getAttribute("data-profile-open-chat");
+      if (!profileId) {
+        return;
+      }
+
+      void createPrivateChat(profileId)
+        .then((chat) => {
+          window.history.pushState({}, "", `/chats?chatId=${encodeURIComponent(chat.id)}`);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        })
+        .catch((error: unknown) => {
+          console.error("[profile] open chat failed", error);
+        });
+      return;
+    }
+
+    const requestFriendButton = target.closest("[data-profile-request-friend]");
+    if (requestFriendButton instanceof HTMLButtonElement) {
+      const profileId = requestFriendButton.getAttribute("data-profile-request-friend");
+      if (!profileId) {
+        return;
+      }
+
+      requestFriendButton.disabled = true;
+      void requestFriendship(profileId)
+        .then(async () => {
+          invalidateFriendsState();
+          await rerenderCurrentRoute();
+        })
+        .catch((error: unknown) => {
+          console.error("[profile] request friend failed", error);
+          requestFriendButton.disabled = false;
+        });
+      return;
+    }
+
+    const revokeFriendButton = target.closest("[data-profile-revoke-friend]");
+    if (revokeFriendButton instanceof HTMLButtonElement) {
+      const profileId = revokeFriendButton.getAttribute("data-profile-revoke-friend");
+      if (!profileId) {
+        return;
+      }
+
+      revokeFriendButton.disabled = true;
+      void revokeFriendRequest(profileId)
+        .then(async () => {
+          invalidateFriendsState();
+          await rerenderCurrentRoute();
+        })
+        .catch((error: unknown) => {
+          console.error("[profile] revoke friend request failed", error);
+          revokeFriendButton.disabled = false;
+        });
+      return;
+    }
+
+    const acceptFriendButton = target.closest("[data-profile-accept-friend]");
+    if (acceptFriendButton instanceof HTMLButtonElement) {
+      const profileId = acceptFriendButton.getAttribute("data-profile-accept-friend");
+      if (!profileId) {
+        return;
+      }
+
+      acceptFriendButton.disabled = true;
+      void acceptFriendRequest(profileId)
+        .then(async () => {
+          invalidateFriendsState();
+          await rerenderCurrentRoute();
+        })
+        .catch((error: unknown) => {
+          console.error("[profile] accept friend failed", error);
+          acceptFriendButton.disabled = false;
+        });
+      return;
+    }
+
+    const declineFriendButton = target.closest("[data-profile-decline-friend]");
+    if (declineFriendButton instanceof HTMLButtonElement) {
+      const profileId = declineFriendButton.getAttribute("data-profile-decline-friend");
+      if (!profileId) {
+        return;
+      }
+
+      declineFriendButton.disabled = true;
+      void declineFriendRequest(profileId)
+        .then(async () => {
+          invalidateFriendsState();
+          await rerenderCurrentRoute();
+        })
+        .catch((error: unknown) => {
+          console.error("[profile] decline friend failed", error);
+          declineFriendButton.disabled = false;
+        });
+      return;
+    }
+
+    const deleteFriendButton = target.closest("[data-profile-delete-friend]");
+    if (deleteFriendButton instanceof HTMLButtonElement) {
+      const deleteModal = root.querySelector("[data-profile-delete-modal]");
+      if (!(deleteModal instanceof HTMLElement)) {
+        return;
+      }
+
+      deleteModal.hidden = false;
+      return;
+    }
+
+    const closeDeleteModalButton = target.closest("[data-profile-delete-modal-close]");
+    const deleteModalBackdrop = target.closest("[data-profile-delete-modal]");
+    if (closeDeleteModalButton instanceof HTMLButtonElement || deleteModalBackdrop === target) {
+      const deleteModal = root.querySelector("[data-profile-delete-modal]");
+      if (deleteModal instanceof HTMLElement) {
+        deleteModal.hidden = true;
+      }
+      return;
+    }
+
+    const confirmDeleteButton = target.closest("[data-profile-confirm-delete]");
+    if (confirmDeleteButton instanceof HTMLButtonElement) {
+      const profileId = confirmDeleteButton.getAttribute("data-profile-confirm-delete");
+      if (!profileId) {
+        return;
+      }
+
+      confirmDeleteButton.disabled = true;
+      void deleteFriend(profileId)
+        .then(async () => {
+          invalidateFriendsState();
+          await rerenderCurrentRoute();
+        })
+        .catch((error: unknown) => {
+          console.error("[profile] delete friend failed", error);
+          confirmDeleteButton.disabled = false;
+        });
+      return;
+    }
 
     const button = target.closest("[data-profile-toggle]");
     if (!(button instanceof HTMLButtonElement)) return;

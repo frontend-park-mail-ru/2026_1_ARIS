@@ -126,6 +126,21 @@ export async function getChats(): Promise<ChatSummary[]> {
   return data.map(mapChat).filter((chat) => Boolean(chat.id));
 }
 
+export async function createPrivateChat(otherUserId: string): Promise<ChatSummary> {
+  const response = await fetch(`/api/chats?otherUserId=${encodeURIComponent(otherUserId)}`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  const data = await parseJson<RawChat | ErrorResponse>(response);
+
+  if (!response.ok) {
+    throw createApiError("failed to create chat", response.status, data);
+  }
+
+  return mapChat(data as RawChat);
+}
+
 export async function getChatMessages(chatId: string): Promise<ChatMessage[]> {
   const response = await fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
     method: "GET",

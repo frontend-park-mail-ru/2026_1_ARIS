@@ -8,8 +8,21 @@ import {
   type ChatMessage,
   type ChatSummary,
 } from "../../api/chat";
+import {
+  getFriends,
+  getIncomingFriendRequests,
+  getOutgoingFriendRequests,
+  type Friend,
+} from "../../api/friends";
+import {
+  getLatestEvents,
+  getPublicPopularUsers,
+  getSuggestedUsers,
+  type LatestEventUser,
+  type SuggestedUser,
+} from "../../api/users";
 import { getSessionUser } from "../../state/session";
-import { PROFILE_RECORDS, findProfileRecord } from "../profile/profile-data";
+import { PROFILE_RECORDS, findProfileRecord, resolveProfilePath } from "../profile/profile-data";
 import { renderFeed } from "../feed/feed";
 
 type ChatRoot = (Document | HTMLElement) & {
@@ -23,6 +36,7 @@ type ChatViewMessage = {
   isOwn: boolean;
   createdAt?: string | undefined;
   avatarLink?: string | undefined;
+  profilePath?: string | undefined;
 };
 
 type ChatViewThread = {
@@ -32,8 +46,32 @@ type ChatViewThread = {
   preview: string;
   previewIsOwn?: boolean | undefined;
   timeLabel: string;
+  createdAt?: string | undefined;
+  updatedAt?: string | undefined;
   source: "api" | "mock";
   messages?: ChatViewMessage[] | undefined;
+  profilePath?: string | undefined;
+};
+
+type KnownChatContact = {
+  profileId?: string | undefined;
+  avatarLink?: string | undefined;
+};
+
+type PersistedChatScrollState = {
+  scrollTop: number;
+  pinnedToBottom: boolean;
+  anchor?: ChatViewportAnchor | undefined;
+};
+
+type PersistedChatsUiState = {
+  selectedChatId: string;
+  scrollStateByChatId: Record<string, PersistedChatScrollState>;
+};
+
+type ChatViewportAnchor = {
+  messageId: string;
+  offset: number;
 };
 
 function sortMessagesByCreatedAt(messages: ChatViewMessage[]): ChatViewMessage[] {
@@ -59,6 +97,15 @@ type ChatsState = {
   errorMessage: string;
   loadedForUserId: string;
   unsubscribeByChatId: Map<string, () => void>;
+  unreadIncomingIdsByChatId: Map<string, Set<string>>;
+  pendingOutgoingByChatId: Map<
+    string,
+    Array<{
+      localId: string;
+      text: string;
+      createdAt?: string | undefined;
+    }>
+  >;
 };
 
 const chatsState: ChatsState = {
@@ -71,9 +118,17 @@ const chatsState: ChatsState = {
   errorMessage: "",
   loadedForUserId: "",
   unsubscribeByChatId: new Map(),
+  unreadIncomingIdsByChatId: new Map(),
+  pendingOutgoingByChatId: new Map(),
 };
 
 let chatsRoot: ParentNode = document;
+let chatsPollIntervalId: number | null = null;
+let shouldScrollChatToBottom = false;
+let isSelectedChatPinnedToBottom = true;
+let hasHydratedPersistedChatsUiState = false;
+const chatScrollStateById = new Map<string, PersistedChatScrollState>();
+const knownChatContactsByName = new Map<string, KnownChatContact>();
 
 function resetChatsState(): void {
   chatsState.unsubscribeByChatId.forEach((unsubscribe) => unsubscribe());
@@ -85,6 +140,91 @@ function resetChatsState(): void {
   chatsState.threads = [];
   chatsState.selectedChatId = "";
   chatsState.errorMessage = "";
+  chatsState.unreadIncomingIdsByChatId.clear();
+  chatsState.pendingOutgoingByChatId.clear();
+  chatScrollStateById.clear();
+  knownChatContactsByName.clear();
+  hasHydratedPersistedChatsUiState = false;
+}
+
+function getChatsUiStorageKey(): string {
+  const currentUserId = String(getSessionUser()?.id ?? chatsState.loadedForUserId ?? "");
+  return `arisfront:chats-ui:${currentUserId || "guest"}`;
+}
+
+function readPersistedChatsUiState(): PersistedChatsUiState | null {
+  try {
+    const raw = sessionStorage.getItem(getChatsUiStorageKey());
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as PersistedChatsUiState;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function persistChatsUiState(): void {
+  try {
+    const scrollStateByChatId = Object.fromEntries(chatScrollStateById.entries());
+
+    const payload: PersistedChatsUiState = {
+      selectedChatId: chatsState.selectedChatId,
+      scrollStateByChatId,
+    };
+
+    sessionStorage.setItem(getChatsUiStorageKey(), JSON.stringify(payload));
+  } catch {
+    // Ignore storage errors and keep the chat usable.
+  }
+}
+
+function hydratePersistedChatsUiState(): void {
+  if (hasHydratedPersistedChatsUiState) {
+    return;
+  }
+
+  const persisted = readPersistedChatsUiState();
+  if (!persisted) {
+    hasHydratedPersistedChatsUiState = true;
+    return;
+  }
+
+  chatsState.unreadIncomingIdsByChatId = new Map();
+
+  chatScrollStateById.clear();
+  Object.entries(persisted.scrollStateByChatId ?? {}).forEach(([chatId, scrollState]) => {
+    if (
+      scrollState &&
+      typeof scrollState.scrollTop === "number" &&
+      typeof scrollState.pinnedToBottom === "boolean"
+    ) {
+      chatScrollStateById.set(chatId, scrollState);
+    }
+  });
+
+  const selectedScrollState = chatScrollStateById.get(chatsState.selectedChatId);
+  if (selectedScrollState) {
+    isSelectedChatPinnedToBottom = selectedScrollState.pinnedToBottom;
+  }
+
+  hasHydratedPersistedChatsUiState = true;
+}
+
+function applySelectedChatPersistedViewState(): void {
+  if (!chatsState.selectedChatId) {
+    isSelectedChatPinnedToBottom = true;
+    return;
+  }
+
+  const selectedScrollState = chatScrollStateById.get(chatsState.selectedChatId);
+  isSelectedChatPinnedToBottom = selectedScrollState?.pinnedToBottom ?? true;
 }
 
 function escapeHtml(value: string): string {
@@ -105,6 +245,89 @@ function getAvatarSrc(avatarLink?: string): string {
 function getCurrentUserFullName(): string {
   const currentUser = getSessionUser();
   return `${currentUser?.firstName ?? ""} ${currentUser?.lastName ?? ""}`.trim();
+}
+
+function getCurrentUserProfilePath(): string {
+  return "/profile";
+}
+
+function splitFullName(value: string): { firstName: string; lastName: string } {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] ?? "",
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
+function resolvePersonPath(fullName: string, profileId?: string): string {
+  if (profileId) {
+    return resolveProfilePath({ id: profileId });
+  }
+
+  const { firstName, lastName } = splitFullName(fullName);
+  return resolveProfilePath({ firstName, lastName });
+}
+
+function getNormalisedPersonName(fullName: string): string {
+  return fullName.trim().toLowerCase();
+}
+
+function rememberKnownChatContacts(friends: Friend[]): void {
+  friends.forEach((friend) => {
+    const fullName = `${friend.firstName} ${friend.lastName}`.trim();
+    if (!fullName) {
+      return;
+    }
+
+    knownChatContactsByName.set(getNormalisedPersonName(fullName), {
+      profileId: friend.profileId,
+      avatarLink: friend.avatarLink,
+    });
+  });
+}
+
+function rememberKnownUserContacts(users: Array<SuggestedUser | LatestEventUser>): void {
+  users.forEach((user) => {
+    const fullName = `${user.firstName} ${user.lastName}`.trim();
+    if (!fullName) {
+      return;
+    }
+
+    knownChatContactsByName.set(getNormalisedPersonName(fullName), {
+      profileId: user.id,
+      avatarLink: user.avatarLink || undefined,
+    });
+  });
+}
+
+async function ensureKnownChatContactsLoaded(): Promise<void> {
+  if (knownChatContactsByName.size > 0) {
+    return;
+  }
+
+  try {
+    const [accepted, incoming, outgoing, suggested, latestEvents, popularUsers] = await Promise.all(
+      [
+        getFriends("accepted"),
+        getIncomingFriendRequests("pending"),
+        getOutgoingFriendRequests("pending"),
+        getSuggestedUsers(),
+        getLatestEvents(),
+        getPublicPopularUsers(),
+      ],
+    );
+
+    rememberKnownChatContacts(accepted);
+    rememberKnownChatContacts(incoming);
+    rememberKnownChatContacts(outgoing);
+    rememberKnownUserContacts(suggested.items ?? []);
+    rememberKnownUserContacts(latestEvents.items ?? []);
+    rememberKnownUserContacts(popularUsers.items ?? []);
+  } catch (error) {
+    console.info("[chats] source=api scope=contacts error", {
+      error: error instanceof Error ? error.message : "Не получилось загрузить контакты.",
+    });
+  }
 }
 
 function isOwnMessage(authorId?: string, authorName?: string): boolean {
@@ -175,7 +398,10 @@ function createMockThreads(): ChatViewThread[] {
       avatarLink: pavel?.avatarLink,
       preview: "у вас неплохой диплом",
       timeLabel: "22 фев. 23:45",
+      createdAt: "2026-02-22T12:50:00+03:00",
+      updatedAt: "2026-02-22T23:45:00+03:00",
       source: "mock",
+      profilePath: resolvePersonPath("Павел Бабкин", pavel ? String(pavel.publicId) : undefined),
       messages: [
         {
           id: "m1",
@@ -184,6 +410,10 @@ function createMockThreads(): ChatViewThread[] {
           createdAt: "2026-02-22T12:50:00+03:00",
           isOwn: false,
           avatarLink: pavel?.avatarLink,
+          profilePath: resolvePersonPath(
+            "Павел Бабкин",
+            pavel ? String(pavel.publicId) : undefined,
+          ),
         },
         {
           id: "m2",
@@ -191,6 +421,7 @@ function createMockThreads(): ChatViewThread[] {
           text: "Здравствуйте, Павел Сергеевич. Увидел вашу машину на парковке, понял, что вы сегодня в университете. Как вам в целом мой диплом? Я дополнил одно его дело, хорошо поработал над конструкторской частью. Посмотрите, отпишитесь если есть замечания. Буду рад любой критике. P.S. передавайте привет Кате",
           createdAt: "2026-02-22T23:45:00+03:00",
           isOwn: true,
+          profilePath: getCurrentUserProfilePath(),
         },
         {
           id: "m3",
@@ -199,6 +430,10 @@ function createMockThreads(): ChatViewThread[] {
           createdAt: "2026-02-22T12:50:00+03:00",
           isOwn: false,
           avatarLink: pavel?.avatarLink,
+          profilePath: resolvePersonPath(
+            "Павел Бабкин",
+            pavel ? String(pavel.publicId) : undefined,
+          ),
         },
       ],
     },
@@ -208,7 +443,10 @@ function createMockThreads(): ChatViewThread[] {
       avatarLink: arina?.avatarLink,
       preview: "ого!!!!!!!!!!",
       timeLabel: "1 ч.",
+      createdAt: "2026-03-30T17:20:00+03:00",
+      updatedAt: "2026-03-30T17:20:00+03:00",
       source: "mock",
+      profilePath: resolvePersonPath("Арина Асхабова", arina ? String(arina.publicId) : undefined),
       messages: [
         {
           id: "m4",
@@ -217,6 +455,10 @@ function createMockThreads(): ChatViewThread[] {
           createdAt: "2026-03-30T17:20:00+03:00",
           isOwn: false,
           avatarLink: arina?.avatarLink,
+          profilePath: resolvePersonPath(
+            "Арина Асхабова",
+            arina ? String(arina.publicId) : undefined,
+          ),
         },
       ],
     },
@@ -226,7 +468,13 @@ function createMockThreads(): ChatViewThread[] {
       avatarLink: milana?.avatarLink,
       preview: "пойдем в мафию",
       timeLabel: "1 ч.",
+      createdAt: "2026-03-30T17:05:00+03:00",
+      updatedAt: "2026-03-30T17:05:00+03:00",
       source: "mock",
+      profilePath: resolvePersonPath(
+        "Милана Шахбиева",
+        milana ? String(milana.publicId) : undefined,
+      ),
       messages: [
         {
           id: "m5",
@@ -235,6 +483,10 @@ function createMockThreads(): ChatViewThread[] {
           createdAt: "2026-03-30T17:05:00+03:00",
           isOwn: false,
           avatarLink: milana?.avatarLink,
+          profilePath: resolvePersonPath(
+            "Милана Шахбиева",
+            milana ? String(milana.publicId) : undefined,
+          ),
         },
       ],
     },
@@ -244,7 +496,10 @@ function createMockThreads(): ChatViewThread[] {
       avatarLink: egor?.avatarLink,
       preview: "люблю ее сильно",
       timeLabel: "1 ч.",
+      createdAt: "2026-03-30T16:45:00+03:00",
+      updatedAt: "2026-03-30T16:45:00+03:00",
       source: "mock",
+      profilePath: resolvePersonPath("Егор Ларкин", egor ? String(egor.publicId) : undefined),
       messages: [
         {
           id: "m6",
@@ -253,6 +508,7 @@ function createMockThreads(): ChatViewThread[] {
           createdAt: "2026-03-30T16:45:00+03:00",
           isOwn: false,
           avatarLink: egor?.avatarLink,
+          profilePath: resolvePersonPath("Егор Ларкин", egor ? String(egor.publicId) : undefined),
         },
       ],
     },
@@ -262,7 +518,13 @@ function createMockThreads(): ChatViewThread[] {
       avatarLink: sofya?.avatarLink,
       preview: "ваши сообщения в 12...",
       timeLabel: "1 ч.",
+      createdAt: "2026-03-30T16:15:00+03:00",
+      updatedAt: "2026-03-30T16:15:00+03:00",
       source: "mock",
+      profilePath: resolvePersonPath(
+        "Софья Ситниченко",
+        sofya ? String(sofya.publicId) : undefined,
+      ),
       messages: [
         {
           id: "m7",
@@ -271,6 +533,10 @@ function createMockThreads(): ChatViewThread[] {
           createdAt: "2026-03-30T16:15:00+03:00",
           isOwn: false,
           avatarLink: sofya?.avatarLink,
+          profilePath: resolvePersonPath(
+            "Софья Ситниченко",
+            sofya ? String(sofya.publicId) : undefined,
+          ),
         },
       ],
     },
@@ -290,8 +556,9 @@ function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
       return rightTime - leftTime;
     })
     .map((chat, index) => {
+      const knownContact = knownChatContactsByName.get(getNormalisedPersonName(chat.title || ""));
       const matchedProfile = findProfileRecord({
-        id: chat.title,
+        id: knownContact?.profileId ?? chat.title,
         firstName: chat.title.split(" ")[0] ?? "",
         lastName: chat.title.split(" ").slice(1).join(" "),
       });
@@ -299,11 +566,17 @@ function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
       return {
         id: chat.id,
         title: chat.title || `Чат ${index + 1}`,
-        avatarLink: chat.avatarLink ?? matchedProfile?.avatarLink,
+        avatarLink: chat.avatarLink ?? knownContact?.avatarLink ?? matchedProfile?.avatarLink,
         preview: "",
         previewIsOwn: false,
         timeLabel: formatChatTime(chat.updatedAt ?? chat.createdAt),
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt ?? chat.createdAt,
         source: "api",
+        profilePath: resolvePersonPath(
+          chat.title || `Чат ${index + 1}`,
+          knownContact?.profileId ?? (matchedProfile ? String(matchedProfile.publicId) : undefined),
+        ),
       };
     });
 }
@@ -323,6 +596,9 @@ function mapMessageToViewMessage(message: ChatMessage, thread: ChatViewThread): 
     isOwn: own,
     createdAt: message.createdAt,
     avatarLink: own ? currentUser?.avatarLink : thread.avatarLink,
+    profilePath: own
+      ? getCurrentUserProfilePath()
+      : resolvePersonPath(message.authorName ?? thread.title, message.authorId || undefined),
   };
 }
 
@@ -336,6 +612,94 @@ function dedupeMessagesById(messages: ChatViewMessage[]): ChatViewMessage[] {
   return Array.from(byId.values());
 }
 
+function getUnreadMessageKey(message: ChatViewMessage): string {
+  if (message.id) {
+    return `id:${message.id}`;
+  }
+
+  return `fallback:${message.authorName}:${message.createdAt ?? ""}:${message.text}`;
+}
+
+function addPendingOutgoing(chatId: string, message: ChatViewMessage): void {
+  const pending = chatsState.pendingOutgoingByChatId.get(chatId) ?? [];
+  pending.push({
+    localId: message.id,
+    text: message.text,
+    createdAt: message.createdAt,
+  });
+  chatsState.pendingOutgoingByChatId.set(chatId, pending);
+}
+
+function removePendingOutgoing(chatId: string, localId: string): void {
+  const pending = chatsState.pendingOutgoingByChatId.get(chatId);
+  if (!pending?.length) {
+    return;
+  }
+
+  const nextPending = pending.filter((item) => item.localId !== localId);
+  if (nextPending.length) {
+    chatsState.pendingOutgoingByChatId.set(chatId, nextPending);
+    return;
+  }
+
+  chatsState.pendingOutgoingByChatId.delete(chatId);
+}
+
+function reconcilePendingOutgoing(
+  chatId: string,
+  incomingMessage: ChatViewMessage,
+  thread: ChatViewThread,
+): boolean {
+  const pending = chatsState.pendingOutgoingByChatId.get(chatId);
+  if (!pending?.length) {
+    return false;
+  }
+
+  const incomingCreatedAt = incomingMessage.createdAt
+    ? new Date(incomingMessage.createdAt).getTime()
+    : 0;
+  const matchedPending = pending.find((item) => {
+    if (item.text !== incomingMessage.text) {
+      return false;
+    }
+
+    const pendingCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : 0;
+    if (!incomingCreatedAt || !pendingCreatedAt) {
+      return true;
+    }
+
+    return Math.abs(incomingCreatedAt - pendingCreatedAt) <= 15000;
+  });
+
+  if (!matchedPending) {
+    return false;
+  }
+
+  thread.messages = sortMessagesByCreatedAt(
+    dedupeMessagesById(
+      (thread.messages ?? []).map((message) =>
+        message.id === matchedPending.localId
+          ? {
+              ...message,
+              id: incomingMessage.id,
+              createdAt: incomingMessage.createdAt,
+              authorName: incomingMessage.authorName,
+              avatarLink: incomingMessage.avatarLink,
+              isOwn: true,
+              profilePath: getCurrentUserProfilePath(),
+            }
+          : message,
+      ),
+    ),
+  );
+  syncThreadProfilePathFromMessages(thread);
+  removePendingOutgoing(chatId, matchedPending.localId);
+  updateThreadPreview(thread);
+  sortThreadsByUpdatedAt();
+  refreshChatsPage(chatsRoot);
+  return true;
+}
+
 function updateThreadPreview(thread: ChatViewThread): void {
   const messages = thread.messages ?? [];
   const lastMessage = messages[messages.length - 1];
@@ -347,6 +711,245 @@ function updateThreadPreview(thread: ChatViewThread): void {
   thread.preview = lastMessage.text;
   thread.previewIsOwn = lastMessage.isOwn;
   thread.timeLabel = formatMessageTime(lastMessage.createdAt);
+  thread.updatedAt = lastMessage.createdAt ?? thread.updatedAt;
+}
+
+function syncThreadProfilePathFromMessages(thread: ChatViewThread): void {
+  const otherMessage = (thread.messages ?? []).find(
+    (message) => !message.isOwn && message.profilePath && message.profilePath !== "/profile",
+  );
+
+  if (otherMessage?.profilePath) {
+    thread.profilePath = otherMessage.profilePath;
+  }
+}
+
+function getMessagesFingerprint(messages: ChatViewMessage[] | undefined): string {
+  return (messages ?? [])
+    .map((message) => `${message.id}:${message.createdAt ?? ""}:${message.text}`)
+    .join("|");
+}
+
+function getChatMessagesContainer(root: ParentNode = document): HTMLElement | null {
+  const container = root.querySelector(".chat-messages");
+  return container instanceof HTMLElement ? container : null;
+}
+
+function captureChatViewportAnchor(root: ParentNode = document): ChatViewportAnchor | null {
+  const container = getChatMessagesContainer(root);
+  if (!container) {
+    return null;
+  }
+
+  const messages = Array.from(container.querySelectorAll<HTMLElement>("[data-chat-message-id]"));
+  const anchor = messages.find(
+    (message) => message.offsetTop + message.offsetHeight > container.scrollTop,
+  );
+
+  if (!anchor) {
+    return null;
+  }
+
+  const messageId = anchor.getAttribute("data-chat-message-id");
+  if (!messageId) {
+    return null;
+  }
+
+  return {
+    messageId,
+    offset: container.scrollTop - anchor.offsetTop,
+  };
+}
+
+function restoreChatViewportAnchor(
+  anchor: ChatViewportAnchor,
+  root: ParentNode = document,
+): boolean {
+  const container = getChatMessagesContainer(root);
+  if (!container) {
+    return false;
+  }
+
+  const message = container.querySelector<HTMLElement>(
+    `[data-chat-message-id="${CSS.escape(anchor.messageId)}"]`,
+  );
+  if (!message) {
+    return false;
+  }
+
+  container.scrollTop = message.offsetTop + anchor.offset;
+  return true;
+}
+
+function isChatScrolledNearBottom(root: ParentNode = document, threshold = 48): boolean {
+  const container = getChatMessagesContainer(root);
+  if (!container) {
+    return true;
+  }
+
+  return container.scrollHeight - (container.scrollTop + container.clientHeight) <= threshold;
+}
+
+function syncSelectedChatPinnedToBottom(root: ParentNode = document): void {
+  isSelectedChatPinnedToBottom = isChatScrolledNearBottom(root, 8);
+}
+
+function rememberSelectedChatScroll(root: ParentNode = document): void {
+  if (!chatsState.selectedChatId) {
+    return;
+  }
+
+  const container = getChatMessagesContainer(root);
+  if (!container) {
+    return;
+  }
+
+  syncSelectedChatPinnedToBottom(root);
+  const anchor = !isSelectedChatPinnedToBottom ? captureChatViewportAnchor(root) : null;
+  chatScrollStateById.set(chatsState.selectedChatId, {
+    scrollTop: container.scrollTop,
+    pinnedToBottom: isSelectedChatPinnedToBottom,
+    anchor: anchor ?? undefined,
+  });
+  persistChatsUiState();
+}
+
+function restoreSelectedChatScroll(root: ParentNode = document): void {
+  if (!chatsState.selectedChatId) {
+    return;
+  }
+
+  const container = getChatMessagesContainer(root);
+  if (!container) {
+    return;
+  }
+
+  const scrollState = chatScrollStateById.get(chatsState.selectedChatId);
+  if (!scrollState) {
+    syncSelectedChatPinnedToBottom(root);
+    return;
+  }
+
+  if (scrollState.pinnedToBottom) {
+    container.scrollTop = container.scrollHeight;
+    isSelectedChatPinnedToBottom = true;
+  } else {
+    if (!scrollState.anchor || !restoreChatViewportAnchor(scrollState.anchor, root)) {
+      container.scrollTop = scrollState.scrollTop;
+    }
+    syncSelectedChatPinnedToBottom(root);
+  }
+}
+
+function scrollChatToBottom(root: ParentNode = document): void {
+  const container = getChatMessagesContainer(root);
+  if (!container) {
+    return;
+  }
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function getUnreadIncomingCount(chatId: string): number {
+  return chatsState.unreadIncomingIdsByChatId.get(chatId)?.size ?? 0;
+}
+
+function clearUnreadIncoming(chatId: string): void {
+  chatsState.unreadIncomingIdsByChatId.delete(chatId);
+  persistChatsUiState();
+}
+
+function markUnreadIncoming(chatId: string, messageIds: string[]): void {
+  if (!messageIds.length) {
+    return;
+  }
+
+  const unreadIds = chatsState.unreadIncomingIdsByChatId.get(chatId) ?? new Set<string>();
+  messageIds.forEach((messageId) => {
+    if (messageId) {
+      unreadIds.add(messageId);
+    }
+  });
+  chatsState.unreadIncomingIdsByChatId.set(chatId, unreadIds);
+  persistChatsUiState();
+}
+
+function getThreadUpdatedAtValue(thread: ChatViewThread): number {
+  if (!thread.updatedAt) {
+    return 0;
+  }
+
+  const parsed = new Date(thread.updatedAt).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function getThreadCreatedAtValue(thread: ChatViewThread): number {
+  if (!thread.createdAt) {
+    return 0;
+  }
+
+  const parsed = new Date(thread.createdAt).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function hasThreadActivity(thread: ChatViewThread): boolean {
+  if ((thread.messages?.length ?? 0) > 0) {
+    return true;
+  }
+
+  if (thread.preview.trim()) {
+    return true;
+  }
+
+  return getThreadUpdatedAtValue(thread) > getThreadCreatedAtValue(thread);
+}
+
+function sortThreadsByUpdatedAt(): void {
+  chatsState.threads.sort((left, right) => {
+    const leftHasActivity = hasThreadActivity(left);
+    const rightHasActivity = hasThreadActivity(right);
+
+    if (leftHasActivity !== rightHasActivity) {
+      return leftHasActivity ? -1 : 1;
+    }
+
+    return getThreadUpdatedAtValue(right) - getThreadUpdatedAtValue(left);
+  });
+}
+
+function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
+  const previousSignature = chatsState.threads.map((thread) => thread.id).join("|");
+  const existingById = new Map(chatsState.threads.map((thread) => [thread.id, thread]));
+  const previousSelectedChatId = chatsState.selectedChatId;
+
+  chatsState.threads = nextThreads.map((thread) => {
+    const existing = existingById.get(thread.id);
+    const merged: ChatViewThread = {
+      ...thread,
+      messages: existing?.messages,
+      preview: existing?.preview ?? thread.preview,
+      previewIsOwn: existing?.previewIsOwn ?? thread.previewIsOwn,
+      timeLabel: existing?.messages?.length ? existing.timeLabel : thread.timeLabel,
+      createdAt: existing?.createdAt ?? thread.createdAt,
+      updatedAt: existing?.updatedAt ?? thread.updatedAt,
+      profilePath: thread.profilePath ?? existing?.profilePath,
+    };
+
+    if (merged.messages?.length) {
+      syncThreadProfilePathFromMessages(merged);
+      updateThreadPreview(merged);
+    }
+
+    return merged;
+  });
+
+  sortThreadsByUpdatedAt();
+  chatsState.selectedChatId =
+    chatsState.threads.find((thread) => thread.id === previousSelectedChatId)?.id ??
+    chatsState.threads[0]?.id ??
+    "";
+
+  return previousSignature !== chatsState.threads.map((thread) => thread.id).join("|");
 }
 
 function appendIncomingMessage(chatId: string, message: ChatMessage): void {
@@ -355,7 +958,16 @@ function appendIncomingMessage(chatId: string, message: ChatMessage): void {
     return;
   }
 
+  const shouldNotify =
+    chatId === chatsState.selectedChatId &&
+    !isOwnMessage(message.authorId, message.authorName) &&
+    !isSelectedChatPinnedToBottom;
+
   const incomingMessage = mapMessageToViewMessage(message, thread);
+  if (reconcilePendingOutgoing(chatId, incomingMessage, thread)) {
+    return;
+  }
+
   const currentMessages = thread.messages ?? [];
   if (currentMessages.some((item) => item.id === incomingMessage.id)) {
     return;
@@ -364,7 +976,14 @@ function appendIncomingMessage(chatId: string, message: ChatMessage): void {
   thread.messages = sortMessagesByCreatedAt(
     dedupeMessagesById([...currentMessages, incomingMessage]),
   );
+  syncThreadProfilePathFromMessages(thread);
   updateThreadPreview(thread);
+  sortThreadsByUpdatedAt();
+  if (chatId === chatsState.selectedChatId && isSelectedChatPinnedToBottom) {
+    shouldScrollChatToBottom = true;
+  } else if (shouldNotify) {
+    markUnreadIncoming(chatId, [getUnreadMessageKey(incomingMessage)]);
+  }
   refreshChatsPage(chatsRoot);
 }
 
@@ -381,41 +1000,97 @@ function ensureChatSocketSubscribed(chatId: string): void {
   });
 
   chatsState.unsubscribeByChatId.set(chatId, unsubscribe);
-  console.info("[chats] source=ws scope=messages connected", { chatId });
+}
+
+function getRequestedChatId(): string {
+  return new URLSearchParams(window.location.search).get("chatId") ?? "";
+}
+
+function syncSelectedChatToUrl(chatId: string, options: { replace?: boolean } = {}): void {
+  const nextUrl = new URL(window.location.href);
+
+  if (chatId) {
+    nextUrl.searchParams.set("chatId", chatId);
+  } else {
+    nextUrl.searchParams.delete("chatId");
+  }
+
+  const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (nextPath === currentPath) {
+    return;
+  }
+
+  if (options.replace) {
+    window.history.replaceState({}, "", nextPath);
+    return;
+  }
+
+  window.history.pushState({}, "", nextPath);
 }
 
 async function ensureMessagesLoaded(
   chatId: string,
-  options: { background?: boolean } = {},
+  options: { background?: boolean; force?: boolean } = {},
 ): Promise<void> {
   const thread = chatsState.threads.find((item) => item.id === chatId);
-  if (!thread || thread.messages || thread.source !== "api") {
+  if (!thread || thread.source !== "api") {
     return;
   }
 
+  if (!options.force && thread.messages) {
+    return;
+  }
+
+  const hadMessages = Boolean(thread.messages);
   if (!options.background) {
     chatsState.loadingMessages = true;
   }
 
   try {
+    const previousMessages = thread.messages ?? [];
     const messages = await getChatMessages(chatId);
-
-    thread.messages = sortMessagesByCreatedAt(
+    const nextMessages = sortMessagesByCreatedAt(
       dedupeMessagesById(messages.map((message) => mapMessageToViewMessage(message, thread))),
     );
+    const previousFingerprint = getMessagesFingerprint(previousMessages);
+    const nextFingerprint = getMessagesFingerprint(nextMessages);
 
+    thread.messages = nextMessages;
+    syncThreadProfilePathFromMessages(thread);
     updateThreadPreview(thread);
-
-    console.info("[chats] source=api scope=messages", {
-      chatId,
-      count: thread.messages.length,
-    });
+    sortThreadsByUpdatedAt();
 
     if (!options.background) {
       chatsState.errorMessage = "";
     }
+
+    if (options.background && previousFingerprint !== nextFingerprint) {
+      const shouldNotify = chatId === chatsState.selectedChatId && !isSelectedChatPinnedToBottom;
+      const shouldStickToBottom =
+        chatId === chatsState.selectedChatId && isSelectedChatPinnedToBottom;
+
+      if (shouldNotify) {
+        const previousKeys = new Set(previousMessages.map(getUnreadMessageKey));
+        const nextUnreadKeys = nextMessages
+          .filter((message) => !message.isOwn)
+          .map(getUnreadMessageKey)
+          .filter((key) => !previousKeys.has(key));
+
+        markUnreadIncoming(chatId, nextUnreadKeys);
+      }
+
+      if (shouldStickToBottom) {
+        shouldScrollChatToBottom = true;
+      }
+
+      refreshChatsPage(chatsRoot);
+    }
   } catch (error) {
-    thread.messages = [];
+    if (!hadMessages) {
+      thread.messages = [];
+    }
     if (!options.background) {
       chatsState.errorMessage =
         error instanceof Error ? error.message : "Не получилось загрузить сообщения.";
@@ -432,7 +1107,69 @@ async function ensureMessagesLoaded(
   }
 }
 
+function ensureChatsPollingStarted(): void {
+  if (chatsPollIntervalId !== null) {
+    return;
+  }
+
+  chatsPollIntervalId = window.setInterval(() => {
+    if (document.visibilityState === "hidden") {
+      return;
+    }
+
+    if (!chatsState.loaded || chatsState.source !== "api") {
+      return;
+    }
+
+    void refreshChatsInBackground();
+  }, 3000);
+}
+
+async function refreshChatsInBackground(): Promise<void> {
+  if (!chatsState.loaded || chatsState.source !== "api") {
+    return;
+  }
+
+  try {
+    await ensureKnownChatContactsLoaded();
+    const chats = await getChats();
+    const listChanged = mergeApiThreads(mapApiChatsToThreads(chats));
+
+    await Promise.all(
+      chatsState.threads.map(async (thread) => {
+        ensureChatSocketSubscribed(thread.id);
+        await ensureMessagesLoaded(thread.id, { background: true, force: true });
+      }),
+    );
+
+    if (listChanged) {
+      refreshChatsPage(chatsRoot);
+    }
+  } catch (error) {
+    console.info("[chats] source=api scope=list background error", {
+      error: error instanceof Error ? error.message : "Не получилось обновить список чатов.",
+    });
+  }
+}
+
 async function ensureChatsLoaded(): Promise<void> {
+  const requestedChatId = getRequestedChatId();
+  const persistedUiState = readPersistedChatsUiState();
+  const preferredChatId = requestedChatId || persistedUiState?.selectedChatId || "";
+
+  if (chatsState.loaded) {
+    if (preferredChatId) {
+      const requestedThread = chatsState.threads.find((thread) => thread.id === preferredChatId);
+
+      if (requestedThread) {
+        chatsState.selectedChatId = requestedThread.id;
+        applySelectedChatPersistedViewState();
+      } else {
+        chatsState.loaded = false;
+      }
+    }
+  }
+
   if (chatsState.loaded) {
     if (chatsState.selectedChatId) {
       await ensureMessagesLoaded(chatsState.selectedChatId);
@@ -442,29 +1179,30 @@ async function ensureChatsLoaded(): Promise<void> {
   }
 
   try {
+    await ensureKnownChatContactsLoaded();
     const chats = await getChats();
     chatsState.source = "api";
     chatsState.threads = mapApiChatsToThreads(chats);
-    chatsState.selectedChatId = chatsState.threads[0]?.id ?? "";
+    sortThreadsByUpdatedAt();
+    chatsState.selectedChatId =
+      chatsState.threads.find((thread) => thread.id === preferredChatId)?.id ??
+      chatsState.threads[0]?.id ??
+      "";
+    applySelectedChatPersistedViewState();
     chatsState.errorMessage = "";
-
-    console.info("[chats] source=api scope=list", {
-      count: chatsState.threads.length,
-      selectedChatId: chatsState.selectedChatId,
-    });
   } catch {
     chatsState.source = "mock";
     chatsState.threads = createMockThreads();
-    chatsState.selectedChatId = chatsState.threads[0]?.id ?? "";
+    chatsState.selectedChatId =
+      chatsState.threads.find((thread) => thread.id === preferredChatId)?.id ??
+      chatsState.threads[0]?.id ??
+      "";
+    applySelectedChatPersistedViewState();
     chatsState.errorMessage = "";
-
-    console.info("[chats] source=fallback scope=list", {
-      count: chatsState.threads.length,
-      selectedChatId: chatsState.selectedChatId,
-    });
   }
 
   chatsState.loaded = true;
+  syncSelectedChatToUrl(chatsState.selectedChatId, { replace: true });
 
   await Promise.all(
     chatsState.threads.map(async (thread) => {
@@ -479,7 +1217,16 @@ async function ensureChatsLoaded(): Promise<void> {
 }
 
 function getFilteredThreads(): ChatViewThread[] {
-  return chatsState.threads;
+  const query = chatsState.query.trim().toLowerCase();
+  if (!query) {
+    return chatsState.threads;
+  }
+
+  return chatsState.threads.filter((thread) => {
+    const previewState = getThreadPreviewState(thread);
+
+    return [thread.title, previewState.text].join(" ").toLowerCase().includes(query);
+  });
 }
 
 function getThreadPreviewState(thread: ChatViewThread): {
@@ -566,14 +1313,25 @@ function renderMessages(thread?: ChatViewThread): string {
   return messages
     .map((message) => {
       return `
-        <article class="chat-bubble${message.isOwn ? " chat-bubble--own" : ""}">
+        <article
+          class="chat-bubble${message.isOwn ? " chat-bubble--own" : ""}"
+          data-chat-message-id="${escapeHtml(message.id)}"
+        >
           <img
             class="chat-bubble__avatar"
             src="${getAvatarSrc(message.avatarLink)}"
             alt="${escapeHtml(message.authorName)}"
           >
           <div class="chat-bubble__body">
-            <h3 class="chat-bubble__author">${escapeHtml(message.authorName)}</h3>
+            <h3 class="chat-bubble__author">
+              <a
+                class="chat-bubble__author-link"
+                href="${escapeHtml(message.profilePath ?? (message.isOwn ? "/profile" : "#"))}"
+                data-link
+              >
+                ${escapeHtml(message.authorName)}
+              </a>
+            </h3>
             <p class="chat-bubble__text">${escapeHtml(message.text)}</p>
           </div>
           <span class="chat-bubble__time">${escapeHtml(formatMessageTime(message.createdAt))}</span>
@@ -581,6 +1339,40 @@ function renderMessages(thread?: ChatViewThread): string {
       `;
     })
     .join("");
+}
+
+function renderScrollControls(thread?: ChatViewThread): string {
+  if (!thread || isSelectedChatPinnedToBottom) {
+    return "";
+  }
+
+  const hasUnreadIncoming = getUnreadIncomingCount(thread.id) > 0;
+
+  return `
+    ${
+      hasUnreadIncoming
+        ? `
+          <div class="chat-scroll-indicator-wrap">
+            <button type="button" class="chat-new-indicator" data-chat-scroll-bottom>
+              Новые сообщения
+            </button>
+          </div>
+        `
+        : ""
+    }
+    <div class="chat-scroll-button-wrap">
+      ${""}
+      <button
+        type="button"
+        class="chat-scroll-bottom-button"
+        data-chat-scroll-bottom
+        aria-label="Прокрутить вниз"
+        title="Прокрутить вниз"
+      >
+        ↓
+      </button>
+    </div>
+  `;
 }
 
 function renderChatsContent(): string {
@@ -601,11 +1393,8 @@ function renderChatsContent(): string {
           <input
             class="chats-search__input"
             type="text"
-            value=""
+            value="${escapeHtml(chatsState.query)}"
             placeholder="Поиск по чатам"
-            readonly
-            aria-disabled="true"
-            tabindex="-1"
             data-chat-search
           >
         </label>
@@ -626,7 +1415,15 @@ function renderChatsContent(): string {
                   alt="${escapeHtml(selectedThread.title)}"
                 >
                 <div>
-                  <h2 class="chat-header__title">${escapeHtml(selectedThread.title)}</h2>
+                  <h2 class="chat-header__title">
+                    <a
+                      class="chat-header__title-link"
+                      href="${escapeHtml(selectedThread.profilePath ?? "#")}"
+                      data-link
+                    >
+                      ${escapeHtml(selectedThread.title)}
+                    </a>
+                  </h2>
                   ${
                     chatsState.source === "mock"
                       ? '<p class="chat-header__meta">Демо-интерфейс до полного подключения API.</p>'
@@ -640,6 +1437,10 @@ function renderChatsContent(): string {
 
         <div class="chat-messages">
           ${renderMessages(selectedThread)}
+        </div>
+
+        <div data-chat-scroll-controls>
+          ${renderScrollControls(selectedThread)}
         </div>
 
         ${
@@ -669,6 +1470,24 @@ function refreshChatsPage(root: ParentNode = document): void {
     return;
   }
 
+  const searchInput = container.querySelector<HTMLInputElement>("[data-chat-search]");
+  const searchWasFocused = document.activeElement === searchInput;
+  const searchSelectionStart = searchInput?.selectionStart ?? null;
+  const searchSelectionEnd = searchInput?.selectionEnd ?? null;
+
+  const currentMessagesContainer = getChatMessagesContainer(container);
+  const previousScrollTop = currentMessagesContainer?.scrollTop ?? 0;
+  const previousAnchor =
+    !shouldScrollChatToBottom && !isSelectedChatPinnedToBottom
+      ? captureChatViewportAnchor(container)
+      : null;
+  if (chatsState.selectedChatId && currentMessagesContainer) {
+    chatScrollStateById.set(chatsState.selectedChatId, {
+      scrollTop: previousScrollTop,
+      pinnedToBottom: isSelectedChatPinnedToBottom,
+    });
+  }
+
   const template = document.createElement("template");
   template.innerHTML = renderChatsContent().trim();
 
@@ -678,6 +1497,54 @@ function refreshChatsPage(root: ParentNode = document): void {
   }
 
   container.replaceWith(next);
+
+  if (searchWasFocused) {
+    const nextSearchInput = next.querySelector<HTMLInputElement>("[data-chat-search]");
+    if (nextSearchInput) {
+      nextSearchInput.focus();
+
+      if (searchSelectionStart !== null && searchSelectionEnd !== null) {
+        nextSearchInput.setSelectionRange(searchSelectionStart, searchSelectionEnd);
+      }
+    }
+  }
+
+  const nextMessagesContainer = getChatMessagesContainer(next);
+  if (nextMessagesContainer) {
+    if (shouldScrollChatToBottom) {
+      nextMessagesContainer.scrollTop = nextMessagesContainer.scrollHeight;
+      shouldScrollChatToBottom = false;
+      isSelectedChatPinnedToBottom = true;
+    } else {
+      const scrollState = chatsState.selectedChatId
+        ? chatScrollStateById.get(chatsState.selectedChatId)
+        : undefined;
+
+      if (scrollState && !scrollState.pinnedToBottom) {
+        if (!previousAnchor || !restoreChatViewportAnchor(previousAnchor, next)) {
+          nextMessagesContainer.scrollTop = scrollState.scrollTop;
+        }
+        syncSelectedChatPinnedToBottom(next);
+      } else {
+        nextMessagesContainer.scrollTop = previousScrollTop;
+        syncSelectedChatPinnedToBottom(next);
+      }
+    }
+
+    rememberSelectedChatScroll(next);
+  }
+}
+
+function refreshScrollControls(root: ParentNode = document): void {
+  const container = root.querySelector("[data-chat-scroll-controls]");
+  if (!(container instanceof HTMLElement)) {
+    return;
+  }
+
+  const selectedThread = chatsState.threads.find(
+    (thread) => thread.id === chatsState.selectedChatId,
+  );
+  container.innerHTML = renderScrollControls(selectedThread);
 }
 
 export async function renderChats(): Promise<string> {
@@ -693,6 +1560,7 @@ export async function renderChats(): Promise<string> {
     return renderFeed();
   }
 
+  hydratePersistedChatsUiState();
   await ensureChatsLoaded();
 
   return `
@@ -715,10 +1583,26 @@ export async function renderChats(): Promise<string> {
 export function initChats(root: Document | HTMLElement = document): void {
   const bindableRoot = root as ChatRoot;
   chatsRoot = root;
+  ensureChatsPollingStarted();
+  requestAnimationFrame(() => {
+    restoreSelectedChatScroll(root);
+    refreshScrollControls(root);
+    rememberSelectedChatScroll(root);
+  });
 
   if (bindableRoot.__chatsBound) {
     return;
   }
+
+  root.addEventListener("input", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !target.matches("[data-chat-search]")) {
+      return;
+    }
+
+    chatsState.query = target.value;
+    refreshChatsPage(root);
+  });
 
   root.addEventListener("click", async (event: Event) => {
     const target = event.target;
@@ -726,21 +1610,66 @@ export function initChats(root: Document | HTMLElement = document): void {
       return;
     }
 
+    const scrollBottomButton = target.closest("[data-chat-scroll-bottom]");
+    if (scrollBottomButton instanceof HTMLButtonElement) {
+      if (chatsState.selectedChatId) {
+        clearUnreadIncoming(chatsState.selectedChatId);
+      }
+      isSelectedChatPinnedToBottom = true;
+      shouldScrollChatToBottom = true;
+      persistChatsUiState();
+      refreshChatsPage(root);
+      requestAnimationFrame(() => {
+        scrollChatToBottom(root);
+        rememberSelectedChatScroll(root);
+      });
+      return;
+    }
+
     const chatButton = target.closest("[data-chat-select]");
-    if (!(chatButton instanceof HTMLButtonElement)) {
-      return;
-    }
+    if (chatButton instanceof HTMLButtonElement) {
+      const chatId = chatButton.getAttribute("data-chat-select");
+      if (!chatId || chatId === chatsState.selectedChatId) {
+        return;
+      }
 
-    const chatId = chatButton.getAttribute("data-chat-select");
-    if (!chatId || chatId === chatsState.selectedChatId) {
-      return;
+      chatsState.selectedChatId = chatId;
+      clearUnreadIncoming(chatId);
+      isSelectedChatPinnedToBottom = true;
+      persistChatsUiState();
+      syncSelectedChatToUrl(chatId);
+      refreshChatsPage(root);
+      await ensureMessagesLoaded(chatId);
+      refreshChatsPage(root);
     }
-
-    chatsState.selectedChatId = chatId;
-    refreshChatsPage(root);
-    await ensureMessagesLoaded(chatId);
-    refreshChatsPage(root);
   });
+
+  root.addEventListener(
+    "scroll",
+    (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains("chat-messages")) {
+        return;
+      }
+
+      const wasPinnedToBottom = isSelectedChatPinnedToBottom;
+      syncSelectedChatPinnedToBottom(root);
+      rememberSelectedChatScroll(root);
+
+      if (wasPinnedToBottom !== isSelectedChatPinnedToBottom) {
+        refreshScrollControls(root);
+        return;
+      }
+
+      if (chatsState.selectedChatId && isSelectedChatPinnedToBottom) {
+        if (getUnreadIncomingCount(chatsState.selectedChatId) > 0) {
+          clearUnreadIncoming(chatsState.selectedChatId);
+          refreshChatsPage(root);
+        }
+      }
+    },
+    true,
+  );
 
   root.addEventListener("submit", (event: Event) => {
     const target = event.target;
@@ -775,6 +1704,7 @@ export function initChats(root: Document | HTMLElement = document): void {
       isOwn: true,
       createdAt: new Date().toISOString(),
       avatarLink: currentUser?.avatarLink,
+      profilePath: getCurrentUserProfilePath(),
     };
 
     if (!selectedThread.messages) {
@@ -785,9 +1715,15 @@ export function initChats(root: Document | HTMLElement = document): void {
       ...selectedThread.messages,
       optimisticMessage,
     ]);
+    addPendingOutgoing(selectedThread.id, optimisticMessage);
     selectedThread.preview = text;
     selectedThread.previewIsOwn = true;
     selectedThread.timeLabel = formatMessageTime(optimisticMessage.createdAt);
+    selectedThread.updatedAt = optimisticMessage.createdAt;
+    sortThreadsByUpdatedAt();
+    clearUnreadIncoming(selectedThread.id);
+    isSelectedChatPinnedToBottom = true;
+    shouldScrollChatToBottom = true;
     target.reset();
     refreshChatsPage(root);
 
@@ -807,12 +1743,15 @@ export function initChats(root: Document | HTMLElement = document): void {
                       ...item,
                       id: message.id,
                       createdAt: message.createdAt,
+                      profilePath: getCurrentUserProfilePath(),
                     }
                   : item,
               ),
             ),
           );
+          removePendingOutgoing(selectedThread.id, optimisticMessage.id);
           updateThreadPreview(selectedThread);
+          sortThreadsByUpdatedAt();
           refreshChatsPage(root);
         })
         .catch((error: unknown) => {
@@ -820,6 +1759,7 @@ export function initChats(root: Document | HTMLElement = document): void {
           selectedThread.messages = (selectedThread.messages ?? []).filter(
             (item) => item.id !== optimisticMessage.id,
           );
+          removePendingOutgoing(selectedThread.id, optimisticMessage.id);
           refreshChatsPage(root);
         });
     }

@@ -388,6 +388,30 @@ function getRequestedChatId(): string {
   return new URLSearchParams(window.location.search).get("chatId") ?? "";
 }
 
+function syncSelectedChatToUrl(chatId: string, options: { replace?: boolean } = {}): void {
+  const nextUrl = new URL(window.location.href);
+
+  if (chatId) {
+    nextUrl.searchParams.set("chatId", chatId);
+  } else {
+    nextUrl.searchParams.delete("chatId");
+  }
+
+  const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (nextPath === currentPath) {
+    return;
+  }
+
+  if (options.replace) {
+    window.history.replaceState({}, "", nextPath);
+    return;
+  }
+
+  window.history.pushState({}, "", nextPath);
+}
+
 async function ensureMessagesLoaded(
   chatId: string,
   options: { background?: boolean } = {},
@@ -489,6 +513,7 @@ async function ensureChatsLoaded(): Promise<void> {
   }
 
   chatsState.loaded = true;
+  syncSelectedChatToUrl(chatsState.selectedChatId, { replace: true });
 
   await Promise.all(
     chatsState.threads.map(async (thread) => {
@@ -761,6 +786,7 @@ export function initChats(root: Document | HTMLElement = document): void {
     }
 
     chatsState.selectedChatId = chatId;
+    syncSelectedChatToUrl(chatId);
     refreshChatsPage(root);
     await ensureMessagesLoaded(chatId);
     refreshChatsPage(root);

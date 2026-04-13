@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Проект \"ARISNET\" команды АРИС",
   "main": "index.js",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "webpack serve --config webpack.config.js",
     "start": "node --import tsx server/index.ts",
@@ -48,6 +51,8 @@
     "defaults"
   ],
   "dependencies": {
+    "@aris/offline": "file:packages/offline",
+    "@aris/router": "file:packages/router",
     "express": "^5.2.1",
     "morgan": "^1.10.1"
   },

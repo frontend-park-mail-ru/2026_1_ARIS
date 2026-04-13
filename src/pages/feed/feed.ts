@@ -307,11 +307,8 @@ async function getCachedFeedData(isAuthorised: boolean): Promise<FeedCenterResul
   const modeKey = getCurrentFeedMode();
 
   const cachedItems = feedItemsCache[authKey][modeKey];
-  if (cachedItems) {
-    return { kind: "items", items: cachedItems };
-  }
-
   const persistedItems = readPersistedFeedItems(authKey, modeKey);
+  const fallbackItems = cachedItems?.length ? cachedItems : persistedItems;
 
   try {
     const items = isAuthorised ? await buildAuthorisedFeedItems() : await buildGuestFeedItems();
@@ -319,9 +316,9 @@ async function getCachedFeedData(isAuthorised: boolean): Promise<FeedCenterResul
     persistFeedItems(authKey, modeKey, items);
     return { kind: "items", items };
   } catch (error) {
-    if (persistedItems?.length) {
-      feedItemsCache[authKey][modeKey] = persistedItems;
-      return { kind: "items", items: persistedItems };
+    if (fallbackItems?.length) {
+      feedItemsCache[authKey][modeKey] = fallbackItems;
+      return { kind: "items", items: fallbackItems };
     }
 
     if (!isOfflineNetworkError(error)) {

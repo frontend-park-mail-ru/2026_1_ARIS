@@ -72,6 +72,10 @@ module.exports = {
   },
 
   resolve: {
+    alias: {
+      "@aris/router": path.resolve(__dirname, "packages/router/src/index.ts"),
+      "@aris/offline": path.resolve(__dirname, "packages/offline/src/index.ts"),
+    },
     extensions: [".ts", ".js"],
   },
 

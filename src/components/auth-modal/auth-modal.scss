@@ -1,0 +1,52 @@
+.auth-modal {
+  --auth-modal-z-index: 9999;
+  --auth-modal-overlay-bg: rgb(255 255 255 / 12%);
+  --auth-modal-overlay-blur: 8px;
+  --auth-modal-content-padding: 24px 16px;
+  --auth-modal-close-offset: 16px;
+  --auth-modal-close-size: 45px;
+  --auth-modal-close-font-size: 28px;
+  --auth-modal-register-width: 640px;
+  --auth-modal-panel-width: 400px;
+
+  position: fixed;
+  inset: 0;
+  z-index: var(--auth-modal-z-index);
+  overflow-y: auto;
+
+  &__overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--auth-modal-overlay-bg);
+    backdrop-filter: blur(var(--auth-modal-overlay-blur));
+  }
+
+  &__content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    min-height: 100dvh;
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--auth-modal-content-padding);
+  }
+
+  &__panel {
+    position: relative;
+    width: min(var(--auth-modal-panel-width), calc(100vw - 32px));
+    max-width: 100%;
+  }
+
+  &__close {
+    position: absolute;
+    top: var(--auth-modal-close-offset);
+    right: var(--auth-modal-close-offset);
+    z-index: 2;
+    width: var(--auth-modal-close-size);
+    min-width: var(--auth-modal-close-size);
+    height: var(--auth-modal-close-size);
+    padding: 0;
+    font-size: var(--auth-modal-close-font-size);
+    line-height: 1;
+  }
+}

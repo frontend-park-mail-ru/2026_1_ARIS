@@ -1,6 +1,32 @@
 import globals from "globals";
+import tseslint from "typescript-eslint";
 
 const isProd = process.env.NODE_ENV === "production";
+const sharedRules = {
+  "no-console": isProd ? "warn" : "off",
+  "no-var": "error",
+  "prefer-const": "warn",
+};
+
+function createTypeScriptConfig(files, envGlobals) {
+  return tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files,
+    languageOptions: {
+      ...config.languageOptions,
+      globals: {
+        ...config.languageOptions?.globals,
+        ...envGlobals,
+      },
+    },
+    rules: {
+      ...config.rules,
+      ...sharedRules,
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+    },
+  }));
+}
 
 export default [
   {
@@ -18,9 +44,7 @@ export default [
     },
     rules: {
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-      "no-console": isProd ? "warn" : "off",
-      "no-var": "error",
-      "prefer-const": "warn",
+      ...sharedRules,
     },
   },
 
@@ -35,9 +59,10 @@ export default [
     },
     rules: {
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-      "no-console": isProd ? "warn" : "off",
-      "no-var": "error",
-      "prefer-const": "warn",
+      ...sharedRules,
     },
   },
+
+  ...createTypeScriptConfig(["src/**/*.ts"], globals.browser),
+  ...createTypeScriptConfig(["server/**/*.ts"], globals.node),
 ];

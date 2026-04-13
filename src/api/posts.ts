@@ -1,6 +1,7 @@
 import { ApiError } from "./auth";
 import type { UploadedMedia } from "./profile";
 import { trackedFetch } from "../state/network-status";
+import { clearFeedCache } from "../pages/feed/feed";
 
 type ErrorResponse = {
   error?: string;
@@ -144,6 +145,7 @@ export async function getPostsByProfileId(profileId: string): Promise<PostRespon
 
 export async function createPost(payload: PostPayload): Promise<PostResponse> {
   const data = await mutatePost("/api/post/upload", "POST", payload);
+  clearFeedCache();
   return data as PostResponse;
 }
 
@@ -156,11 +158,13 @@ export async function updatePost(
     "PATCH",
     payload,
   );
+  clearFeedCache();
   return data as PostResponse;
 }
 
 export async function deletePost(postId: string | number): Promise<void> {
   await mutatePost(`/api/post/${encodeURIComponent(String(postId))}`, "DELETE");
+  clearFeedCache();
 }
 
 export async function uploadPostImages(files: File[]): Promise<UploadedMedia[]> {

@@ -1,4 +1,5 @@
 import { ApiError } from "./auth";
+import { trackedFetch } from "../state/network-status";
 
 type ErrorResponse = {
   error?: string;
@@ -76,7 +77,7 @@ function mapFriend(raw: RawFriend): Friend {
 }
 
 async function requestFriends(path: string, fallbackMessage: string): Promise<Friend[]> {
-  const response = await fetch(path, {
+  const response = await trackedFetch(path, {
     method: "GET",
     credentials: "include",
   });
@@ -119,7 +120,7 @@ async function mutateFriendship(
     requestInit.body = JSON.stringify(payload);
   }
 
-  const response = await fetch(path, requestInit);
+  const response = await trackedFetch(path, requestInit);
 
   const data = await parseJson<ErrorResponse>(response);
 

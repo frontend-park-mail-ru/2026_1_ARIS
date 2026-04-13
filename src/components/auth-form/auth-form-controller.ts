@@ -469,7 +469,7 @@ function showFormError(form: HTMLFormElement, message: string): void {
   const errorNode = form.querySelector(".auth-form__error");
   if (!errorNode) return;
 
-  errorNode.textContent = message ?? "";
+  errorNode.innerHTML = message ?? "";
   errorNode.classList.remove("auth-form__error--hidden");
 }
 
@@ -707,6 +707,20 @@ function getApiErrorStatus(error: unknown): number | undefined {
   return undefined;
 }
 
+function isOfflineNetworkError(error: unknown): boolean {
+  if (!navigator.onLine || error instanceof TypeError) {
+    return true;
+  }
+
+  const status = getApiErrorStatus(error);
+  if (status === 502 || status === 503 || status === 504) {
+    return true;
+  }
+
+  const message = getApiErrorMessage(error).toLowerCase();
+  return message.includes("proxy") || message.includes("failed to fetch");
+}
+
 /**
  * Handles register next step action.
  *
@@ -782,7 +796,12 @@ async function handleRegisterNext(form: HTMLFormElement, authForm: HTMLElement):
       return;
     }
 
-    showFormError(form, "Не удалось проверить данные первого шага");
+    showFormError(
+      form,
+      isOfflineNetworkError(error)
+        ? "Нет соединения с интернетом.<br>Регистрация сейчас недоступна."
+        : "Не удалось проверить данные первого шага",
+    );
     return;
   }
 
@@ -864,8 +883,12 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
       closeAuthModal();
       navigate("/feed");
     } catch (error: unknown) {
-      showFormError(form, "Неверный логин или пароль");
-      markFieldsAsError(form, ["login", "password"]);
+      if (isOfflineNetworkError(error)) {
+        showFormError(form, "Нет соединения с интернетом.<br>Авторизация сейчас недоступна.");
+      } else {
+        showFormError(form, "Неверный логин или пароль");
+        markFieldsAsError(form, ["login", "password"]);
+      }
       console.error("Auth error:", error);
     }
 
@@ -945,7 +968,12 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
 
       markFieldsAsError(stepOneForm, ["login"]);
     } else {
-      showFormError(form, "Не удалось зарегистрироваться");
+      showFormError(
+        form,
+        isOfflineNetworkError(error)
+          ? "Нет соединения с интернетом.<br>Регистрация сейчас недоступна."
+          : "Не удалось зарегистрироваться",
+      );
     }
 
     console.error("Auth error:", error);

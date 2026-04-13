@@ -49,6 +49,14 @@ line-height: normal;
 letter-spacing: 0;
     }
 
+    &__empty {
+      margin: 0;
+      color: rgb(40 50 79 / 70%);
+      font-size: var(--text-size-main);
+      font-weight: var(--font-weight-regular);
+      line-height: 1.45;
+    }
+
     &__username {
       margin: 0; // убираем внешние отступы имени
      color: var(--color-text-name);

@@ -1,3 +1,5 @@
+import { trackedFetch } from "../state/network-status";
+
 export type PostcardModel = {
   id: string;
   authorId: string;
@@ -90,7 +92,7 @@ export async function getFeed({
   if (cursor) params.set("cursor", cursor);
   if (limit) params.set("limit", String(limit));
 
-  const response = await fetch(`/api/feed?${params}`, {
+  const response = await trackedFetch(`/api/feed?${params}`, {
     credentials: "include",
   });
 
@@ -118,7 +120,7 @@ export async function getPublicFeed({
   if (cursor) params.set("cursor", cursor);
   if (limit) params.set("limit", String(limit));
 
-  const response = await fetch(`/api/public/feed?${params}`, {
+  const response = await trackedFetch(`/api/public/feed?${params}`, {
     credentials: "include",
   });
 
@@ -192,7 +194,7 @@ export function mapFeedResponse(response: FeedResponse) {
  * Popular posts (auth)
  */
 export async function getPopularPosts(): Promise<PopularPostsResponse> {
-  const response = await fetch("/api/posts/popular", {
+  const response = await trackedFetch("/api/posts/popular", {
     credentials: "include",
   });
 
@@ -212,7 +214,7 @@ export async function getPopularPosts(): Promise<PopularPostsResponse> {
  * Popular posts (public)
  */
 export async function getPublicPopularPosts(): Promise<PopularPostsResponse> {
-  const response = await fetch("/api/public/popular-posts", {
+  const response = await trackedFetch("/api/public/popular-posts", {
     credentials: "include",
   });
 

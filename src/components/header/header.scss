@@ -25,10 +25,27 @@
   top: 0;
   z-index: 1000;
   width: 100%;
-  height: var(--header-height);
   overflow-x: hidden;
   border-bottom: var(--border-width) solid var(--color-border-default);
   background: var(--color-surface-card);
+
+  &__network-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 10px 24px;
+    background: linear-gradient(90deg, rgb(42 54 126) 0%, rgb(76 94 201) 52%, rgb(242 179 65) 100%);
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-align: center;
+  }
+
+  &__network-status[hidden] {
+    display: none;
+  }
 
   &__inner {
     display: grid;
@@ -36,7 +53,7 @@
     column-gap: var(--header-grid-gap);
     align-items: center;
     width: max-content;
-    height: 100%;
+    min-height: var(--header-height);
     min-width: var(--layout-min-width);
     padding: 0 var(--layout-padding-x);
   }

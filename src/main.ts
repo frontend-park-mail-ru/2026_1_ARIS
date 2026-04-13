@@ -29,12 +29,16 @@ import { initSession } from "./state/session";
 import { initHeader } from "./components/header/header";
 import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar";
 import { initAvatarFallback } from "./utils/avatar-fallback";
+import { initOfflineIndicator } from "./utils/offline-indicator";
+import { registerServiceWorker } from "./utils/register-service-worker";
 
 const root = document.getElementById("app");
 
 if (!(root instanceof HTMLElement)) {
   throw new Error('Root element "#app" not found');
 }
+
+registerServiceWorker();
 
 const router = createRouter(root, [
   { path: "/", title: "ARISNET — Feed", render: renderFeed },
@@ -48,12 +52,19 @@ const router = createRouter(root, [
   { path: "/id:id", title: "ARISNET — Profile", render: renderProfile },
 ]);
 
-void initSession().then(() => {
-  void router.render();
+void (async () => {
+  try {
+    await initSession();
+  } catch (error) {
+    console.error("[session] init failed", error);
+  }
+
+  await router.render();
   initHeader();
   initSidebar();
   initAvatarFallback(document);
-});
+  initOfflineIndicator();
+})();
 
 /**
  * Handles global session state changes by refreshing UI fragments.

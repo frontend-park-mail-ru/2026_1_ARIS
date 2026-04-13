@@ -11,7 +11,7 @@
   --auth-form-form-gap: 0px;
   --auth-form-field-error-gap: 4px;
   --auth-form-field-error-min-height: 31px;
-  --auth-form-error-min-height: 19px;
+  --auth-form-error-min-height: 34px;
   --auth-form-actions-top-gap: 12px;
   --auth-form-logo-width: 110px;
   --auth-form-logo-offset-top: -50px;
@@ -19,7 +19,7 @@
   --auth-form-register-header-min-height: 72px;
   --auth-form-title-size: 24px;
   --auth-form-subtitle-size: 15px;
-  --auth-form-error-size: 16px;
+  --auth-form-error-size: 13px;
   --auth-form-field-error-size: 13px;
   --auth-form-select-arrow-size: 10px;
   --auth-form-select-arrow-offset: 18px;
@@ -158,10 +158,16 @@
   }
 
   &__error {
+    display: flex;
     width: 100%;
     min-height: var(--auth-form-error-min-height);
+    height: var(--auth-form-error-min-height);
     margin: 0;
     font-size: var(--auth-form-error-size);
+    line-height: 1.25;
+    align-items: flex-start;
+    overflow: hidden;
+    text-align: left;
 
     &--hidden {
       visibility: hidden;

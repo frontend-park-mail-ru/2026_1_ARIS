@@ -1,4 +1,5 @@
 import { getCurrentUser, type User } from "../api/auth";
+import { isNetworkUnavailableError } from "./network-status";
 
 /**
  * Available feed modes.
@@ -28,6 +29,49 @@ const sessionState: SessionState = {
   user: null,
   feedMode: "by-time",
 };
+
+const SESSION_USER_STORAGE_KEY = "arisfront:session-user";
+
+function readPersistedSessionUser(): User | null {
+  try {
+    const raw = localStorage.getItem(SESSION_USER_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as User | null;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    const nextUser: User = {
+      id: String(parsed.id ?? ""),
+      firstName: String(parsed.firstName ?? ""),
+      lastName: String(parsed.lastName ?? ""),
+    };
+
+    if (typeof parsed.avatarLink === "string") {
+      nextUser.avatarLink = parsed.avatarLink;
+    }
+
+    return nextUser;
+  } catch {
+    return null;
+  }
+}
+
+function persistSessionUser(user: User | null): void {
+  try {
+    if (!user) {
+      localStorage.removeItem(SESSION_USER_STORAGE_KEY);
+      return;
+    }
+
+    localStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify(user));
+  } catch {
+    // Ignore storage errors and keep runtime state usable.
+  }
+}
 
 /**
  * Checks whether value is a valid feed mode.
@@ -76,6 +120,7 @@ export function getFeedMode(): FeedMode {
  */
 export function setSessionUser(user: User | null): void {
   sessionState.user = user;
+  persistSessionUser(user);
   emitSessionChange("user");
 }
 
@@ -84,6 +129,7 @@ export function setSessionUser(user: User | null): void {
  */
 export function clearSessionUser(): void {
   sessionState.user = null;
+  persistSessionUser(null);
   emitSessionChange("user");
 }
 
@@ -102,9 +148,18 @@ export function setFeedMode(mode: FeedMode): void {
 export async function initSession(): Promise<void> {
   const savedMode = localStorage.getItem("feedMode");
   sessionState.feedMode = savedMode && isFeedMode(savedMode) ? savedMode : "by-time";
+  sessionState.user = readPersistedSessionUser();
 
-  const user = await getCurrentUser();
-  sessionState.user = user;
+  try {
+    const user = await getCurrentUser();
+    sessionState.user = user;
+    persistSessionUser(user);
+  } catch (error) {
+    if (!isNetworkUnavailableError(error)) {
+      sessionState.user = null;
+      persistSessionUser(null);
+    }
+  }
 
   emitSessionChange("init");
 }

@@ -4,6 +4,40 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
 
+class AssetManifestPlugin {
+  apply(compiler) {
+    compiler.hooks.thisCompilation.tap("AssetManifestPlugin", (compilation) => {
+      const { Compilation, sources } = compiler.webpack;
+
+      compilation.hooks.processAssets.tap(
+        {
+          name: "AssetManifestPlugin",
+          stage: Compilation.PROCESS_ASSETS_STAGE_REPORT,
+        },
+        (assets) => {
+          const assetPaths = Object.keys(assets)
+            .filter(
+              (name) =>
+                name === "index.html" ||
+                /\.(js|css|png|jpe?g|svg|ico|gif|webp|woff2?)$/i.test(name),
+            )
+            .map((name) => `/${name}`);
+
+          const manifest = JSON.stringify(
+            {
+              assets: Array.from(new Set(["/", "/index.html", ...assetPaths])).sort(),
+            },
+            null,
+            2,
+          );
+
+          compilation.emitAsset("asset-manifest.json", new sources.RawSource(manifest));
+        },
+      );
+    });
+  }
+}
+
 /** @type {import('webpack').Configuration} */
 module.exports = {
   mode: "development",
@@ -50,6 +84,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: "./public/index.html",
     }),
+    new AssetManifestPlugin(),
     new CopyWebpackPlugin({
       patterns: [
         {

@@ -13,6 +13,7 @@ import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { clearWidgetbarCache, renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { createPrivateChat } from "../../api/chat";
+import { isNetworkUnavailableError } from "../../state/network-status";
 import { getSessionUser } from "../../state/session";
 import { renderFeed } from "../feed/feed";
 
@@ -66,6 +67,18 @@ const friendsState: FriendsState = {
   outgoing: [],
   deleteModalFriend: null,
 };
+
+function getFriendsErrorMessage(
+  error: unknown,
+  fallbackMessage: string,
+  unavailableMessage = "Нет соединения с сервером.",
+): string {
+  if (isNetworkUnavailableError(error)) {
+    return unavailableMessage;
+  }
+
+  return error instanceof Error ? error.message : fallbackMessage;
+}
 
 function resetFriendsState(): void {
   friendsState.loaded = false;
@@ -259,8 +272,7 @@ async function ensureFriendsLoaded(force = false): Promise<void> {
     friendsState.outgoing = data.outgoing;
     friendsState.loaded = true;
   } catch (error) {
-    friendsState.errorMessage =
-      error instanceof Error ? error.message : "Не удалось загрузить друзей";
+    friendsState.errorMessage = getFriendsErrorMessage(error, "Не удалось загрузить друзей.");
     friendsState.friends = [];
     friendsState.incoming = [];
     friendsState.outgoing = [];
@@ -571,8 +583,7 @@ async function runFriendAction(root: ParentNode, action: () => Promise<void>): P
     await ensureFriendsLoaded(true);
     friendsState.deleteModalFriend = null;
   } catch (error) {
-    friendsState.errorMessage =
-      error instanceof Error ? error.message : "Не удалось выполнить действие.";
+    friendsState.errorMessage = getFriendsErrorMessage(error, "Не удалось выполнить действие.");
   } finally {
     friendsState.loading = false;
     refreshFriendsPage(root);
@@ -672,8 +683,7 @@ export function initFriends(root: Document | HTMLElement = document): void {
           window.dispatchEvent(new PopStateEvent("popstate"));
         })
         .catch((error: unknown) => {
-          friendsState.errorMessage =
-            error instanceof Error ? error.message : "Не удалось открыть чат.";
+          friendsState.errorMessage = getFriendsErrorMessage(error, "Не удалось открыть чат.");
           refreshFriendsPage(root);
         });
       return;

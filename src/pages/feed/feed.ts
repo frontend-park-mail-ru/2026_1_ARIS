@@ -3,12 +3,7 @@ import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { getFeedMode, getSessionUser } from "../../state/session";
 import { renderPostcard } from "../../components/postcard/postcard";
-import {
-  getFeed,
-  getPublicFeed,
-  mapFeedResponse,
-  type PostcardModel,
-} from "../../api/feed";
+import { getFeed, getPublicFeed, mapFeedResponse, type PostcardModel } from "../../api/feed";
 
 type FeedMode = "by-time" | "for-you";
 type FeedAuthKey = "guest" | "authorised";
@@ -29,6 +24,44 @@ const feedCache: FeedCache = {
     "for-you": null,
   },
 };
+
+function getFeedCacheStorageKey(authKey: FeedAuthKey, modeKey: FeedMode): string {
+  return `arisfront:feed-cache:${authKey}:${modeKey}`;
+}
+
+function readPersistedFeedCache(authKey: FeedAuthKey, modeKey: FeedMode): string | null {
+  try {
+    return sessionStorage.getItem(getFeedCacheStorageKey(authKey, modeKey));
+  } catch {
+    return null;
+  }
+}
+
+function persistFeedCache(authKey: FeedAuthKey, modeKey: FeedMode, html: string): void {
+  try {
+    sessionStorage.setItem(getFeedCacheStorageKey(authKey, modeKey), html);
+  } catch {
+    // Ignore storage errors and keep the feed usable.
+  }
+}
+
+function isOfflineNetworkError(error: unknown): boolean {
+  return !navigator.onLine || error instanceof TypeError;
+}
+
+function renderOfflineFeedFallback(isAuthorised: boolean): string {
+  return `
+    <section class="app-layout__center">
+      <section class="feed-empty-state">
+        <h2 class="feed-empty-state__title">Лента временно недоступна</h2>
+        <p class="feed-empty-state__text">
+          ${isAuthorised ? "Нет соединения с интернетом." : "Не удалось загрузить публичную ленту."}
+          Покажем свежие посты, когда соединение вернётся.
+        </p>
+      </section>
+    </section>
+  `;
+}
 
 /**
  * Checks whether a string is a valid feed mode.
@@ -60,6 +93,15 @@ export function clearFeedCache(): void {
   feedCache.guest["for-you"] = null;
   feedCache.authorised["by-time"] = null;
   feedCache.authorised["for-you"] = null;
+
+  try {
+    sessionStorage.removeItem(getFeedCacheStorageKey("guest", "by-time"));
+    sessionStorage.removeItem(getFeedCacheStorageKey("guest", "for-you"));
+    sessionStorage.removeItem(getFeedCacheStorageKey("authorised", "by-time"));
+    sessionStorage.removeItem(getFeedCacheStorageKey("authorised", "for-you"));
+  } catch {
+    // Ignore storage errors.
+  }
 }
 
 /**
@@ -143,10 +185,28 @@ async function getCachedFeed(isAuthorised: boolean): Promise<string> {
     return feedCache[authKey][modeKey] as string;
   }
 
-  const html = isAuthorised ? await buildAuthorisedFeed() : await buildGuestFeed();
-  feedCache[authKey][modeKey] = html;
+  const persisted = readPersistedFeedCache(authKey, modeKey);
+  if (persisted) {
+    feedCache[authKey][modeKey] = persisted;
+    return persisted;
+  }
 
-  return html;
+  try {
+    const html = isAuthorised ? await buildAuthorisedFeed() : await buildGuestFeed();
+    feedCache[authKey][modeKey] = html;
+    persistFeedCache(authKey, modeKey, html);
+
+    return html;
+  } catch (error) {
+    if (!isOfflineNetworkError(error)) {
+      throw error;
+    }
+
+    const fallbackHtml = renderOfflineFeedFallback(isAuthorised);
+    feedCache[authKey][modeKey] = fallbackHtml;
+
+    return fallbackHtml;
+  }
 }
 
 /**

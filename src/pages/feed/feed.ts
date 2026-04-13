@@ -48,6 +48,7 @@ const feedItemsCache: FeedItemsCache = {
 let activeFeedState: ActiveFeedState | null = null;
 let isFeedScrollBound = false;
 let feedLoadScheduled = false;
+let isFeedRefreshInFlight = false;
 
 function getFeedItemsStorageKey(authKey: FeedAuthKey, modeKey: FeedMode): string {
   return `arisfront:feed-items:${authKey}:${modeKey}`;
@@ -230,6 +231,11 @@ function renderIncrementalFeedCenter(items: PostcardModel[], renderedCount: numb
       ${renderFeedStatus(renderedCount < items.length, false)}
     </section>
   `;
+}
+
+function isFeedRouteActive(): boolean {
+  const path = window.location.pathname.replace(/\/+$/g, "") || "/";
+  return path === "/" || path === "/feed";
 }
 
 /**
@@ -520,6 +526,32 @@ export async function refreshFeedCenter(): Promise<void> {
   initFeedInfiniteScroll();
 }
 
+async function refreshFeedOnReturn(): Promise<void> {
+  if (!isFeedRouteActive() || isFeedRefreshInFlight) {
+    return;
+  }
+
+  isFeedRefreshInFlight = true;
+
+  try {
+    await refreshFeedCenter();
+  } catch (error) {
+    console.error("[feed] refresh on return failed", error);
+  } finally {
+    isFeedRefreshInFlight = false;
+  }
+}
+
 window.addEventListener("apprender", () => {
   initFeedInfiniteScroll();
+});
+
+window.addEventListener("focus", () => {
+  void refreshFeedOnReturn();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    void refreshFeedOnReturn();
+  }
 });

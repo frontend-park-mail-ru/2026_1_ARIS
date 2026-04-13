@@ -38,6 +38,8 @@ export type UpdateProfilePayload = {
   firstName?: string;
   lastName?: string;
   bio?: string;
+  avatarID?: number;
+  removeAvatar?: boolean;
   birthdayDate?: string;
   gender?: "male" | "female";
   nativeTown?: string;
@@ -50,6 +52,15 @@ export type UpdateProfilePayload = {
   jobTitle?: string;
   interests?: string;
   favMusic?: string;
+};
+
+export type UploadedMedia = {
+  mediaID: number;
+  mediaURL: string;
+};
+
+type UploadMediaResponse = {
+  media?: UploadedMedia[];
 };
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -79,7 +90,7 @@ function createApiError(
 }
 
 export async function getMyProfile(): Promise<ProfileResponse> {
-  const response = await trackedFetch("/api/profile/me", {
+  const response = await trackedFetch(`/api/profile/me?ts=${Date.now()}`, {
     method: "GET",
     credentials: "include",
   });
@@ -94,10 +105,13 @@ export async function getMyProfile(): Promise<ProfileResponse> {
 }
 
 export async function getProfileById(profileId: string): Promise<ProfileResponse> {
-  const response = await trackedFetch(`/api/profile/${encodeURIComponent(profileId)}`, {
-    method: "GET",
-    credentials: "include",
-  });
+  const response = await trackedFetch(
+    `/api/profile/${encodeURIComponent(profileId)}?ts=${Date.now()}`,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+  );
 
   const data = await parseJson<ProfileResponse | ErrorResponse>(response);
 
@@ -123,4 +137,31 @@ export async function updateMyProfile(payload: UpdateProfilePayload): Promise<vo
   if (!response.ok) {
     throw createApiError("failed to update profile", response.status, data);
   }
+}
+
+export async function uploadProfileAvatar(file: File): Promise<UploadedMedia> {
+  const formData = new FormData();
+  formData.append("files", file);
+
+  const response = await trackedFetch("/api/media/upload?for=avatar", {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+
+  const data = await parseJson<UploadMediaResponse | ErrorResponse>(response);
+
+  if (!response.ok) {
+    throw createApiError("failed to upload avatar", response.status, data);
+  }
+
+  const uploadedFile = Array.isArray((data as UploadMediaResponse).media)
+    ? (data as UploadMediaResponse).media?.[0]
+    : null;
+
+  if (!uploadedFile) {
+    throw new ApiError("failed to upload avatar", response.status, data);
+  }
+
+  return uploadedFile;
 }

@@ -66,9 +66,11 @@ function renderAuthorisedHeader(): string {
 
   const fullName = user ? `${user.firstName} ${user.lastName}` : "";
 
-  const avatarSrc = user?.avatarLink
-    ? `/image-proxy?url=${encodeURIComponent(user.avatarLink)}`
-    : "/assets/img/default-avatar.png";
+  const avatarSrc = !user?.avatarLink
+    ? "/assets/img/default-avatar.png"
+    : user.avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(user.avatarLink)
+      ? user.avatarLink
+      : `/image-proxy?url=${encodeURIComponent(user.avatarLink)}`;
 
   return `
     <div class="header__inner header__inner--authorised">

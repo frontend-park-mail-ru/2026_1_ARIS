@@ -38,6 +38,18 @@ function formatStatCount(count: number): string {
   return String(count);
 }
 
+function resolveAvatarSrc(avatarLink?: string): string {
+  if (!avatarLink) {
+    return "/assets/img/default-avatar.png";
+  }
+
+  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
+    return avatarLink;
+  }
+
+  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
+}
+
 /**
  * Renders a postcard footer item.
  *
@@ -192,7 +204,7 @@ export function renderPostcard(post: PostcardPost): string {
       <header class="postcard__header">
         <img
           class="postcard__avatar"
-          src="/image-proxy?url=${encodeURIComponent(post.avatar)}"
+          src="${resolveAvatarSrc(post.avatar)}"
           alt="${displayName}"
         >
         <a

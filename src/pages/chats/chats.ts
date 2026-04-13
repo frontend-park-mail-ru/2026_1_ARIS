@@ -382,9 +382,15 @@ function escapeHtml(value: string): string {
 }
 
 function getAvatarSrc(avatarLink?: string): string {
-  return avatarLink
-    ? `/image-proxy?url=${encodeURIComponent(avatarLink)}`
-    : "/assets/img/default-avatar.png";
+  if (!avatarLink) {
+    return "/assets/img/default-avatar.png";
+  }
+
+  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
+    return avatarLink;
+  }
+
+  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
 }
 
 function getCurrentUserFullName(): string {

@@ -1,4 +1,5 @@
 import { getCurrentUser, type User } from "../api/auth";
+import { getMyProfile } from "../api/profile";
 import { isNetworkUnavailableError } from "./network-status";
 
 /**
@@ -152,8 +153,28 @@ export async function initSession(): Promise<void> {
 
   try {
     const user = await getCurrentUser();
-    sessionState.user = user;
-    persistSessionUser(user);
+    if (!user) {
+      sessionState.user = null;
+      persistSessionUser(null);
+    } else {
+      let nextUser = user;
+
+      try {
+        const profile = await getMyProfile();
+        const avatarLink = typeof profile.imageLink === "string" ? profile.imageLink.trim() : "";
+
+        if (avatarLink) {
+          nextUser = { ...user, avatarLink };
+        }
+      } catch (profileError) {
+        if (!isNetworkUnavailableError(profileError)) {
+          console.warn("[session] failed to enrich current user with profile avatar", profileError);
+        }
+      }
+
+      sessionState.user = nextUser;
+      persistSessionUser(nextUser);
+    }
   } catch (error) {
     if (!isNetworkUnavailableError(error)) {
       sessionState.user = null;

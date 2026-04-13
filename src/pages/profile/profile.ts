@@ -17,6 +17,7 @@ import {
 import {
   getMyProfile,
   getProfileById,
+  uploadProfileAvatar,
   updateMyProfile,
   type UpdateProfilePayload,
 } from "../../api/profile";
@@ -105,6 +106,53 @@ type ProfilePost = {
   comments: number;
 };
 
+type AvatarModalState = {
+  open: boolean;
+  deleteConfirmOpen: boolean;
+  isSaving: boolean;
+  errorMessage: string;
+  objectUrl: string | null;
+  fileName: string;
+  naturalWidth: number;
+  naturalHeight: number;
+  scale: number;
+  minScale: number;
+  rotation: 0 | 90 | 180 | 270;
+  offsetX: number;
+  offsetY: number;
+  dragPointerId: number | null;
+  dragStartX: number;
+  dragStartY: number;
+  dragStartOffsetX: number;
+  dragStartOffsetY: number;
+};
+
+const AVATAR_MIN_SIZE = 400;
+const AVATAR_CROP_OUTPUT_SIZE = 400;
+const DEFAULT_AVATAR_CROP_SIZE = 152;
+let ownAvatarOverride: string | null | undefined;
+
+const avatarModalState: AvatarModalState = {
+  open: false,
+  deleteConfirmOpen: false,
+  isSaving: false,
+  errorMessage: "",
+  objectUrl: null,
+  fileName: "",
+  naturalWidth: 0,
+  naturalHeight: 0,
+  scale: 1,
+  minScale: 1,
+  rotation: 0,
+  offsetX: 0,
+  offsetY: 0,
+  dragPointerId: null,
+  dragStartX: 0,
+  dragStartY: 0,
+  dragStartOffsetX: 0,
+  dragStartOffsetY: 0,
+};
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -116,6 +164,18 @@ function escapeHtml(value: string): string {
 
 function getInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
+function getAvatarImageSrc(avatarLink?: string): string {
+  if (!avatarLink) {
+    return "/assets/img/default-avatar.png";
+  }
+
+  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
+    return avatarLink;
+  }
+
+  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
 }
 
 function formatNamePart(value: string): string {
@@ -161,6 +221,76 @@ function normaliseDate(value?: string): string {
     month: "long",
     year: "numeric",
   }).format(parsed);
+}
+
+function normaliseAvatarLink(value?: string): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function resolveOwnAvatarLink(apiAvatarLink?: string): string | undefined {
+  if (ownAvatarOverride === null) {
+    return undefined;
+  }
+
+  if (typeof ownAvatarOverride === "string") {
+    return ownAvatarOverride;
+  }
+
+  return apiAvatarLink ?? getSessionUser()?.avatarLink;
+}
+
+function updateSessionUserAvatarLink(nextAvatarLink?: string): void {
+  const sessionUser = getSessionUser();
+  if (!sessionUser) {
+    return;
+  }
+
+  if (nextAvatarLink) {
+    setSessionUser({
+      ...sessionUser,
+      avatarLink: nextAvatarLink,
+    });
+    return;
+  }
+
+  const { avatarLink: _avatarLink, ...sessionUserWithoutAvatar } = sessionUser;
+  setSessionUser(sessionUserWithoutAvatar);
+}
+
+function readCurrentAvatarSrc(root: ParentNode): string | undefined {
+  const modal = root.querySelector<HTMLElement>("[data-profile-avatar-modal]");
+  const rawSrc = modal?.getAttribute("data-profile-current-avatar-src");
+  const nextSrc = typeof rawSrc === "string" ? rawSrc.trim() : "";
+  return nextSrc || undefined;
+}
+
+function applyAvatarEditorSource(
+  src: string,
+  image: HTMLImageElement,
+  root: ParentNode,
+  fileName: string,
+): void {
+  revokeAvatarObjectUrl();
+  avatarModalState.objectUrl = src;
+  avatarModalState.fileName = fileName;
+  avatarModalState.naturalWidth = image.naturalWidth;
+  avatarModalState.naturalHeight = image.naturalHeight;
+
+  const cropSize = getAvatarCropSize(root);
+  avatarModalState.minScale = Math.max(
+    cropSize / image.naturalWidth,
+    cropSize / image.naturalHeight,
+  );
+  avatarModalState.scale = avatarModalState.minScale;
+  avatarModalState.rotation = 0;
+  avatarModalState.offsetX = 0;
+  avatarModalState.offsetY = 0;
+  clampAvatarOffsets(root);
 }
 
 function formatFriendshipDate(value?: string): string {
@@ -512,6 +642,8 @@ function createOwnProfileFromApi(
   const firstName = data.firstName || "Имя";
   const lastName = data.lastName || "Фамилия";
 
+  const apiAvatarLink = normaliseAvatarLink(data.imageLink);
+
   return {
     id: profileId,
     firstName,
@@ -537,7 +669,7 @@ function createOwnProfileFromApi(
     friends: [],
     isOwnProfile: true,
     isApiBacked: true,
-    avatarLink: data.imageLink || getSessionUser()?.avatarLink,
+    avatarLink: resolveOwnAvatarLink(apiAvatarLink),
     friendRelation: "friend",
     friendshipCreatedAt: undefined,
     editable: {
@@ -569,6 +701,8 @@ function createPublicProfileFromApi(
   const birthdayDate = data.birthdayDate ?? data.birthday ?? data.dirthday ?? "";
   const bio = data.bio?.trim() ?? "";
 
+  const apiAvatarLink = normaliseAvatarLink(data.imageLink);
+
   return {
     id: profileId,
     firstName: data.firstName || "Имя",
@@ -594,7 +728,7 @@ function createPublicProfileFromApi(
     friends: [],
     isOwnProfile: false,
     isApiBacked: true,
-    avatarLink: data.imageLink,
+    avatarLink: apiAvatarLink,
     friendRelation: "none",
     friendshipCreatedAt: undefined,
     editable: {
@@ -691,7 +825,7 @@ function renderAvatar(profile: DisplayProfile, className: string): string {
     return `
       <img
         class="${className}"
-        src="/image-proxy?url=${encodeURIComponent(profile.avatarLink)}"
+        src="${getAvatarImageSrc(profile.avatarLink)}"
         alt="${escapeHtml(`${profile.firstName} ${profile.lastName}`)}"
       >
     `;
@@ -702,6 +836,561 @@ function renderAvatar(profile: DisplayProfile, className: string): string {
       ${escapeHtml(getInitials(profile.firstName, profile.lastName))}
     </div>
   `;
+}
+
+function revokeAvatarObjectUrl(): void {
+  avatarModalState.objectUrl = null;
+}
+
+function resetAvatarModalState(): void {
+  revokeAvatarObjectUrl();
+  avatarModalState.open = false;
+  avatarModalState.deleteConfirmOpen = false;
+  avatarModalState.isSaving = false;
+  avatarModalState.errorMessage = "";
+  avatarModalState.fileName = "";
+  avatarModalState.naturalWidth = 0;
+  avatarModalState.naturalHeight = 0;
+  avatarModalState.scale = 1;
+  avatarModalState.minScale = 1;
+  avatarModalState.rotation = 0;
+  avatarModalState.offsetX = 0;
+  avatarModalState.offsetY = 0;
+  avatarModalState.dragPointerId = null;
+  avatarModalState.dragStartX = 0;
+  avatarModalState.dragStartY = 0;
+  avatarModalState.dragStartOffsetX = 0;
+  avatarModalState.dragStartOffsetY = 0;
+}
+
+function getAvatarCropSize(root: ParentNode): number {
+  const stage = root.querySelector<HTMLElement>("[data-profile-avatar-crop-stage]");
+  return stage?.clientWidth || DEFAULT_AVATAR_CROP_SIZE;
+}
+
+function getRotatedAvatarDimensions(): { width: number; height: number } {
+  const rotated = avatarModalState.rotation === 90 || avatarModalState.rotation === 270;
+
+  return {
+    width: rotated ? avatarModalState.naturalHeight : avatarModalState.naturalWidth,
+    height: rotated ? avatarModalState.naturalWidth : avatarModalState.naturalHeight,
+  };
+}
+
+function clampAvatarOffsets(root: ParentNode): void {
+  if (
+    !avatarModalState.objectUrl ||
+    !avatarModalState.naturalWidth ||
+    !avatarModalState.naturalHeight
+  ) {
+    avatarModalState.offsetX = 0;
+    avatarModalState.offsetY = 0;
+    return;
+  }
+
+  const cropSize = getAvatarCropSize(root);
+  const rotatedSize = getRotatedAvatarDimensions();
+  const displayWidth = rotatedSize.width * avatarModalState.scale;
+  const displayHeight = rotatedSize.height * avatarModalState.scale;
+  const maxOffsetX = Math.max(0, (displayWidth - cropSize) / 2);
+  const maxOffsetY = Math.max(0, (displayHeight - cropSize) / 2);
+
+  avatarModalState.offsetX = Math.min(maxOffsetX, Math.max(-maxOffsetX, avatarModalState.offsetX));
+  avatarModalState.offsetY = Math.min(maxOffsetY, Math.max(-maxOffsetY, avatarModalState.offsetY));
+}
+
+function getAvatarZoomPercent(): number {
+  if (!avatarModalState.objectUrl) {
+    return 100;
+  }
+
+  const ratio = avatarModalState.scale / avatarModalState.minScale;
+  return Math.round(Math.min(300, Math.max(100, ratio * 100)));
+}
+
+function renderAvatarModal(profile: DisplayProfile): string {
+  if (!profile.isOwnProfile) {
+    return "";
+  }
+
+  const currentAvatarPreview = profile.avatarLink
+    ? `
+        <div
+          class="profile-avatar-modal__current-image"
+          data-profile-avatar-current-image
+          style="background-image: url('${escapeHtml(getAvatarImageSrc(profile.avatarLink))}');"
+          aria-label="${escapeHtml(`${profile.firstName} ${profile.lastName}`)}"
+          role="img"
+        >
+        </div>
+      `
+    : `
+        <div
+          class="profile-avatar-modal__current-image profile-avatar-modal__current-image--placeholder"
+          data-profile-avatar-current-image
+          aria-hidden="true"
+        >
+          ${escapeHtml(getInitials(profile.firstName, profile.lastName))}
+        </div>
+      `;
+
+  return `
+    <div
+      class="profile-avatar-modal"
+      data-profile-avatar-modal
+      data-profile-current-avatar-src="${escapeHtml(getAvatarImageSrc(profile.avatarLink))}"
+      hidden
+    >
+      <section
+        class="profile-avatar-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Изменить аватар"
+      >
+        <header class="profile-avatar-modal__header">
+          <h2 class="profile-avatar-modal__title">Изменить аватар</h2>
+          <button
+            type="button"
+            class="profile-avatar-modal__close"
+            data-profile-avatar-close
+            aria-label="Закрыть"
+          >
+            [X]
+          </button>
+        </header>
+
+        <p class="profile-avatar-modal__text">
+          Мы просим загружать только настоящую фотографию и оставляем за собой право применять
+          меры к пользователям, которые загружают изображения, нарушающие Правила нашего сервиса
+        </p>
+
+        <div class="profile-avatar-modal__preview" data-avatar-fallback="ignore">
+          <div class="profile-avatar-modal__crop-stage" data-profile-avatar-crop-stage>
+            <div
+              class="profile-avatar-modal__crop-image"
+              data-profile-avatar-crop-image
+              hidden
+              aria-label="Предпросмотр новой аватарки"
+              role="img"
+            ></div>
+            ${currentAvatarPreview}
+            <div class="profile-avatar-modal__crop-ring" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/jpg"
+          hidden
+          data-profile-avatar-input
+        >
+
+        <button
+          type="button"
+          class="profile-avatar-modal__button profile-avatar-modal__button--primary"
+          data-profile-avatar-pick
+        >
+          Выбрать фото
+        </button>
+
+        ${
+          profile.avatarLink
+            ? `
+              <button
+                type="button"
+                class="profile-avatar-modal__button profile-avatar-modal__button--primary profile-avatar-modal__button--danger"
+                data-profile-avatar-delete-open
+              >
+                Удалить фото
+              </button>
+            `
+            : ""
+        }
+
+        <div class="profile-avatar-modal__zoom" data-profile-avatar-zoom-wrap hidden>
+          <div class="profile-avatar-modal__tools">
+            <button
+              type="button"
+              class="profile-avatar-modal__tool-button"
+              data-profile-avatar-rotate-left
+            >
+              Повернуть -90°
+            </button>
+            <button
+              type="button"
+              class="profile-avatar-modal__tool-button"
+              data-profile-avatar-rotate-right
+            >
+              Повернуть +90°
+            </button>
+          </div>
+          <span class="profile-avatar-modal__zoom-label">Масштаб</span>
+          <input
+            type="range"
+            class="profile-avatar-modal__zoom-input"
+            min="100"
+            max="300"
+            step="1"
+            value="100"
+            data-profile-avatar-zoom
+          >
+        </div>
+
+        <p class="profile-avatar-modal__error" data-profile-avatar-error hidden></p>
+
+        <div class="profile-avatar-modal__actions">
+          <button
+            type="button"
+            class="profile-avatar-modal__button profile-avatar-modal__button--primary"
+            data-profile-avatar-save
+          >
+            Сохранить
+          </button>
+          <button
+            type="button"
+            class="profile-avatar-modal__button profile-avatar-modal__button--ghost"
+            data-profile-avatar-close
+          >
+            Выйти
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderAvatarDeleteModal(): string {
+  return `
+    <div class="profile-avatar-delete-modal" data-profile-avatar-delete-modal hidden>
+      <section
+        class="profile-avatar-delete-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Удалить аватар"
+      >
+        <header class="profile-avatar-delete-modal__header">
+          <h2 class="profile-avatar-delete-modal__title">Удалить аватар</h2>
+          <button
+            type="button"
+            class="profile-avatar-delete-modal__close"
+            data-profile-avatar-delete-close
+            aria-label="Закрыть"
+          >
+            [X]
+          </button>
+        </header>
+
+        <p class="profile-avatar-delete-modal__text">
+          Вы действительно хотите удалить текущую аватарку?
+        </p>
+
+        <div class="profile-avatar-delete-modal__actions">
+          <button
+            type="button"
+            class="profile-avatar-delete-modal__button profile-avatar-delete-modal__button--primary"
+            data-profile-avatar-delete-confirm
+          >
+            Удалить фото
+          </button>
+          <button
+            type="button"
+            class="profile-avatar-delete-modal__button"
+            data-profile-avatar-delete-close
+          >
+            Отмена
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function syncAvatarModalUi(root: ParentNode): void {
+  const modal = root.querySelector<HTMLElement>("[data-profile-avatar-modal]");
+  if (!(modal instanceof HTMLElement)) {
+    return;
+  }
+
+  const cropImage = modal.querySelector<HTMLElement>("[data-profile-avatar-crop-image]");
+  const currentImage = modal.querySelector<HTMLElement>("[data-profile-avatar-current-image]");
+  const zoomWrap = modal.querySelector<HTMLElement>("[data-profile-avatar-zoom-wrap]");
+  const zoomInput = modal.querySelector<HTMLInputElement>("[data-profile-avatar-zoom]");
+  const saveButton = modal.querySelector<HTMLButtonElement>("[data-profile-avatar-save]");
+  const pickButton = modal.querySelector<HTMLButtonElement>("[data-profile-avatar-pick]");
+  const deleteButton = modal.querySelector<HTMLButtonElement>("[data-profile-avatar-delete-open]");
+  const rotateButtons = modal.querySelectorAll<HTMLButtonElement>(
+    "[data-profile-avatar-rotate-left], [data-profile-avatar-rotate-right]",
+  );
+  const closeButtons = modal.querySelectorAll<HTMLButtonElement>("[data-profile-avatar-close]");
+  const errorNode = modal.querySelector<HTMLElement>("[data-profile-avatar-error]");
+  const fileInput = modal.querySelector<HTMLInputElement>("[data-profile-avatar-input]");
+  const deleteModal = root.querySelector<HTMLElement>("[data-profile-avatar-delete-modal]");
+  const deleteModalButtons = root.querySelectorAll<HTMLButtonElement>(
+    "[data-profile-avatar-delete-close], [data-profile-avatar-delete-confirm]",
+  );
+
+  modal.hidden = !avatarModalState.open;
+  modal.classList.toggle("is-open", avatarModalState.open);
+
+  if (errorNode instanceof HTMLElement) {
+    errorNode.hidden = !avatarModalState.errorMessage;
+    errorNode.textContent = avatarModalState.errorMessage;
+  }
+
+  const hasNewImage = Boolean(avatarModalState.objectUrl);
+  modal.classList.toggle("is-previewing", hasNewImage);
+
+  if (cropImage instanceof HTMLElement) {
+    cropImage.hidden = !hasNewImage;
+
+    if (hasNewImage && avatarModalState.objectUrl) {
+      cropImage.style.backgroundImage = `url("${avatarModalState.objectUrl}")`;
+      cropImage.style.width = `${avatarModalState.naturalWidth * avatarModalState.scale}px`;
+      cropImage.style.height = `${avatarModalState.naturalHeight * avatarModalState.scale}px`;
+      cropImage.style.transform = `translate(-50%, -50%) translate(${avatarModalState.offsetX}px, ${avatarModalState.offsetY}px) rotate(${avatarModalState.rotation}deg)`;
+    } else {
+      cropImage.style.backgroundImage = "";
+      cropImage.style.width = "";
+      cropImage.style.height = "";
+      cropImage.style.transform = "";
+    }
+  }
+
+  if (currentImage instanceof HTMLElement) {
+    currentImage.hidden = hasNewImage;
+  }
+
+  if (zoomWrap instanceof HTMLElement) {
+    zoomWrap.hidden = !hasNewImage;
+  }
+
+  if (zoomInput instanceof HTMLInputElement) {
+    zoomInput.value = String(getAvatarZoomPercent());
+    zoomInput.disabled = !hasNewImage || avatarModalState.isSaving;
+  }
+
+  if (saveButton instanceof HTMLButtonElement) {
+    saveButton.disabled = !hasNewImage || avatarModalState.isSaving;
+    saveButton.textContent = avatarModalState.isSaving ? "Сохраняем..." : "Сохранить";
+  }
+
+  if (pickButton instanceof HTMLButtonElement) {
+    pickButton.disabled = avatarModalState.isSaving;
+    pickButton.textContent = hasNewImage ? "Заменить фото" : "Выбрать фото";
+  }
+
+  if (deleteButton instanceof HTMLButtonElement) {
+    deleteButton.disabled = avatarModalState.isSaving;
+  }
+
+  rotateButtons.forEach((button) => {
+    button.disabled = !hasNewImage || avatarModalState.isSaving;
+  });
+
+  closeButtons.forEach((button) => {
+    button.disabled = avatarModalState.isSaving;
+  });
+
+  if (deleteModal instanceof HTMLElement) {
+    deleteModal.hidden = !avatarModalState.deleteConfirmOpen;
+  }
+
+  deleteModalButtons.forEach((button) => {
+    button.disabled = avatarModalState.isSaving;
+  });
+
+  if (fileInput instanceof HTMLInputElement && !avatarModalState.open) {
+    fileInput.value = "";
+  }
+}
+
+async function loadAvatarFile(file: File, root: ParentNode): Promise<void> {
+  avatarModalState.errorMessage = "";
+
+  try {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+          return;
+        }
+
+        reject(new Error("Не получилось прочитать изображение."));
+      };
+      reader.onerror = () => reject(new Error("Не получилось прочитать изображение."));
+      reader.readAsDataURL(file);
+    });
+
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const previewImage = new Image();
+      previewImage.onload = () => resolve(previewImage);
+      previewImage.onerror = () => reject(new Error("Не получилось прочитать изображение."));
+      previewImage.src = dataUrl;
+    });
+
+    if (image.naturalWidth < AVATAR_MIN_SIZE || image.naturalHeight < AVATAR_MIN_SIZE) {
+      throw new Error("Фотография должна быть не меньше 400x400.");
+    }
+
+    applyAvatarEditorSource(dataUrl, image, root, file.name);
+  } catch (error) {
+    avatarModalState.errorMessage =
+      error instanceof Error ? error.message : "Не получилось подготовить изображение.";
+  }
+
+  syncAvatarModalUi(root);
+}
+
+async function loadAvatarFromUrl(
+  src: string,
+  root: ParentNode,
+  fileName = "avatar.jpg",
+): Promise<void> {
+  avatarModalState.errorMessage = "";
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const previewImage = new Image();
+      previewImage.onload = () => resolve(previewImage);
+      previewImage.onerror = () => reject(new Error("Не получилось загрузить текущее фото."));
+      previewImage.src = src;
+    });
+
+    applyAvatarEditorSource(src, image, root, fileName);
+    syncAvatarModalUi(root);
+  } catch (error) {
+    avatarModalState.errorMessage =
+      error instanceof Error ? error.message : "Не получилось загрузить текущее фото.";
+    syncAvatarModalUi(root);
+  }
+}
+
+function ensureAvatarEditorSource(root: ParentNode): void {
+  if (avatarModalState.objectUrl) {
+    return;
+  }
+
+  const currentAvatarSrc = readCurrentAvatarSrc(root);
+  if (!currentAvatarSrc || currentAvatarSrc === "/assets/img/default-avatar.png") {
+    return;
+  }
+
+  void loadAvatarFromUrl(currentAvatarSrc, root);
+}
+
+function setAvatarZoom(root: ParentNode, zoomPercent: number): void {
+  if (!avatarModalState.objectUrl) {
+    return;
+  }
+
+  const safeZoom = Math.min(300, Math.max(100, zoomPercent));
+  avatarModalState.scale = avatarModalState.minScale * (safeZoom / 100);
+  clampAvatarOffsets(root);
+  syncAvatarModalUi(root);
+}
+
+function rotateAvatar(root: ParentNode, direction: "left" | "right"): void {
+  if (!avatarModalState.objectUrl) {
+    return;
+  }
+
+  const rotations: Array<0 | 90 | 180 | 270> = [0, 90, 180, 270];
+  const currentIndex = rotations.indexOf(avatarModalState.rotation);
+  const nextIndex =
+    direction === "right"
+      ? (currentIndex + 1) % rotations.length
+      : (currentIndex - 1 + rotations.length) % rotations.length;
+
+  avatarModalState.rotation = rotations[nextIndex]!;
+
+  const cropSize = getAvatarCropSize(root);
+  const rotatedSize = getRotatedAvatarDimensions();
+  avatarModalState.minScale = Math.max(cropSize / rotatedSize.width, cropSize / rotatedSize.height);
+  avatarModalState.scale = Math.max(avatarModalState.scale, avatarModalState.minScale);
+  clampAvatarOffsets(root);
+  syncAvatarModalUi(root);
+}
+
+async function buildAvatarFile(root: ParentNode): Promise<File> {
+  if (
+    !avatarModalState.objectUrl ||
+    !avatarModalState.naturalWidth ||
+    !avatarModalState.naturalHeight
+  ) {
+    throw new Error("Сначала выберите фотографию.");
+  }
+
+  const cropSize = getAvatarCropSize(root);
+  const rotatedSize = getRotatedAvatarDimensions();
+  const displayWidth = rotatedSize.width * avatarModalState.scale;
+  const displayHeight = rotatedSize.height * avatarModalState.scale;
+  const imageLeft = cropSize / 2 - displayWidth / 2 + avatarModalState.offsetX;
+  const imageTop = cropSize / 2 - displayHeight / 2 + avatarModalState.offsetY;
+  const sourceX = Math.max(0, -imageLeft / avatarModalState.scale);
+  const sourceY = Math.max(0, -imageTop / avatarModalState.scale);
+  const sourceSize = cropSize / avatarModalState.scale;
+  const canvas = document.createElement("canvas");
+
+  canvas.width = AVATAR_CROP_OUTPUT_SIZE;
+  canvas.height = AVATAR_CROP_OUTPUT_SIZE;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Не получилось подготовить изображение.");
+  }
+
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const previewImage = new Image();
+    previewImage.onload = () => resolve(previewImage);
+    previewImage.onerror = () => reject(new Error("Не получилось подготовить изображение."));
+    previewImage.src = avatarModalState.objectUrl!;
+  });
+
+  const rotatedCanvas = document.createElement("canvas");
+  const rotatedContext = rotatedCanvas.getContext("2d");
+  if (!rotatedContext) {
+    throw new Error("Не получилось подготовить изображение.");
+  }
+
+  rotatedCanvas.width = rotatedSize.width;
+  rotatedCanvas.height = rotatedSize.height;
+  rotatedContext.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2);
+  rotatedContext.rotate((avatarModalState.rotation * Math.PI) / 180);
+  rotatedContext.drawImage(
+    image,
+    -avatarModalState.naturalWidth / 2,
+    -avatarModalState.naturalHeight / 2,
+  );
+
+  context.drawImage(
+    rotatedCanvas,
+    sourceX,
+    sourceY,
+    sourceSize,
+    sourceSize,
+    0,
+    0,
+    AVATAR_CROP_OUTPUT_SIZE,
+    AVATAR_CROP_OUTPUT_SIZE,
+  );
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) => {
+        if (result) {
+          resolve(result);
+          return;
+        }
+
+        reject(new Error("Не получилось подготовить изображение."));
+      },
+      "image/jpeg",
+      0.92,
+    );
+  });
+
+  return new File([blob], avatarModalState.fileName || "avatar.jpg", { type: "image/jpeg" });
 }
 
 function renderSection(title: string, content: string, action = ""): string {
@@ -1300,7 +1989,22 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
           <section class="profile-page">
             <article class="profile-card">
               <header class="profile-card__hero">
-                ${renderAvatar(profile, "profile-card__avatar")}
+                <div class="profile-card__avatar-column">
+                  ${renderAvatar(profile, "profile-card__avatar")}
+                  ${
+                    profile.isOwnProfile
+                      ? `
+                        <button
+                          type="button"
+                          class="profile-card__avatar-button"
+                          data-profile-avatar-open
+                        >
+                          Изменить аватар
+                        </button>
+                      `
+                      : ""
+                  }
+                </div>
 
                 <div class="profile-card__hero-copy">
                   ${profile.isOwnProfile ? '<div class="profile-card__eyebrow">Мой профиль</div>' : ""}
@@ -1343,6 +2047,8 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
       </main>
 
       ${renderDeleteFriendModal(profile)}
+      ${renderAvatarModal(profile)}
+      ${renderAvatarDeleteModal()}
     </div>
   `;
 }
@@ -1469,12 +2175,128 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
   const bindableRoot = root as ProfileRoot;
 
   if (bindableRoot.__profileInteractionsBound) {
+    syncAvatarModalUi(root);
     return;
   }
 
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const openAvatarButton = target.closest("[data-profile-avatar-open]");
+    if (openAvatarButton instanceof HTMLButtonElement) {
+      avatarModalState.open = true;
+      avatarModalState.errorMessage = "";
+      syncAvatarModalUi(root);
+      ensureAvatarEditorSource(root);
+      return;
+    }
+
+    const rotateLeftButton = target.closest("[data-profile-avatar-rotate-left]");
+    if (rotateLeftButton instanceof HTMLButtonElement) {
+      rotateAvatar(root, "left");
+      return;
+    }
+
+    const rotateRightButton = target.closest("[data-profile-avatar-rotate-right]");
+    if (rotateRightButton instanceof HTMLButtonElement) {
+      rotateAvatar(root, "right");
+      return;
+    }
+
+    const openAvatarDeleteButton = target.closest("[data-profile-avatar-delete-open]");
+    if (openAvatarDeleteButton instanceof HTMLButtonElement) {
+      avatarModalState.deleteConfirmOpen = true;
+      syncAvatarModalUi(root);
+      return;
+    }
+
+    const closeAvatarDeleteButton = target.closest("[data-profile-avatar-delete-close]");
+    const avatarDeleteBackdrop = target.closest("[data-profile-avatar-delete-modal]");
+    if (closeAvatarDeleteButton instanceof HTMLButtonElement || avatarDeleteBackdrop === target) {
+      avatarModalState.deleteConfirmOpen = false;
+      syncAvatarModalUi(root);
+      return;
+    }
+
+    const confirmAvatarDeleteButton = target.closest("[data-profile-avatar-delete-confirm]");
+    if (confirmAvatarDeleteButton instanceof HTMLButtonElement) {
+      avatarModalState.isSaving = true;
+      avatarModalState.errorMessage = "";
+      syncAvatarModalUi(root);
+
+      void updateMyProfile({ removeAvatar: true })
+        .then(async () => {
+          const freshProfile = await getMyProfile();
+          ownAvatarOverride = null;
+          updateSessionUserAvatarLink(normaliseAvatarLink(freshProfile.imageLink));
+
+          resetAvatarModalState();
+          syncAvatarModalUi(root);
+          await rerenderCurrentRoute();
+        })
+        .catch((error: unknown) => {
+          avatarModalState.isSaving = false;
+          avatarModalState.deleteConfirmOpen = false;
+          avatarModalState.errorMessage = isOfflineNetworkError(error)
+            ? "Нет соединения с интернетом."
+            : error instanceof Error
+              ? error.message
+              : "Не получилось удалить аватар.";
+          syncAvatarModalUi(root);
+        });
+      return;
+    }
+
+    const closeAvatarButton = target.closest("[data-profile-avatar-close]");
+    const avatarModalBackdrop = target.closest("[data-profile-avatar-modal]");
+    if (closeAvatarButton instanceof HTMLButtonElement || avatarModalBackdrop === target) {
+      resetAvatarModalState();
+      syncAvatarModalUi(root);
+      return;
+    }
+
+    const pickAvatarButton = target.closest("[data-profile-avatar-pick]");
+    if (pickAvatarButton instanceof HTMLButtonElement) {
+      const fileInput = root.querySelector<HTMLInputElement>("[data-profile-avatar-input]");
+      if (fileInput) {
+        fileInput.value = "";
+        fileInput.click();
+      }
+      return;
+    }
+
+    const saveAvatarButton = target.closest("[data-profile-avatar-save]");
+    if (saveAvatarButton instanceof HTMLButtonElement) {
+      avatarModalState.isSaving = true;
+      avatarModalState.errorMessage = "";
+      syncAvatarModalUi(root);
+
+      void buildAvatarFile(root)
+        .then(async (file) => {
+          const uploadedAvatar = await uploadProfileAvatar(file);
+          await updateMyProfile({ avatarID: uploadedAvatar.mediaID });
+          const freshProfile = await getMyProfile();
+          ownAvatarOverride =
+            normaliseAvatarLink(freshProfile.imageLink) ?? uploadedAvatar.mediaURL;
+
+          updateSessionUserAvatarLink(ownAvatarOverride);
+
+          resetAvatarModalState();
+          syncAvatarModalUi(root);
+          await rerenderCurrentRoute();
+        })
+        .catch((error: unknown) => {
+          avatarModalState.isSaving = false;
+          avatarModalState.errorMessage = isOfflineNetworkError(error)
+            ? "Нет соединения с интернетом."
+            : error instanceof Error
+              ? error.message
+              : "Не получилось сохранить аватар.";
+          syncAvatarModalUi(root);
+        });
+      return;
+    }
 
     const openChatButton = target.closest("[data-profile-open-chat]");
     if (openChatButton instanceof HTMLButtonElement) {
@@ -1758,6 +2580,12 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
 
   root.addEventListener("input", (event: Event) => {
     const target = event.target;
+
+    if (target instanceof HTMLInputElement && target.matches("[data-profile-avatar-zoom]")) {
+      setAvatarZoom(root, Number.parseInt(target.value, 10) || 100);
+      return;
+    }
+
     if (
       !(
         target instanceof HTMLInputElement ||
@@ -1783,6 +2611,17 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
 
   root.addEventListener("change", (event: Event) => {
     const target = event.target;
+
+    if (target instanceof HTMLInputElement && target.matches("[data-profile-avatar-input]")) {
+      const file = target.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      void loadAvatarFile(file, root);
+      return;
+    }
+
     if (
       !(
         target instanceof HTMLInputElement ||
@@ -1799,5 +2638,89 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
     validateProfileFormLive(form);
   });
 
+  root.addEventListener("keydown", (event: Event) => {
+    if (!(event instanceof KeyboardEvent)) {
+      return;
+    }
+
+    if (event.key !== "Escape" || !avatarModalState.open || avatarModalState.isSaving) {
+      return;
+    }
+
+    resetAvatarModalState();
+    syncAvatarModalUi(root);
+  });
+
+  root.addEventListener("pointerdown", (event: Event) => {
+    if (!(event instanceof PointerEvent)) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const cropStage = target.closest<HTMLElement>("[data-profile-avatar-crop-stage]");
+    if (!(cropStage instanceof HTMLElement) || !avatarModalState.objectUrl) {
+      return;
+    }
+
+    avatarModalState.dragPointerId = event.pointerId;
+    avatarModalState.dragStartX = event.clientX;
+    avatarModalState.dragStartY = event.clientY;
+    avatarModalState.dragStartOffsetX = avatarModalState.offsetX;
+    avatarModalState.dragStartOffsetY = avatarModalState.offsetY;
+    cropStage.setPointerCapture(event.pointerId);
+    cropStage.classList.add("is-dragging");
+  });
+
+  root.addEventListener("pointermove", (event: Event) => {
+    if (!(event instanceof PointerEvent) || avatarModalState.dragPointerId !== event.pointerId) {
+      return;
+    }
+
+    avatarModalState.offsetX =
+      avatarModalState.dragStartOffsetX + (event.clientX - avatarModalState.dragStartX);
+    avatarModalState.offsetY =
+      avatarModalState.dragStartOffsetY + (event.clientY - avatarModalState.dragStartY);
+    clampAvatarOffsets(root);
+    syncAvatarModalUi(root);
+  });
+
+  root.addEventListener("pointerup", (event: Event) => {
+    if (!(event instanceof PointerEvent)) {
+      return;
+    }
+
+    const target = event.target;
+    const cropStage =
+      target instanceof Element
+        ? target.closest<HTMLElement>("[data-profile-avatar-crop-stage]")
+        : null;
+
+    if (avatarModalState.dragPointerId === event.pointerId) {
+      avatarModalState.dragPointerId = null;
+    }
+
+    if (cropStage instanceof HTMLElement) {
+      cropStage.classList.remove("is-dragging");
+      if (cropStage.hasPointerCapture(event.pointerId)) {
+        cropStage.releasePointerCapture(event.pointerId);
+      }
+    }
+  });
+
+  root.addEventListener("pointercancel", (event: Event) => {
+    if (!(event instanceof PointerEvent)) {
+      return;
+    }
+
+    const cropStage = root.querySelector<HTMLElement>("[data-profile-avatar-crop-stage]");
+    avatarModalState.dragPointerId = null;
+    cropStage?.classList.remove("is-dragging");
+  });
+
   bindableRoot.__profileInteractionsBound = true;
+  syncAvatarModalUi(root);
 }

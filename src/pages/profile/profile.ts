@@ -3350,6 +3350,7 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
           });
         }
 
+        clearFeedCache();
         await rerenderCurrentRoute();
       })
       .catch((error: unknown) => {

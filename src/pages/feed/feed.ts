@@ -3,7 +3,7 @@ import { initPostcardExpand, renderPostcard } from "../../components/postcard/po
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { getFeed, getPublicFeed, mapFeedResponse, type PostcardModel } from "../../api/feed";
-import { getFriends } from "../../api/friends";
+import { getFriends, type Friend } from "../../api/friends";
 import { getFeedMode, getSessionUser } from "../../state/session";
 
 type FeedMode = "by-time" | "for-you";
@@ -271,7 +271,26 @@ async function buildAuthorisedFeedItems(): Promise<PostcardModel[]> {
 
   const mapped = mapFeedResponse(feedResult.value);
   const friendIds = new Set(friends.map((friend) => String(friend.profileId)));
-  const filteredItems = mapped.items.filter((item) => friendIds.has(String(item.authorId)));
+  const friendsById = new Map<string, Friend>(
+    friends.map((friend) => [String(friend.profileId), friend]),
+  );
+  const filteredItems = mapped.items
+    .filter((item) => friendIds.has(String(item.authorId)))
+    .map((item) => {
+      const friend = friendsById.get(String(item.authorId));
+
+      if (!friend) {
+        return item;
+      }
+
+      return {
+        ...item,
+        firstName: friend.firstName || item.firstName,
+        lastName: friend.lastName || item.lastName,
+        author: friend.username || item.author,
+        avatar: friend.avatarLink || item.avatar,
+      };
+    });
 
   return getSortedFeedItems(filteredItems);
 }

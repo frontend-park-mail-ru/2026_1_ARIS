@@ -56,7 +56,7 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.js$/,
+        test: /\.(js|ts)$/,
         exclude: /node_modules/,
         use: "babel-loader",
       },
@@ -67,11 +67,6 @@ module.exports = {
       {
         test: /\.scss$/i,
         use: ["style-loader", "css-loader", "postcss-loader", "sass-loader"],
-      },
-      {
-        test: /\.ts$/,
-        use: "ts-loader",
-        exclude: /node_modules/,
       },
     ],
   },

@@ -5,6 +5,12 @@
       {
         "targets": "defaults"
       }
+    ],
+    [
+      "@babel/preset-typescript",
+      {
+        "allowDeclareFields": true
+      }
     ]
   ]
 }

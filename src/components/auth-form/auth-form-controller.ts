@@ -889,7 +889,6 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
         showFormError(form, "Неверный логин или пароль");
         markFieldsAsError(form, ["login", "password"]);
       }
-      console.error("Auth error:", error);
     }
 
     return;
@@ -975,8 +974,6 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
           : "Не удалось зарегистрироваться",
       );
     }
-
-    console.error("Auth error:", error);
   }
 }
 
@@ -1004,9 +1001,7 @@ export function initAuthForm(root: Document | HTMLElement = document): void {
         return;
       }
 
-      handleRegisterNext(form, authForm).catch((error: unknown) => {
-        console.error(error);
-      });
+      void handleRegisterNext(form, authForm);
       return;
     }
 
@@ -1104,9 +1099,7 @@ export function initAuthForm(root: Document | HTMLElement = document): void {
   });
 
   root.addEventListener("submit", (event: Event) => {
-    handleSubmit(event as SubmitEvent).catch((error: unknown) => {
-      console.error(error);
-    });
+    void handleSubmit(event as SubmitEvent);
   });
 
   (root as typeof root & { __authFormBound?: boolean }).__authFormBound = true;

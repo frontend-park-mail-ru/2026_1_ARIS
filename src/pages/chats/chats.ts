@@ -34,6 +34,7 @@ type ChatViewMessage = {
   text: string;
   authorName: string;
   isOwn: boolean;
+  deliveryState?: "sending" | "failed" | undefined;
   createdAt?: string | undefined;
   avatarLink?: string | undefined;
   profilePath?: string | undefined;
@@ -69,6 +70,10 @@ type PersistedChatsUiState = {
   scrollStateByChatId: Record<string, PersistedChatScrollState>;
 };
 
+type PersistedChatsData = {
+  threads: ChatViewThread[];
+};
+
 type ChatViewportAnchor = {
   messageId: string;
   offset: number;
@@ -87,6 +92,10 @@ function sortMessagesByCreatedAt(messages: ChatViewMessage[]): ChatViewMessage[]
   });
 }
 
+function isOfflineNetworkError(error: unknown): boolean {
+  return !navigator.onLine || error instanceof TypeError;
+}
+
 type ChatsState = {
   loaded: boolean;
   loadingMessages: boolean;
@@ -95,6 +104,7 @@ type ChatsState = {
   threads: ChatViewThread[];
   selectedChatId: string;
   errorMessage: string;
+  actionErrorMessage: string;
   loadedForUserId: string;
   unsubscribeByChatId: Map<string, () => void>;
   unreadIncomingIdsByChatId: Map<string, Set<string>>;
@@ -116,6 +126,7 @@ const chatsState: ChatsState = {
   threads: [],
   selectedChatId: "",
   errorMessage: "",
+  actionErrorMessage: "",
   loadedForUserId: "",
   unsubscribeByChatId: new Map(),
   unreadIncomingIdsByChatId: new Map(),
@@ -140,6 +151,7 @@ function resetChatsState(): void {
   chatsState.threads = [];
   chatsState.selectedChatId = "";
   chatsState.errorMessage = "";
+  chatsState.actionErrorMessage = "";
   chatsState.unreadIncomingIdsByChatId.clear();
   chatsState.pendingOutgoingByChatId.clear();
   chatScrollStateById.clear();
@@ -150,6 +162,11 @@ function resetChatsState(): void {
 function getChatsUiStorageKey(): string {
   const currentUserId = String(getSessionUser()?.id ?? chatsState.loadedForUserId ?? "");
   return `arisfront:chats-ui:${currentUserId || "guest"}`;
+}
+
+function getChatsDataStorageKey(): string {
+  const currentUserId = String(getSessionUser()?.id ?? chatsState.loadedForUserId ?? "");
+  return `arisfront:chats-data:${currentUserId || "guest"}`;
 }
 
 function readPersistedChatsUiState(): PersistedChatsUiState | null {
@@ -183,6 +200,134 @@ function persistChatsUiState(): void {
   } catch {
     // Ignore storage errors and keep the chat usable.
   }
+}
+
+function sanitisePersistedMessage(value: unknown): ChatViewMessage | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const message = value as Partial<ChatViewMessage>;
+  const id = String(message.id ?? "");
+  const authorName = String(message.authorName ?? "");
+
+  if (!id || !authorName) {
+    return null;
+  }
+
+  return {
+    id,
+    text: String(message.text ?? ""),
+    authorName,
+    isOwn: Boolean(message.isOwn),
+    deliveryState: message.deliveryState === "sending" ? "failed" : message.deliveryState,
+    createdAt: typeof message.createdAt === "string" ? message.createdAt : undefined,
+    avatarLink: typeof message.avatarLink === "string" ? message.avatarLink : undefined,
+    profilePath: typeof message.profilePath === "string" ? message.profilePath : undefined,
+  };
+}
+
+function sanitisePersistedThread(value: unknown): ChatViewThread | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const thread = value as Partial<ChatViewThread>;
+  const id = String(thread.id ?? "");
+  const title = String(thread.title ?? "");
+
+  if (!id || !title) {
+    return null;
+  }
+
+  const messages = Array.isArray(thread.messages)
+    ? sortMessagesByCreatedAt(
+        thread.messages
+          .map((message) => sanitisePersistedMessage(message))
+          .filter((message): message is ChatViewMessage => Boolean(message)),
+      )
+    : undefined;
+
+  const nextThread: ChatViewThread = {
+    id,
+    title,
+    avatarLink: typeof thread.avatarLink === "string" ? thread.avatarLink : undefined,
+    preview: String(thread.preview ?? ""),
+    previewIsOwn: Boolean(thread.previewIsOwn),
+    timeLabel: String(thread.timeLabel ?? ""),
+    createdAt: typeof thread.createdAt === "string" ? thread.createdAt : undefined,
+    updatedAt: typeof thread.updatedAt === "string" ? thread.updatedAt : undefined,
+    source: "api",
+    messages,
+    profilePath: typeof thread.profilePath === "string" ? thread.profilePath : undefined,
+  };
+
+  if (messages?.length) {
+    syncThreadProfilePathFromMessages(nextThread);
+    updateThreadPreview(nextThread);
+  }
+
+  return nextThread;
+}
+
+function readPersistedChatsData(): ChatViewThread[] {
+  try {
+    const raw = localStorage.getItem(getChatsDataStorageKey());
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as PersistedChatsData | ChatViewThread[];
+    const threads = Array.isArray(parsed) ? parsed : parsed?.threads;
+
+    if (!Array.isArray(threads)) {
+      return [];
+    }
+
+    return threads
+      .map((thread) => sanitisePersistedThread(thread))
+      .filter((thread): thread is ChatViewThread => Boolean(thread));
+  } catch {
+    return [];
+  }
+}
+
+function persistChatsData(): void {
+  try {
+    const threads = chatsState.threads
+      .filter((thread) => thread.source === "api")
+      .map((thread) => ({
+        ...thread,
+        source: "api" as const,
+      }));
+
+    localStorage.setItem(getChatsDataStorageKey(), JSON.stringify({ threads }));
+  } catch {
+    // Ignore storage errors and keep the chat usable.
+  }
+}
+
+function rebuildPendingOutgoingFromThreads(): void {
+  chatsState.pendingOutgoingByChatId.clear();
+
+  chatsState.threads.forEach((thread) => {
+    const pending = (thread.messages ?? [])
+      .filter(
+        (message) =>
+          message.isOwn &&
+          message.id.startsWith("local-") &&
+          (message.deliveryState === "failed" || message.deliveryState === "sending"),
+      )
+      .map((message) => ({
+        localId: message.id,
+        text: message.text,
+        createdAt: message.createdAt,
+      }));
+
+    if (pending.length) {
+      chatsState.pendingOutgoingByChatId.set(thread.id, pending);
+    }
+  });
 }
 
 function hydratePersistedChatsUiState(): void {
@@ -645,6 +790,17 @@ function removePendingOutgoing(chatId: string, localId: string): void {
   chatsState.pendingOutgoingByChatId.delete(chatId);
 }
 
+function queueOutgoingForRetry(chatId: string, message: ChatViewMessage): void {
+  const pending = chatsState.pendingOutgoingByChatId.get(chatId) ?? [];
+  const nextPending = pending.filter((item) => item.localId !== message.id);
+  nextPending.push({
+    localId: message.id,
+    text: message.text,
+    createdAt: message.createdAt,
+  });
+  chatsState.pendingOutgoingByChatId.set(chatId, nextPending);
+}
+
 function reconcilePendingOutgoing(
   chatId: string,
   incomingMessage: ChatViewMessage,
@@ -696,6 +852,7 @@ function reconcilePendingOutgoing(
   removePendingOutgoing(chatId, matchedPending.localId);
   updateThreadPreview(thread);
   sortThreadsByUpdatedAt();
+  persistChatsData();
   refreshChatsPage(chatsRoot);
   return true;
 }
@@ -712,6 +869,115 @@ function updateThreadPreview(thread: ChatViewThread): void {
   thread.previewIsOwn = lastMessage.isOwn;
   thread.timeLabel = formatMessageTime(lastMessage.createdAt);
   thread.updatedAt = lastMessage.createdAt ?? thread.updatedAt;
+}
+
+function getRetriableMessages(thread: ChatViewThread): ChatViewMessage[] {
+  return [...(thread.messages ?? [])].filter(
+    (message) =>
+      message.isOwn && message.id.startsWith("local-") && message.deliveryState === "failed",
+  );
+}
+
+function mergeRetriableMessages(
+  messages: ChatViewMessage[],
+  thread: ChatViewThread,
+): ChatViewMessage[] {
+  const retriableMessages = getRetriableMessages(thread);
+
+  if (!retriableMessages.length) {
+    return messages;
+  }
+
+  return sortMessagesByCreatedAt(dedupeMessagesById([...messages, ...retriableMessages]));
+}
+
+async function retryChatMessage(chatId: string, localMessageId: string): Promise<void> {
+  const thread = chatsState.threads.find((item) => item.id === chatId);
+  const message = thread?.messages?.find((item) => item.id === localMessageId);
+
+  if (!thread || !message || message.deliveryState !== "failed") {
+    return;
+  }
+
+  if (!navigator.onLine) {
+    chatsState.actionErrorMessage = "Нет соединения с интернетом.";
+    keepSelectedChatPinnedToBottom();
+    refreshChatsPage(chatsRoot);
+    scheduleScrollChatToBottom(chatsRoot);
+    return;
+  }
+
+  thread.messages = (thread.messages ?? []).map((item) =>
+    item.id === localMessageId
+      ? {
+          ...item,
+          deliveryState: "sending",
+        }
+      : item,
+  );
+  queueOutgoingForRetry(chatId, {
+    ...message,
+    deliveryState: "sending",
+  });
+  chatsState.actionErrorMessage = "";
+  persistChatsData();
+  refreshChatsPage(chatsRoot);
+
+  try {
+    const sentMessage = await sendChatMessage(chatId, { text: message.text });
+    thread.messages = dedupeMessagesById(
+      (thread.messages ?? []).map((item) =>
+        item.id === localMessageId
+          ? {
+              ...item,
+              id: sentMessage.id,
+              deliveryState: undefined,
+              profilePath: getCurrentUserProfilePath(),
+            }
+          : item,
+      ),
+    );
+    removePendingOutgoing(chatId, localMessageId);
+    chatsState.actionErrorMessage = "";
+    updateThreadPreview(thread);
+    sortThreadsByUpdatedAt();
+    persistChatsData();
+    refreshChatsPage(chatsRoot);
+  } catch (error) {
+    thread.messages = (thread.messages ?? []).map((item) =>
+      item.id === localMessageId
+        ? {
+            ...item,
+            deliveryState: "failed",
+          }
+        : item,
+    );
+    queueOutgoingForRetry(chatId, {
+      ...message,
+      deliveryState: "failed",
+    });
+    chatsState.actionErrorMessage = isOfflineNetworkError(error)
+      ? "Нет соединения с интернетом."
+      : error instanceof Error
+        ? error.message
+        : "Не получилось отправить сообщение.";
+    keepSelectedChatPinnedToBottom();
+    persistChatsData();
+    refreshChatsPage(chatsRoot);
+    scheduleScrollChatToBottom(chatsRoot);
+  }
+}
+
+function getMessageDeliveryLabel(message: ChatViewMessage): string {
+  if (message.deliveryState === "failed") {
+    return "Не отправлено";
+  }
+
+  if (message.deliveryState === "sending") {
+    return formatMessageTime(message.createdAt);
+  }
+
+  return formatMessageTime(message.createdAt);
 }
 
 function syncThreadProfilePathFromMessages(thread: ChatViewThread): void {
@@ -794,6 +1060,11 @@ function syncSelectedChatPinnedToBottom(root: ParentNode = document): void {
   isSelectedChatPinnedToBottom = isChatScrolledNearBottom(root, 8);
 }
 
+function keepSelectedChatPinnedToBottom(): void {
+  isSelectedChatPinnedToBottom = true;
+  shouldScrollChatToBottom = true;
+}
+
 function rememberSelectedChatScroll(root: ParentNode = document): void {
   if (!chatsState.selectedChatId) {
     return;
@@ -848,6 +1119,18 @@ function scrollChatToBottom(root: ParentNode = document): void {
   }
 
   container.scrollTop = container.scrollHeight;
+}
+
+function scheduleScrollChatToBottom(root: ParentNode = document): void {
+  const run = (): void => {
+    scrollChatToBottom(root);
+  };
+
+  run();
+  requestAnimationFrame(run);
+  window.setTimeout(run, 0);
+  window.setTimeout(run, 40);
+  window.setTimeout(run, 120);
 }
 
 function getUnreadIncomingCount(chatId: string): number {
@@ -948,6 +1231,7 @@ function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
     chatsState.threads.find((thread) => thread.id === previousSelectedChatId)?.id ??
     chatsState.threads[0]?.id ??
     "";
+  persistChatsData();
 
   return previousSignature !== chatsState.threads.map((thread) => thread.id).join("|");
 }
@@ -984,6 +1268,7 @@ function appendIncomingMessage(chatId: string, message: ChatMessage): void {
   } else if (shouldNotify) {
     markUnreadIncoming(chatId, [getUnreadMessageKey(incomingMessage)]);
   }
+  persistChatsData();
   refreshChatsPage(chatsRoot);
 }
 
@@ -1051,8 +1336,11 @@ async function ensureMessagesLoaded(
   try {
     const previousMessages = thread.messages ?? [];
     const messages = await getChatMessages(chatId);
-    const nextMessages = sortMessagesByCreatedAt(
-      dedupeMessagesById(messages.map((message) => mapMessageToViewMessage(message, thread))),
+    const nextMessages = mergeRetriableMessages(
+      sortMessagesByCreatedAt(
+        dedupeMessagesById(messages.map((message) => mapMessageToViewMessage(message, thread))),
+      ),
+      thread,
     );
     const previousFingerprint = getMessagesFingerprint(previousMessages);
     const nextFingerprint = getMessagesFingerprint(nextMessages);
@@ -1061,9 +1349,11 @@ async function ensureMessagesLoaded(
     syncThreadProfilePathFromMessages(thread);
     updateThreadPreview(thread);
     sortThreadsByUpdatedAt();
+    persistChatsData();
 
     if (!options.background) {
       chatsState.errorMessage = "";
+      chatsState.actionErrorMessage = "";
     }
 
     if (options.background && previousFingerprint !== nextFingerprint) {
@@ -1190,15 +1480,20 @@ async function ensureChatsLoaded(): Promise<void> {
       "";
     applySelectedChatPersistedViewState();
     chatsState.errorMessage = "";
+    persistChatsData();
   } catch {
-    chatsState.source = "mock";
-    chatsState.threads = createMockThreads();
+    const persistedThreads = readPersistedChatsData();
+    chatsState.source = "api";
+    chatsState.threads = persistedThreads;
     chatsState.selectedChatId =
       chatsState.threads.find((thread) => thread.id === preferredChatId)?.id ??
       chatsState.threads[0]?.id ??
       "";
     applySelectedChatPersistedViewState();
-    chatsState.errorMessage = "";
+    chatsState.errorMessage = persistedThreads.length
+      ? "Нет соединения с интернетом. Показываем последние сохранённые сообщения."
+      : "Нет соединения с интернетом. Сохранённых чатов пока нет.";
+    rebuildPendingOutgoingFromThreads();
   }
 
   chatsState.loaded = true;
@@ -1214,6 +1509,8 @@ async function ensureChatsLoaded(): Promise<void> {
   if (chatsState.selectedChatId) {
     await ensureMessagesLoaded(chatsState.selectedChatId);
   }
+
+  rebuildPendingOutgoingFromThreads();
 }
 
 function getFilteredThreads(): ChatViewThread[] {
@@ -1310,11 +1607,11 @@ function renderMessages(thread?: ChatViewThread): string {
     return '<div class="chat-view__empty">Сообщений пока нет.</div>';
   }
 
-  return messages
+  const messagesMarkup = messages
     .map((message) => {
       return `
         <article
-          class="chat-bubble${message.isOwn ? " chat-bubble--own" : ""}"
+          class="chat-bubble${message.isOwn ? " chat-bubble--own" : ""}${message.deliveryState === "failed" ? " chat-bubble--failed" : ""}"
           data-chat-message-id="${escapeHtml(message.id)}"
         >
           <img
@@ -1334,11 +1631,30 @@ function renderMessages(thread?: ChatViewThread): string {
             </h3>
             <p class="chat-bubble__text">${escapeHtml(message.text)}</p>
           </div>
-          <span class="chat-bubble__time">${escapeHtml(formatMessageTime(message.createdAt))}</span>
+          <div class="chat-bubble__meta">
+            <span class="chat-bubble__time">${escapeHtml(getMessageDeliveryLabel(message))}</span>
+            ${
+              message.deliveryState === "failed"
+                ? `
+                  <button
+                    type="button"
+                    class="chat-bubble__retry"
+                    data-chat-retry-message="${escapeHtml(message.id)}"
+                    aria-label="Отправить сообщение снова"
+                    title="Отправить снова"
+                  >
+                    ↻
+                  </button>
+                `
+                : ""
+            }
+          </div>
         </article>
       `;
     })
     .join("");
+
+  return messagesMarkup;
 }
 
 function renderScrollControls(thread?: ChatViewThread): string {
@@ -1444,6 +1760,16 @@ function renderChatsContent(): string {
         </div>
 
         ${
+          selectedThread && chatsState.actionErrorMessage
+            ? `
+              <p class="chat-compose__status" role="status">
+                ${escapeHtml(chatsState.actionErrorMessage)}
+              </p>
+            `
+            : ""
+        }
+
+        ${
           selectedThread
             ? `
               <form class="chat-compose" data-chat-compose-form>
@@ -1481,6 +1807,7 @@ function refreshChatsPage(root: ParentNode = document): void {
 
   const currentMessagesContainer = getChatMessagesContainer(container);
   const previousScrollTop = currentMessagesContainer?.scrollTop ?? 0;
+  const previousMessagesClientHeight = currentMessagesContainer?.clientHeight ?? 0;
   const previousAnchor =
     !shouldScrollChatToBottom && !isSelectedChatPinnedToBottom
       ? captureChatViewportAnchor(container)
@@ -1527,7 +1854,24 @@ function refreshChatsPage(root: ParentNode = document): void {
   const nextMessagesContainer = getChatMessagesContainer(next);
   if (nextMessagesContainer) {
     if (shouldScrollChatToBottom) {
-      nextMessagesContainer.scrollTop = nextMessagesContainer.scrollHeight;
+      const nextMessagesClientHeight = nextMessagesContainer.clientHeight;
+      const bottomCompensation = Math.max(
+        0,
+        previousMessagesClientHeight - nextMessagesClientHeight,
+      );
+
+      const scrollToBottom = (): void => {
+        nextMessagesContainer.scrollTop =
+          nextMessagesContainer.scrollHeight -
+          nextMessagesContainer.clientHeight +
+          bottomCompensation;
+      };
+
+      scrollToBottom();
+      requestAnimationFrame(scrollToBottom);
+      window.setTimeout(scrollToBottom, 0);
+      window.setTimeout(scrollToBottom, 40);
+      window.setTimeout(scrollToBottom, 120);
       shouldScrollChatToBottom = false;
       isSelectedChatPinnedToBottom = true;
     } else {
@@ -1657,6 +2001,17 @@ export function initChats(root: Document | HTMLElement = document): void {
       await ensureMessagesLoaded(chatId);
       refreshChatsPage(root);
     }
+
+    const retryButton = target.closest("[data-chat-retry-message]");
+    if (retryButton instanceof HTMLButtonElement && chatsState.selectedChatId) {
+      const localMessageId = retryButton.getAttribute("data-chat-retry-message");
+      if (!localMessageId) {
+        return;
+      }
+
+      void retryChatMessage(chatsState.selectedChatId, localMessageId);
+      return;
+    }
   });
 
   root.addEventListener(
@@ -1711,12 +2066,15 @@ export function initChats(root: Document | HTMLElement = document): void {
       return;
     }
 
+    chatsState.actionErrorMessage = "";
+
     const currentUser = getSessionUser();
     const optimisticMessage: ChatViewMessage = {
       id: `local-${Date.now()}`,
       text,
       authorName: `${currentUser?.firstName ?? "Вы"} ${currentUser?.lastName ?? ""}`.trim(),
       isOwn: true,
+      deliveryState: "sending",
       createdAt: new Date().toISOString(),
       avatarLink: currentUser?.avatarLink,
       profilePath: getCurrentUserProfilePath(),
@@ -1739,6 +2097,8 @@ export function initChats(root: Document | HTMLElement = document): void {
     clearUnreadIncoming(selectedThread.id);
     isSelectedChatPinnedToBottom = true;
     shouldScrollChatToBottom = true;
+    queueOutgoingForRetry(selectedThread.id, optimisticMessage);
+    persistChatsData();
     target.reset();
     refreshChatsPage(root);
     requestAnimationFrame(() => {
@@ -1761,6 +2121,7 @@ export function initChats(root: Document | HTMLElement = document): void {
                   ? {
                       ...item,
                       id: message.id,
+                      deliveryState: undefined,
                       createdAt: message.createdAt,
                       profilePath: getCurrentUserProfilePath(),
                     }
@@ -1771,6 +2132,7 @@ export function initChats(root: Document | HTMLElement = document): void {
           removePendingOutgoing(selectedThread.id, optimisticMessage.id);
           updateThreadPreview(selectedThread);
           sortThreadsByUpdatedAt();
+          persistChatsData();
           refreshChatsPage(root);
           requestAnimationFrame(() => {
             const composeInput = root.querySelector<HTMLInputElement>(".chat-compose__field");
@@ -1779,11 +2141,30 @@ export function initChats(root: Document | HTMLElement = document): void {
         })
         .catch((error: unknown) => {
           console.error("[chats] source=api scope=send error", error);
-          selectedThread.messages = (selectedThread.messages ?? []).filter(
-            (item) => item.id !== optimisticMessage.id,
+          selectedThread.messages = (selectedThread.messages ?? []).map((item) =>
+            item.id === optimisticMessage.id
+              ? {
+                  ...item,
+                  deliveryState: "failed",
+                }
+              : item,
           );
-          removePendingOutgoing(selectedThread.id, optimisticMessage.id);
+          queueOutgoingForRetry(selectedThread.id, {
+            ...optimisticMessage,
+            deliveryState: "failed",
+          });
+          keepSelectedChatPinnedToBottom();
+          updateThreadPreview(selectedThread);
+          sortThreadsByUpdatedAt();
+          persistChatsData();
           refreshChatsPage(root);
+          scheduleScrollChatToBottom(root);
+          if (isOfflineNetworkError(error)) {
+            console.info("[chats] source=api scope=send deferred-offline", {
+              chatId: selectedThread.id,
+              localId: optimisticMessage.id,
+            });
+          }
           requestAnimationFrame(() => {
             const composeInput = root.querySelector<HTMLInputElement>(".chat-compose__field");
             composeInput?.focus();

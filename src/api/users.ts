@@ -1,3 +1,5 @@
+import { trackedFetch } from "../state/network-status";
+
 type SuggestedUser = {
   id: string;
   username: string;
@@ -61,7 +63,7 @@ function createApiError(message: string, status: number, data: unknown): ApiErro
  * @throws {ApiError}
  */
 export async function getSuggestedUsers(): Promise<SuggestedUsersResponse> {
-  const response = await fetch("/api/users/suggested", {
+  const response = await trackedFetch("/api/users/suggested", {
     credentials: "include",
   });
 
@@ -81,7 +83,7 @@ export async function getSuggestedUsers(): Promise<SuggestedUsersResponse> {
  * @throws {ApiError}
  */
 export async function getPublicPopularUsers(): Promise<SuggestedUsersResponse> {
-  const response = await fetch("/api/public/popular-users", {
+  const response = await trackedFetch("/api/public/popular-users", {
     credentials: "include",
   });
 
@@ -101,7 +103,7 @@ export async function getPublicPopularUsers(): Promise<SuggestedUsersResponse> {
  * @throws {ApiError}
  */
 export async function getLatestEvents(): Promise<LatestEventsResponse> {
-  const response = await fetch("/api/users/latest-events", {
+  const response = await trackedFetch("/api/users/latest-events", {
     credentials: "include",
   });
 

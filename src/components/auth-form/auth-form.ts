@@ -150,7 +150,7 @@ function renderRegisterProgress(step: RegisterStep): string {
  * @param {Partial<RegisterValues>} values
  * @returns {string}
  */
-function renderRegisterStepOne(values: Partial<RegisterValues> = {}): string {
+function renderRegisterStepOneFields(values: Partial<RegisterValues> = {}): string {
   return `
     <div class="auth-form__step-grid">
       ${renderAuthField({
@@ -183,26 +183,6 @@ function renderRegisterStepOne(values: Partial<RegisterValues> = {}): string {
         isVisible: false,
         attributes: 'maxlength="20"',
       })}
-
-      <div class="auth-form__step-actions auth-form__step-actions--single">
-        ${renderButton({
-          text: "Далее",
-          variant: "primary",
-          tag: "button",
-          type: "button",
-          className: "auth-form__submit",
-          attributes: "data-register-next",
-        })}
-
-        ${renderButton({
-          text: "Уже есть аккаунт? Войти",
-          variant: "secondary",
-          tag: "button",
-          type: "button",
-          className: "auth-form__secondary-link",
-          attributes: 'data-switch-auth-mode="login"',
-        })}
-      </div>
     </div>
   `;
 }
@@ -213,7 +193,7 @@ function renderRegisterStepOne(values: Partial<RegisterValues> = {}): string {
  * @param {Partial<RegisterValues>} values
  * @returns {string}
  */
-function renderRegisterStepTwo(values: Partial<RegisterValues> = {}): string {
+function renderRegisterStepTwoFields(values: Partial<RegisterValues> = {}): string {
   return `
     <div class="auth-form__step-grid">
       ${renderAuthField({
@@ -244,25 +224,53 @@ function renderRegisterStepTwo(values: Partial<RegisterValues> = {}): string {
         state: "default",
         attributes: 'inputmode="numeric" maxlength="10" data-mask="date"',
       })}
+    </div>
+  `;
+}
 
+function renderRegisterStepActions(step: RegisterStep): string {
+  if (step === 1) {
+    return `
       <div class="auth-form__step-actions auth-form__step-actions--single">
         ${renderButton({
-          text: "Зарегистрироваться",
+          text: "Далее",
           variant: "primary",
           tag: "button",
-          type: "submit",
+          type: "button",
           className: "auth-form__submit",
+          attributes: "data-register-next",
         })}
 
         ${renderButton({
-          text: "Назад",
+          text: "Уже есть аккаунт? Войти",
           variant: "secondary",
           tag: "button",
           type: "button",
           className: "auth-form__secondary-link",
-          attributes: "data-register-prev",
+          attributes: 'data-switch-auth-mode="login"',
         })}
       </div>
+    `;
+  }
+
+  return `
+    <div class="auth-form__step-actions auth-form__step-actions--single">
+      ${renderButton({
+        text: "Зарегистрироваться",
+        variant: "primary",
+        tag: "button",
+        type: "submit",
+        className: "auth-form__submit",
+      })}
+
+      ${renderButton({
+        text: "Назад",
+        variant: "secondary",
+        tag: "button",
+        type: "button",
+        className: "auth-form__secondary-link",
+        attributes: "data-register-prev",
+      })}
     </div>
   `;
 }
@@ -277,10 +285,16 @@ function renderRegisterStepTwo(values: Partial<RegisterValues> = {}): string {
 function renderRegisterFields(
   step: RegisterStep,
   values: Partial<RegisterValues>,
+  hasError = false,
+  errorText = " ",
 ): string {
   return `
     ${renderRegisterProgress(step)}
-    ${step === 1 ? renderRegisterStepOne(values) : renderRegisterStepTwo(values)}
+    ${step === 1 ? renderRegisterStepOneFields(values) : renderRegisterStepTwoFields(values)}
+    <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
+      ${hasError ? errorText : " "}
+    </p>
+    ${renderRegisterStepActions(step)}
   `;
 }
 
@@ -334,17 +348,16 @@ export function renderAuthForm({
           ${
             isLogin
               ? renderLoginFields(hasError, registerValues)
-              : renderRegisterFields(registerStep, registerValues)
+              : renderRegisterFields(registerStep, registerValues, hasError, errorText)
           }
         </div>
-
-        <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
-          ${hasError ? errorText : " "}
-        </p>
 
         ${
           isLogin
             ? `
+              <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
+                ${hasError ? errorText : " "}
+              </p>
               <div class="auth-form__actions">
                 ${renderButton({
                   text: "Продолжить",

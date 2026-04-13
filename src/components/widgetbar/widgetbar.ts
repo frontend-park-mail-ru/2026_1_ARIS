@@ -33,6 +33,11 @@ type RenderWidgetbarOptions = {
   isAuthorised: boolean;
 };
 
+type WidgetbarLoadResult<T> = {
+  items: T[];
+  failed: boolean;
+};
+
 /**
  * In-memory widgetbar cache for the current page session.
  * It is reset only on full page reload.
@@ -65,6 +70,10 @@ function renderStubButton(text: string, className: string): string {
       ${text}
     </button>
   `;
+}
+
+function renderWidgetbarEmptyState(text: string): string {
+  return `<p class="widgetbar-card__empty">${text}</p>`;
 }
 
 /**
@@ -154,13 +163,19 @@ function mergeUniqueUsers(groups: WidgetbarUser[][]): WidgetbarUser[] {
 async function loadWidgetbarUsers(
   scope: string,
   loader: () => Promise<{ items?: WidgetbarUser[] | WidgetbarEventUser[] }>,
-): Promise<WidgetbarUser[]> {
+): Promise<WidgetbarLoadResult<WidgetbarUser>> {
   try {
     const response = await loader();
-    return Array.isArray(response.items) ? [...response.items] : [];
+    return {
+      items: Array.isArray(response.items) ? [...response.items] : [],
+      failed: false,
+    };
   } catch (error) {
     console.warn(`[widgetbar] source=api scope=${scope} failed`, error);
-    return [];
+    return {
+      items: [],
+      failed: true,
+    };
   }
 }
 
@@ -177,20 +192,36 @@ async function loadExcludedFriendIds(
   }
 }
 
+async function loadWidgetbarPosts(
+  scope: string,
+  loader: () => Promise<{ items?: WidgetbarPost[] }>,
+): Promise<WidgetbarLoadResult<WidgetbarPost>> {
+  try {
+    const response = await loader();
+    return {
+      items: Array.isArray(response.items) ? [...response.items] : [],
+      failed: false,
+    };
+  } catch (error) {
+    console.warn(`[widgetbar] source=api scope=${scope} failed`, error);
+    return {
+      items: [],
+      failed: true,
+    };
+  }
+}
+
 /**
  * Renders popular users widget for guests.
  *
  * @returns {Promise<string>}
  */
 async function renderPopularUsersWidget(): Promise<string> {
-  const response = (await getPublicPopularUsers()) as { items?: WidgetbarUser[] };
-  const items = Array.isArray(response.items) ? response.items : [];
-
-  return `
-    <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Популярные пользователи</h3>
-
-      ${items
+  const { items, failed } = await loadWidgetbarUsers("popular-users-guest", () =>
+    getPublicPopularUsers(),
+  );
+  const content = items.length
+    ? items
         .map(
           (user) => `
             <div class="widgetbar-person">
@@ -207,7 +238,16 @@ async function renderPopularUsersWidget(): Promise<string> {
             </div>
           `,
         )
-        .join("")}
+        .join("")
+    : renderWidgetbarEmptyState(
+        failed ? "Не удалось загрузить пользователей." : "Пока здесь никого нет.",
+      );
+
+  return `
+    <section class="widgetbar-card">
+      <h3 class="widgetbar-card__title">Популярные пользователи</h3>
+
+      ${content}
     </section>
   `;
 }
@@ -218,19 +258,19 @@ async function renderPopularUsersWidget(): Promise<string> {
  * @returns {Promise<string>}
  */
 async function renderKnownPeopleWidget(): Promise<string> {
-  const [suggestedItems, popularItems, eventItems, friends, incoming, outgoing] = await Promise.all(
-    [
+  const [suggestedResult, popularResult, eventResult, friends, incoming, outgoing] =
+    await Promise.all([
       loadWidgetbarUsers("suggested-users", () => getSuggestedUsers()),
       loadWidgetbarUsers("popular-users", () => getPublicPopularUsers()),
       loadWidgetbarUsers("latest-events", () => getLatestEvents()),
       loadExcludedFriendIds("friends", () => getFriends("accepted")),
       loadExcludedFriendIds("incoming-friend-requests", () => getIncomingFriendRequests("pending")),
       loadExcludedFriendIds("outgoing-friend-requests", () => getOutgoingFriendRequests("pending")),
-    ],
-  );
-  const items = mergeUniqueUsers([suggestedItems, popularItems, eventItems]);
+    ]);
+  const items = mergeUniqueUsers([suggestedResult.items, popularResult.items, eventResult.items]);
   const excludedIds = new Set([...friends, ...incoming, ...outgoing]);
   const currentUserId = String(getSessionUser()?.id ?? "");
+  const failed = suggestedResult.failed || popularResult.failed || eventResult.failed;
   const filteredItems = items.filter((user) => {
     const userId = String(user.id);
     return (
@@ -245,10 +285,11 @@ async function renderKnownPeopleWidget(): Promise<string> {
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Возможно, вы знакомы:</h3>
 
-      ${filteredItems
-        .slice(0, 4)
-        .map(
-          (user) => `
+      ${
+        filteredItems
+          .slice(0, 4)
+          .map(
+            (user) => `
             <div class="widgetbar-person">
               <img
                 class="widgetbar-person__avatar"
@@ -262,8 +303,12 @@ async function renderKnownPeopleWidget(): Promise<string> {
               )}
             </div>
           `,
+          )
+          .join("") ||
+        renderWidgetbarEmptyState(
+          failed ? "Не удалось загрузить рекомендации." : "Новые рекомендации появятся позже.",
         )
-        .join("")}
+      }
     </section>
   `;
 }
@@ -274,51 +319,58 @@ async function renderKnownPeopleWidget(): Promise<string> {
  * @returns {Promise<string>}
  */
 async function renderEventsWidget(): Promise<string> {
-  const response = (await getLatestEvents()) as { items?: WidgetbarEventUser[] };
-  const items = Array.isArray(response.items) ? response.items : [];
+  const result = await loadWidgetbarUsers("latest-events-guest", () => getLatestEvents());
+  const items = result.items as WidgetbarEventUser[];
+  const content = items.length
+    ? `
+        <div class="widgetbar-card__events">
+          ${items
+            .map((user) => {
+              const userLink = renderProfileLink(
+                `${user.firstName} ${user.lastName}`,
+                user,
+                "widgetbar-card__username",
+              );
+
+              if (user.type === 1) {
+                return `
+                  <p class="widgetbar-card__event">
+                    ${userLink}
+                    <span class="widgetbar-card__text"> поставил лайк вашему </span>
+                    ${renderStubButton("посту", "widgetbar-card__link")}
+                  </p>
+                `;
+              }
+
+              if (user.type === 2) {
+                return `
+                  <p class="widgetbar-card__event">
+                    ${userLink}
+                    <span class="widgetbar-card__text"> добавил </span>
+                    ${renderStubButton("фото", "widgetbar-card__link")}
+                  </p>
+                `;
+              }
+
+              return `
+                <p class="widgetbar-card__event">
+                  ${userLink}
+                  <span class="widgetbar-card__text"> подписался на вас</span>
+                </p>
+              `;
+            })
+            .join("")}
+        </div>
+      `
+    : renderWidgetbarEmptyState(
+        result.failed ? "Не удалось загрузить события." : "Пока событий нет.",
+      );
 
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Последние события</h3>
 
-      <div class="widgetbar-card__events">
-        ${items
-          .map((user) => {
-            const userLink = renderProfileLink(
-              `${user.firstName} ${user.lastName}`,
-              user,
-              "widgetbar-card__username",
-            );
-
-            if (user.type === 1) {
-              return `
-                <p class="widgetbar-card__event">
-                  ${userLink}
-                  <span class="widgetbar-card__text"> поставил лайк вашему </span>
-                  ${renderStubButton("посту", "widgetbar-card__link")}
-                </p>
-              `;
-            }
-
-            if (user.type === 2) {
-              return `
-                <p class="widgetbar-card__event">
-                  ${userLink}
-                  <span class="widgetbar-card__text"> добавил </span>
-                  ${renderStubButton("фото", "widgetbar-card__link")}
-                </p>
-              `;
-            }
-
-            return `
-              <p class="widgetbar-card__event">
-                ${userLink}
-                <span class="widgetbar-card__text"> подписался на вас</span>
-              </p>
-            `;
-          })
-          .join("")}
-      </div>
+      ${content}
     </section>
   `;
 }
@@ -329,14 +381,11 @@ async function renderEventsWidget(): Promise<string> {
  * @returns {Promise<string>}
  */
 async function renderGuestPopularPostsWidget(): Promise<string> {
-  const response = (await getPublicPopularPosts()) as { items?: WidgetbarPost[] };
-  const items = Array.isArray(response.items) ? response.items : [];
-
-  return `
-    <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Популярные посты</h3>
-
-      ${items
+  const { items, failed } = await loadWidgetbarPosts("popular-posts-guest", () =>
+    getPublicPopularPosts(),
+  );
+  const content = items.length
+    ? items
         .map(
           (post) => `
             <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
@@ -344,7 +393,16 @@ async function renderGuestPopularPostsWidget(): Promise<string> {
             </a>
           `,
         )
-        .join("")}
+        .join("")
+    : renderWidgetbarEmptyState(
+        failed ? "Не удалось загрузить популярные посты." : "Пока популярных постов нет.",
+      );
+
+  return `
+    <section class="widgetbar-card">
+      <h3 class="widgetbar-card__title">Популярные посты</h3>
+
+      ${content}
     </section>
   `;
 }
@@ -355,20 +413,26 @@ async function renderGuestPopularPostsWidget(): Promise<string> {
  * @returns {Promise<string>}
  */
 async function renderAuthorisedPopularPostsWidget(): Promise<string> {
-  const response = (await getPopularPosts()) as { items?: WidgetbarPost[] };
-  const items = Array.isArray(response.items) ? response.items : [];
-
-  return `
-    <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Популярные посты</h3>
-
-      ${items
+  const { items, failed } = await loadWidgetbarPosts("popular-posts-authorised", () =>
+    getPopularPosts(),
+  );
+  const content = items.length
+    ? items
         .map(
           (post) => `
             ${renderStubButton(post.title, "widgetbar-card__post-link")}
           `,
         )
-        .join("")}
+        .join("")
+    : renderWidgetbarEmptyState(
+        failed ? "Не удалось загрузить популярные посты." : "Пока популярных постов нет.",
+      );
+
+  return `
+    <section class="widgetbar-card">
+      <h3 class="widgetbar-card__title">Популярные посты</h3>
+
+      ${content}
     </section>
   `;
 }

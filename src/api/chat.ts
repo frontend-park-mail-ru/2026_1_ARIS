@@ -1,4 +1,5 @@
 import { ApiError } from "./auth";
+import { trackedFetch } from "../state/network-status";
 
 type ErrorResponse = {
   error?: string;
@@ -108,7 +109,7 @@ function mapMessage(raw: RawMessage): ChatMessage {
 }
 
 export async function getChats(): Promise<ChatSummary[]> {
-  const response = await fetch("/api/chats", {
+  const response = await trackedFetch("/api/chats", {
     method: "GET",
     credentials: "include",
   });
@@ -127,7 +128,7 @@ export async function getChats(): Promise<ChatSummary[]> {
 }
 
 export async function createPrivateChat(otherUserId: string): Promise<ChatSummary> {
-  const response = await fetch(`/api/chats?otherUserId=${encodeURIComponent(otherUserId)}`, {
+  const response = await trackedFetch(`/api/chats?otherUserId=${encodeURIComponent(otherUserId)}`, {
     method: "POST",
     credentials: "include",
   });
@@ -142,7 +143,7 @@ export async function createPrivateChat(otherUserId: string): Promise<ChatSummar
 }
 
 export async function getChatMessages(chatId: string): Promise<ChatMessage[]> {
-  const response = await fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
+  const response = await trackedFetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
     method: "GET",
     credentials: "include",
   });
@@ -164,7 +165,7 @@ export async function sendChatMessage(
   chatId: string,
   payload: SendMessagePayload,
 ): Promise<ChatMessage> {
-  const response = await fetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
+  const response = await trackedFetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

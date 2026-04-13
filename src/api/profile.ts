@@ -1,4 +1,5 @@
 import { ApiError } from "./auth";
+import { trackedFetch } from "../state/network-status";
 
 type ErrorResponse = {
   error?: string;
@@ -78,7 +79,7 @@ function createApiError(
 }
 
 export async function getMyProfile(): Promise<ProfileResponse> {
-  const response = await fetch("/api/profile/me", {
+  const response = await trackedFetch("/api/profile/me", {
     method: "GET",
     credentials: "include",
   });
@@ -93,7 +94,7 @@ export async function getMyProfile(): Promise<ProfileResponse> {
 }
 
 export async function getProfileById(profileId: string): Promise<ProfileResponse> {
-  const response = await fetch(`/api/profile/${encodeURIComponent(profileId)}`, {
+  const response = await trackedFetch(`/api/profile/${encodeURIComponent(profileId)}`, {
     method: "GET",
     credentials: "include",
   });
@@ -108,7 +109,7 @@ export async function getProfileById(profileId: string): Promise<ProfileResponse
 }
 
 export async function updateMyProfile(payload: UpdateProfilePayload): Promise<void> {
-  const response = await fetch("/api/profile/me/edit", {
+  const response = await trackedFetch("/api/profile/me/edit", {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

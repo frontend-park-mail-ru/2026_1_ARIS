@@ -1,3 +1,5 @@
+import { trackedFetch } from "../state/network-status";
+
 /**
  * Generic API error with response metadata.
  */
@@ -104,7 +106,7 @@ function createApiError(
  * Sends login request to the backend.
  */
 export async function loginUser(payload: LoginPayload): Promise<User> {
-  const response = await fetch("/api/auth/login", {
+  const response = await trackedFetch("/api/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -126,7 +128,7 @@ export async function loginUser(payload: LoginPayload): Promise<User> {
  * Sends registration request to the backend.
  */
 export async function registerUser(payload: RegisterPayload): Promise<User> {
-  const response = await fetch("/api/auth/register", {
+  const response = await trackedFetch("/api/auth/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -148,7 +150,7 @@ export async function registerUser(payload: RegisterPayload): Promise<User> {
  * Sends logout request to the backend.
  */
 export async function logoutUser(): Promise<unknown> {
-  const response = await fetch("/api/auth/logout", {
+  const response = await trackedFetch("/api/auth/logout", {
     method: "POST",
     credentials: "include",
   });
@@ -166,7 +168,7 @@ export async function logoutUser(): Promise<unknown> {
  * Requests current authorised user from the backend.
  */
 export async function getCurrentUser(): Promise<User | null> {
-  const response = await fetch("/api/auth/me", {
+  const response = await trackedFetch("/api/auth/me", {
     method: "GET",
     credentials: "include",
   });
@@ -184,7 +186,7 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function validateRegisterStepOne(
   payload: RegisterStepOnePayload,
 ): Promise<RegisterStepOneValidationResponse> {
-  const response = await fetch("/api/auth/register/step-one", {
+  const response = await trackedFetch("/api/auth/register/step-one", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

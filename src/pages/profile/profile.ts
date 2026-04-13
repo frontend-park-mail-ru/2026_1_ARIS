@@ -1360,7 +1360,8 @@ function getDefaultFieldValue(form: HTMLFormElement, name: keyof EditableProfile
   }
 
   if (field instanceof HTMLSelectElement) {
-    return field.value.trim();
+    const defaultOption = Array.from(field.options).find((option) => option.defaultSelected);
+    return (defaultOption?.value ?? field.options[0]?.value ?? "").trim();
   }
 
   return "";
@@ -1458,6 +1459,10 @@ function toggleProfileEditor(root: ParentNode, forceExpanded?: boolean): void {
 
 async function rerenderCurrentRoute(): Promise<void> {
   window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function isOfflineNetworkError(error: unknown): boolean {
+  return !navigator.onLine || error instanceof TypeError;
 }
 
 export function initProfileToggle(root: Document | HTMLElement = document): void {
@@ -1737,8 +1742,11 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
       })
       .catch((error: unknown) => {
         message.hidden = false;
-        message.textContent =
-          error instanceof Error ? error.message : "Не получилось сохранить изменения.";
+        message.textContent = isOfflineNetworkError(error)
+          ? "Нет соединения с интернетом. Изменения пока не отправлены."
+          : error instanceof Error
+            ? error.message
+            : "Не получилось сохранить изменения.";
         message.classList.remove("is-success");
         message.classList.add("is-error");
       })

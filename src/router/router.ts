@@ -133,6 +133,7 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
     initProfileToggle(root);
     initChats(root);
     initFriends(root);
+    window.dispatchEvent(new CustomEvent("apprender"));
   }
 
   /**

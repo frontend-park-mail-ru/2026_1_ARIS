@@ -1,4 +1,5 @@
 import { getFeedMode, getSessionUser, setFeedMode, type FeedMode } from "../../state/session";
+import { clearFeedCache, refreshFeedCenter } from "../../pages/feed/feed";
 
 type SidebarItemOptions = {
   href?: string;
@@ -175,7 +176,13 @@ export function initSidebar(root: Document | HTMLElement = document): void {
     const mode = button.getAttribute("data-feed-mode");
     if (mode !== "for-you" && mode !== "by-time") return;
 
+    if (mode === "for-you") {
+      clearFeedCache();
+    }
+
     setFeedMode(mode as FeedMode);
+    refreshSidebar();
+    void refreshFeedCenter();
   });
 
   bindableRoot.__sidebarBound = true;

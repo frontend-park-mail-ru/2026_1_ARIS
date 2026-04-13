@@ -1,7 +1,16 @@
 import { renderHeader } from "../../components/header/header";
-import { renderPostcard } from "../../components/postcard/postcard";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { createPrivateChat } from "../../api/chat";
+import {
+  createPost,
+  deletePost,
+  getMyPosts,
+  getPostsByProfileId,
+  updatePost,
+  uploadPostImages,
+  type PostMedia,
+  type PostResponse,
+} from "../../api/posts";
 import {
   acceptFriendRequest,
   declineFriendRequest,
@@ -22,6 +31,7 @@ import {
   type UpdateProfilePayload,
 } from "../../api/profile";
 import { getSessionUser, setSessionUser } from "../../state/session";
+import { clearFeedCache } from "../feed/feed";
 import {
   normalizeName,
   validateAlphabetConsistency,
@@ -31,7 +41,7 @@ import {
 } from "../../utils/profile-validation";
 import { renderFeed } from "../feed/feed";
 import { invalidateFriendsState } from "../friends/friends";
-import { getProfileRecordById, PROFILE_RECORDS, type ProfileRecord } from "./profile-data";
+import { getProfileRecordById, type ProfileRecord } from "./profile-data";
 
 type ProfileParams = {
   id?: string;
@@ -101,9 +111,31 @@ type ProfilePost = {
   id: string;
   text: string;
   time: string;
+  timeRaw: string;
+  updatedAtRaw?: string;
   likes: number;
   reposts: number;
   comments: number;
+  media: PostMedia[];
+  images: string[];
+};
+
+type ComposerMediaItem = {
+  mediaID?: number;
+  mediaURL: string;
+  file?: File;
+  isUploaded: boolean;
+};
+
+type PostComposerState = {
+  open: boolean;
+  mode: "create" | "edit";
+  editingPostId: string | null;
+  deleteConfirmPostId: string | null;
+  isSaving: boolean;
+  errorMessage: string;
+  text: string;
+  mediaItems: ComposerMediaItem[];
 };
 
 type AvatarModalState = {
@@ -130,7 +162,21 @@ type AvatarModalState = {
 const AVATAR_MIN_SIZE = 400;
 const AVATAR_CROP_OUTPUT_SIZE = 400;
 const DEFAULT_AVATAR_CROP_SIZE = 152;
+const OWN_PROFILE_CACHE_KEY = "arisfront:profile:me";
+const OWN_PROFILE_POSTS_CACHE_KEY = "arisfront:profile:me:posts";
 let ownAvatarOverride: string | null | undefined;
+let currentProfilePosts: ProfilePost[] = [];
+
+const postComposerState: PostComposerState = {
+  open: false,
+  mode: "create",
+  editingPostId: null,
+  deleteConfirmPostId: null,
+  isSaving: false,
+  errorMessage: "",
+  text: "",
+  mediaItems: [],
+};
 
 const avatarModalState: AvatarModalState = {
   open: false,
@@ -152,6 +198,27 @@ const avatarModalState: AvatarModalState = {
   dragStartOffsetX: 0,
   dragStartOffsetY: 0,
 };
+
+function readJsonStorage<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+function writeJsonStorage(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore storage errors.
+  }
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -258,7 +325,8 @@ function updateSessionUserAvatarLink(nextAvatarLink?: string): void {
     return;
   }
 
-  const { avatarLink: _avatarLink, ...sessionUserWithoutAvatar } = sessionUser;
+  const sessionUserWithoutAvatar = { ...sessionUser };
+  delete sessionUserWithoutAvatar.avatarLink;
   setSessionUser(sessionUserWithoutAvatar);
 }
 
@@ -596,7 +664,7 @@ function createFallbackProfile(
 
 function resolveMockProfile(params: ProfileParams): DisplayProfile {
   const sessionUser = getSessionUser();
-  const profileId = params.id ?? sessionUser?.id ?? PROFILE_RECORDS[0]?.id ?? "profile";
+  const profileId = params.id ?? sessionUser?.id ?? "profile";
   const ownProfileFallback =
     sessionUser && !params.id
       ? (() => {
@@ -618,7 +686,7 @@ function resolveMockProfile(params: ProfileParams): DisplayProfile {
           };
         })()
       : null;
-  const profileRecord = getProfileRecordById(profileId);
+  const profileRecord = params.id ? getProfileRecordById(profileId) : null;
 
   if (profileRecord) {
     return mapRecordToDisplayProfile(
@@ -783,7 +851,7 @@ async function resolveProfileFriendState(profileId: string): Promise<ProfileFrie
 
 async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
   const sessionUser = getSessionUser();
-  const requestedId = params.id ?? sessionUser?.id ?? PROFILE_RECORDS[0]?.id ?? "profile";
+  const requestedId = params.id ?? sessionUser?.id ?? "profile";
   const isOwnProfile = !params.id || params.id === sessionUser?.id;
 
   if (sessionUser && isOwnProfile) {
@@ -792,9 +860,18 @@ async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
       console.info("[profile] source=api scope=me id=%s", sessionUser.id, profileData);
       const profile = createOwnProfileFromApi(sessionUser.id, profileData);
       profile.friends = await getFriends("accepted");
+      writeJsonStorage(OWN_PROFILE_CACHE_KEY, profile);
       return profile;
     } catch (error) {
       console.error("[profile] source=api scope=me failed id=%s", sessionUser.id, error);
+
+      const cachedProfile = readJsonStorage<DisplayProfile>(OWN_PROFILE_CACHE_KEY);
+      if (cachedProfile) {
+        return {
+          ...cachedProfile,
+          avatarLink: resolveOwnAvatarLink(cachedProfile.avatarLink),
+        };
+      }
     }
   }
 
@@ -1560,29 +1637,417 @@ function renderDeleteFriendModal(profile: DisplayProfile): string {
   `;
 }
 
-function getProfilePosts(profile: DisplayProfile): ProfilePost[] {
-  return [
-    {
-      id: `${profile.id}-intro`,
-      text: `${profile.status}
+function formatPostRelativeTime(iso?: string): string {
+  if (!iso) return "";
 
-Сейчас больше всего внимания уделяю задачам на стыке продукта и интерфейсов. Люблю, когда в решении есть и чистая логика, и нормальное визуальное ощущение от страницы.`,
-      time: "1 д назад",
-      likes: 324000,
-      reposts: 167000,
-      comments: 88,
-    },
-    {
-      id: `${profile.id}-details`,
-      text: `Сейчас фокус на направлениях: ${profile.interests}. В работе особенно интересно выстраивать понятные сценарии и не перегружать экран лишними деталями.
+  const createdAt = new Date(iso);
+  if (Number.isNaN(createdAt.getTime())) {
+    return "";
+  }
 
-Из того, что постоянно играет в наушниках: ${profile.favoriteMusic}.`,
-      time: "3 д назад",
-      likes: 91000,
-      reposts: 12000,
-      comments: 24,
-    },
-  ];
+  const diff = Date.now() - createdAt.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return "только что";
+  if (minutes < 60) return `${minutes} мин назад`;
+  if (hours < 24) return `${hours} ч назад`;
+  if (days < 7) return `${days} д назад`;
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(createdAt);
+}
+
+function mapApiPostToProfilePost(post: PostResponse): ProfilePost {
+  const media = Array.isArray(post.media)
+    ? post.media.filter(
+        (item): item is PostMedia =>
+          Boolean(item) &&
+          typeof item.mediaID === "number" &&
+          typeof item.mediaURL === "string" &&
+          item.mediaURL.trim().length > 0,
+      )
+    : [];
+
+  const images = Array.isArray(post.mediaURL)
+    ? post.mediaURL.filter(Boolean)
+    : media.map((item) => item.mediaURL);
+
+  const nextPost: ProfilePost = {
+    id: String(post.id),
+    text: typeof post.text === "string" ? post.text : "",
+    time: formatPostRelativeTime(post.createdAt),
+    timeRaw: post.createdAt ?? "",
+    likes: 0,
+    reposts: 0,
+    comments: 0,
+    media,
+    images,
+  };
+
+  if (post.updatedAt) {
+    nextPost.updatedAtRaw = post.updatedAt;
+  }
+
+  return nextPost;
+}
+
+async function resolveProfilePosts(profile: DisplayProfile): Promise<ProfilePost[]> {
+  try {
+    const posts = profile.isOwnProfile ? await getMyPosts() : await getPostsByProfileId(profile.id);
+    const mappedPosts = posts.map(mapApiPostToProfilePost);
+
+    if (profile.isOwnProfile) {
+      writeJsonStorage(OWN_PROFILE_POSTS_CACHE_KEY, mappedPosts);
+    }
+
+    return mappedPosts;
+  } catch (error) {
+    console.error("[profile] source=api scope=posts failed id=%s", profile.id, error);
+
+    if (profile.isOwnProfile) {
+      const cachedPosts = readJsonStorage<ProfilePost[]>(OWN_PROFILE_POSTS_CACHE_KEY);
+      if (Array.isArray(cachedPosts)) {
+        return cachedPosts;
+      }
+    }
+
+    return [];
+  }
+}
+
+function resetPostComposerState(): void {
+  postComposerState.open = false;
+  postComposerState.mode = "create";
+  postComposerState.editingPostId = null;
+  postComposerState.deleteConfirmPostId = null;
+  postComposerState.isSaving = false;
+  postComposerState.errorMessage = "";
+  postComposerState.text = "";
+  postComposerState.mediaItems = [];
+}
+
+function openCreatePostComposer(): void {
+  resetPostComposerState();
+  postComposerState.open = true;
+}
+
+function openEditPostComposer(postId: string): void {
+  const post = currentProfilePosts.find((item) => item.id === postId);
+  if (!post) {
+    return;
+  }
+
+  resetPostComposerState();
+  postComposerState.open = true;
+  postComposerState.mode = "edit";
+  postComposerState.editingPostId = post.id;
+  postComposerState.text = post.text;
+  postComposerState.mediaItems = post.media.map((item) => ({
+    mediaID: item.mediaID,
+    mediaURL: item.mediaURL,
+    isUploaded: true,
+  }));
+}
+
+async function uploadPendingComposerImages(): Promise<void> {
+  const pendingItems = postComposerState.mediaItems.filter((item) => !item.isUploaded && item.file);
+  if (!pendingItems.length) {
+    return;
+  }
+
+  const uploadedMedia = await uploadPostImages(pendingItems.map((item) => item.file!));
+  let uploadIndex = 0;
+
+  postComposerState.mediaItems = postComposerState.mediaItems.map((item) => {
+    if (item.isUploaded) {
+      return item;
+    }
+
+    const uploaded = uploadedMedia[uploadIndex];
+    uploadIndex += 1;
+
+    if (!uploaded) {
+      return item;
+    }
+
+    return {
+      mediaID: uploaded.mediaID,
+      mediaURL: uploaded.mediaURL,
+      isUploaded: true,
+    };
+  });
+}
+
+function removeComposerMediaItem(index: number): void {
+  if (index < 0 || index >= postComposerState.mediaItems.length || postComposerState.isSaving) {
+    return;
+  }
+
+  postComposerState.mediaItems.splice(index, 1);
+}
+
+function syncPostComposerUi(root: ParentNode): void {
+  const modal = root.querySelector<HTMLElement>("[data-profile-post-modal]");
+  const deleteModal = root.querySelector<HTMLElement>("[data-profile-post-delete-modal]");
+
+  if (!(modal instanceof HTMLElement)) {
+    if (deleteModal instanceof HTMLElement) {
+      deleteModal.hidden = true;
+    }
+    return;
+  }
+
+  if (deleteModal instanceof HTMLElement) {
+    deleteModal.hidden = !postComposerState.deleteConfirmPostId;
+  }
+
+  const textarea = modal.querySelector<HTMLTextAreaElement>("[data-profile-post-text]");
+  const saveButton = modal.querySelector<HTMLButtonElement>("[data-profile-post-save]");
+  const errorNode = modal.querySelector<HTMLElement>("[data-profile-post-error]");
+  const titleNode = modal.querySelector<HTMLElement>("[data-profile-post-title]");
+  const imageInput = modal.querySelector<HTMLInputElement>("[data-profile-post-image-input]");
+  const previewWrap = modal.querySelector<HTMLElement>("[data-profile-post-previews]");
+  const pickButton = modal.querySelector<HTMLButtonElement>("[data-profile-post-pick-image]");
+
+  modal.hidden = !postComposerState.open;
+  modal.classList.toggle("is-open", postComposerState.open);
+
+  if (titleNode) {
+    titleNode.textContent =
+      postComposerState.mode === "edit" ? "Редактировать пост" : "Новая публикация";
+  }
+
+  if (textarea) {
+    textarea.value = postComposerState.text;
+    textarea.disabled = postComposerState.isSaving;
+  }
+
+  if (saveButton) {
+    saveButton.disabled =
+      postComposerState.isSaving ||
+      (!postComposerState.text.trim() && postComposerState.mediaItems.length === 0) ||
+      postComposerState.text.length > 5000;
+
+    saveButton.textContent =
+      postComposerState.mode === "edit"
+        ? postComposerState.isSaving
+          ? "Сохраняем..."
+          : "Опубликовать"
+        : postComposerState.isSaving
+          ? "Публикуем..."
+          : "Опубликовать";
+  }
+
+  if (pickButton) {
+    pickButton.disabled = postComposerState.isSaving || postComposerState.mediaItems.length >= 5;
+    pickButton.textContent =
+      postComposerState.mediaItems.length >= 5 ? "Достигнут лимит 5 изображений" : "+ Изображения";
+  }
+
+  if (imageInput && !postComposerState.open) {
+    imageInput.value = "";
+  }
+
+  if (errorNode) {
+    errorNode.hidden = !postComposerState.errorMessage;
+    errorNode.textContent = postComposerState.errorMessage;
+  }
+
+  if (previewWrap) {
+    previewWrap.innerHTML = postComposerState.mediaItems
+      .map(
+        (item, index) => `
+          <div class="profile-post-modal__preview">
+            <img src="${escapeHtml(item.mediaURL)}" alt="Изображение ${index + 1}">
+            <button
+              type="button"
+              class="profile-post-modal__preview-remove"
+              data-profile-post-remove-image="${index}"
+              aria-label="Удалить изображение"
+            >
+              [X]
+            </button>
+          </div>
+        `,
+      )
+      .join("");
+
+    previewWrap.hidden = postComposerState.mediaItems.length === 0;
+  }
+}
+
+async function handlePostImagesSelected(files: FileList | null): Promise<void> {
+  if (!files?.length) {
+    return;
+  }
+
+  postComposerState.errorMessage = "";
+  const availableSlots = Math.max(0, 5 - postComposerState.mediaItems.length);
+  const nextFiles = Array.from(files).slice(0, availableSlots);
+
+  if (!nextFiles.length) {
+    return;
+  }
+
+  const previewUrls = await Promise.all(
+    nextFiles.map(
+      (file) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === "string") {
+              resolve(reader.result);
+              return;
+            }
+
+            reject(new Error("Не получилось прочитать изображение."));
+          };
+          reader.onerror = () => reject(new Error("Не получилось прочитать изображение."));
+          reader.readAsDataURL(file);
+        }),
+    ),
+  );
+
+  postComposerState.mediaItems = postComposerState.mediaItems.concat(
+    previewUrls.reduce<ComposerMediaItem[]>((items, mediaURL, index) => {
+      const file = nextFiles[index];
+      if (!file) {
+        return items;
+      }
+
+      items.push({
+        mediaURL,
+        file,
+        isUploaded: false,
+      });
+      return items;
+    }, []),
+  );
+}
+
+function renderPostComposerModal(): string {
+  return `
+    <div class="profile-post-modal" data-profile-post-modal hidden>
+      <section
+        class="profile-post-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Редактор публикации"
+      >
+        <header class="profile-post-modal__header">
+          <h2 class="profile-post-modal__title" data-profile-post-title>Новая публикация</h2>
+          <button
+            type="button"
+            class="profile-post-modal__close"
+            data-profile-post-close
+            aria-label="Закрыть"
+          >
+            [X]
+          </button>
+        </header>
+
+        <textarea
+          class="profile-post-modal__textarea"
+          data-profile-post-text
+          rows="8"
+          maxlength="5000"
+          placeholder="Что у вас нового?"
+        ></textarea>
+
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/jpg"
+          multiple
+          hidden
+          data-profile-post-image-input
+        >
+
+        <div class="profile-post-modal__toolbar">
+          <button
+            type="button"
+            class="profile-post-modal__button profile-post-modal__button--secondary"
+            data-profile-post-pick-image
+          >
+            + Изображения
+          </button>
+        </div>
+
+        <div class="profile-post-modal__previews" data-profile-post-previews hidden></div>
+
+        <p class="profile-post-modal__error" data-profile-post-error hidden></p>
+
+        <div class="profile-post-modal__actions">
+          <button
+            type="button"
+            class="profile-post-modal__button profile-post-modal__button--primary"
+            data-profile-post-save
+          >
+            Опубликовать
+          </button>
+          <button
+            type="button"
+            class="profile-post-modal__button"
+            data-profile-post-close
+          >
+            Отмена
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderPostDeleteModal(): string {
+  return `
+    <div class="profile-post-delete-modal" data-profile-post-delete-modal hidden>
+      <section
+        class="profile-post-delete-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Удалить публикацию"
+      >
+        <header class="profile-post-delete-modal__header">
+          <h2 class="profile-post-delete-modal__title">Удалить публикацию</h2>
+          <button
+            type="button"
+            class="profile-post-delete-modal__close"
+            data-profile-post-delete-close
+            aria-label="Закрыть"
+          >
+            [X]
+          </button>
+        </header>
+
+        <p class="profile-post-delete-modal__text">
+          Вы действительно хотите удалить этот пост?
+        </p>
+
+        <div class="profile-post-delete-modal__actions">
+          <button
+            type="button"
+            class="profile-post-delete-modal__button profile-post-delete-modal__button--primary"
+            data-profile-post-delete-confirm
+          >
+            Удалить пост
+          </button>
+          <button
+            type="button"
+            class="profile-post-delete-modal__button"
+            data-profile-post-delete-close
+          >
+            Отмена
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
 }
 
 function renderInfoRows(profile: DisplayProfile): string {
@@ -1695,14 +2160,6 @@ function renderWork(profile: DisplayProfile): string {
 
 function renderPersonal(profile: DisplayProfile): string {
   const rows = [
-    hasVisibleValue(profile.status)
-      ? `
-        <div class="profile-info-grid__row">
-          <dt>О себе</dt>
-          <dd>${escapeHtml(profile.status)}</dd>
-        </div>
-      `
-      : "",
     hasVisibleValue(profile.interests)
       ? `
         <div class="profile-info-grid__row">
@@ -1806,8 +2263,44 @@ function renderFriends(profile: DisplayProfile): string {
   `;
 }
 
-function renderProfilePosts(profile: DisplayProfile): string {
-  const posts = getProfilePosts(profile);
+function renderProfilePostImages(images: string[]): string {
+  if (!images.length) {
+    return "";
+  }
+
+  const count = Math.min(images.length, 5);
+  const layoutModifierByCount = {
+    1: "profile-post__images--single",
+    2: "profile-post__images--double",
+    3: "profile-post__images--triple",
+    4: "profile-post__images--quad",
+    5: "profile-post__images--five",
+  } as const;
+  const layoutModifier = layoutModifierByCount[count as keyof typeof layoutModifierByCount];
+
+  return `
+    <div class="profile-post__images ${layoutModifier}">
+      ${images
+        .slice(0, 5)
+        .map(
+          (image, index) => `
+            <img
+              class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
+              src="${escapeHtml(getAvatarImageSrc(image))}"
+              alt="Изображение публикации"
+            >
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderProfilePosts(profile: DisplayProfile, posts: ProfilePost[]): string {
+  const isOwnProfile = profile.isOwnProfile;
+  const authorProfilePath = profile.isOwnProfile
+    ? "/profile"
+    : `/profile/${encodeURIComponent(profile.id)}`;
 
   return `
     <section class="profile-posts" id="profile-posts">
@@ -1815,24 +2308,102 @@ function renderProfilePosts(profile: DisplayProfile): string {
         <h2>Публикации</h2>
       </header>
 
-      ${posts
-        .map((post) =>
-          renderPostcard({
-            id: post.id,
-            authorId: profile.id,
-            author: profile.username,
-            firstName: profile.firstName,
-            lastName: profile.lastName,
-            avatar: profile.avatarLink ?? "/assets/img/default-avatar.png",
-            text: post.text,
-            time: post.time,
-            likes: post.likes,
-            comments: post.comments,
-            reposts: post.reposts,
-            images: [],
-          }),
-        )
-        .join("")}
+      ${
+        posts.length
+          ? posts
+              .map(
+                (post) => `
+                  <article class="profile-post">
+                    <header class="profile-post__header">
+                      <a
+                        class="profile-post__author"
+                        href="${authorProfilePath}"
+                        data-link
+                      >
+                        ${
+                          profile.avatarLink
+                            ? `
+                              <img
+                                class="profile-post__avatar"
+                                src="${escapeHtml(getAvatarImageSrc(profile.avatarLink))}"
+                                alt="${escapeHtml(`${profile.firstName} ${profile.lastName}`)}"
+                              >
+                            `
+                            : `
+                              <div class="profile-post__avatar profile-post__avatar--placeholder" aria-hidden="true">
+                                ${escapeHtml(getInitials(profile.firstName, profile.lastName))}
+                              </div>
+                            `
+                        }
+
+                        <div class="profile-post__meta">
+                          <strong>${escapeHtml(`${profile.firstName} ${profile.lastName}`)}</strong>
+                        </div>
+                      </a>
+
+                      ${
+                        isOwnProfile
+                          ? `
+                            <div class="profile-post__actions">
+                              <button
+                                type="button"
+                                class="profile-post__action-link"
+                                data-profile-post-edit="${escapeHtml(post.id)}"
+                              >
+                                [редактировать]
+                              </button>
+                              <button
+                                type="button"
+                                class="profile-post__action-link profile-post__action-link--danger"
+                                data-profile-post-delete="${escapeHtml(post.id)}"
+                              >
+                                [удалить]
+                              </button>
+                            </div>
+                          `
+                          : ""
+                      }
+                    </header>
+
+                    <p class="profile-post__text">${escapeHtml(post.text)}</p>
+
+                    ${renderProfilePostImages(post.images)}
+
+<footer class="profile-post__footer">
+  <div class="profile-post__stats">
+
+  <!-- лайки -->
+  <span class="profile-post__stat">
+    <img src="/assets/img/icons/heart.svg" class="profile-post__icon" />
+    ${post.likes}
+  </span>
+
+  <!-- репост -->
+  <span class="profile-post__stat">
+    <img src="/assets/img/icons/repost.svg" class="profile-post__icon" />
+    ${post.reposts}
+  </span>
+
+  <!-- комментарии -->
+  <span class="profile-post__stat">
+    <img src="/assets/img/icons/chat.svg" class="profile-post__icon" />
+    ${post.comments}
+  </span>
+
+</div>
+
+  <span class="profile-post__time">${escapeHtml(post.time)}</span>
+</footer>
+                  </article>
+                `,
+              )
+              .join("")
+          : `
+              <div class="profile-posts__empty">
+                <p class="profile-empty-copy">Публикаций пока нет</p>
+              </div>
+            `
+      }
     </section>
   `;
 }
@@ -1961,6 +2532,10 @@ function renderProfileEditor(profile: DisplayProfile): string {
 }
 
 export async function renderProfile(params: ProfileParams = {}): Promise<string> {
+  resetPostComposerState();
+  resetAvatarModalState();
+  currentProfilePosts = [];
+
   const isAuthorised = getSessionUser() !== null;
 
   if (!isAuthorised) {
@@ -1968,6 +2543,15 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
   }
 
   const profile = await resolveProfile(params);
+  const posts = await resolveProfilePosts(profile);
+  currentProfilePosts = posts;
+  const educationSection = renderSection("Образование", renderEducation(profile));
+  const workSection = renderSection("Место работы", renderWork(profile));
+  const personalSection = renderSection("Личная информация", renderPersonal(profile));
+  const hasMoreSections = Boolean(
+    educationSection.trim() || workSection.trim() || personalSection.trim(),
+  );
+
   const profileInfoAction = profile.isOwnProfile
     ? `
         <button type="button" class="profile-section__action-button" data-profile-edit-toggle>
@@ -2017,25 +2601,37 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
               <div class="profile-card__details">
                 ${renderSection("Информация", renderInfoRows(profile), profileInfoAction)}
 
-                <div class="profile-card__more" hidden>
-                  ${renderSection("Образование", renderEducation(profile))}
-                  ${renderSection("Место работы", renderWork(profile))}
-                  ${renderSection("Личная информация", renderPersonal(profile))}
-                </div>
+                ${
+                  hasMoreSections
+                    ? `
+                      <div class="profile-card__more" hidden>
+                        ${educationSection}
+                        ${workSection}
+                        ${personalSection}
+                      </div>
 
-                <button type="button" class="profile-card__toggle" data-profile-toggle aria-expanded="false">
-                  показать подробнее
-                </button>
+                      <button type="button" class="profile-card__toggle" data-profile-toggle aria-expanded="false">
+                        показать подробнее
+                      </button>
+                    `
+                    : ""
+                }
               </div>
             </article>
 
             ${renderProfileEditor(profile)}
 
-            <a href="#profile-posts" class="profile-composer" data-profile-anchor>
-              + Написать пост
-            </a>
+            ${
+              profile.isOwnProfile
+                ? `
+                  <button type="button" class="profile-composer" data-profile-post-open>
+                    + Написать пост
+                  </button>
+                `
+                : ""
+            }
 
-            ${renderProfilePosts(profile)}
+            ${renderProfilePosts(profile, posts)}
           </section>
         </section>
 
@@ -2049,6 +2645,8 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
       ${renderDeleteFriendModal(profile)}
       ${renderAvatarModal(profile)}
       ${renderAvatarDeleteModal()}
+      ${profile.isOwnProfile ? renderPostComposerModal() : ""}
+      ${profile.isOwnProfile ? renderPostDeleteModal() : ""}
     </div>
   `;
 }
@@ -2176,12 +2774,173 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
 
   if (bindableRoot.__profileInteractionsBound) {
     syncAvatarModalUi(root);
+    syncPostComposerUi(root);
     return;
   }
 
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const openPostComposerButton = target.closest("[data-profile-post-open]");
+    if (openPostComposerButton instanceof HTMLButtonElement) {
+      openCreatePostComposer();
+      syncPostComposerUi(root);
+      return;
+    }
+
+    const editPostButton = target.closest("[data-profile-post-edit]");
+    if (editPostButton instanceof HTMLButtonElement) {
+      const postId = editPostButton.getAttribute("data-profile-post-edit");
+      if (postId) {
+        openEditPostComposer(postId);
+        syncPostComposerUi(root);
+      }
+      return;
+    }
+
+    const deletePostButton = target.closest("[data-profile-post-delete]");
+    if (deletePostButton instanceof HTMLButtonElement) {
+      const postId = deletePostButton.getAttribute("data-profile-post-delete");
+      if (postId) {
+        postComposerState.deleteConfirmPostId = postId;
+        postComposerState.errorMessage = "";
+        syncPostComposerUi(root);
+      }
+      return;
+    }
+
+    const closePostDeleteButton = target.closest("[data-profile-post-delete-close]");
+    const postDeleteBackdrop = target.closest("[data-profile-post-delete-modal]");
+    if (closePostDeleteButton instanceof HTMLButtonElement || postDeleteBackdrop === target) {
+      postComposerState.deleteConfirmPostId = null;
+      postComposerState.isSaving = false;
+      postComposerState.errorMessage = "";
+      syncPostComposerUi(root);
+      return;
+    }
+
+    const closePostComposerButton = target.closest("[data-profile-post-close]");
+    const postComposerBackdrop = target.closest("[data-profile-post-modal]");
+    if (closePostComposerButton instanceof HTMLButtonElement || postComposerBackdrop === target) {
+      resetPostComposerState();
+      syncPostComposerUi(root);
+      return;
+    }
+
+    const pickPostImageButton = target.closest("[data-profile-post-pick-image]");
+    if (pickPostImageButton instanceof HTMLButtonElement) {
+      const imageInput = root.querySelector<HTMLInputElement>("[data-profile-post-image-input]");
+      if (imageInput) {
+        imageInput.value = "";
+        imageInput.click();
+      }
+      return;
+    }
+
+    const removePostImageButton = target.closest("[data-profile-post-remove-image]");
+    if (removePostImageButton instanceof HTMLButtonElement) {
+      const index = Number.parseInt(
+        removePostImageButton.getAttribute("data-profile-post-remove-image") ?? "-1",
+        10,
+      );
+      removeComposerMediaItem(index);
+      syncPostComposerUi(root);
+      return;
+    }
+
+    const savePostButton = target.closest("[data-profile-post-save]");
+    if (savePostButton instanceof HTMLButtonElement) {
+      const trimmedText = postComposerState.text.trim();
+      if (!trimmedText && postComposerState.mediaItems.length === 0) {
+        postComposerState.errorMessage = "Добавьте текст или изображение.";
+        syncPostComposerUi(root);
+        return;
+      }
+
+      postComposerState.isSaving = true;
+      postComposerState.errorMessage = "";
+      syncPostComposerUi(root);
+
+      const savePromise =
+        postComposerState.mode === "edit" && postComposerState.editingPostId
+          ? (async () => {
+              await uploadPendingComposerImages();
+              const knownMediaItems = postComposerState.mediaItems.filter(
+                (item): item is ComposerMediaItem & { mediaID: number } =>
+                  item.isUploaded && typeof item.mediaID === "number" && item.mediaID > 0,
+              );
+              const canSyncMedia = knownMediaItems.length === postComposerState.mediaItems.length;
+
+              if (
+                !canSyncMedia &&
+                postComposerState.mediaItems.some(
+                  (item) => !item.isUploaded || item.mediaID == null,
+                )
+              ) {
+                throw new Error(
+                  "Не получилось обновить изображения поста. Перезагрузите страницу и попробуйте снова.",
+                );
+              }
+
+              return updatePost(
+                postComposerState.editingPostId!,
+                canSyncMedia
+                  ? {
+                      text: trimmedText,
+                      media: knownMediaItems.map((item) => ({
+                        mediaID: item.mediaID,
+                        mediaURL: item.mediaURL,
+                      })),
+                    }
+                  : {
+                      text: trimmedText,
+                    },
+              );
+            })()
+          : (async () => {
+              await uploadPendingComposerImages();
+
+              const createPayload = {
+                media: postComposerState.mediaItems
+                  .filter(
+                    (item): item is ComposerMediaItem & { mediaID: number } =>
+                      item.isUploaded && typeof item.mediaID === "number",
+                  )
+                  .map((item) => ({
+                    mediaID: item.mediaID,
+                    mediaURL: item.mediaURL,
+                  })),
+              } as {
+                text?: string;
+                media: Array<{ mediaID: number; mediaURL: string }>;
+              };
+
+              if (trimmedText) {
+                createPayload.text = trimmedText;
+              }
+
+              return createPost(createPayload);
+            })();
+
+      void savePromise
+        .then(async () => {
+          clearFeedCache();
+          resetPostComposerState();
+          syncPostComposerUi(root);
+          await rerenderCurrentRoute();
+        })
+        .catch((error: unknown) => {
+          postComposerState.isSaving = false;
+          postComposerState.errorMessage = isOfflineNetworkError(error)
+            ? "Нет соединения с интернетом."
+            : error instanceof Error
+              ? error.message
+              : "Не получилось сохранить публикацию.";
+          syncPostComposerUi(root);
+        });
+      return;
+    }
 
     const openAvatarButton = target.closest("[data-profile-avatar-open]");
     if (openAvatarButton instanceof HTMLButtonElement) {
@@ -2437,6 +3196,37 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
       return;
     }
 
+    const confirmPostDeleteButton = target.closest("[data-profile-post-delete-confirm]");
+    if (confirmPostDeleteButton instanceof HTMLButtonElement) {
+      const postId = postComposerState.deleteConfirmPostId;
+      if (!postId) {
+        return;
+      }
+
+      postComposerState.isSaving = true;
+      postComposerState.errorMessage = "";
+      syncPostComposerUi(root);
+
+      void deletePost(postId)
+        .then(async () => {
+          clearFeedCache();
+          resetPostComposerState();
+          syncPostComposerUi(root);
+          await rerenderCurrentRoute();
+        })
+        .catch((error: unknown) => {
+          postComposerState.isSaving = false;
+          postComposerState.errorMessage = isOfflineNetworkError(error)
+            ? "Нет соединения с интернетом."
+            : error instanceof Error
+              ? error.message
+              : "Не получилось удалить публикацию.";
+          syncPostComposerUi(root);
+        });
+
+      return;
+    }
+
     const button = target.closest("[data-profile-toggle]");
     if (!(button instanceof HTMLButtonElement)) return;
 
@@ -2586,6 +3376,15 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
       return;
     }
 
+    if (target instanceof HTMLTextAreaElement && target.matches("[data-profile-post-text]")) {
+      postComposerState.text = target.value;
+      if (postComposerState.errorMessage) {
+        postComposerState.errorMessage = "";
+      }
+      syncPostComposerUi(root);
+      return;
+    }
+
     if (
       !(
         target instanceof HTMLInputElement ||
@@ -2622,6 +3421,18 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
       return;
     }
 
+    if (target instanceof HTMLInputElement && target.matches("[data-profile-post-image-input]")) {
+      void handlePostImagesSelected(target.files)
+        .catch((error: unknown) => {
+          postComposerState.errorMessage =
+            error instanceof Error ? error.message : "Не получилось подготовить изображения.";
+        })
+        .finally(() => {
+          syncPostComposerUi(root);
+        });
+      return;
+    }
+
     if (
       !(
         target instanceof HTMLInputElement ||
@@ -2643,12 +3454,20 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
       return;
     }
 
-    if (event.key !== "Escape" || !avatarModalState.open || avatarModalState.isSaving) {
+    if (event.key !== "Escape") {
       return;
     }
 
-    resetAvatarModalState();
-    syncAvatarModalUi(root);
+    if (postComposerState.open && !postComposerState.isSaving) {
+      resetPostComposerState();
+      syncPostComposerUi(root);
+      return;
+    }
+
+    if (avatarModalState.open && !avatarModalState.isSaving) {
+      resetAvatarModalState();
+      syncAvatarModalUi(root);
+    }
   });
 
   root.addEventListener("pointerdown", (event: Event) => {
@@ -2723,4 +3542,5 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
 
   bindableRoot.__profileInteractionsBound = true;
   syncAvatarModalUi(root);
+  syncPostComposerUi(root);
 }

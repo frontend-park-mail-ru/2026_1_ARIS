@@ -483,8 +483,6 @@ async function buildAuthorisedWidgetbar(): Promise<string> {
     <aside class="widgetbar">
       ${await renderKnownPeopleWidget()}
       ${await renderEventsWidget()}
-      ${await renderAuthorisedPopularPostsWidget()}
-      ${renderWeatherWidget()}
     </aside>
   `;
 }
@@ -498,8 +496,6 @@ async function buildGuestWidgetbar(): Promise<string> {
   return `
     <aside class="widgetbar">
       ${await renderPopularUsersWidget()}
-      ${await renderGuestPopularPostsWidget()}
-      ${renderWeatherWidget()}
     </aside>
   `;
 }

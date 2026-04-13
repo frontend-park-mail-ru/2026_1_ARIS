@@ -107,6 +107,27 @@ body.has-network-status {
   line-height: 1.5;
 }
 
+.feed-stream {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--layout-content-gap);
+}
+
+.feed-infinite-status {
+  width: 100%;
+  padding: 10px 0 18px;
+  color: rgb(55 66 108 / 62%);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.feed-infinite-status--hidden {
+  display: none;
+}
+
 .avatar-fallback {
   display: inline-flex !important;
   align-items: center !important;

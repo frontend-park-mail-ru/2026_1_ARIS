@@ -88,6 +88,10 @@ module.exports = {
     new CopyWebpackPlugin({
       patterns: [
         {
+          from: path.resolve(__dirname, "public/sw.js"),
+          to: "sw.js",
+        },
+        {
           from: path.resolve(__dirname, "public/assets/img"),
           to: "assets/img",
         },

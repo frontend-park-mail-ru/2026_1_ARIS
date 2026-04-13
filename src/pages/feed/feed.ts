@@ -312,13 +312,6 @@ async function getCachedFeedData(isAuthorised: boolean): Promise<FeedCenterResul
   }
 
   const persistedItems = readPersistedFeedItems(authKey, modeKey);
-  if (persistedItems?.length) {
-    feedItemsCache[authKey][modeKey] = persistedItems;
-
-    fetchAndUpdateFeedInBackground(isAuthorised);
-
-    return { kind: "items", items: persistedItems };
-  }
 
   try {
     const items = isAuthorised ? await buildAuthorisedFeedItems() : await buildGuestFeedItems();
@@ -337,20 +330,6 @@ async function getCachedFeedData(isAuthorised: boolean): Promise<FeedCenterResul
 
     return { kind: "html", html: renderOfflineFeedFallback(isAuthorised) };
   }
-}
-
-async function fetchAndUpdateFeedInBackground(isAuthorised: boolean) {
-  try {
-    const items = isAuthorised ? await buildAuthorisedFeedItems() : await buildGuestFeedItems();
-
-    const authKey: FeedAuthKey = isAuthorised ? "authorised" : "guest";
-    const modeKey = getCurrentFeedMode();
-
-    feedItemsCache[authKey][modeKey] = items;
-    persistFeedItems(authKey, modeKey, items);
-
-    await refreshFeedCenter();
-  } catch {}
 }
 
 function updateFeedStatusElement(): void {

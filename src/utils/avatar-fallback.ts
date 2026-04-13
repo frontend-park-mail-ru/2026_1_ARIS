@@ -1,5 +1,6 @@
 const AVATAR_SELECTOR = 'img[class*="avatar"]';
 const DEFAULT_AVATAR_PATTERN = /\/assets\/img\/default-avatar\.png(?:$|\?)/i;
+const AVATAR_FALLBACK_IGNORE_SELECTOR = "[data-avatar-fallback='ignore']";
 
 let avatarFallbackObserver: MutationObserver | null = null;
 
@@ -85,7 +86,13 @@ function bindAvatarFallback(image: HTMLImageElement): void {
 }
 
 function processAvatarFallbacks(root: ParentNode): void {
-  root.querySelectorAll<HTMLImageElement>(AVATAR_SELECTOR).forEach(bindAvatarFallback);
+  root.querySelectorAll<HTMLImageElement>(AVATAR_SELECTOR).forEach((image) => {
+    if (image.closest(AVATAR_FALLBACK_IGNORE_SELECTOR)) {
+      return;
+    }
+
+    bindAvatarFallback(image);
+  });
 }
 
 export function initAvatarFallback(root: ParentNode = document): void {
@@ -103,6 +110,10 @@ export function initAvatarFallback(root: ParentNode = document): void {
         }
 
         if (node.matches(AVATAR_SELECTOR)) {
+          if (node.closest(AVATAR_FALLBACK_IGNORE_SELECTOR)) {
+            return;
+          }
+
           bindAvatarFallback(node as HTMLImageElement);
           return;
         }

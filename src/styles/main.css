@@ -118,7 +118,7 @@ body.has-network-status {
     rgb(125 135 247) 56%,
     rgb(245 203 110) 100%
   ) !important;
-  border: 2px solid rgb(255 255 255 / 72%);
+  border: none;
   box-shadow: 0 8px 18px rgb(49 61 145 / 18%);
   color: white !important;
   font-family: inherit;

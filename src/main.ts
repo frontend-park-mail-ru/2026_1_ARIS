@@ -69,8 +69,20 @@ void (async () => {
 /**
  * Handles global session state changes by refreshing UI fragments.
  */
-window.addEventListener("sessionchange", async () => {
+window.addEventListener("sessionchange", async (event: Event) => {
   try {
+    const detail =
+      event instanceof CustomEvent ? (event.detail as { key?: string } | undefined) : undefined;
+
+    if (detail?.key === "user") {
+      await router.render();
+      initHeader();
+      initSidebar();
+      initAvatarFallback(document);
+      initOfflineIndicator();
+      return;
+    }
+
     refreshSidebar();
     await refreshFeedCenter();
   } catch (error) {

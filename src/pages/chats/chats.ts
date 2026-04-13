@@ -43,6 +43,8 @@ type ChatViewMessage = {
 type ChatViewThread = {
   id: string;
   title: string;
+  profileId?: string | undefined;
+  isFriend?: boolean | undefined;
   avatarLink?: string | undefined;
   preview: string;
   previewIsOwn?: boolean | undefined;
@@ -140,6 +142,7 @@ let isSelectedChatPinnedToBottom = true;
 let hasHydratedPersistedChatsUiState = false;
 const chatScrollStateById = new Map<string, PersistedChatScrollState>();
 const knownChatContactsByName = new Map<string, KnownChatContact>();
+const acceptedFriendProfileIds = new Set<string>();
 
 function resetChatsState(): void {
   chatsState.unsubscribeByChatId.forEach((unsubscribe) => unsubscribe());
@@ -156,6 +159,7 @@ function resetChatsState(): void {
   chatsState.pendingOutgoingByChatId.clear();
   chatScrollStateById.clear();
   knownChatContactsByName.clear();
+  acceptedFriendProfileIds.clear();
   hasHydratedPersistedChatsUiState = false;
 }
 
@@ -197,9 +201,7 @@ function persistChatsUiState(): void {
     };
 
     sessionStorage.setItem(getChatsUiStorageKey(), JSON.stringify(payload));
-  } catch {
-    // Ignore storage errors and keep the chat usable.
-  }
+  } catch {}
 }
 
 function sanitisePersistedMessage(value: unknown): ChatViewMessage | null {
@@ -251,6 +253,8 @@ function sanitisePersistedThread(value: unknown): ChatViewThread | null {
   const nextThread: ChatViewThread = {
     id,
     title,
+    profileId: typeof thread.profileId === "string" ? thread.profileId : undefined,
+    isFriend: Boolean(thread.isFriend),
     avatarLink: typeof thread.avatarLink === "string" ? thread.avatarLink : undefined,
     preview: String(thread.preview ?? ""),
     previewIsOwn: Boolean(thread.previewIsOwn),
@@ -434,6 +438,10 @@ function rememberKnownChatContacts(friends: Friend[]): void {
       profileId: friend.profileId,
       avatarLink: friend.avatarLink,
     });
+
+    if (friend.status === "accepted" && friend.profileId) {
+      acceptedFriendProfileIds.add(String(friend.profileId));
+    }
   });
 }
 
@@ -713,10 +721,14 @@ function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
         firstName: chat.title.split(" ")[0] ?? "",
         lastName: chat.title.split(" ").slice(1).join(" "),
       });
+      const profileId =
+        knownContact?.profileId ?? (matchedProfile ? String(matchedProfile.publicId) : undefined);
 
       return {
         id: chat.id,
         title: chat.title || `Чат ${index + 1}`,
+        profileId,
+        isFriend: profileId ? acceptedFriendProfileIds.has(String(profileId)) : false,
         avatarLink: chat.avatarLink ?? knownContact?.avatarLink ?? matchedProfile?.avatarLink,
         preview: "",
         previewIsOwn: false,
@@ -724,12 +736,58 @@ function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt ?? chat.createdAt,
         source: "api",
-        profilePath: resolvePersonPath(
-          chat.title || `Чат ${index + 1}`,
-          knownContact?.profileId ?? (matchedProfile ? String(matchedProfile.publicId) : undefined),
-        ),
+        profilePath: resolvePersonPath(chat.title || `Чат ${index + 1}`, profileId),
       };
     });
+}
+
+function looksLikeDirectPersonName(value: string): boolean {
+  const title = value.trim();
+  if (!title) {
+    return false;
+  }
+
+  if (/(команд|команда|aris|support|поддерж|admin|админ|news|новост|чат)/i.test(title)) {
+    return false;
+  }
+
+  const parts = title.split(/\s+/).filter(Boolean);
+  if (parts.length < 2 || parts.length > 3) {
+    return false;
+  }
+
+  return parts.every((part) => /^[A-Za-zА-Яа-яЁё-]+$/.test(part));
+}
+
+function getThreadCounterpartyName(thread: ChatViewThread): string {
+  const otherMessage = (thread.messages ?? []).find(
+    (message) => !message.isOwn && message.authorName.trim(),
+  );
+
+  return otherMessage?.authorName?.trim() || thread.title.trim();
+}
+
+function isEligibleDirectThread(thread: ChatViewThread): boolean {
+  if (thread.isFriend) {
+    return true;
+  }
+
+  if ((thread.messages?.length ?? 0) === 0) {
+    return false;
+  }
+
+  return looksLikeDirectPersonName(getThreadCounterpartyName(thread));
+}
+
+function applyThreadVisibilityRules(preferredChatId = ""): void {
+  const previousSelectedChatId = chatsState.selectedChatId;
+  chatsState.threads = chatsState.threads.filter(isEligibleDirectThread);
+  sortThreadsByUpdatedAt();
+  chatsState.selectedChatId =
+    chatsState.threads.find((thread) => thread.id === preferredChatId)?.id ??
+    chatsState.threads.find((thread) => thread.id === previousSelectedChatId)?.id ??
+    chatsState.threads[0]?.id ??
+    "";
 }
 
 function mapMessageToViewMessage(message: ChatMessage, thread: ChatViewThread): ChatViewMessage {
@@ -1221,6 +1279,8 @@ function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
       timeLabel: existing?.messages?.length ? existing.timeLabel : thread.timeLabel,
       createdAt: existing?.createdAt ?? thread.createdAt,
       updatedAt: existing?.updatedAt ?? thread.updatedAt,
+      profileId: thread.profileId ?? existing?.profileId,
+      isFriend: thread.isFriend ?? existing?.isFriend,
       profilePath: thread.profilePath ?? existing?.profilePath,
     };
 
@@ -1438,6 +1498,9 @@ async function refreshChatsInBackground(): Promise<void> {
       }),
     );
 
+    applyThreadVisibilityRules();
+    persistChatsData();
+
     if (listChanged) {
       refreshChatsPage(chatsRoot);
     }
@@ -1479,14 +1542,6 @@ async function ensureChatsLoaded(): Promise<void> {
     const chats = await getChats();
     chatsState.source = "api";
     chatsState.threads = mapApiChatsToThreads(chats);
-    sortThreadsByUpdatedAt();
-    chatsState.selectedChatId =
-      chatsState.threads.find((thread) => thread.id === preferredChatId)?.id ??
-      chatsState.threads[0]?.id ??
-      "";
-    applySelectedChatPersistedViewState();
-    chatsState.errorMessage = "";
-    persistChatsData();
   } catch {
     const persistedThreads = readPersistedChatsData();
     chatsState.source = "api";
@@ -1503,7 +1558,6 @@ async function ensureChatsLoaded(): Promise<void> {
   }
 
   chatsState.loaded = true;
-  syncSelectedChatToUrl(chatsState.selectedChatId, { replace: true });
 
   await Promise.all(
     chatsState.threads.map(async (thread) => {
@@ -1511,6 +1565,13 @@ async function ensureChatsLoaded(): Promise<void> {
       await ensureMessagesLoaded(thread.id, { background: true });
     }),
   );
+
+  applyThreadVisibilityRules(preferredChatId);
+  applySelectedChatPersistedViewState();
+  chatsState.errorMessage =
+    chatsState.errorMessage && !chatsState.threads.length ? chatsState.errorMessage : "";
+  persistChatsData();
+  syncSelectedChatToUrl(chatsState.selectedChatId, { replace: true });
 
   if (chatsState.selectedChatId) {
     await ensureMessagesLoaded(chatsState.selectedChatId);

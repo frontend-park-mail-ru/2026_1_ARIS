@@ -7,9 +7,11 @@ type ErrorResponse = {
 
 type RawFriend = {
   avatarID?: number | null;
+  id?: number | string;
   profileID?: number | string;
   firstName?: string;
   lastName?: string;
+  username?: string;
   login?: string;
   status?: string;
   link?: string | null;
@@ -66,10 +68,10 @@ function mapFriend(raw: RawFriend): Friend {
   const status = raw.status === "accepted" ? "accepted" : "pending";
 
   return {
-    profileId: String(raw.profileID ?? ""),
+    profileId: String(raw.id ?? raw.profileID ?? ""),
     firstName: String(raw.firstName ?? ""),
     lastName: String(raw.lastName ?? ""),
-    username: String(raw.login ?? ""),
+    username: String(raw.username ?? raw.login ?? ""),
     status,
     avatarLink: raw.link ?? undefined,
     createdAt: raw.createdAt ?? undefined,

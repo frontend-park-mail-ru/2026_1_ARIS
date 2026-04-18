@@ -903,6 +903,35 @@ async function resolveProfileFriendState(profileId: string): Promise<ProfileFrie
   return { relation: "none" };
 }
 
+async function enrichFriendsWithAvatarLinks(friends: Friend[]): Promise<Friend[]> {
+  return Promise.all(
+    friends.map(async (friend) => {
+      if (friend.avatarLink) {
+        return friend;
+      }
+
+      try {
+        const profile = await getProfileById(friend.profileId);
+        const avatarLink = normaliseAvatarLink(profile.imageLink);
+
+        return avatarLink
+          ? {
+              ...friend,
+              avatarLink,
+            }
+          : friend;
+      } catch (error) {
+        console.error(
+          "[profile] source=api scope=friend-avatar failed id=%s",
+          friend.profileId,
+          error,
+        );
+        return friend;
+      }
+    }),
+  );
+}
+
 async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
   const sessionUser = getSessionUser();
   const requestedId = params.id ?? sessionUser?.id ?? "profile";
@@ -913,7 +942,7 @@ async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
       const profileData = await getMyProfile();
       console.info("[profile] source=api scope=me id=%s", sessionUser.id, profileData);
       const profile = createOwnProfileFromApi(sessionUser.id, profileData);
-      profile.friends = await getFriends("accepted");
+      profile.friends = await enrichFriendsWithAvatarLinks(await getFriends("accepted"));
       writeJsonStorage(OWN_PROFILE_CACHE_KEY, profile);
       return profile;
     } catch (error) {
@@ -938,7 +967,7 @@ async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
         getUserFriends(requestedId),
         resolveProfileFriendState(requestedId),
       ]);
-      profile.friends = friends;
+      profile.friends = await enrichFriendsWithAvatarLinks(friends);
       profile.friendRelation = friendState.relation;
       profile.friendshipCreatedAt = friendState.friendshipCreatedAt;
       return profile;

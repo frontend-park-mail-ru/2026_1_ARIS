@@ -10,6 +10,7 @@ type PostcardPost = {
   avatar: string;
   text: string;
   time: string;
+  timeRaw?: string;
   likes: number;
   comments: number;
   reposts: number;
@@ -60,6 +61,39 @@ function resolveMediaSrc(mediaLink?: string): string {
   }
 
   return `/image-proxy?url=${encodeURIComponent(mediaLink)}`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatPostExactTime(iso?: string): string {
+  if (!iso) {
+    return "";
+  }
+
+  const createdAt = new Date(iso);
+  if (Number.isNaN(createdAt.getTime())) {
+    return "";
+  }
+
+  const datePart = new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(createdAt);
+
+  const timePart = new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(createdAt);
+
+  return `${datePart}\n${timePart}`;
 }
 
 /**
@@ -254,7 +288,7 @@ export function renderPostcard(post: PostcardPost): string {
           })}
         </div>
 
-        <p class="postcard__time">${post.time}</p>
+        <p class="postcard__time" ${post.timeRaw ? `title="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}>${post.time}</p>
       </footer>
     </article>
   `;

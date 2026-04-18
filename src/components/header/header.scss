@@ -81,50 +81,18 @@
   }
 
   &__search-box {
-    display: flex;
-    align-items: center;
-    justify-self: start;
-    gap: var(--header-search-gap);
-    width: var(--header-search-width);
-    max-width: 100%;
-    height: var(--header-search-height);
-    padding: 0 var(--header-search-padding-x);
-    border-radius: var(--radius-input);
-    background: var(--color-surface-input);
+    justify-self: center;
+    width: calc(100% - (var(--layout-content-inner-padding-x) * 2));
+    box-sizing: border-box;
   }
 
   &__search-input {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: var(--color-text-main);
-    font-size: var(--text-size-input);
-    font-weight: var(--font-weight-medium);
-
-    &::placeholder {
-      color: var(--color-text-placeholder);
-      font-size: var(--text-size-input);
-      font-weight: var(--font-weight-medium);
-    }
+    height: var(--header-search-height);
   }
 
   &__search-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     width: var(--header-search-icon-size);
     height: var(--header-search-icon-size);
-    flex-shrink: 0;
-
-    img {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
   }
 
 &__guest-actions {
@@ -159,6 +127,8 @@
   &__inner--guest &__user {
     align-items: center;
     align-self: center;
+    visibility: hidden;
+    pointer-events: none;
   }
 
   &__username {

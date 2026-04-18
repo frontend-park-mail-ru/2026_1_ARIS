@@ -78,13 +78,13 @@ function renderAuthorisedHeader(): string {
         <img class="header__logo" src="/assets/img/logo.svg" alt="ARIS">
       </a>
 
-      <label class="header__search-box" aria-label="Поиск">
-        <span class="header__search-icon" aria-hidden="true">
+      <label class="header__search-box search-field" aria-label="Поиск">
+        <span class="header__search-icon search-field__icon" aria-hidden="true">
           <img src="/assets/img/icons/search.svg" alt="">
         </span>
 
         <input
-          class="header__search-input"
+          class="header__search-input search-field__input"
           type="text"
           placeholder="Поиск"
         >

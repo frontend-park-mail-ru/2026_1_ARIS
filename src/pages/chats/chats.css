@@ -34,28 +34,16 @@
 }
 
 .chats-search {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 14px;
-  border-radius: 14px;
-  background: #eef1fb;
+  width: 100%;
 }
 
 .chats-search__icon {
-  width: 18px;
-  height: 18px;
-  opacity: 0.55;
+  width: 24px;
+  height: 24px;
 }
 
 .chats-search__input {
-  width: 100%;
-  min-height: 44px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-main);
-  font: inherit;
-  outline: none;
+  min-height: 40px;
 }
 
 .chats-search__input[readonly] {

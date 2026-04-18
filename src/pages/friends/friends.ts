@@ -414,7 +414,7 @@ function renderDeleteModal(): string {
         <header class="friends-modal__header">
           <h2 class="friends-modal__title">Удалить из друзей</h2>
           <button type="button" class="friends-modal__close" data-friends-modal-close aria-label="Закрыть">
-            [X]
+            ×
           </button>
         </header>
 
@@ -467,7 +467,7 @@ function renderFriendsContent(): string {
             }
           </p>
 
-          <button type="button" class="friends-panel__discover" disabled>
+          <button type="button" class="friends-panel__discover" disabled hidden>
             Найти друзей
           </button>
         </header>
@@ -495,13 +495,13 @@ function renderFriendsContent(): string {
             .join("")}
         </nav>
 
-        <label class="friends-search" aria-label="Поиск по друзьям">
-          <img class="friends-search__icon" src="/assets/img/icons/search.svg" alt="">
+        <label class="friends-search search-field" aria-label="Поиск по друзьям">
+          <img class="friends-search__icon search-field__icon" src="/assets/img/icons/search.svg" alt="">
           <input
-            class="friends-search__input"
+            class="friends-search__input search-field__input"
             type="text"
             value="${escapeHtml(friendsState.query)}"
-            placeholder="Поиск по друзьям..."
+            placeholder="Поиск по друзьям"
             data-friends-search
           >
         </label>

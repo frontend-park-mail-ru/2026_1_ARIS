@@ -99,6 +99,7 @@ type DisplayProfile = {
   avatarLink: string | undefined;
   friendRelation: ProfileFriendRelation;
   friendshipCreatedAt?: string | undefined;
+  isMissingProfile: boolean;
   editable: EditableProfileFields;
 };
 
@@ -568,6 +569,7 @@ function mapRecordToDisplayProfile(profile: ProfileRecord, isOwnProfile: boolean
     avatarLink: profile.avatarLink,
     friendRelation: isOwnProfile ? "friend" : "none",
     friendshipCreatedAt: undefined,
+    isMissingProfile: false,
     editable: {
       firstName: profile.firstName,
       lastName: profile.lastName,
@@ -642,6 +644,7 @@ function createFallbackProfile(
     avatarLink: sessionUser?.avatarLink,
     friendRelation: useSessionIdentity && sessionUser ? "friend" : "none",
     friendshipCreatedAt: undefined,
+    isMissingProfile: false,
     editable: {
       firstName,
       lastName,
@@ -658,6 +661,51 @@ function createFallbackProfile(
       group: "",
       company: useSessionIdentity ? "ARISNET" : "ARISNET Community",
       jobTitle: "Участник сообщества",
+    },
+  };
+}
+
+function createMissingProfile(profileId: string): DisplayProfile {
+  return {
+    id: profileId,
+    firstName: "",
+    lastName: "",
+    username: profileId,
+    status: "Профиль не существует или был удален.",
+    city: "",
+    nativeTown: "",
+    phone: "",
+    email: "",
+    birthday: "",
+    gender: "",
+    interests: "",
+    favoriteMusic: "",
+    workCompany: "",
+    workRole: "",
+    education: [],
+    friends: [],
+    isOwnProfile: false,
+    isApiBacked: false,
+    avatarLink: undefined,
+    friendRelation: "none",
+    friendshipCreatedAt: undefined,
+    isMissingProfile: true,
+    editable: {
+      firstName: "",
+      lastName: "",
+      bio: "",
+      gender: "",
+      birthdayDate: "",
+      nativeTown: "",
+      town: "",
+      phone: "",
+      email: "",
+      interests: "",
+      favMusic: "",
+      institution: "",
+      group: "",
+      company: "",
+      jobTitle: "",
     },
   };
 }
@@ -693,6 +741,10 @@ function resolveMockProfile(params: ProfileParams): DisplayProfile {
       profileRecord,
       sessionUser ? profileId === sessionUser.id : false,
     );
+  }
+
+  if (params.id) {
+    return createMissingProfile(profileId);
   }
 
   return ownProfileFallback ?? createFallbackProfile(profileId, !params.id);
@@ -740,6 +792,7 @@ function createOwnProfileFromApi(
     avatarLink: resolveOwnAvatarLink(apiAvatarLink),
     friendRelation: "friend",
     friendshipCreatedAt: undefined,
+    isMissingProfile: false,
     editable: {
       firstName,
       lastName,
@@ -799,6 +852,7 @@ function createPublicProfileFromApi(
     avatarLink: apiAvatarLink,
     friendRelation: "none",
     friendshipCreatedAt: undefined,
+    isMissingProfile: false,
     editable: {
       firstName: data.firstName ?? "",
       lastName: data.lastName ?? "",
@@ -898,6 +952,14 @@ async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
 }
 
 function renderAvatar(profile: DisplayProfile, className: string): string {
+  if (profile.isMissingProfile) {
+    return `
+      <div class="${className} ${className}--placeholder" aria-hidden="true">
+        ?
+      </div>
+    `;
+  }
+
   if (profile.avatarLink) {
     return `
       <img
@@ -912,6 +974,24 @@ function renderAvatar(profile: DisplayProfile, className: string): string {
     <div class="${className} ${className}--placeholder" aria-hidden="true">
       ${escapeHtml(getInitials(profile.firstName, profile.lastName))}
     </div>
+  `;
+}
+
+function renderMissingProfileCard(profile: DisplayProfile): string {
+  return `
+    <article class="profile-card profile-card--missing">
+      <header class="profile-card__hero">
+        <div class="profile-card__avatar-column">
+          ${renderAvatar(profile, "profile-card__avatar")}
+        </div>
+
+        <div class="profile-card__hero-copy">
+          <div class="profile-card__eyebrow">Профиль</div>
+          <h1>Профиль не существует</h1>
+          <p>${escapeHtml(profile.status)}</p>
+        </div>
+      </header>
+    </article>
   `;
 }
 
@@ -1032,13 +1112,15 @@ function renderAvatarModal(profile: DisplayProfile): string {
             data-profile-avatar-close
             aria-label="Закрыть"
           >
-            [X]
+            ×
           </button>
         </header>
 
         <p class="profile-avatar-modal__text">
           Мы просим загружать только настоящую фотографию и оставляем за собой право применять
-          меры к пользователям, которые загружают изображения, нарушающие Правила нашего сервиса
+          меры к пользователям, которые загружают изображения, нарушающие
+          <br>
+          правила нашего сервиса
         </p>
 
         <div class="profile-avatar-modal__preview" data-avatar-fallback="ignore">
@@ -1062,45 +1144,46 @@ function renderAvatarModal(profile: DisplayProfile): string {
           data-profile-avatar-input
         >
 
-        <button
-          type="button"
-          class="profile-avatar-modal__button profile-avatar-modal__button--primary"
-          data-profile-avatar-pick
-        >
-          Выбрать фото
-        </button>
-
-        ${
-          profile.avatarLink
-            ? `
-              <button
-                type="button"
-                class="profile-avatar-modal__button profile-avatar-modal__button--primary profile-avatar-modal__button--danger"
-                data-profile-avatar-delete-open
-              >
-                Удалить фото
-              </button>
-            `
-            : ""
-        }
-
         <div class="profile-avatar-modal__zoom" data-profile-avatar-zoom-wrap hidden>
           <div class="profile-avatar-modal__tools">
             <button
               type="button"
-              class="profile-avatar-modal__tool-button"
+              class="profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__tool-button"
               data-profile-avatar-rotate-left
             >
-              Повернуть -90°
+              Повернуть влево
             </button>
             <button
               type="button"
-              class="profile-avatar-modal__tool-button"
+              class="profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__tool-button"
               data-profile-avatar-rotate-right
             >
-              Повернуть +90°
+              Повернуть вправо
             </button>
           </div>
+
+          <button
+            type="button"
+            class="profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__button--full"
+            data-profile-avatar-pick
+          >
+            Выбрать фото
+          </button>
+
+          ${
+            profile.avatarLink
+              ? `
+                <button
+                  type="button"
+                  class="profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__button--full profile-avatar-modal__button--danger"
+                  data-profile-avatar-delete-open
+                >
+                  Удалить фото
+                </button>
+              `
+              : ""
+          }
+
           <span class="profile-avatar-modal__zoom-label">Масштаб</span>
           <input
             type="range"
@@ -1153,7 +1236,7 @@ function renderAvatarDeleteModal(): string {
             data-profile-avatar-delete-close
             aria-label="Закрыть"
           >
-            [X]
+            ×
           </button>
         </header>
 
@@ -1597,7 +1680,7 @@ function renderDeleteFriendModal(profile: DisplayProfile): string {
             data-profile-delete-modal-close
             aria-label="Закрыть"
           >
-            [X]
+            ×
           </button>
         </header>
 
@@ -1662,6 +1745,30 @@ function formatPostRelativeTime(iso?: string): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(createdAt);
+}
+
+function formatPostExactTime(iso?: string): string {
+  if (!iso) {
+    return "";
+  }
+
+  const createdAt = new Date(iso);
+  if (Number.isNaN(createdAt.getTime())) {
+    return "";
+  }
+
+  const datePart = new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(createdAt);
+
+  const timePart = new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(createdAt);
+
+  return `${datePart}\n${timePart}`;
 }
 
 function mapApiPostToProfilePost(post: PostResponse): ProfilePost {
@@ -1949,7 +2056,7 @@ function renderPostComposerModal(): string {
             data-profile-post-close
             aria-label="Закрыть"
           >
-            [X]
+            ×
           </button>
         </header>
 
@@ -2021,7 +2128,7 @@ function renderPostDeleteModal(): string {
             data-profile-post-delete-close
             aria-label="Закрыть"
           >
-            [X]
+            ×
           </button>
         </header>
 
@@ -2350,14 +2457,14 @@ function renderProfilePosts(profile: DisplayProfile, posts: ProfilePost[]): stri
                                 class="profile-post__action-link"
                                 data-profile-post-edit="${escapeHtml(post.id)}"
                               >
-                                [редактировать]
+                                редактировать
                               </button>
                               <button
                                 type="button"
                                 class="profile-post__action-link profile-post__action-link--danger"
                                 data-profile-post-delete="${escapeHtml(post.id)}"
                               >
-                                [удалить]
+                                удалить
                               </button>
                             </div>
                           `
@@ -2392,7 +2499,10 @@ function renderProfilePosts(profile: DisplayProfile, posts: ProfilePost[]): stri
 
 </div>
 
-  <span class="profile-post__time">${escapeHtml(post.time)}</span>
+  <span
+    class="profile-post__time"
+    ${post.timeRaw ? `title="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}
+  >${escapeHtml(post.time)}</span>
 </footer>
                   </article>
                 `,
@@ -2543,6 +2653,30 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
   }
 
   const profile = await resolveProfile(params);
+  if (profile.isMissingProfile) {
+    return `
+      <div class="app-page">
+        ${renderHeader()}
+
+        <main class="app-layout">
+          <aside class="app-layout__left">
+            ${renderSidebar({ isAuthorised })}
+          </aside>
+
+          <section class="app-layout__center">
+            <section class="profile-page">
+              ${renderMissingProfileCard(profile)}
+            </section>
+          </section>
+
+          <aside class="app-layout__right">
+            <div class="profile-right-rail"></div>
+          </aside>
+        </main>
+      </div>
+    `;
+  }
+
   const posts = await resolveProfilePosts(profile);
   currentProfilePosts = posts;
   const educationSection = renderSection("Образование", renderEducation(profile));

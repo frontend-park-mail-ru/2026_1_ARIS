@@ -47,6 +47,9 @@ const widgetbarCache: WidgetbarCache = {
   authorised: null,
 };
 
+// Temporary kill switch until the widget is restored properly.
+const SHOW_LATEST_EVENTS_WIDGET = false;
+
 /**
  * Clears widgetbar cache.
  *
@@ -482,7 +485,7 @@ async function buildAuthorisedWidgetbar(): Promise<string> {
   return `
     <aside class="widgetbar">
       ${await renderKnownPeopleWidget()}
-      ${await renderEventsWidget()}
+      ${SHOW_LATEST_EVENTS_WIDGET ? await renderEventsWidget() : ""}
     </aside>
   `;
 }

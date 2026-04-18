@@ -1771,13 +1771,13 @@ function renderChatsContent(): string {
       <aside class="chats-sidebar">
         <h1 class="chats-sidebar__title">Сообщения</h1>
 
-        <label class="chats-search" aria-label="Поиск по чатам">
-          <img class="chats-search__icon" src="/assets/img/icons/search.svg" alt="">
+        <label class="chats-search search-field" aria-label="Поиск по чатам">
+          <img class="chats-search__icon search-field__icon" src="/assets/img/icons/search.svg" alt="">
           <input
-            class="chats-search__input"
+            class="chats-search__input search-field__input"
             type="text"
             value="${escapeHtml(chatsState.query)}"
-            placeholder="Поиск по чатам"
+            placeholder="Поиск по сообщениям"
             data-chat-search
           >
         </label>

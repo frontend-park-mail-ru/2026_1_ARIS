@@ -130,6 +130,10 @@
   backdrop-filter: blur(10px);
 }
 
+.profile-card--missing {
+  min-height: 164px;
+}
+
 .profile-card__hero {
   display: flex;
   gap: 16px;
@@ -171,10 +175,10 @@
   border: 1px solid rgb(95 99 221 / 55%);
   border-radius: 999px;
   background: rgb(255 255 255 / 88%);
-  color: #4b51d0;
+  color: var(--color-text-main);
   font: inherit;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--font-weight-regular);
   line-height: 1;
   cursor: pointer;
   white-space: nowrap;
@@ -196,9 +200,9 @@
 }
 
 .profile-card__eyebrow {
-  color: var(--color-text-name);
+  color: var(--color-text-main);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--font-weight-regular);
   line-height: 1.1;
 }
 
@@ -373,7 +377,7 @@
 .profile-editor__form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
   padding: 22px;
 }
 
@@ -388,7 +392,7 @@
 }
 
 .profile-editor__intro p {
-  margin-top: 6px;
+  margin-top: 2px;
   color: var(--color-text-meta);
   font-size: 13px;
   line-height: 1.45;
@@ -397,13 +401,13 @@
 .profile-editor__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 4px 14px;
 }
 
 .profile-editor__field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
 }
 
 .profile-editor__field--wide {
@@ -431,7 +435,7 @@
 .profile-editor__input,
 .profile-editor__textarea {
   width: 100%;
-  padding: 12px 14px;
+  padding: 9px 12px;
   border: 1px solid rgb(203 210 222 / 88%);
   border-radius: 14px;
   background: rgb(255 255 255 / 88%);
@@ -441,7 +445,7 @@
 
 .profile-editor__textarea {
   resize: vertical;
-  min-height: 108px;
+  min-height: 84px;
   line-height: 1.45;
 }
 
@@ -473,18 +477,20 @@
 
 .profile-editor__actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 10px;
+  margin-top: 2px;
 }
 
 .profile-editor__button {
+  flex: 1 1 0;
+  width: 100%;
   padding: 12px 18px;
-  border: 1px solid rgb(203 210 222 / 88%);
+  border: 1px solid rgb(94 105 230 / 50%);
   border-radius: 14px;
-  background: rgb(255 255 255 / 86%);
-  color: var(--color-text-main);
-  font-size: 14px;
-  font-weight: 600;
+  background: rgb(255 255 255 / 84%);
+  color: var(--color-interactive-primary);
+  font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -559,9 +565,9 @@
   border-radius: 14px;
   background: linear-gradient(180deg, rgb(255 255 255 / 93%), rgb(239 242 255 / 90%));
   box-shadow: 0 8px 18px rgb(35 45 120 / 16%);
-  color: var(--color-interactive-primary);
-  font-size: 12px;
-  font-weight: 500;
+  color: var(--color-text-main);
+  font-size: var(--text-size-main);
+  font-weight: var(--font-weight-regular);
   cursor: pointer;
   text-decoration: none;
   transition:
@@ -686,12 +692,36 @@
 
 .profile-post-modal__close,
 .profile-post-delete-modal__close {
-  border: 0;
-  background: transparent;
-  color: var(--color-text-main);
-  cursor: pointer;
-  font-size: 17px;
+  display: inline-flex;
+  width: 45px;
+  min-width: 45px;
+  height: 45px;
+  align-items: center;
+  justify-content: center;
   padding: 0;
+  border: 0;
+  border-radius: var(--radius-input);
+  background: var(--color-surface-card);
+  color: var(--color-interactive-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 28px;
+  line-height: 1;
+  transition:
+    background-color var(--transition-control),
+    color var(--transition-control),
+    transform var(--transition-control);
+}
+
+.profile-post-modal__close:hover,
+.profile-post-delete-modal__close:hover {
+  background: var(--color-interactive-secondary-hover);
+}
+
+.profile-post-modal__close:focus-visible,
+.profile-post-delete-modal__close:focus-visible {
+  outline: 2px solid rgb(95 99 221 / 45%);
+  outline-offset: 2px;
 }
 
 .profile-post-modal__textarea {
@@ -707,6 +737,15 @@
   line-height: 1.5;
   margin-top: 18px;
   padding: 16px 18px;
+  transition:
+    border-color var(--transition-control),
+    box-shadow var(--transition-control);
+}
+
+.profile-post-modal__textarea:focus {
+  border-color: rgb(171 180 212);
+  box-shadow: 0 0 0 3px rgb(171 180 212 / 18%);
+  outline: none;
 }
 
 .profile-post-modal__toolbar {
@@ -784,6 +823,7 @@
 
 .profile-post-modal__button,
 .profile-post-delete-modal__button {
+  flex: 1 1 0;
   width: 100%;
   border: 1px solid rgb(94 105 230 / 50%);
   border-radius: 14px;
@@ -804,10 +844,6 @@
 
 .profile-post-modal__button--secondary {
   width: 100%;
-}
-
-.profile-post-modal__button--primary {
-  flex: 1.35;
 }
 
 .profile-post-modal__actions .profile-post-modal__button:not(.profile-post-modal__button--primary) {
@@ -1133,7 +1169,7 @@
 .profile-avatar-modal {
   position: fixed;
   inset: 0;
-  z-index: 230;
+  z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1171,12 +1207,34 @@
 }
 
 .profile-avatar-modal__close {
+  display: inline-flex;
+  width: 45px;
+  min-width: 45px;
+  height: 45px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: 0;
-  background: transparent;
-  color: #111827;
+  border-radius: var(--radius-input);
+  background: var(--color-surface-card);
+  color: var(--color-interactive-primary);
   font: inherit;
-  font-size: 18px;
+  font-size: 28px;
+  line-height: 1;
   cursor: pointer;
+  transition:
+    background-color var(--transition-control),
+    color var(--transition-control),
+    transform var(--transition-control);
+}
+
+.profile-avatar-modal__close:hover {
+  background: var(--color-interactive-secondary-hover);
+}
+
+.profile-avatar-modal__close:focus-visible {
+  outline: 2px solid rgb(95 99 221 / 45%);
+  outline-offset: 2px;
 }
 
 .profile-avatar-modal__text {
@@ -1279,15 +1337,22 @@
   color: #fff;
 }
 
+.profile-avatar-modal__button--secondary,
 .profile-avatar-modal__button--ghost {
-  width: 104px;
   background: #fff;
+  color: #5f63dd;
+}
+
+.profile-avatar-modal__button--ghost {
+  width: 100%;
+}
+
+.profile-avatar-modal__button--full {
+  width: 100%;
 }
 
 .profile-avatar-modal__button--danger {
-  margin-top: 10px;
-  background: #5f63dd;
-  color: #fff;
+  margin-top: 0;
 }
 
 .profile-avatar-modal__tools {
@@ -1297,18 +1362,11 @@
 
 .profile-avatar-modal__tool-button {
   flex: 1 1 0;
-  margin-top: 10px;
+  margin-top: 0;
   min-height: 36px;
   padding: 8px 12px;
-  border: 1px solid rgb(95 99 221 / 35%);
-  border-radius: 9px;
-  background: rgb(245 247 255 / 96%);
-  color: #5f63dd;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1;
-  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .profile-avatar-modal__tool-button:disabled {
@@ -1319,7 +1377,7 @@
 .profile-avatar-modal__zoom {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   margin-top: 14px;
 }
 
@@ -1343,9 +1401,12 @@
 
 .profile-avatar-modal__actions {
   display: flex;
-  justify-content: space-between;
   gap: 10px;
   margin-top: 14px;
+}
+
+.profile-avatar-modal__actions .profile-avatar-modal__button {
+  flex: 1 1 0;
 }
 
 .profile-avatar-delete-modal {
@@ -1387,12 +1448,34 @@
 }
 
 .profile-avatar-delete-modal__close {
+  display: inline-flex;
+  width: 45px;
+  min-width: 45px;
+  height: 45px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: 0;
-  background: transparent;
-  color: #111827;
+  border-radius: var(--radius-input);
+  background: var(--color-surface-card);
+  color: var(--color-interactive-primary);
   font: inherit;
-  font-size: 18px;
+  font-size: 28px;
+  line-height: 1;
   cursor: pointer;
+  transition:
+    background-color var(--transition-control),
+    color var(--transition-control),
+    transform var(--transition-control);
+}
+
+.profile-avatar-delete-modal__close:hover {
+  background: var(--color-interactive-secondary-hover);
+}
+
+.profile-avatar-delete-modal__close:focus-visible {
+  outline: 2px solid rgb(95 99 221 / 45%);
+  outline-offset: 2px;
 }
 
 .profile-avatar-delete-modal__text {
@@ -1473,12 +1556,34 @@
 }
 
 .profile-delete-modal__close {
+  display: inline-flex;
+  width: 45px;
+  min-width: 45px;
+  height: 45px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: 0;
-  background: transparent;
-  color: var(--color-text-main);
+  border-radius: var(--radius-input);
+  background: var(--color-surface-card);
+  color: var(--color-interactive-primary);
   font: inherit;
-  font-size: 18px;
+  font-size: 28px;
+  line-height: 1;
   cursor: pointer;
+  transition:
+    background-color var(--transition-control),
+    color var(--transition-control),
+    transform var(--transition-control);
+}
+
+.profile-delete-modal__close:hover {
+  background: var(--color-interactive-secondary-hover);
+}
+
+.profile-delete-modal__close:focus-visible {
+  outline: 2px solid rgb(95 99 221 / 45%);
+  outline-offset: 2px;
 }
 
 .profile-delete-modal__text,

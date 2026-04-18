@@ -1878,9 +1878,6 @@ function refreshChatsPage(root: ParentNode = document): void {
   const composeWasFocused = document.activeElement === composeInput;
   const composeSelectionStart = composeInput?.selectionStart ?? null;
   const composeSelectionEnd = composeInput?.selectionEnd ?? null;
-  if (composeInput && chatsState.selectedChatId) {
-    chatsState.composeDraftByChatId.set(chatsState.selectedChatId, composeInput.value);
-  }
 
   const currentMessagesContainer = getChatMessagesContainer(container);
   const previousScrollTop = currentMessagesContainer?.scrollTop ?? 0;
@@ -2183,7 +2180,7 @@ export function initChats(root: Document | HTMLElement = document): void {
     shouldScrollChatToBottom = true;
     queueOutgoingForRetry(selectedThread.id, optimisticMessage);
     persistChatsData();
-    chatsState.composeDraftByChatId.delete(selectedThread.id);
+    chatsState.composeDraftByChatId.set(selectedThread.id, "");
     target.reset();
     refreshChatsPage(root);
     requestAnimationFrame(() => {

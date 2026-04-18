@@ -103,6 +103,7 @@ type ChatsState = {
   loadingMessages: boolean;
   source: "api" | "mock";
   query: string;
+  composeDraftByChatId: Map<string, string>;
   threads: ChatViewThread[];
   selectedChatId: string;
   errorMessage: string;
@@ -125,6 +126,7 @@ const chatsState: ChatsState = {
   loadingMessages: false,
   source: "mock",
   query: "",
+  composeDraftByChatId: new Map(),
   threads: [],
   selectedChatId: "",
   errorMessage: "",
@@ -151,6 +153,7 @@ function resetChatsState(): void {
   chatsState.loadingMessages = false;
   chatsState.source = "mock";
   chatsState.query = "";
+  chatsState.composeDraftByChatId.clear();
   chatsState.threads = [];
   chatsState.selectedChatId = "";
   chatsState.errorMessage = "";
@@ -1761,6 +1764,9 @@ function renderScrollControls(thread?: ChatViewThread): string {
 function renderChatsContent(): string {
   const filteredThreads = getFilteredThreads();
   const selectedThread = getSelectedThread(filteredThreads);
+  const composeDraft = selectedThread
+    ? (chatsState.composeDraftByChatId.get(selectedThread.id) ?? "")
+    : "";
 
   if (selectedThread && selectedThread.id !== chatsState.selectedChatId) {
     chatsState.selectedChatId = selectedThread.id;
@@ -1844,6 +1850,7 @@ function renderChatsContent(): string {
                   class="chat-compose__field"
                   type="text"
                   name="message"
+                  value="${escapeHtml(composeDraft)}"
                   placeholder="Начните печатать сообщение..."
                   autocomplete="off"
                 >
@@ -1871,6 +1878,9 @@ function refreshChatsPage(root: ParentNode = document): void {
   const composeWasFocused = document.activeElement === composeInput;
   const composeSelectionStart = composeInput?.selectionStart ?? null;
   const composeSelectionEnd = composeInput?.selectionEnd ?? null;
+  if (composeInput && chatsState.selectedChatId) {
+    chatsState.composeDraftByChatId.set(chatsState.selectedChatId, composeInput.value);
+  }
 
   const currentMessagesContainer = getChatMessagesContainer(container);
   const previousScrollTop = currentMessagesContainer?.scrollTop ?? 0;
@@ -2022,12 +2032,19 @@ export function initChats(root: Document | HTMLElement = document): void {
 
   root.addEventListener("input", (event: Event) => {
     const target = event.target;
-    if (!(target instanceof HTMLInputElement) || !target.matches("[data-chat-search]")) {
+    if (!(target instanceof HTMLInputElement)) {
       return;
     }
 
-    chatsState.query = target.value;
-    refreshChatsPage(root);
+    if (target.matches("[data-chat-search]")) {
+      chatsState.query = target.value;
+      refreshChatsPage(root);
+      return;
+    }
+
+    if (target.matches(".chat-compose__field") && chatsState.selectedChatId) {
+      chatsState.composeDraftByChatId.set(chatsState.selectedChatId, target.value);
+    }
   });
 
   root.addEventListener("click", async (event: Event) => {
@@ -2166,6 +2183,7 @@ export function initChats(root: Document | HTMLElement = document): void {
     shouldScrollChatToBottom = true;
     queueOutgoingForRetry(selectedThread.id, optimisticMessage);
     persistChatsData();
+    chatsState.composeDraftByChatId.delete(selectedThread.id);
     target.reset();
     refreshChatsPage(root);
     requestAnimationFrame(() => {

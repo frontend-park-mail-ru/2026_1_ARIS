@@ -34,6 +34,18 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
         );
         initProfileToggle(nextRoot);
       }
+      if (nextRoot.querySelector("[data-support-page]")) {
+        const { initSupport } = await import(
+          /* webpackChunkName: "page-support" */ "../pages/support/support"
+        );
+        void initSupport(nextRoot);
+      }
+      if (nextRoot.querySelector("[data-support-stats-page]")) {
+        const { initSupportStats } = await import(
+          /* webpackChunkName: "page-support-stats" */ "../pages/support-stats/support-stats"
+        );
+        initSupportStats(nextRoot);
+      }
     },
   });
 }

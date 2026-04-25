@@ -17,6 +17,8 @@ import "./pages/auth/auth-page.scss";
 import "./pages/chats/chats.css";
 import "./pages/friends/friends.css";
 import "./pages/profile/profile.css";
+import "./pages/support/support.scss";
+import "./pages/support-stats/support-stats.scss";
 
 import "./components/postcard/postcard-element";
 import { createRouter } from "./router/router";
@@ -28,6 +30,7 @@ import { initAvatarFallback } from "./utils/avatar-fallback";
 import { initOfflineIndicator } from "./utils/offline-indicator";
 import { registerServiceWorker } from "./utils/register-service-worker";
 import { onCacheInvalidation } from "./utils/cache-channel";
+import { initSupportIframe } from "./utils/support-widget";
 
 // ---------------------------------------------------------------------------
 // Ленивые фабрики модулей страниц — webpack нарезает их в отдельные чанки
@@ -40,6 +43,9 @@ const loadProfile = () => import(/* webpackChunkName: "page-profile" */ "./pages
 const loadLogin = () => import(/* webpackChunkName: "page-login" */ "./pages/login/login");
 const loadRegister = () =>
   import(/* webpackChunkName: "page-register" */ "./pages/register/register");
+const loadSupport = () => import(/* webpackChunkName: "page-support" */ "./pages/support/support");
+const loadSupportStats = () =>
+  import(/* webpackChunkName: "page-support-stats" */ "./pages/support-stats/support-stats");
 
 // ---------------------------------------------------------------------------
 // Маршруты
@@ -90,6 +96,16 @@ const router = createRouter(root, [
     path: "/id:id",
     title: "ARISNET — Profile",
     render: async (p) => (await loadProfile()).renderProfile(p),
+  },
+  {
+    path: "/support",
+    title: "ARISNET — Support",
+    render: async () => (await loadSupport()).renderSupportWidget(),
+  },
+  {
+    path: "/support/stats",
+    title: "ARISNET — Support Stats",
+    render: async () => (await loadSupportStats()).renderSupportStats(),
   },
 ]);
 
@@ -148,6 +164,7 @@ void (async () => {
   initSidebar();
   initAvatarFallback(document);
   initOfflineIndicator();
+  initSupportIframe();
 })();
 
 onCacheInvalidation(async (key) => {

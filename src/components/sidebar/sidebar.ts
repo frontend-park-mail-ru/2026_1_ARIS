@@ -124,6 +124,17 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
           isStub: isAuthorised,
         })}
+
+        ${
+          isAuthorised
+            ? renderSidebarItem({
+                href: "/support/stats",
+                label: "Поддержка",
+                icon: "/assets/img/icons/chat.svg",
+                isActive: currentPath === "/support/stats",
+              })
+            : ""
+        }
       </section>
 
       ${

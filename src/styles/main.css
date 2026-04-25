@@ -193,7 +193,6 @@ body.has-network-status {
 
 .search-field__input {
   appearance: none;
-  appearance: none;
   width: 100%;
   min-width: 0;
   height: 100%;
@@ -232,6 +231,80 @@ body.has-network-status {
   border-radius: var(--radius-panel);
   background: var(--color-surface-muted);
   box-shadow: var(--shadow-card);
+}
+
+/* ================= SUPPORT WIDGET ================= */
+
+.support-iframe {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 1500;
+  width: 440px;
+  height: 480px;
+  max-height: calc(100vh - 100px);
+  border: none;
+  border-radius: var(--radius-large);
+  box-shadow:
+    0 24px 48px rgb(31 42 95 / 28%),
+    0 0 0 1px rgb(255 255 255 / 40%);
+  background: var(--color-surface-page);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px) scale(0.97);
+  transform-origin: bottom right;
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+
+.support-iframe--open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.support-toggle-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-gradient-status);
+  color: var(--color-text-on-primary);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgb(49 61 145 / 36%);
+  transition:
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.support-toggle-btn:hover {
+  box-shadow: 0 6px 20px rgb(49 61 145 / 48%);
+  transform: scale(1.06);
+}
+
+.support-toggle-btn--active {
+  transform: scale(1.06) rotate(15deg);
+}
+
+@media (width <= 480px) {
+  .support-iframe {
+    width: calc(100vw - 16px);
+    right: 12px;
+    bottom: 72px;
+  }
+
+  .support-toggle-btn {
+    right: 12px;
+  }
 }
 
 /* ================= SKELETON SHIMMER ================= */

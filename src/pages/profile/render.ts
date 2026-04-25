@@ -277,7 +277,7 @@ export function renderInfoRows(profile: DisplayProfile): string {
   }
 
   return `
-    <div class="profile-info-grid">
+    <dl class="profile-info-grid">
       ${rows}
     </div>
   `;

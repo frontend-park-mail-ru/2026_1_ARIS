@@ -1,5 +1,5 @@
 import { ApiError, apiRequest } from "./core/client";
-
+import { getSessionUser } from "../state/session";
 // Повторно экспортируем ApiError для кода, который импортирует его из этого модуля.
 export { ApiError };
 
@@ -136,6 +136,12 @@ export function subscribeToChatMessages(
   chatId: string,
   handlers: ChatMessageSocketHandlers,
 ): () => void {
+  const user = getSessionUser();
+
+  if (!user) {
+    return () => {};
+  }
+
   const socket = new WebSocket(getChatSocketUrl(chatId));
 
   socket.addEventListener("message", (event: MessageEvent<string>) => {

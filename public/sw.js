@@ -67,7 +67,20 @@ async function staleWhileRevalidate(request, cacheName) {
 
       return withSourceHeader(response, "network");
     })
-    .catch(() => (cached ? withSourceHeader(cached, "cache") : cached));
+    .catch(() => {
+      if (cached) {
+        return withSourceHeader(cached, "cache");
+      }
+
+      return new Response("Offline", {
+        status: 503,
+        statusText: "Service Unavailable",
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "x-aris-response-source": "offline",
+        },
+      });
+    });
 
   return cached ? withSourceHeader(cached, "cache") : networkPromise;
 }

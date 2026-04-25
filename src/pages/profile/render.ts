@@ -514,7 +514,7 @@ export function renderProfilePosts(
           isOwnProfile
             ? `
               <div class="profile-posts__toolbar" data-profile-post-toolbar>
-                <div class="profile-posts__tabs" role="tablist" aria-label="Фильтр публикаций">
+                <div class="profile-posts__tabs" aria-label="Фильтр публикаций">
                   <button
                     type="button"
                     class="profile-posts__tab is-active"

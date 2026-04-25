@@ -354,6 +354,7 @@
 }
 
 .sw-ticket {
+  width: 100%;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-border-default);
   border-radius: 10px;
@@ -361,6 +362,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+
+  &:hover {
+    border-color: rgb(74 81 208 / 35%);
+    box-shadow: 0 10px 24px rgb(31 42 95 / 10%);
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgb(74 81 208 / 28%);
+    outline-offset: 2px;
+  }
 }
 
 .sw-ticket__row {
@@ -401,6 +416,78 @@
 .sw-ticket__time {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
+}
+
+.sw-ticket-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+}
+
+.sw-ticket-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(16 23 48 / 26%);
+  backdrop-filter: blur(2px);
+}
+
+.sw-ticket-modal__dialog {
+  position: absolute;
+  inset: auto var(--space-4) var(--space-4);
+  max-height: calc(100% - 32px);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-default);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 98%);
+  box-shadow: 0 24px 40px rgb(31 42 95 / 16%);
+  overflow-y: auto;
+}
+
+.sw-ticket-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: rgb(107 114 128 / 12%);
+  color: var(--color-text-main);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sw-ticket-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sw-ticket-modal__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-right: 36px;
+}
+
+.sw-ticket-modal__title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  line-height: 1.35;
+}
+
+.sw-ticket-modal__time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.sw-ticket-modal__description {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: var(--color-text-main);
 }
 
 // ---------------------------------------------------------------------------

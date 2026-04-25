@@ -1,5 +1,6 @@
 import {
   createTicket,
+  getTicketById,
   getMyTickets,
   type Ticket,
   type TicketCategory,
@@ -62,14 +63,14 @@ function renderCategoryOptions(): string {
 
 function renderTicketCard(ticket: Ticket): string {
   return `
-    <article class="sw-ticket" data-ticket-id="${escapeHtml(ticket.id)}">
+    <button type="button" class="sw-ticket" data-ticket-id="${escapeHtml(ticket.id)}">
       <div class="sw-ticket__row">
         <span class="sw-ticket__cat">${escapeHtml(CATEGORY_LABELS[ticket.category] ?? ticket.category)}</span>
         <span class="sw-ticket__status sw-ticket__status--${ticket.status}">${escapeHtml(STATUS_LABELS[ticket.status] ?? ticket.status)}</span>
       </div>
       <p class="sw-ticket__title">${escapeHtml(ticket.title)}</p>
       <time class="sw-ticket__time">${formatDate(ticket.createdAt)}</time>
-    </article>
+    </button>
   `;
 }
 
@@ -78,6 +79,18 @@ function renderTicketsList(tickets: Ticket[]): string {
     return `<p class="sw-empty">У вас пока нет обращений.</p>`;
   }
   return tickets.map(renderTicketCard).join("");
+}
+
+function renderTicketDetails(ticket: Ticket): string {
+  return `
+    <div class="sw-ticket-modal__meta">
+      <span class="sw-ticket__cat">${escapeHtml(CATEGORY_LABELS[ticket.category] ?? ticket.category)}</span>
+      <span class="sw-ticket__status sw-ticket__status--${ticket.status}">${escapeHtml(STATUS_LABELS[ticket.status] ?? ticket.status)}</span>
+    </div>
+    <h3 class="sw-ticket-modal__title">${escapeHtml(ticket.title)}</h3>
+    <time class="sw-ticket-modal__time">${formatDate(ticket.createdAt)}</time>
+    <p class="sw-ticket-modal__description">${escapeHtml(ticket.description)}</p>
+  `;
 }
 
 export function renderSupportWidget(): string {
@@ -236,6 +249,16 @@ export function renderSupportWidget(): string {
           </div>
         </div>
       </div>
+
+      <div class="sw-ticket-modal" data-sw-ticket-modal hidden>
+        <div class="sw-ticket-modal__backdrop" data-sw-ticket-close></div>
+        <section class="sw-ticket-modal__dialog" role="dialog" aria-modal="true" aria-label="Обращение">
+          <button type="button" class="sw-ticket-modal__close" data-sw-ticket-close aria-label="Закрыть">
+            ×
+          </button>
+          <div class="sw-ticket-modal__body" data-sw-ticket-modal-body></div>
+        </section>
+      </div>
     </div>
   `;
 }
@@ -260,9 +283,13 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   const previewImg = root.querySelector<HTMLImageElement>("[data-sw-preview-img]");
   const removeBtn = root.querySelector<HTMLButtonElement>("[data-sw-remove-file]");
   const uploadLabel = root.querySelector<HTMLElement>("[data-sw-upload-label]");
+  const ticketsWrap = root.querySelector<HTMLElement>("[data-sw-tickets]");
+  const ticketModal = root.querySelector<HTMLElement>("[data-sw-ticket-modal]");
+  const ticketModalBody = root.querySelector<HTMLElement>("[data-sw-ticket-modal-body]");
 
   let selectedFile: File | null = null;
   let resolvedEmail = (user.email ?? "").trim();
+  let currentTickets: Ticket[] = [];
 
   closeButton?.addEventListener("click", () => {
     window.parent?.postMessage({ type: "support-widget-close" }, window.location.origin);
@@ -326,6 +353,62 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
 
   removeBtn?.addEventListener("click", () => clearPreview());
 
+  const closeTicketModal = (): void => {
+    if (!ticketModal || !ticketModalBody) return;
+    ticketModal.hidden = true;
+    ticketModalBody.innerHTML = "";
+  };
+
+  const openTicketModal = async (ticketId: string): Promise<void> => {
+    if (!ticketModal || !ticketModalBody) return;
+
+    const cachedTicket = currentTickets.find((ticket) => ticket.id === ticketId);
+    if (cachedTicket) {
+      ticketModalBody.innerHTML = renderTicketDetails(cachedTicket);
+    } else {
+      ticketModalBody.innerHTML = `<p class="sw-loading">Загрузка…</p>`;
+    }
+    ticketModal.hidden = false;
+
+    if (cachedTicket?.description) {
+      return;
+    }
+
+    try {
+      const freshTicket = await getTicketById(ticketId);
+      currentTickets = currentTickets.some((ticket) => ticket.id === ticketId)
+        ? currentTickets.map((ticket) => (ticket.id === ticketId ? freshTicket : ticket))
+        : [...currentTickets, freshTicket];
+      ticketModalBody.innerHTML = renderTicketDetails(freshTicket);
+    } catch (error) {
+      ticketModalBody.innerHTML = `
+        <p class="sw-empty">Не удалось загрузить детали обращения.</p>
+      `;
+      console.error("[support] load ticket failed", error);
+    }
+  };
+
+  root.querySelectorAll<HTMLElement>("[data-sw-ticket-close]").forEach((node) => {
+    node.addEventListener("click", () => closeTicketModal());
+  });
+
+  ticketsWrap?.addEventListener("click", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const ticketButton = target.closest<HTMLElement>("[data-ticket-id]");
+    if (!ticketButton) return;
+
+    const ticketId = ticketButton.getAttribute("data-ticket-id");
+    if (!ticketId) return;
+
+    void openTicketModal(ticketId);
+  });
+
+  const updateTickets = (tickets: Ticket[]): void => {
+    currentTickets = tickets;
+  };
+
   // --- переключение вкладок ---
   root.querySelectorAll<HTMLButtonElement>("[data-sw-tab]").forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -344,7 +427,7 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
       });
 
       if (targetPanel === "my") {
-        void loadMyTickets(root);
+        void loadMyTickets(root, updateTickets);
       }
     });
   });
@@ -417,7 +500,10 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   });
 }
 
-async function loadMyTickets(root: Document | HTMLElement): Promise<void> {
+async function loadMyTickets(
+  root: Document | HTMLElement,
+  onLoaded?: (tickets: Ticket[]) => void,
+): Promise<void> {
   const wrap = root.querySelector<HTMLElement>("[data-sw-tickets]");
   if (!wrap) return;
 
@@ -425,6 +511,7 @@ async function loadMyTickets(root: Document | HTMLElement): Promise<void> {
 
   try {
     const tickets = await getMyTickets();
+    onLoaded?.(tickets);
     wrap.innerHTML = renderTicketsList(tickets);
   } catch (err) {
     wrap.innerHTML = `<p class="sw-empty">Не удалось загрузить обращения.</p>`;

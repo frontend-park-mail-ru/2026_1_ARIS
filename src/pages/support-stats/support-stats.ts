@@ -1,7 +1,7 @@
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { getSessionUser } from "../../state/session";
-import { getSupportStats, type SupportStats } from "../../api/support";
+import { getMyTickets, getSupportStats, type SupportStats, type Ticket } from "../../api/support";
 
 // ---------------------------------------------------------------------------
 // Вспомогательные функции
@@ -46,34 +46,34 @@ function renderStats(stats: SupportStats): string {
   `;
 }
 
-function renderStub(): string {
-  return `
-    <section class="ss-section">
-      <h2 class="ss-section__title">Общая статистика</h2>
-      <div class="ss-grid">
-        ${renderStatCard("Всего обращений", "—", true)}
-        ${renderStatCard("Открыто", "—")}
-        ${renderStatCard("В работе", "—")}
-        ${renderStatCard("Ожидают ответа", "—")}
-        ${renderStatCard("Закрыто", "—")}
-      </div>
-    </section>
+function buildStatsFromTickets(tickets: Ticket[]): SupportStats {
+  return tickets.reduce<SupportStats>(
+    (acc, ticket) => {
+      acc.total += 1;
 
-    <section class="ss-section">
-      <h2 class="ss-section__title">По категориям</h2>
-      <div class="ss-grid">
-        ${renderStatCard("Баги", "—")}
-        ${renderStatCard("Предложения", "—")}
-        ${renderStatCard("Жалобы", "—")}
-        ${renderStatCard("Вопросы", "—")}
-        ${renderStatCard("Другое", "—")}
-      </div>
-    </section>
+      if (ticket.status === "open") acc.open += 1;
+      if (ticket.status === "in_progress") acc.inProgress += 1;
+      if (ticket.status === "waiting_user") acc.waitingUser += 1;
+      if (ticket.status === "closed") acc.closed += 1;
 
-    <div class="ss-placeholder">
-      <p class="ss-placeholder__text">Статистика станет доступна после подключения backend.</p>
-    </div>
-  `;
+      acc.byCategory[ticket.category] += 1;
+      return acc;
+    },
+    {
+      total: 0,
+      open: 0,
+      inProgress: 0,
+      waitingUser: 0,
+      closed: 0,
+      byCategory: {
+        bug: 0,
+        feature_request: 0,
+        complaint: 0,
+        question: 0,
+        other: 0,
+      },
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -105,8 +105,18 @@ export async function renderSupportStats(): Promise<string> {
     const stats = await getSupportStats();
     statsHtml = renderStats(stats);
   } catch (error) {
-    console.warn("[support-stats] fallback stub enabled", error);
-    statsHtml = renderStub();
+    console.warn("[support-stats] stats endpoint unavailable, fallback to my tickets", error);
+    try {
+      const tickets = await getMyTickets();
+      statsHtml = renderStats(buildStatsFromTickets(tickets));
+    } catch (ticketsError) {
+      console.error("[support-stats] failed to load tickets for stats", ticketsError);
+      statsHtml = `
+        <div class="ss-error">
+          <p>Не удалось загрузить статистику обращений.</p>
+        </div>
+      `;
+    }
   }
 
   return `

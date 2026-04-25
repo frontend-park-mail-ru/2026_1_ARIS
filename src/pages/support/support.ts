@@ -124,19 +124,6 @@ export function renderSupportWidget(): string {
             </div>
 
             <div class="sw-form__field">
-              <label class="sw-form__label" for="sw-login">Логин</label>
-              <input
-                id="sw-login"
-                name="login"
-                type="text"
-                class="sw-form__input sw-form__input--readonly"
-                placeholder="Определится автоматически"
-                readonly
-                data-sw-login
-              >
-            </div>
-
-            <div class="sw-form__field">
               <label class="sw-form__label" for="sw-email">E-mail <span class="sw-form__optional">контактный для связи</span></label>
               <input
                 id="sw-email"
@@ -248,7 +235,6 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   if (!user) return;
 
   const closeButton = root.querySelector<HTMLButtonElement>("[data-sw-close]");
-  const loginInput = root.querySelector<HTMLInputElement>("[data-sw-login]");
   const emailInput = root.querySelector<HTMLInputElement>("[data-sw-email]");
   const form = root.querySelector<HTMLFormElement>("[data-sw-form]");
   const submitBtn = root.querySelector<HTMLButtonElement>("[data-sw-submit]");
@@ -262,7 +248,6 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   const uploadLabel = root.querySelector<HTMLElement>("[data-sw-upload-label]");
 
   let selectedFile: File | null = null;
-  let resolvedLogin = (user.login ?? "").trim();
   let resolvedEmail = (user.email ?? "").trim();
 
   closeButton?.addEventListener("click", () => {
@@ -270,10 +255,6 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   });
 
   const syncIdentityFields = (): void => {
-    if (loginInput) {
-      loginInput.value = resolvedLogin;
-    }
-
     if (emailInput) {
       emailInput.value = resolvedEmail;
     }
@@ -362,7 +343,6 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
 
     const formData = new FormData(form);
     const category = formData.get("category") as TicketCategory;
-    const login = ((formData.get("login") as string) ?? resolvedLogin).trim();
     const email = ((formData.get("email") as string) ?? resolvedEmail).trim();
     const title = ((formData.get("title") as string) ?? "").trim();
     const description = ((formData.get("description") as string) ?? "").trim();
@@ -388,7 +368,6 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
     try {
       await createTicket({
         category,
-        login,
         email,
         title,
         description,

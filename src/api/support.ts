@@ -67,7 +67,6 @@ function mapTicket(raw: RawTicket): Ticket {
 
 export async function createTicket(data: {
   category: TicketCategory;
-  login: string;
   email: string;
   title: string;
   description: string;
@@ -75,7 +74,6 @@ export async function createTicket(data: {
 }): Promise<Ticket> {
   const formData = new FormData();
   formData.append("category", data.category);
-  formData.append("login", data.login);
   formData.append("email", data.email);
   formData.append("title", data.title);
   formData.append("description", data.description);

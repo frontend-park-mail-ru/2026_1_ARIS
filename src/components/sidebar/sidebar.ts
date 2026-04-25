@@ -1,5 +1,6 @@
 import { getFeedMode, getSessionUser, setFeedMode, type FeedMode } from "../../state/session";
-import { clearFeedCache, refreshFeedCenter } from "../../pages/feed/feed";
+import { clearFeedCache } from "../../pages/feed/cache";
+import { domPatch } from "../../vdom/patch";
 
 type SidebarItemOptions = {
   href?: string;
@@ -24,7 +25,7 @@ function normalisePath(path: string): string {
 }
 
 /**
- * Renders a sidebar navigation item.
+ * Рендерит элемент навигации боковой панели.
  *
  * @param {SidebarItemOptions} options
  * @returns {string}
@@ -62,7 +63,7 @@ function renderSidebarItem({
 }
 
 /**
- * Renders the left sidebar.
+ * Рендерит левую боковую панель.
  *
  * @param {RenderSidebarOptions} [options={}]
  * @returns {string}
@@ -155,7 +156,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
 }
 
 /**
- * Initializes sidebar controls.
+ * Инициализирует элементы управления боковой панели.
  *
  * @param {Document|HTMLElement} [root=document]
  * @returns {void}
@@ -182,14 +183,14 @@ export function initSidebar(root: Document | HTMLElement = document): void {
 
     setFeedMode(mode as FeedMode);
     refreshSidebar();
-    void refreshFeedCenter();
+    void import("../../pages/feed/feed").then((m) => m.refreshFeedCenter());
   });
 
   bindableRoot.__sidebarBound = true;
 }
 
 /**
- * Refreshes the sidebar in place.
+ * Обновляет боковую панель на месте.
  *
  * @returns {void}
  */
@@ -204,5 +205,5 @@ export function refreshSidebar(): void {
   const newSidebar = template.content.firstElementChild;
   if (!(newSidebar instanceof HTMLElement)) return;
 
-  sidebar.replaceWith(newSidebar);
+  domPatch(sidebar, newSidebar);
 }

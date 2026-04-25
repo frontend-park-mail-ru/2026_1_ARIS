@@ -5,10 +5,10 @@
   --sidebar-padding-right: 10px;
   --sidebar-gap: 16px;
   --sidebar-card-width: 220px;
-  --sidebar-card-padding: 20px;
-  --sidebar-card-gap: 5px;
+  --sidebar-card-padding: var(--space-5);
+  --sidebar-card-gap: var(--space-1);
   --sidebar-sticky-top: 116px;
-  --sidebar-item-padding-x: 10px;
+  --sidebar-item-padding-x: var(--space-3);
   --sidebar-icon-size: 25px;
 
   display: flex;
@@ -41,7 +41,7 @@
       color: var(--color-text-main);
       font-size: var(--text-size-title);
       font-weight: var(--font-weight-bold);
-      line-height: 22px;
+      line-height: var(--line-height-base);
       text-align: left;
     }
   }
@@ -56,20 +56,31 @@
     border-radius: var(--radius-small);
     background: transparent;
     text-decoration: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 
     &:hover {
-      background: var(--color-interactive-hover);
+      background: rgb(74 81 208 / 12%);
     }
 
     &:active {
       transform: var(--control-press-transform);
     }
 
+    &:focus-visible {
+      outline: none;
+      box-shadow: var(--control-focus-ring);
+    }
+
     &--active {
-      background: var(--color-interactive-active);
+      background: rgb(74 81 208 / 18%);
 
       &:hover {
-        background: var(--color-interactive-active);
+        background: rgb(74 81 208 / 18%);
+      }
+
+      .sidebar-item__label {
+        color: var(--color-text-main);
       }
     }
 

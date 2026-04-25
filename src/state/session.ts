@@ -1,14 +1,15 @@
 import { getCurrentUser, type User } from "../api/auth";
 import { getMyProfile } from "../api/profile";
 import { isNetworkUnavailableError } from "./network-status";
+import { StateManager } from "./StateManager";
 
 /**
- * Available feed modes.
+ * Доступные режимы ленты.
  */
 export type FeedMode = "by-time" | "for-you";
 
 /**
- * Global client session state.
+ * Глобальное состояние клиентской сессии.
  */
 export type SessionState = {
   user: User | null;
@@ -16,7 +17,7 @@ export type SessionState = {
 };
 
 /**
- * Session change event detail payload.
+ * Полезная нагрузка события изменения сессии.
  */
 type SessionChangeDetail = {
   key: "user" | "feedMode" | "init";
@@ -24,12 +25,13 @@ type SessionChangeDetail = {
 };
 
 /**
- * Internal session state store.
+ * Реактивное хранилище состояния сессии.
+ * Можно подписаться на изменения через `sessionStore.subscribe(callback)`.
  */
-const sessionState: SessionState = {
+export const sessionStore = new StateManager<SessionState>({
   user: null,
   feedMode: "by-time",
-};
+});
 
 const SESSION_USER_STORAGE_KEY = "arisfront:session-user";
 
@@ -70,114 +72,111 @@ function persistSessionUser(user: User | null): void {
 
     localStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify(user));
   } catch {
-    // Ignore storage errors and keep runtime state usable.
+    // Игнорируем ошибки хранилища, чтобы состояние во время выполнения оставалось рабочим.
   }
 }
 
 /**
- * Checks whether value is a valid feed mode.
+ * Проверяет, является ли значение корректным режимом ленты.
  */
 function isFeedMode(value: string): value is FeedMode {
   return value === "by-time" || value === "for-you";
 }
 
 /**
- * Emits a session state change event.
+ * Отправляет событие изменения состояния сессии.
  */
 function emitSessionChange(key: SessionChangeDetail["key"]): void {
   window.dispatchEvent(
     new CustomEvent<SessionChangeDetail>("sessionchange", {
-      detail: {
-        key,
-        state: getSessionState(),
-      },
+      detail: { key, state: sessionStore.get() as SessionState },
     }),
   );
 }
 
 /**
- * Returns a readonly snapshot of the session state.
+ * Возвращает snapshot состояния сессии только для чтения.
  */
 export function getSessionState(): SessionState {
-  return { ...sessionState };
+  return sessionStore.get() as SessionState;
 }
 
 /**
- * Returns current authorised user.
+ * Возвращает текущего авторизованного пользователя.
  */
 export function getSessionUser(): User | null {
-  return sessionState.user;
+  return sessionStore.get().user;
 }
 
 /**
- * Returns current feed mode.
+ * Возвращает текущий режим ленты.
  */
 export function getFeedMode(): FeedMode {
-  return sessionState.feedMode;
+  return sessionStore.get().feedMode;
 }
 
 /**
- * Sets current user in session state.
+ * Устанавливает текущего пользователя в состояние сессии.
  */
 export function setSessionUser(user: User | null): void {
-  sessionState.user = user;
+  sessionStore.patch({ user });
   persistSessionUser(user);
   emitSessionChange("user");
 }
 
 /**
- * Clears current user from session state.
+ * Удаляет текущего пользователя из состояния сессии.
  */
 export function clearSessionUser(): void {
-  sessionState.user = null;
+  sessionStore.patch({ user: null });
   persistSessionUser(null);
   emitSessionChange("user");
 }
 
 /**
- * Sets current feed mode.
+ * Устанавливает текущий режим ленты.
  */
 export function setFeedMode(mode: FeedMode): void {
-  sessionState.feedMode = mode;
+  sessionStore.patch({ feedMode: mode });
   localStorage.setItem("feedMode", mode);
   emitSessionChange("feedMode");
 }
 
 /**
- * Initializes session state from localStorage and backend session.
+ * Инициализирует состояние сессии из localStorage и backend-сессии.
  */
 export async function initSession(): Promise<void> {
   const savedMode = localStorage.getItem("feedMode");
-  sessionState.feedMode = savedMode && isFeedMode(savedMode) ? savedMode : "by-time";
-  sessionState.user = readPersistedSessionUser();
+  sessionStore.patch({
+    feedMode: savedMode && isFeedMode(savedMode) ? savedMode : "by-time",
+    user: readPersistedSessionUser(),
+  });
 
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      sessionState.user = null;
+    const [user, profileResult] = await Promise.allSettled([getCurrentUser(), getMyProfile()]);
+
+    if (user.status === "rejected" || !user.value) {
+      sessionStore.patch({ user: null });
       persistSessionUser(null);
     } else {
-      let nextUser = user;
+      let nextUser = user.value;
 
-      try {
-        const profile = await getMyProfile();
-        const avatarLink = typeof profile.imageLink === "string" ? profile.imageLink.trim() : "";
-
+      if (profileResult.status === "fulfilled") {
+        const avatarLink =
+          typeof profileResult.value.imageLink === "string"
+            ? profileResult.value.imageLink.trim()
+            : "";
         if (avatarLink) {
-          nextUser = { ...user, avatarLink };
-        }
-      } catch (profileError) {
-        if (!isNetworkUnavailableError(profileError)) {
-          console.warn("[session] failed to enrich current user with profile avatar", profileError);
+          nextUser = { ...nextUser, avatarLink };
         }
       }
 
-      sessionState.user = nextUser;
+      sessionStore.patch({ user: nextUser });
       persistSessionUser(nextUser);
     }
   } catch (error) {
     if (!isNetworkUnavailableError(error)) {
-      sessionState.user = null;
+      sessionStore.patch({ user: null });
       persistSessionUser(null);
     }
   }

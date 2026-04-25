@@ -49,7 +49,7 @@ const EMPTY_VALIDATION_ERRORS: ValidationErrors = {
 };
 
 /**
- * Extracts and normalizes auth form values.
+ * Извлекает и нормализует значения формы авторизации.
  *
  * @param {HTMLFormElement} form
  * @returns {Partial<RegisterValues>}
@@ -69,7 +69,7 @@ function getFormValues(form: HTMLFormElement): Partial<RegisterValues> {
 }
 
 /**
- * Returns current register step from auth form dataset.
+ * Возвращает текущий шаг регистрации из dataset формы авторизации.
  *
  * @param {HTMLElement} authForm
  * @returns {RegisterStep}
@@ -80,7 +80,7 @@ function getRegisterStep(authForm: HTMLElement): RegisterStep {
 }
 
 /**
- * Returns register fields visible on the specified step.
+ * Возвращает поля регистрации, видимые на указанном шаге.
  *
  * @param {RegisterStep} step
  * @returns {FieldName[]}
@@ -90,7 +90,7 @@ function getRegisterStepFields(step: RegisterStep): readonly FieldName[] {
 }
 
 /**
- * Returns merged register values from draft and current form.
+ * Возвращает объединённые значения регистрации из черновика и текущей формы.
  *
  * @param {HTMLFormElement} form
  * @returns {RegisterValues}
@@ -103,7 +103,7 @@ function getRegisterValues(form: HTMLFormElement): RegisterValues {
 }
 
 /**
- * Saves current form values into register draft.
+ * Сохраняет текущие значения формы в черновик регистрации.
  *
  * @param {HTMLFormElement} form
  * @returns {void}
@@ -113,7 +113,7 @@ function syncRegisterDraft(form: HTMLFormElement): void {
 }
 
 /**
- * Returns touched field names stored in form dataset.
+ * Возвращает имена затронутых полей, сохранённые в dataset формы.
  *
  * @param {HTMLFormElement} form
  * @returns {string[]}
@@ -127,7 +127,7 @@ function getTouchedFields(form: HTMLFormElement): string[] {
 }
 
 /**
- * Marks login field as touched.
+ * Помечает поле входа как затронутое.
  *
  * @param {HTMLFormElement} form
  * @param {string} fieldName
@@ -140,7 +140,7 @@ function setTouchedField(form: HTMLFormElement, fieldName: string): void {
 }
 
 /**
- * Marks register field as touched.
+ * Помечает поле регистрации как затронутое.
  *
  * @param {string} fieldName
  * @returns {void}
@@ -152,7 +152,7 @@ function setRegisterTouchedField(fieldName: string): void {
 }
 
 /**
- * Writes current register draft state into form dataset.
+ * Записывает текущее состояние черновика регистрации в dataset формы.
  *
  * @param {HTMLFormElement} form
  * @returns {void}
@@ -163,7 +163,7 @@ function syncRegisterFormDataset(form: HTMLFormElement): void {
 }
 
 /**
- * Returns auth form context.
+ * Возвращает контекст формы авторизации.
  *
  * @param {HTMLElement} authForm
  * @returns {"modal"|"page"}
@@ -173,7 +173,7 @@ function getAuthFormContext(authForm: HTMLElement): "modal" | "page" {
 }
 
 /**
- * Rerenders register form in place preserving draft values and touched state.
+ * Перерендеривает форму регистрации на месте, сохраняя значения черновика и состояние затронутых полей.
  *
  * @param {HTMLElement} authForm
  * @returns {HTMLFormElement|null}
@@ -214,7 +214,7 @@ function rerenderRegisterForm(authForm: HTMLElement): HTMLFormElement | null {
 }
 
 /**
- * Validates gender field.
+ * Валидирует поле пола.
  *
  * @param {string} value
  * @param {boolean} [isSubmitAttempted=false]
@@ -229,7 +229,7 @@ function validateGender(value: string, isSubmitAttempted = false): string {
 }
 
 /**
- * Validates login field.
+ * Валидирует поле логина.
  *
  * @param {string} value
  * @param {boolean} [isSubmitAttempted=false]
@@ -260,7 +260,7 @@ function validateLogin(value: string, isSubmitAttempted = false): string {
 }
 
 /**
- * Validates password field.
+ * Валидирует поле пароля.
  *
  * @param {string} value
  * @param {boolean} [isSubmitAttempted=false]
@@ -283,7 +283,7 @@ function validatePassword(value: string, isSubmitAttempted = false): string {
 }
 
 /**
- * Validates repeated password field.
+ * Валидирует поле повторного пароля.
  *
  * @param {string} password
  * @param {string} repeatPassword
@@ -307,7 +307,7 @@ function validateRepeatPassword(
 }
 
 /**
- * Validates register form values.
+ * Валидирует значения формы регистрации.
  *
  * @param {RegisterValues} values
  * @param {boolean} [isSubmitAttempted=false]
@@ -339,7 +339,7 @@ function validateRegisterForm(values: RegisterValues, isSubmitAttempted = false)
 }
 
 /**
- * Returns validation errors only for current register step.
+ * Возвращает ошибки валидации только для текущего шага регистрации.
  *
  * @param {RegisterValues} values
  * @param {RegisterStep} step
@@ -363,7 +363,7 @@ function validateRegisterStep(
 }
 
 /**
- * Validates login form values.
+ * Валидирует значения формы входа.
  *
  * @param {Partial<RegisterValues>} values
  * @param {boolean} [isSubmitAttempted=false]
@@ -381,7 +381,7 @@ function validateLoginForm(
 }
 
 /**
- * Returns validation errors for current auth mode.
+ * Возвращает ошибки валидации для текущего режима авторизации.
  *
  * @param {"login"|"register"} mode
  * @param {RegisterValues | Partial<RegisterValues>} values
@@ -403,7 +403,7 @@ function getValidationErrors(
 }
 
 /**
- * Returns field group element by field name.
+ * Возвращает элемент группы поля по имени поля.
  *
  * @param {HTMLFormElement} form
  * @param {string} name
@@ -420,7 +420,7 @@ function getFieldGroup(form: HTMLFormElement, name: string): Element | null {
 }
 
 /**
- * Clears field-level error state for all fields.
+ * Очищает состояние ошибок на уровне полей для всех полей.
  *
  * @param {HTMLFormElement} form
  * @returns {void}
@@ -445,7 +445,7 @@ function clearFieldState(form: HTMLFormElement): void {
 }
 
 /**
- * Clears form-level error message.
+ * Очищает сообщение об ошибке уровня формы.
  *
  * @param {HTMLFormElement} form
  * @returns {void}
@@ -459,7 +459,7 @@ function clearFormError(form: HTMLFormElement): void {
 }
 
 /**
- * Shows form-level error message.
+ * Показывает сообщение об ошибке уровня формы.
  *
  * @param {HTMLFormElement} form
  * @param {string} message
@@ -474,7 +474,7 @@ function showFormError(form: HTMLFormElement, message: string): void {
 }
 
 /**
- * Marks selected fields as invalid.
+ * Помечает выбранные поля как невалидные.
  *
  * @param {HTMLFormElement} form
  * @param {string[]} fieldNames
@@ -493,7 +493,7 @@ function markFieldsAsError(form: HTMLFormElement, fieldNames: string[]): void {
 }
 
 /**
- * Renders server-side field errors for visible fields.
+ * Рендерит серверные ошибки полей для видимых полей.
  *
  * @param {HTMLFormElement} form
  * @param {Partial<Record<FieldName, string>>} errorsByField
@@ -526,7 +526,7 @@ function renderServerFieldErrors(
 }
 
 /**
- * Returns touched fields for current mode.
+ * Возвращает затронутые поля для текущего режима.
  *
  * @param {HTMLFormElement} form
  * @param {"login"|"register"} mode
@@ -537,7 +537,7 @@ function getActiveTouchedFields(form: HTMLFormElement, mode: AuthMode): string[]
 }
 
 /**
- * Renders validation errors only for touched fields.
+ * Рендерит ошибки валидации только для затронутых полей.
  *
  * @param {HTMLFormElement} form
  * @param {ValidationErrors} errors
@@ -598,7 +598,7 @@ function renderTouchedFieldErrors(
 }
 
 /**
- * Renders validation errors for all visible fields.
+ * Рендерит ошибки валидации для всех видимых полей.
  *
  * @param {HTMLFormElement} form
  * @param {ValidationErrors} errors
@@ -629,7 +629,7 @@ function renderAllFieldErrors(form: HTMLFormElement, errors: ValidationErrors): 
 }
 
 /**
- * Checks whether error object contains any validation errors.
+ * Проверяет, содержит ли объект ошибок какие-либо ошибки валидации.
  *
  * @param {ValidationErrors} errors
  * @returns {boolean}
@@ -639,7 +639,7 @@ function hasErrors(errors: ValidationErrors): boolean {
 }
 
 /**
- * Navigates SPA to the given path.
+ * Выполняет навигацию SPA по указанному пути.
  *
  * @param {string} path
  * @returns {void}
@@ -650,7 +650,7 @@ function navigate(path: string): void {
 }
 
 /**
- * Extracts backend validation errors from ApiError.
+ * Извлекает ошибки валидации backend из ApiError.
  *
  * @param {unknown} error
  * @returns {ServerFieldErrors}
@@ -676,7 +676,7 @@ function getApiErrorFieldErrors(error: unknown): ServerFieldErrors {
 }
 
 /**
- * Extracts backend error message from ApiError.
+ * Извлекает сообщение об ошибке backend из ApiError.
  *
  * @param {unknown} error
  * @returns {string}
@@ -694,7 +694,7 @@ function getApiErrorMessage(error: unknown): string {
 }
 
 /**
- * Extracts backend status from ApiError.
+ * Извлекает статус backend из ApiError.
  *
  * @param {unknown} error
  * @returns {number|undefined}
@@ -722,7 +722,7 @@ function isOfflineNetworkError(error: unknown): boolean {
 }
 
 /**
- * Handles register next step action.
+ * Обрабатывает переход к следующему шагу регистрации.
  *
  * @param {HTMLFormElement} form
  * @param {HTMLElement} authForm
@@ -783,7 +783,7 @@ async function handleRegisterNext(form: HTMLFormElement, authForm: HTMLElement):
       return;
     }
 
-    // Some backend branches do not expose step-one validation yet.
+    // В некоторых ветках backend валидация первого шага пока недоступна.
     if (getApiErrorStatus(error) === 404) {
       registerDraft.step = 2;
       registerDraft.submitAttempted = false;
@@ -816,7 +816,7 @@ async function handleRegisterNext(form: HTMLFormElement, authForm: HTMLElement):
 }
 
 /**
- * Handles register previous step action.
+ * Обрабатывает переход к предыдущему шагу регистрации.
  *
  * @param {HTMLFormElement} form
  * @param {HTMLElement} authForm
@@ -835,7 +835,7 @@ function handleRegisterPrev(form: HTMLFormElement, authForm: HTMLElement): void 
 }
 
 /**
- * Handles auth form submit.
+ * Обрабатывает отправку формы авторизации.
  *
  * @param {SubmitEvent} event
  * @returns {Promise<void>}
@@ -978,7 +978,7 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
 }
 
 /**
- * Initializes auth form validation and submit handlers.
+ * Инициализирует валидацию формы авторизации и обработчики отправки.
  *
  * @param {Document|HTMLElement} [root=document]
  * @returns {void}

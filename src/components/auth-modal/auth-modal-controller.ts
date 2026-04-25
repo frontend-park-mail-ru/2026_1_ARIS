@@ -10,7 +10,7 @@ type BindableRoot = (Document | HTMLElement) & {
 let isPointerDownOutsidePanel = false;
 
 /**
- * Traps focus inside the auth modal when navigating with the Tab key.
+ * Удерживает фокус внутри модального окна авторизации при навигации клавишей Tab.
  *
  * @param {KeyboardEvent} event
  * @returns {void}
@@ -48,7 +48,7 @@ function trapFocusInModal(event: KeyboardEvent): void {
 }
 
 /**
- * Returns the modal root element, creating it if necessary.
+ * Возвращает корневой элемент модального окна, создавая его при необходимости.
  *
  * @returns {HTMLElement}
  */
@@ -65,7 +65,7 @@ function getModalRoot(): HTMLElement {
 }
 
 /**
- * Focuses the first available focusable element inside the modal.
+ * Устанавливает фокус на первый доступный фокусируемый элемент внутри модального окна.
  *
  * @param {HTMLElement} modalRoot
  * @returns {void}
@@ -84,7 +84,7 @@ function focusFirstModalElement(modalRoot: HTMLElement): void {
 }
 
 /**
- * Opens the auth modal in the specified mode.
+ * Открывает модальное окно авторизации в указанном режиме.
  *
  * @param {"login"|"register"} [mode="login"]
  * @returns {void}
@@ -102,7 +102,7 @@ export function openAuthModal(mode: AuthMode = "login"): void {
 }
 
 /**
- * Closes the auth modal.
+ * Закрывает модальное окно авторизации.
  *
  * @returns {void}
  */
@@ -113,7 +113,7 @@ export function closeAuthModal(): void {
 }
 
 /**
- * Switches the auth modal content to the specified mode.
+ * Переключает содержимое модального окна авторизации в указанный режим.
  *
  * @param {"login"|"register"} mode
  * @returns {void}
@@ -130,7 +130,7 @@ function switchAuthModalMode(mode: AuthMode): void {
 }
 
 /**
- * Initializes auth modal event handlers.
+ * Инициализирует обработчики событий модального окна авторизации.
  *
  * @param {Document|HTMLElement} [root=document]
  * @returns {void}

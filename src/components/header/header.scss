@@ -1,19 +1,18 @@
 .header {
   --header-height: 100px;
-  --header-logo-width: 152px;
-  --header-logo-height: 51px;
+  --header-logo-width: 138px;
+  --header-logo-height: 52px;
   --header-search-width: 420px;
   --header-search-padding-x: 26px;
   --header-search-gap: 10px;
   --header-search-height: 40px;
   --header-search-icon-size: 24px;
   --header-user-gap: 10px;
-  --header-guest-actions-gap: 24px;
-  --header-username-size: 18px;
-  --header-logout-size: 14px;
-  --header-logout-color: #666666;
+  --header-guest-actions-gap: var(--space-3);
+  --header-username-size: var(--text-size-title);
+  --header-logout-size: var(--font-size-md);
+  --header-logout-color: var(--color-text-meta);
   --header-avatar-size: 56px;
-  --header-guest-actions-gap: 12px;
 
   --header-grid-gap: var(--layout-column-gap);
   --header-columns:
@@ -35,9 +34,9 @@
     justify-content: center;
     min-height: 40px;
     padding: 10px 24px;
-    background: linear-gradient(90deg, rgb(42 54 126) 0%, rgb(76 94 201) 52%, rgb(242 179 65) 100%);
-    color: white;
-    font-size: 14px;
+    background: var(--color-gradient-status);
+    color: var(--color-text-on-primary);
+    font-size: var(--text-size-main);
     font-weight: 700;
     letter-spacing: 0.01em;
     text-align: center;
@@ -76,8 +75,8 @@
     display: block;
     width: var(--header-logo-width);
     height: var(--header-logo-height);
+    object-fit: contain;
     flex-shrink: 0;
-    filter: drop-shadow(0 4px 4px rgb(0 0 0 / 25%));
   }
 
   &__search-box {
@@ -95,24 +94,23 @@
     height: var(--header-search-icon-size);
   }
 
-&__guest-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: 100%;
-  gap: var(--header-guest-actions-gap);
-  padding: 0 var(--layout-content-inner-padding-x);
-  box-sizing: border-box;
-}
-&__guest-actions .button {
-  width: 100%;
-}
+  &__guest-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    gap: var(--header-guest-actions-gap);
+    padding: 0 var(--layout-content-inner-padding-x);
+    box-sizing: border-box;
+  }
+
+  &__guest-actions .button {
+    width: 100%;
+  }
 
   &__user {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "name avatar"
-      "logout avatar";
+    grid-template-areas: "name avatar";
     align-items: center;
     justify-self: stretch;
     width: 100%;
@@ -146,8 +144,28 @@
     align-self: center;
   }
 
-  &__avatar {
+  &__avatar-wrap {
     grid-area: avatar;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__avatar-button {
+    display: inline-flex;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-round);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  &__avatar-button:focus-visible {
+    outline: none;
+    box-shadow: var(--control-focus-ring);
+  }
+
+  &__avatar {
     align-self: center;
     width: var(--header-avatar-size);
     height: var(--header-avatar-size);
@@ -156,20 +174,54 @@
     background: var(--color-surface-avatar-placeholder);
   }
 
-  &__logout {
-    grid-area: logout;
-    justify-self: end;
-    display: flex;
-    border: none;
-    background: transparent;
-    color: var(--header-logout-color);
-    font-size: var(--header-logout-size);
-    cursor: pointer;
-    flex-shrink: 0;
-
-    &:hover {
-      text-decoration: underline;
-    }
+  &__user-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 2;
+    min-width: 132px;
+    padding: 8px;
+    border: 1px solid rgb(203 210 222 / 82%);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 98%);
+    box-shadow: 0 14px 30px rgb(31 42 95 / 18%);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition:
+      opacity var(--transition-control),
+      transform var(--transition-control);
   }
 
+  &__avatar-wrap:hover &__user-menu,
+  &__avatar-wrap:focus-within &__user-menu,
+  &__avatar-wrap.is-open &__user-menu {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  &__user-menu-item {
+    width: 100%;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-main);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--header-logout-size);
+    text-align: left;
+  }
+
+  &__user-menu-item:hover {
+    background: rgb(74 81 208 / 8%);
+    color: var(--color-interactive-primary);
+  }
+
+  &__user-menu-item:focus-visible {
+    outline: none;
+    box-shadow: var(--control-focus-ring);
+  }
 }

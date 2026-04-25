@@ -1,7 +1,7 @@
 import { getSessionUser } from "../../state/session";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
 
-type PostcardPost = {
+export type PostcardPost = {
   id?: string;
   author?: string;
   authorId?: string;
@@ -97,7 +97,7 @@ function formatPostExactTime(iso?: string): string {
 }
 
 /**
- * Renders a postcard footer item.
+ * Рендерит элемент футера карточки поста.
  *
  * @param {PostcardStatOptions} options
  * @returns {string}
@@ -132,7 +132,7 @@ function renderPostcardStat({ icon, count, action }: PostcardStatOptions): strin
 }
 
 /**
- * Renders postcard media block.
+ * Рендерит медиаблок карточки поста.
  *
  * @param {string[]} images
  * @returns {string}
@@ -146,7 +146,7 @@ function renderPostcardMedia(images: string[] = []): string {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--single">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
         </div>
       </div>
     `;
@@ -156,8 +156,8 @@ function renderPostcardMedia(images: string[] = []): string {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--double">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
         </div>
       </div>
     `;
@@ -167,9 +167,9 @@ function renderPostcardMedia(images: string[] = []): string {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--triple">
-          <img class="postcard__media-item postcard__media-item--featured" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
+          <img class="postcard__media-item postcard__media-item--featured" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
         </div>
       </div>
     `;
@@ -183,7 +183,7 @@ function renderPostcardMedia(images: string[] = []): string {
             .slice(0, 4)
             .map(
               (image) =>
-                `<img class="postcard__media-item" src="${resolveMediaSrc(image)}" alt="">`,
+                `<img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(image)}" alt="">`,
             )
             .join("")}
         </div>
@@ -195,14 +195,14 @@ function renderPostcardMedia(images: string[] = []): string {
     return `
       <div class="postcard__media postcard__media--five">
         <div class="postcard__media-row postcard__media-row--top">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
         </div>
 
         <div class="postcard__media-row postcard__media-row--bottom">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[3] ?? "")}" alt="">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[4] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[3] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[4] ?? "")}" alt="">
         </div>
       </div>
     `;
@@ -211,16 +211,16 @@ function renderPostcardMedia(images: string[] = []): string {
   return `
     <div class="postcard__media postcard__media--five-plus">
       <div class="postcard__media-row postcard__media-row--top">
-        <img class="postcard__media-item" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-        <img class="postcard__media-item" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
-        <img class="postcard__media-item" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
+        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
+        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
+        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
       </div>
 
       <div class="postcard__media-row postcard__media-row--bottom">
-        <img class="postcard__media-item" src="${resolveMediaSrc(images[3] ?? "")}" alt="">
-        <img class="postcard__media-item" src="${resolveMediaSrc(images[4] ?? "")}" alt="">
+        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[3] ?? "")}" alt="">
+        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[4] ?? "")}" alt="">
         <div class="postcard__media-overlay">
-          <img class="postcard__media-item" src="${resolveMediaSrc(images[5] ?? "")}" alt="">
+          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[5] ?? "")}" alt="">
           <span class="postcard__media-overlay-count">+${images.length - 5}</span>
         </div>
       </div>
@@ -229,12 +229,10 @@ function renderPostcardMedia(images: string[] = []): string {
 }
 
 /**
- * Renders a postcard.
- *
- * @param {PostcardPost} post
- * @returns {string}
+ * Рендерит внутренний HTML карточки поста (используется внутри Shadow DOM и напрямую).
+ * Экспортируется для использования в ArisPostcard Web Component.
  */
-export function renderPostcard(post: PostcardPost): string {
+export function renderPostcardInner(post: PostcardPost): string {
   const sessionUser = getSessionUser();
   const displayName =
     `${post.firstName || ""} ${post.lastName || ""}`.trim() || post.author || "Пользователь";
@@ -252,6 +250,9 @@ export function renderPostcard(post: PostcardPost): string {
           class="postcard__avatar"
           src="${resolveAvatarSrc(post.avatar)}"
           alt="${displayName}"
+          width="44" height="44"
+          decoding="async"
+          loading="lazy"
         >
         <a
           href="${sessionUser ? profilePath : "/login"}"
@@ -295,7 +296,17 @@ export function renderPostcard(post: PostcardPost): string {
 }
 
 /**
- * Initializes postcard expand behavior.
+ * Рендерит карточку поста как <aris-postcard> Web Component с Shadow DOM.
+ * Данные передаются через атрибут data-post (JSON).
+ */
+export function renderPostcard(post: PostcardPost): string {
+  const encoded = escapeHtml(JSON.stringify(post));
+  const key = post.id ? ` data-key="${escapeHtml(post.id)}"` : "";
+  return `<aris-postcard${key} data-post="${encoded}"></aris-postcard>`;
+}
+
+/**
+ * Инициализирует поведение раскрытия текста карточки поста.
  *
  * @param {Document|HTMLElement} [root=document]
  * @returns {void}
@@ -337,4 +348,37 @@ export function initPostcardExpand(root: Document | HTMLElement = document): voi
   });
 
   bindableRoot.__postcardExpandBound = true;
+}
+
+/**
+ * Инициализирует кнопку "читать полностью" внутри Shadow Root конкретной карточки.
+ * Используется в ArisPostcard.connectedCallback().
+ */
+export function initPostcardExpandInShadow(shadow: ShadowRoot): void {
+  requestAnimationFrame(() => {
+    const text = shadow.querySelector<HTMLElement>(".postcard__text");
+    const button = shadow.querySelector<HTMLElement>(".postcard__expand");
+    if (!text || !button) return;
+    button.classList.toggle(
+      "postcard__expand--hidden",
+      !(text.scrollHeight > text.clientHeight + 1),
+    );
+  });
+
+  shadow.addEventListener("click", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const button = target.closest(".postcard__expand");
+    if (!button) return;
+
+    const container = button.closest(".postcard__text-container");
+    if (!(container instanceof HTMLElement)) return;
+
+    const text = container.querySelector<HTMLElement>(".postcard__text");
+    if (!text) return;
+
+    text.classList.remove("postcard__text--collapsed");
+    button.remove();
+  });
 }

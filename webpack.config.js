@@ -93,6 +93,7 @@ module.exports = {
         {
           from: path.resolve(__dirname, "public/assets/img"),
           to: "assets/img",
+          globOptions: { ignore: ["**/.DS_Store"] },
         },
       ],
     }),

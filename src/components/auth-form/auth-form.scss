@@ -1,9 +1,7 @@
 .auth-form {
   --auth-form-padding: 40px 48px;
   --auth-form-gap: 12px;
-  --auth-form-shadow:
-    0 20px 40px rgb(0 0 0 / 18%),
-    0 2px 6px rgb(0 0 0 / 8%);
+  --auth-form-shadow: var(--shadow-card-elevated);
   --auth-form-border: rgb(255 255 255 / 54%);
   --auth-form-border-top: rgb(0 0 0 / 8%);
   --auth-form-header-gap: 10px;
@@ -19,8 +17,8 @@
   --auth-form-register-header-min-height: 60px;
   --auth-form-title-size: 24px;
   --auth-form-subtitle-size: 15px;
-  --auth-form-error-size: 13px;
-  --auth-form-field-error-size: 13px;
+  --auth-form-error-size: var(--font-size-sm);
+  --auth-form-field-error-size: var(--font-size-sm);
   --auth-form-select-arrow-size: 10px;
   --auth-form-select-arrow-offset: 18px;
   --auth-form-select-arrow-border-width: 2px;
@@ -129,10 +127,12 @@
 
   &__title {
     font-size: var(--auth-form-title-size);
+    line-height: var(--line-height-tight);
   }
 
   &__subtitle {
     font-size: var(--auth-form-subtitle-size);
+    line-height: var(--line-height-base);
   }
 
   &__form {
@@ -170,7 +170,7 @@
     height: var(--auth-form-error-min-height);
     margin: 0;
     font-size: var(--auth-form-error-size);
-    line-height: 1.25;
+    line-height: var(--line-height-base);
     align-items: flex-start;
     overflow: hidden;
     text-align: left;
@@ -195,7 +195,7 @@
     min-height: var(--auth-form-field-error-min-height);
     margin: var(--auth-form-field-error-gap) 0 0;
     font-size: var(--auth-form-field-error-size);
-    line-height: 1.2;
+    line-height: var(--line-height-base);
     overflow-wrap: anywhere;
     max-width: var(--auth-form-error-max-width);
     min-width: 0;
@@ -205,7 +205,6 @@
     text-align: left;
 
     &--hidden {
-      
       visibility: hidden;
     }
   }
@@ -322,11 +321,13 @@
     color: var(--color-text-main);
     font-size: var(--text-size-input);
     font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-base);
 
     &:required:invalid {
       color: var(--color-text-placeholder);
       font-size: var(--text-size-main);
       font-weight: var(--font-weight-regular);
+      line-height: var(--line-height-base);
     }
   }
 }

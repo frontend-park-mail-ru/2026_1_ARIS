@@ -16,7 +16,7 @@ type RenderInputOptions = {
 };
 
 /**
- * Renders an input component.
+ * Рендерит компонент поля ввода.
  *
  * @param {RenderInputOptions} [options={}]
  * @returns {string}

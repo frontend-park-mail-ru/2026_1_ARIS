@@ -12,7 +12,7 @@
   --widgetbar-event-min-height: 44px;
 
   display: flex; // контейнер правой колонки с виджетами
-  width: 100%; // занимает всю ширину правой колонки layout
+  width: 100%; // занимает всю ширину правой колонки макета
   flex-direction: column; // виджеты идут сверху вниз
   align-items: flex-start; // карточки прижимаются влево
   gap: var(--widgetbar-gap); // расстояние между карточками-виджетами
@@ -29,24 +29,24 @@
     box-shadow: var(--shadow-card);
 
     &--weather {
-      gap: var(--widgetbar-weather-gap); // отдельный gap для погодного виджета
+      gap: var(--widgetbar-weather-gap); // отдельный промежуток для погодного виджета
     }
 
     &__title {
       margin: 0; // убираем дефолтные отступы заголовка
-  color: var(--color-text-main);
-font-size: var(--text-size-title);
-font-weight: var(--font-weight-bold);
-line-height: 22px;
+      color: var(--color-text-main);
+      font-size: var(--text-size-title);
+      font-weight: var(--font-weight-bold);
+      line-height: var(--line-height-base);
     }
 
     &__text {
       margin: 0; // убираем дефолтные отступы текста
-     color: var(--color-text-main);
-font-size: var(--text-size-main);
-font-weight: var(--font-weight-regular);
-line-height: normal;
-letter-spacing: 0;
+      color: var(--color-text-main);
+      font-size: var(--text-size-main);
+      font-weight: var(--font-weight-regular);
+      line-height: var(--line-height-base);
+      letter-spacing: 0;
     }
 
     &__empty {
@@ -59,10 +59,10 @@ letter-spacing: 0;
 
     &__username {
       margin: 0; // убираем внешние отступы имени
-     color: var(--color-text-name);
-font-size: var(--text-size-main);
-font-weight: var(--font-weight-medium);
-line-height: normal;
+      color: var(--color-text-name);
+      font-size: var(--text-size-main);
+      font-weight: var(--font-weight-medium);
+      line-height: var(--line-height-base);
       text-decoration: none; // убираем подчёркивание ссылки
 
       &:hover {
@@ -71,10 +71,10 @@ line-height: normal;
     }
 
     &__link {
-     color: var(--color-text-link);
-font-size: var(--text-size-main);
-font-weight: var(--font-weight-regular);
-line-height: normal;
+      color: var(--color-text-link);
+      font-size: var(--text-size-main);
+      font-weight: var(--font-weight-regular);
+      line-height: var(--line-height-base);
       text-decoration: none; // без подчёркивания по умолчанию
 
       &:hover {
@@ -85,17 +85,17 @@ line-height: normal;
     &__event {
       min-height: var(--widgetbar-event-min-height); // минимальная высота строки события
       margin: 0; // убираем внешние отступы
-     color: var(--color-text-main);
-font-size: var(--text-size-main);
-font-weight: var(--font-weight-regular);
-line-height: normal;
+      color: var(--color-text-main);
+      font-size: var(--text-size-main);
+      font-weight: var(--font-weight-regular);
+      line-height: var(--line-height-base);
     }
 
     &__post-link {
       color: var(--color-text-main);
-font-size: var(--text-size-main);
-font-weight: var(--font-weight-regular);
-line-height: normal;
+      font-size: var(--text-size-main);
+      font-weight: var(--font-weight-regular);
+      line-height: var(--line-height-base);
       text-decoration: none; // без подчёркивания по умолчанию
 
       &:hover {
@@ -121,6 +121,7 @@ line-height: normal;
       flex-shrink: 0;
       border-radius: var(--radius-round);
       background: var(--color-surface-avatar-placeholder);
+      object-fit: cover;
     }
   }
 

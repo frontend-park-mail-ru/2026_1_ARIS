@@ -1,9 +1,8 @@
-import { ApiError } from "./auth";
+import { ApiError, parseJson, createApiError, apiRequest } from "./core/client";
 import { trackedFetch } from "../state/network-status";
 
-type ErrorResponse = {
-  error?: string;
-};
+// Повторно экспортируем ApiError для кода, который импортирует его из этого модуля.
+export { ApiError };
 
 export type ProfileEducation = {
   institution?: string;
@@ -63,76 +62,28 @@ type UploadMediaResponse = {
   media?: UploadedMedia[];
 };
 
-async function parseJson<T>(response: Response): Promise<T> {
-  const text = await response.text();
-
-  try {
-    return text ? (JSON.parse(text) as T) : ({} as T);
-  } catch {
-    return { error: text || "invalid server response" } as T;
-  }
-}
-
-function createApiError(
-  fallbackMessage: string,
-  status: number,
-  data: ErrorResponse | unknown,
-): ApiError {
-  const message =
-    typeof data === "object" &&
-    data !== null &&
-    "error" in data &&
-    typeof (data as ErrorResponse).error === "string"
-      ? (data as ErrorResponse).error!
-      : fallbackMessage;
-
-  return new ApiError(message, status, data);
-}
-
 export async function getMyProfile(): Promise<ProfileResponse> {
-  const response = await trackedFetch(`/api/profile/me?ts=${Date.now()}`, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  const data = await parseJson<ProfileResponse | ErrorResponse>(response);
-
-  if (!response.ok) {
-    throw createApiError("failed to load profile", response.status, data);
-  }
-
-  return data as ProfileResponse;
+  return apiRequest<ProfileResponse>(`/api/profile/me?ts=${Date.now()}`, {}, {} as ProfileResponse);
 }
 
 export async function getProfileById(profileId: string): Promise<ProfileResponse> {
-  const response = await trackedFetch(
+  return apiRequest<ProfileResponse>(
     `/api/profile/${encodeURIComponent(profileId)}?ts=${Date.now()}`,
-    {
-      method: "GET",
-      credentials: "include",
-    },
+    {},
+    {} as ProfileResponse,
   );
-
-  const data = await parseJson<ProfileResponse | ErrorResponse>(response);
-
-  if (!response.ok) {
-    throw createApiError("failed to load profile", response.status, data);
-  }
-
-  return data as ProfileResponse;
 }
 
 export async function updateMyProfile(payload: UpdateProfilePayload): Promise<void> {
   const response = await trackedFetch("/api/profile/me/edit", {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(payload),
   });
 
-  const data = response.status === 204 ? null : await parseJson<ErrorResponse | unknown>(response);
+  const data =
+    response.status === 204 ? null : await parseJson<{ error?: string } | unknown>(response, {});
 
   if (!response.ok) {
     throw createApiError("failed to update profile", response.status, data);
@@ -149,7 +100,7 @@ export async function uploadProfileAvatar(file: File): Promise<UploadedMedia> {
     body: formData,
   });
 
-  const data = await parseJson<UploadMediaResponse | ErrorResponse>(response);
+  const data = await parseJson<UploadMediaResponse | { error?: string }>(response, {});
 
   if (!response.ok) {
     throw createApiError("failed to upload avatar", response.status, data);

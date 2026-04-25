@@ -26,10 +26,10 @@ export type SupportStats = {
 type RawTicket = {
   id?: number | string;
   uid?: string;
-  category?: string;
+  category?: string | number;
   title?: string;
   description?: string;
-  status?: string;
+  status?: string | number;
   created_at?: string;
   createdAt?: string;
   updated_at?: string;
@@ -50,16 +50,43 @@ type RawStats = {
   byCategory?: Record<string, number>;
 };
 
+const CATEGORY_TO_CODE: Record<TicketCategory, number> = {
+  bug: 0,
+  feature_request: 1,
+  complaint: 2,
+  question: 3,
+  other: 4,
+};
+
+const CODE_TO_CATEGORY: Record<number, TicketCategory> = {
+  0: "bug",
+  1: "feature_request",
+  2: "complaint",
+  3: "question",
+  4: "other",
+};
+
+const CODE_TO_STATUS: Record<number, TicketStatus> = {
+  0: "open",
+  1: "in_progress",
+  2: "waiting_user",
+  3: "closed",
+};
+
 function mapTicket(raw: RawTicket): Ticket {
   const updatedAt = raw.updatedAt ?? raw.updated_at;
+  const rawCategory =
+    typeof raw.category === "number" ? CODE_TO_CATEGORY[raw.category] : (raw.category ?? "other");
+  const rawStatus =
+    typeof raw.status === "number" ? CODE_TO_STATUS[raw.status] : (raw.status ?? "open");
 
   return {
     id: String(raw.id ?? ""),
     uid: raw.uid ?? "",
-    category: (raw.category ?? "other") as TicketCategory,
+    category: rawCategory as TicketCategory,
     title: raw.title ?? "",
     description: raw.description ?? "",
-    status: (raw.status ?? "open") as TicketStatus,
+    status: rawStatus as TicketStatus,
     createdAt: raw.createdAt ?? raw.created_at ?? "",
     ...(updatedAt ? { updatedAt } : {}),
   };
@@ -74,7 +101,7 @@ export async function createTicket(data: {
   screenshot?: File | null;
 }): Promise<Ticket> {
   const formData = new FormData();
-  formData.append("category", data.category);
+  formData.append("category", String(CATEGORY_TO_CODE[data.category]));
   formData.append("login", data.login);
   formData.append("email", data.email);
   formData.append("title", data.title);

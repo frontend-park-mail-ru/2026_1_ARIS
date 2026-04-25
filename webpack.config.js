@@ -40,7 +40,7 @@ class AssetManifestPlugin {
 
 /** @type {import('webpack').Configuration} */
 module.exports = {
-  mode: "development",
+  mode: "production",
 
   entry: "./src/main.ts",
 
@@ -51,7 +51,7 @@ module.exports = {
     publicPath: "/",
   },
 
-  devtool: "source-map",
+  devtool: false,
 
   module: {
     rules: [

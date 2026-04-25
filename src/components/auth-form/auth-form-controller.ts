@@ -873,7 +873,6 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
         password: values.password || "",
       });
 
-      persistLastKnownLogin(values.login || "");
       setSessionUser({
         id: user.id,
         firstName: user.firstName,
@@ -936,7 +935,6 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
       password2: values.repeatPassword,
     });
 
-    persistLastKnownLogin(values.login);
     setSessionUser({
       id: profile.id,
       firstName: normalizeName(values.firstName),
@@ -978,19 +976,6 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
           : "Не удалось зарегистрироваться",
       );
     }
-  }
-}
-
-function persistLastKnownLogin(login: string): void {
-  try {
-    const normalized = login.trim();
-    if (!normalized) {
-      return;
-    }
-
-    localStorage.setItem("arisfront:last-login", normalized);
-  } catch {
-    // ignore storage errors
   }
 }
 

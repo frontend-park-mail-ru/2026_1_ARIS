@@ -8,8 +8,6 @@ import {
 import { getMyProfile } from "../../api/profile";
 import { getSessionUser, initSession } from "../../state/session";
 
-const SUPPORT_LOGIN_STORAGE_KEY = "arisfront:last-login";
-
 // ---------------------------------------------------------------------------
 // Вспомогательные функции
 // ---------------------------------------------------------------------------
@@ -131,10 +129,11 @@ export function renderSupportWidget(): string {
                 id="sw-login"
                 name="login"
                 type="text"
-                class="sw-form__input sw-form__input--readonly"
-                placeholder="Определится автоматически"
-                readonly
-                data-sw-login
+                class="sw-form__input"
+                placeholder="Введите логин"
+                autocomplete="username"
+                maxlength="255"
+                required
               >
             </div>
 
@@ -250,7 +249,6 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   if (!user) return;
 
   const closeButton = root.querySelector<HTMLButtonElement>("[data-sw-close]");
-  const loginInput = root.querySelector<HTMLInputElement>("[data-sw-login]");
   const emailInput = root.querySelector<HTMLInputElement>("[data-sw-email]");
   const form = root.querySelector<HTMLFormElement>("[data-sw-form]");
   const submitBtn = root.querySelector<HTMLButtonElement>("[data-sw-submit]");
@@ -264,7 +262,6 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   const uploadLabel = root.querySelector<HTMLElement>("[data-sw-upload-label]");
 
   let selectedFile: File | null = null;
-  let resolvedLogin = (user.login ?? readLastKnownLogin()).trim();
   let resolvedEmail = (user.email ?? "").trim();
 
   closeButton?.addEventListener("click", () => {
@@ -272,10 +269,6 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   });
 
   const syncIdentityFields = (): void => {
-    if (loginInput) {
-      loginInput.value = resolvedLogin;
-    }
-
     if (emailInput) {
       emailInput.value = resolvedEmail;
     }
@@ -364,13 +357,13 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
 
     const formData = new FormData(form);
     const category = formData.get("category") as TicketCategory;
-    const login = ((formData.get("login") as string) ?? resolvedLogin).trim();
+    const login = ((formData.get("login") as string) ?? "").trim();
     const email = ((formData.get("email") as string) ?? resolvedEmail).trim();
     const title = ((formData.get("title") as string) ?? "").trim();
     const description = ((formData.get("description") as string) ?? "").trim();
 
     if (!login) {
-      showError(errorEl, "Не удалось определить логин текущего пользователя.");
+      showError(errorEl, "Укажите логин.");
       return;
     }
 
@@ -458,13 +451,5 @@ export async function initSupportPage(): Promise<void> {
   const root = document.getElementById("app");
   if (root) {
     await initSupport(root);
-  }
-}
-
-function readLastKnownLogin(): string {
-  try {
-    return localStorage.getItem(SUPPORT_LOGIN_STORAGE_KEY)?.trim() ?? "";
-  } catch {
-    return "";
   }
 }

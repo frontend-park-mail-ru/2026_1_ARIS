@@ -1,44 +1,7 @@
-import { renderPostcardInner, initPostcardExpandInShadow, type PostcardPost } from "./postcard";
-
-let sharedSheet: CSSStyleSheet | null = null;
-
-/**
- * Извлекает правила .postcard из уже загруженных стилей документа.
- * Создаётся один раз и переиспользуется всеми инстансами через adoptedStyleSheets.
- */
-function getSharedSheet(): CSSStyleSheet {
-  if (sharedSheet) return sharedSheet;
-
-  const cssText: string[] = [];
-  for (const sheet of Array.from(document.styleSheets)) {
-    try {
-      for (const rule of Array.from(sheet.cssRules)) {
-        if (/\bpostcard\b/.test(rule.cssText)) {
-          cssText.push(rule.cssText);
-        }
-      }
-    } catch {
-      // Пропускаем заблокированные CORS-стили
-    }
-  }
-
-  sharedSheet = new CSSStyleSheet();
-  // Наследуем CSS custom properties от :root (токены), добавляем правила компонента
-  sharedSheet.replaceSync(`:host { display: contents; }\n` + cssText.join("\n"));
-  return sharedSheet;
-}
-
+import { renderPostcardInner, initPostcardExpand, type PostcardPost } from "./postcard";
 export class ArisPostcard extends HTMLElement {
-  private shadow: ShadowRoot;
-
-  constructor() {
-    super();
-    this.shadow = this.attachShadow({ mode: "open" });
-  }
-
   connectedCallback(): void {
     this.render();
-    initPostcardExpandInShadow(this.shadow);
   }
 
   private render(): void {
@@ -52,8 +15,8 @@ export class ArisPostcard extends HTMLElement {
       return;
     }
 
-    this.shadow.adoptedStyleSheets = [getSharedSheet()];
-    this.shadow.innerHTML = renderPostcardInner(post);
+    this.innerHTML = renderPostcardInner(post);
+    initPostcardExpand(this);
   }
 }
 

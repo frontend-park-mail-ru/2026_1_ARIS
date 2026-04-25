@@ -120,6 +120,7 @@
 
   &--active {
     display: block;
+    animation: sw-panel-in 180ms ease;
   }
 }
 
@@ -441,6 +442,7 @@
   background: rgb(255 255 255 / 98%);
   box-shadow: 0 24px 40px rgb(31 42 95 / 16%);
   overflow-y: auto;
+  animation: sw-modal-in 180ms ease;
 }
 
 .sw-ticket-modal__close {
@@ -490,6 +492,156 @@
   color: var(--color-text-main);
 }
 
+.sw-rating {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid rgb(74 81 208 / 18%);
+  border-radius: 10px;
+  background: rgb(74 81 208 / 5%);
+}
+
+.sw-rating__label {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-meta);
+}
+
+.sw-rating__stars {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.sw-rating__star {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 72%);
+  color: #d97706;
+  font-size: 20px;
+  cursor: pointer;
+  transition: transform 150ms ease, background 150ms ease;
+
+  &:hover:not(:disabled) {
+    background: rgb(245 158 11 / 14%);
+    transform: scale(1.08);
+  }
+}
+
+.sw-rating__value {
+  color: #d97706;
+  font-size: var(--font-size-lg);
+  letter-spacing: 0.04em;
+}
+
+.sw-rating__message {
+  margin: 0;
+  color: var(--color-text-error);
+  font-size: var(--font-size-sm);
+}
+
+.sw-chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.sw-chat__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.sw-chat__title {
+  margin: 0;
+  color: var(--color-text-meta);
+  font-size: var(--font-size-md);
+}
+
+.sw-chat__status {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.sw-chat__messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 220px;
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-default);
+  border-radius: 10px;
+  background: var(--color-surface-muted);
+}
+
+.sw-chat-msg {
+  display: flex;
+  justify-content: flex-start;
+  animation: sw-msg-enter 160ms ease;
+}
+
+.sw-chat-msg--own {
+  justify-content: flex-end;
+}
+
+.sw-chat-msg__bubble {
+  max-width: min(82%, 320px);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 12px;
+  background: var(--color-surface-base);
+  box-shadow: 0 1px 4px rgb(31 42 95 / 8%);
+
+  p {
+    margin: var(--space-1) 0 0;
+    white-space: pre-wrap;
+    line-height: 1.4;
+  }
+}
+
+.sw-chat-msg--own .sw-chat-msg__bubble {
+  background: var(--color-interactive-primary);
+  color: var(--color-text-on-primary);
+}
+
+.sw-chat-msg__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.sw-chat-msg--own .sw-chat-msg__meta {
+  color: rgb(255 255 255 / 72%);
+}
+
+.sw-chat__form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+  align-items: end;
+}
+
+.sw-chat__input {
+  min-height: 44px;
+  max-height: 120px;
+  padding: 8px var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: var(--color-surface-input);
+  color: var(--color-text-main);
+  font-family: inherit;
+  resize: vertical;
+}
+
 // ---------------------------------------------------------------------------
 // Вспомогательные
 // ---------------------------------------------------------------------------
@@ -500,4 +652,23 @@
   text-align: center;
   color: var(--color-text-muted);
   font-size: var(--font-size-md);
+}
+
+.sw-empty--compact {
+  margin: var(--space-3) auto;
+}
+
+@keyframes sw-msg-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes sw-modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes sw-panel-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }

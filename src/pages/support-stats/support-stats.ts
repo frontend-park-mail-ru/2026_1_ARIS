@@ -1,7 +1,8 @@
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { getSessionUser } from "../../state/session";
-import { getMyTickets, getSupportStats, type SupportStats, type Ticket } from "../../api/support";
+import { canViewAdminPanel } from "../../state/role";
+import { getAllTickets, getSupportStats, type SupportStats, type Ticket } from "../../api/support";
 
 // ---------------------------------------------------------------------------
 // Вспомогательные функции
@@ -21,6 +22,8 @@ function renderStatCard(label: string, value: string | number, accent = false): 
 }
 
 function renderStats(stats: SupportStats): string {
+  const avgRating = stats.avgRating === null ? "—" : stats.avgRating.toFixed(1);
+
   return `
     <section class="ss-section">
       <h2 class="ss-section__title">Общая статистика</h2>
@@ -30,6 +33,17 @@ function renderStats(stats: SupportStats): string {
         ${renderStatCard("В работе", stats.inProgress)}
         ${renderStatCard("Ожидают ответа", stats.waitingUser)}
         ${renderStatCard("Закрыто", stats.closed)}
+      </div>
+    </section>
+
+    <section class="ss-section">
+      <h2 class="ss-section__title">Линии и качество</h2>
+      <div class="ss-grid">
+        ${renderStatCard("1-я линия", stats.byLine.l1)}
+        ${renderStatCard("2-я линия", stats.byLine.l2)}
+        ${renderStatCard("Средняя оценка", avgRating, true)}
+        ${renderStatCard("Оценка 5", stats.ratingDistribution["5"])}
+        ${renderStatCard("Оценка 1", stats.ratingDistribution["1"])}
       </div>
     </section>
 
@@ -47,7 +61,7 @@ function renderStats(stats: SupportStats): string {
 }
 
 function buildStatsFromTickets(tickets: Ticket[]): SupportStats {
-  return tickets.reduce<SupportStats>(
+  const stats = tickets.reduce<SupportStats>(
     (acc, ticket) => {
       acc.total += 1;
 
@@ -57,6 +71,13 @@ function buildStatsFromTickets(tickets: Ticket[]): SupportStats {
       if (ticket.status === "closed") acc.closed += 1;
 
       acc.byCategory[ticket.category] += 1;
+      acc.byLine[ticket.line === 2 ? "l2" : "l1"] += 1;
+
+      if (typeof ticket.rating === "number" && ticket.rating >= 1 && ticket.rating <= 5) {
+        const key = String(ticket.rating) as keyof SupportStats["ratingDistribution"];
+        acc.ratingDistribution[key] += 1;
+      }
+
       return acc;
     },
     {
@@ -72,8 +93,30 @@ function buildStatsFromTickets(tickets: Ticket[]): SupportStats {
         question: 0,
         other: 0,
       },
+      byLine: {
+        l1: 0,
+        l2: 0,
+      },
+      avgRating: null,
+      ratingDistribution: {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+      },
     },
   );
+
+  const ratings = tickets
+    .map((ticket) => ticket.rating)
+    .filter((rating): rating is number => typeof rating === "number" && rating >= 1 && rating <= 5);
+
+  if (ratings.length) {
+    stats.avgRating = ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+  }
+
+  return stats;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,14 +143,31 @@ export async function renderSupportStats(): Promise<string> {
     `;
   }
 
+  if (!canViewAdminPanel()) {
+    return `
+      <div class="app-page">
+        ${renderHeader()}
+        <main class="app-layout">
+          <aside class="app-layout__left">${renderSidebar({ isAuthorised })}</aside>
+          <section class="app-layout__center">
+            <div class="ss-page" data-support-stats-page>
+              <div class="ss-error"><p>Нет доступа к статистике обращений.</p></div>
+            </div>
+          </section>
+          <aside class="app-layout__right"></aside>
+        </main>
+      </div>
+    `;
+  }
+
   let statsHtml: string;
   try {
     const stats = await getSupportStats();
     statsHtml = renderStats(stats);
   } catch (error) {
-    console.warn("[support-stats] stats endpoint unavailable, fallback to my tickets", error);
+    console.warn("[support-stats] stats endpoint unavailable, fallback to all tickets", error);
     try {
-      const tickets = await getMyTickets();
+      const tickets = await getAllTickets();
       statsHtml = renderStats(buildStatsFromTickets(tickets));
     } catch (ticketsError) {
       console.error("[support-stats] failed to load tickets for stats", ticketsError);

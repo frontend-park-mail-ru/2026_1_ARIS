@@ -1,4 +1,5 @@
 import { getFeedMode, getSessionUser, setFeedMode, type FeedMode } from "../../state/session";
+import { isSupportAgent } from "../../state/role";
 import { clearFeedCache } from "../../pages/feed/cache";
 import { domPatch } from "../../vdom/patch";
 
@@ -77,6 +78,8 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
     /^\/id[^/]+$/.test(currentPath);
   const isFriendsRoute = currentPath === "/friends";
   const isChatsRoute = currentPath === "/chats";
+  const supportHref = isSupportAgent() ? "/support/admin" : "/support/stats";
+  const supportLabel = isSupportAgent() ? "Тикеты" : "Поддержка";
   const isForYouActive = getFeedMode() === "for-you";
   const isByTimeActive = getFeedMode() === "by-time";
 
@@ -128,10 +131,10 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
         ${
           isAuthorised
             ? renderSidebarItem({
-                href: "/support/stats",
-                label: "Поддержка",
+                href: supportHref,
+                label: supportLabel,
                 icon: "/assets/img/icons/chat.svg",
-                isActive: currentPath === "/support/stats",
+                isActive: currentPath === supportHref,
               })
             : ""
         }

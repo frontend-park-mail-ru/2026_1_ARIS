@@ -34,6 +34,8 @@ export type RegisterStepOnePayload = {
   password2: string;
 };
 
+export type UserRole = "user" | "support_l1" | "support_l2" | "admin";
+
 /**
  * Минимальная форма данных авторизованного пользователя на клиенте.
  */
@@ -44,6 +46,7 @@ export type User = {
   login?: string;
   email?: string;
   avatarLink?: string;
+  role?: UserRole;
 };
 
 /**

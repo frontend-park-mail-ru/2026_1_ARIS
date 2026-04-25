@@ -18,6 +18,7 @@ import "./pages/chats/chats.css";
 import "./pages/friends/friends.css";
 import "./pages/profile/profile.css";
 import "./pages/support/support.scss";
+import "./pages/support-admin/support-admin.scss";
 import "./pages/support-stats/support-stats.scss";
 
 import "./components/postcard/postcard-element";
@@ -44,6 +45,8 @@ const loadLogin = () => import(/* webpackChunkName: "page-login" */ "./pages/log
 const loadRegister = () =>
   import(/* webpackChunkName: "page-register" */ "./pages/register/register");
 const loadSupport = () => import(/* webpackChunkName: "page-support" */ "./pages/support/support");
+const loadSupportAdmin = () =>
+  import(/* webpackChunkName: "page-support-admin" */ "./pages/support-admin/support-admin");
 const loadSupportStats = () =>
   import(/* webpackChunkName: "page-support-stats" */ "./pages/support-stats/support-stats");
 
@@ -107,6 +110,11 @@ const router = createRouter(root, [
     title: "ARISNET — Support Stats",
     render: async () => (await loadSupportStats()).renderSupportStats(),
   },
+  {
+    path: "/support/admin",
+    title: "ARISNET — Support Admin",
+    render: async () => (await loadSupportAdmin()).renderSupportAdmin(),
+  },
 ]);
 
 // ---------------------------------------------------------------------------
@@ -126,6 +134,7 @@ const chunkMap: Record<string, () => Promise<unknown>> = {
   "/profile": loadProfile,
   "/login": loadLogin,
   "/register": loadRegister,
+  "/support/admin": loadSupportAdmin,
 };
 
 document.addEventListener(

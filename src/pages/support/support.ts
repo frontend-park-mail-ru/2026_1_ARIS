@@ -2,8 +2,13 @@ import {
   createTicket,
   getTicketById,
   getMyTickets,
+  getTicketMessages,
+  rateTicket,
+  sendTicketMessage,
+  subscribeToTicketMessages,
   type Ticket,
   type TicketCategory,
+  type TicketMessage,
   type TicketStatus,
 } from "../../api/support";
 import { getMyProfile } from "../../api/profile";
@@ -90,6 +95,76 @@ function renderTicketDetails(ticket: Ticket): string {
     <h3 class="sw-ticket-modal__title">${escapeHtml(ticket.title)}</h3>
     <time class="sw-ticket-modal__time">${formatDate(ticket.createdAt)}</time>
     <p class="sw-ticket-modal__description">${escapeHtml(ticket.description)}</p>
+    ${renderRatingPanel(ticket)}
+    ${renderTicketChatPanel()}
+  `;
+}
+
+function renderRatingPanel(ticket: Ticket): string {
+  if (ticket.status !== "closed") {
+    return "";
+  }
+
+  if (ticket.rating) {
+    return `
+      <section class="sw-rating sw-rating--readonly">
+        <span class="sw-rating__label">Оценка обращения</span>
+        <span class="sw-rating__value">${"★".repeat(ticket.rating)}${"☆".repeat(5 - ticket.rating)}</span>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="sw-rating" data-sw-rating>
+      <span class="sw-rating__label">Оцените решение</span>
+      <div class="sw-rating__stars" role="group" aria-label="Оценка обращения">
+        ${[1, 2, 3, 4, 5]
+          .map(
+            (value) => `
+              <button type="button" class="sw-rating__star" data-sw-rate="${value}" aria-label="Оценить на ${value}">
+                ★
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      <p class="sw-rating__message" data-sw-rating-message hidden></p>
+    </section>
+  `;
+}
+
+function renderTicketChatPanel(): string {
+  return `
+    <section class="sw-chat" data-sw-chat>
+      <div class="sw-chat__header">
+        <h4 class="sw-chat__title">Чат по обращению</h4>
+        <span class="sw-chat__status" data-sw-chat-status></span>
+      </div>
+      <div class="sw-chat__messages" data-sw-chat-messages>
+        <p class="sw-loading">Загрузка сообщений…</p>
+      </div>
+      <form class="sw-chat__form" data-sw-chat-form>
+        <textarea class="sw-chat__input" data-sw-chat-input rows="2" maxlength="2000" placeholder="Напишите ответ" required></textarea>
+        <button type="submit" class="sw-btn sw-btn--primary" data-sw-chat-submit>Отправить</button>
+      </form>
+    </section>
+  `;
+}
+
+function renderChatMessage(message: TicketMessage, currentUserId: string): string {
+  const isOwn = message.authorId === currentUserId;
+  const roleLabel = message.authorRole === "user" ? "" : " · поддержка";
+
+  return `
+    <article class="sw-chat-msg${isOwn ? " sw-chat-msg--own" : ""}" data-message-id="${escapeHtml(message.id)}">
+      <div class="sw-chat-msg__bubble">
+        <div class="sw-chat-msg__meta">
+          <span>${escapeHtml(message.authorName)}${roleLabel}</span>
+          <time>${formatDate(message.createdAt)}</time>
+        </div>
+        <p>${escapeHtml(message.text)}</p>
+      </div>
+    </article>
   `;
 }
 
@@ -290,6 +365,9 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   let selectedFile: File | null = null;
   let resolvedEmail = (user.email ?? "").trim();
   let currentTickets: Ticket[] = [];
+  let unsubscribeTicketMessages: (() => void) | null = null;
+  let activeTicketId = "";
+  let activeTicketMessageIds = new Set<string>();
 
   closeButton?.addEventListener("click", () => {
     window.parent?.postMessage({ type: "support-widget-close" }, window.location.origin);
@@ -353,39 +431,179 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
 
   removeBtn?.addEventListener("click", () => clearPreview());
 
+  const cleanupTicketSocket = (): void => {
+    unsubscribeTicketMessages?.();
+    unsubscribeTicketMessages = null;
+  };
+
   const closeTicketModal = (): void => {
     if (!ticketModal || !ticketModalBody) return;
+    cleanupTicketSocket();
+    activeTicketId = "";
+    activeTicketMessageIds = new Set<string>();
     ticketModal.hidden = true;
     ticketModalBody.innerHTML = "";
+  };
+
+  const appendTicketMessage = (message: TicketMessage): void => {
+    if (
+      !ticketModalBody ||
+      (message.ticketId && message.ticketId !== activeTicketId) ||
+      activeTicketMessageIds.has(message.id)
+    ) {
+      return;
+    }
+
+    activeTicketMessageIds.add(message.id);
+    const messagesEl = ticketModalBody.querySelector<HTMLElement>("[data-sw-chat-messages]");
+    if (!messagesEl) return;
+
+    const emptyEl = messagesEl.querySelector("[data-sw-chat-empty]");
+    emptyEl?.remove();
+    messagesEl.insertAdjacentHTML("beforeend", renderChatMessage(message, user.id));
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  };
+
+  const renderTicketMessages = (messages: TicketMessage[]): void => {
+    if (!ticketModalBody) return;
+
+    const messagesEl = ticketModalBody.querySelector<HTMLElement>("[data-sw-chat-messages]");
+    if (!messagesEl) return;
+
+    activeTicketMessageIds = new Set(messages.map((message) => message.id));
+    messagesEl.innerHTML = messages.length
+      ? messages.map((message) => renderChatMessage(message, user.id)).join("")
+      : `<p class="sw-empty sw-empty--compact" data-sw-chat-empty>Сообщений пока нет.</p>`;
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  };
+
+  const setChatStatus = (message: string): void => {
+    const statusEl = ticketModalBody?.querySelector<HTMLElement>("[data-sw-chat-status]");
+    if (statusEl) {
+      statusEl.textContent = message;
+    }
+  };
+
+  const bindTicketModalControls = (ticket: Ticket): void => {
+    if (!ticketModalBody) return;
+
+    ticketModalBody.querySelectorAll<HTMLButtonElement>("[data-sw-rate]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const rating = Number(button.getAttribute("data-sw-rate") ?? "0");
+        const messageEl = ticketModalBody.querySelector<HTMLElement>("[data-sw-rating-message]");
+        if (!rating) return;
+
+        button
+          .closest<HTMLElement>("[data-sw-rating]")
+          ?.querySelectorAll<HTMLButtonElement>("[data-sw-rate]")
+          .forEach((item) => {
+            item.disabled = true;
+          });
+
+        try {
+          await rateTicket(ticket.id, { rating });
+          currentTickets = currentTickets.map((item) =>
+            item.id === ticket.id ? { ...item, rating } : item,
+          );
+          const ratingEl = ticketModalBody.querySelector<HTMLElement>("[data-sw-rating]");
+          if (ratingEl) {
+            ratingEl.outerHTML = renderRatingPanel({ ...ticket, rating });
+          }
+        } catch (error) {
+          if (messageEl) {
+            messageEl.textContent = "Не удалось сохранить оценку.";
+            messageEl.hidden = false;
+          }
+          button
+            .closest<HTMLElement>("[data-sw-rating]")
+            ?.querySelectorAll<HTMLButtonElement>("[data-sw-rate]")
+            .forEach((item) => {
+              item.disabled = false;
+            });
+          console.error("[support] rate ticket failed", error);
+        }
+      });
+    });
+
+    const chatForm = ticketModalBody.querySelector<HTMLFormElement>("[data-sw-chat-form]");
+    const chatInput = ticketModalBody.querySelector<HTMLTextAreaElement>("[data-sw-chat-input]");
+    const chatSubmit = ticketModalBody.querySelector<HTMLButtonElement>("[data-sw-chat-submit]");
+
+    chatForm?.addEventListener("submit", async (event: Event) => {
+      event.preventDefault();
+      const text = (chatInput?.value ?? "").trim();
+      if (!text || !chatInput || !chatSubmit) return;
+
+      chatSubmit.disabled = true;
+      setChatStatus("");
+
+      try {
+        const message = await sendTicketMessage(ticket.id, { text });
+        appendTicketMessage({ ...message, ticketId: message.ticketId || ticket.id });
+        chatInput.value = "";
+      } catch (error) {
+        setChatStatus("Не удалось отправить.");
+        console.error("[support] send message failed", error);
+      } finally {
+        chatSubmit.disabled = false;
+      }
+    });
   };
 
   const openTicketModal = async (ticketId: string): Promise<void> => {
     if (!ticketModal || !ticketModalBody) return;
 
+    cleanupTicketSocket();
+    activeTicketId = ticketId;
+    activeTicketMessageIds = new Set<string>();
+
     const cachedTicket = currentTickets.find((ticket) => ticket.id === ticketId);
     if (cachedTicket) {
       ticketModalBody.innerHTML = renderTicketDetails(cachedTicket);
+      bindTicketModalControls(cachedTicket);
     } else {
       ticketModalBody.innerHTML = `<p class="sw-loading">Загрузка…</p>`;
     }
     ticketModal.hidden = false;
 
-    if (cachedTicket?.description) {
+    let openedTicket = cachedTicket ?? null;
+
+    if (!cachedTicket?.description) {
+      try {
+        const freshTicket = await getTicketById(ticketId);
+        openedTicket = freshTicket;
+        currentTickets = currentTickets.some((ticket) => ticket.id === ticketId)
+          ? currentTickets.map((ticket) => (ticket.id === ticketId ? freshTicket : ticket))
+          : [...currentTickets, freshTicket];
+        ticketModalBody.innerHTML = renderTicketDetails(freshTicket);
+        bindTicketModalControls(freshTicket);
+      } catch (error) {
+        ticketModalBody.innerHTML = `
+          <p class="sw-empty">Не удалось загрузить детали обращения.</p>
+        `;
+        console.error("[support] load ticket failed", error);
+        return;
+      }
+    }
+
+    if (!openedTicket) {
       return;
     }
 
     try {
-      const freshTicket = await getTicketById(ticketId);
-      currentTickets = currentTickets.some((ticket) => ticket.id === ticketId)
-        ? currentTickets.map((ticket) => (ticket.id === ticketId ? freshTicket : ticket))
-        : [...currentTickets, freshTicket];
-      ticketModalBody.innerHTML = renderTicketDetails(freshTicket);
+      const messages = await getTicketMessages(openedTicket.id);
+      if (activeTicketId !== openedTicket.id) return;
+      renderTicketMessages(messages);
     } catch (error) {
-      ticketModalBody.innerHTML = `
-        <p class="sw-empty">Не удалось загрузить детали обращения.</p>
-      `;
-      console.error("[support] load ticket failed", error);
+      renderTicketMessages([]);
+      setChatStatus("История недоступна.");
+      console.error("[support] load messages failed", error);
     }
+
+    unsubscribeTicketMessages = subscribeToTicketMessages(openedTicket.id, {
+      onMessage: appendTicketMessage,
+      onError: () => setChatStatus("Live-обновления недоступны."),
+    });
   };
 
   root.querySelectorAll<HTMLElement>("[data-sw-ticket-close]").forEach((node) => {

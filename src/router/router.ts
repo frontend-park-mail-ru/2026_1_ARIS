@@ -46,6 +46,12 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
         );
         initSupportStats(nextRoot);
       }
+      if (nextRoot.querySelector("[data-support-admin-page]")) {
+        const { initSupportAdmin } = await import(
+          /* webpackChunkName: "page-support-admin" */ "../pages/support-admin/support-admin"
+        );
+        void initSupportAdmin(nextRoot as HTMLElement);
+      }
     },
   });
 }

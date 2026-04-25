@@ -1,4 +1,4 @@
-import { getCurrentUser, type User } from "../api/auth";
+import { getCurrentUser, type User, type UserRole } from "../api/auth";
 import { getMyProfile } from "../api/profile";
 import { isNetworkUnavailableError } from "./network-status";
 import { StateManager } from "./StateManager";
@@ -35,6 +35,10 @@ export const sessionStore = new StateManager<SessionState>({
 
 const SESSION_USER_STORAGE_KEY = "arisfront:session-user";
 
+function isUserRole(value: unknown): value is UserRole {
+  return value === "user" || value === "support_l1" || value === "support_l2" || value === "admin";
+}
+
 function readPersistedSessionUser(): User | null {
   try {
     const raw = localStorage.getItem(SESSION_USER_STORAGE_KEY);
@@ -63,6 +67,10 @@ function readPersistedSessionUser(): User | null {
 
     if (typeof parsed.avatarLink === "string") {
       nextUser.avatarLink = parsed.avatarLink;
+    }
+
+    if (isUserRole(parsed.role)) {
+      nextUser.role = parsed.role;
     }
 
     return nextUser;

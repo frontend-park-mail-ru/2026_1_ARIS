@@ -104,6 +104,12 @@ module.exports = {
   ],
 
   devServer: {
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false,
+      },
+    },
     static: {
       directory: path.resolve(__dirname, "public"),
     },

@@ -626,7 +626,7 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
 
     unsubscribeTicketMessages = subscribeToTicketMessages(openedTicket.id, {
       onMessage: appendTicketMessage,
-      onError: () => setChatStatus("Live-обновления недоступны."),
+      onError: () => setChatStatus(""),
     });
   };
 

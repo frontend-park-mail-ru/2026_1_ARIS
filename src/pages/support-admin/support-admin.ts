@@ -457,7 +457,7 @@ export async function initSupportAdmin(root: HTMLElement): Promise<void> {
 
       unsubscribeMessages = subscribeToTicketMessages(ticket.id, {
         onMessage: appendMessage,
-        onError: () => setChatStatus("Live-обновления недоступны."),
+        onError: () => setChatStatus(""),
       });
     } catch (error) {
       setPanelMessage("Не удалось открыть тикет.");

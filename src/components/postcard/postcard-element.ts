@@ -1,6 +1,15 @@
 import { renderPostcardInner, initPostcardExpand, type PostcardPost } from "./postcard";
+
 export class ArisPostcard extends HTMLElement {
+  static get observedAttributes(): string[] {
+    return ["data-post"];
+  }
+
   connectedCallback(): void {
+    this.render();
+  }
+
+  attributeChangedCallback(): void {
     this.render();
   }
 

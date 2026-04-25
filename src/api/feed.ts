@@ -104,11 +104,11 @@ export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
 /**
  * Преобразует сырой FeedResponse в типизированные данные для UI.
  */
-export function mapFeedResponse(response: FeedResponse) {
+export function mapFeedResponse(response?: FeedResponse) {
   return {
-    items: Array.isArray(response.posts) ? response.posts.map(mapFeedItemToPostcard) : [],
-    nextCursor: response.nextCursor ?? "",
-    hasMore: Boolean(response.hasMore),
+    items: Array.isArray(response?.posts) ? response.posts.map(mapFeedItemToPostcard) : [],
+    nextCursor: response?.nextCursor ?? "",
+    hasMore: Boolean(response?.hasMore),
   };
 }
 

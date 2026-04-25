@@ -240,8 +240,8 @@ body.has-network-status {
   bottom: 80px;
   right: 20px;
   z-index: 1500;
-  width: 440px;
-  height: 480px;
+  width: 500px;
+  height: 560px;
   max-height: calc(100vh - 100px);
   border: none;
   border-radius: var(--radius-large);

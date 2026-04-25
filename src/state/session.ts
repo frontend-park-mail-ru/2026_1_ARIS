@@ -53,6 +53,14 @@ function readPersistedSessionUser(): User | null {
       lastName: String(parsed.lastName ?? ""),
     };
 
+    if (typeof parsed.login === "string") {
+      nextUser.login = parsed.login;
+    }
+
+    if (typeof parsed.email === "string") {
+      nextUser.email = parsed.email;
+    }
+
     if (typeof parsed.avatarLink === "string") {
       nextUser.avatarLink = parsed.avatarLink;
     }

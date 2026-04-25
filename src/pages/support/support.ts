@@ -5,6 +5,7 @@ import {
   type TicketCategory,
   type TicketStatus,
 } from "../../api/support";
+import { getMyProfile } from "../../api/profile";
 import { getSessionUser, initSession } from "../../state/session";
 
 // ---------------------------------------------------------------------------
@@ -123,6 +124,35 @@ export function renderSupportWidget(): string {
             </div>
 
             <div class="sw-form__field">
+              <label class="sw-form__label" for="sw-login">Логин</label>
+              <input
+                id="sw-login"
+                name="login"
+                type="text"
+                class="sw-form__input sw-form__input--readonly"
+                placeholder="Определится автоматически"
+                readonly
+                data-sw-login
+              >
+            </div>
+
+            <div class="sw-form__field">
+              <label class="sw-form__label" for="sw-email">E-mail <span class="sw-form__optional">контактный для связи</span></label>
+              <input
+                id="sw-email"
+                name="email"
+                type="email"
+                class="sw-form__input"
+                placeholder="name@example.com"
+                inputmode="email"
+                autocomplete="email"
+                maxlength="255"
+                required
+                data-sw-email
+              >
+            </div>
+
+            <div class="sw-form__field">
               <label class="sw-form__label" for="sw-title">Заголовок</label>
               <input
                 id="sw-title"
@@ -218,6 +248,8 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   if (!user) return;
 
   const closeButton = root.querySelector<HTMLButtonElement>("[data-sw-close]");
+  const loginInput = root.querySelector<HTMLInputElement>("[data-sw-login]");
+  const emailInput = root.querySelector<HTMLInputElement>("[data-sw-email]");
   const form = root.querySelector<HTMLFormElement>("[data-sw-form]");
   const submitBtn = root.querySelector<HTMLButtonElement>("[data-sw-submit]");
   const errorEl = root.querySelector<HTMLElement>("[data-sw-error]");
@@ -230,10 +262,34 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
   const uploadLabel = root.querySelector<HTMLElement>("[data-sw-upload-label]");
 
   let selectedFile: File | null = null;
+  let resolvedLogin = (user.login ?? "").trim();
+  let resolvedEmail = (user.email ?? "").trim();
 
   closeButton?.addEventListener("click", () => {
     window.parent?.postMessage({ type: "support-widget-close" }, window.location.origin);
   });
+
+  const syncIdentityFields = (): void => {
+    if (loginInput) {
+      loginInput.value = resolvedLogin;
+    }
+
+    if (emailInput) {
+      emailInput.value = resolvedEmail;
+    }
+  };
+
+  syncIdentityFields();
+
+  if (!resolvedEmail) {
+    try {
+      const profile = await getMyProfile();
+      resolvedEmail = (profile.email ?? "").trim();
+      syncIdentityFields();
+    } catch (error) {
+      console.warn("[support] failed to preload contact email", error);
+    }
+  }
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
@@ -306,8 +362,15 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
 
     const formData = new FormData(form);
     const category = formData.get("category") as TicketCategory;
+    const login = ((formData.get("login") as string) ?? resolvedLogin).trim();
+    const email = ((formData.get("email") as string) ?? resolvedEmail).trim();
     const title = ((formData.get("title") as string) ?? "").trim();
     const description = ((formData.get("description") as string) ?? "").trim();
+
+    if (!email) {
+      showError(errorEl, "Укажите контактный e-mail.");
+      return;
+    }
 
     if (!title || title.length < 3) {
       showError(errorEl, "Заголовок должен содержать не менее 3 символов.");
@@ -323,9 +386,17 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
     hideError(errorEl);
 
     try {
-      await createTicket({ category, title, description, screenshot: selectedFile });
+      await createTicket({
+        category,
+        login,
+        email,
+        title,
+        description,
+        screenshot: selectedFile,
+      });
       form.reset();
       clearPreview();
+      syncIdentityFields();
       form.hidden = true;
       successEl.hidden = false;
     } catch (err) {

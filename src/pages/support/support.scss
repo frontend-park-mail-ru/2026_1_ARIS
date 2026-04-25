@@ -179,6 +179,11 @@
   min-height: 64px;
 }
 
+.sw-form__input--readonly {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
 .sw-form__optional {
   font-weight: 400;
   color: var(--color-text-muted);

@@ -24,7 +24,7 @@
   top: 0;
   z-index: 1000;
   width: 100%;
-  overflow-x: hidden;
+  overflow: visible;
   border-bottom: var(--border-width) solid var(--color-border-default);
   background: var(--color-surface-card);
 
@@ -178,7 +178,7 @@
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    z-index: 2;
+    z-index: 2000;
     min-width: 132px;
     padding: 8px;
     border: 1px solid rgb(203 210 222 / 82%);

@@ -95,8 +95,32 @@ function renderTicketDetails(ticket: Ticket): string {
     <h3 class="sw-ticket-modal__title">${escapeHtml(ticket.title)}</h3>
     <time class="sw-ticket-modal__time">${formatDate(ticket.createdAt)}</time>
     <p class="sw-ticket-modal__description">${escapeHtml(ticket.description)}</p>
+    ${renderTicketAttachments(ticket)}
     ${renderRatingPanel(ticket)}
     ${renderTicketChatPanel()}
+  `;
+}
+
+function renderTicketAttachments(ticket: Ticket): string {
+  if (!ticket.media.length) {
+    return "";
+  }
+
+  return `
+    <section class="sw-attachments" aria-label="Вложения">
+      <h4 class="sw-attachments__title">Скриншот</h4>
+      <div class="sw-attachments__grid">
+        ${ticket.media
+          .map(
+            (media) => `
+              <a class="sw-attachment" href="${escapeHtml(media.mediaURL)}" target="_blank" rel="noopener noreferrer">
+                <img src="${escapeHtml(media.mediaURL)}" alt="Скриншот обращения" loading="lazy">
+              </a>
+            `,
+          )
+          .join("")}
+      </div>
+    </section>
   `;
 }
 

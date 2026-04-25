@@ -130,6 +130,7 @@ function renderTicketPanel(ticket: Ticket): string {
       </header>
 
       <p class="sa-detail__description">${escapeHtml(ticket.description)}</p>
+      ${renderTicketAttachments(ticket)}
 
       <section class="sa-controls">
         <label>
@@ -172,6 +173,29 @@ function renderTicketPanel(ticket: Ticket): string {
         </form>
       </section>
     </article>
+  `;
+}
+
+function renderTicketAttachments(ticket: Ticket): string {
+  if (!ticket.media.length) {
+    return "";
+  }
+
+  return `
+    <section class="sa-attachments" aria-label="Вложения">
+      <h3>Скриншот</h3>
+      <div class="sa-attachments__grid">
+        ${ticket.media
+          .map(
+            (media) => `
+              <a class="sa-attachment" href="${escapeHtml(media.mediaURL)}" target="_blank" rel="noopener noreferrer">
+                <img src="${escapeHtml(media.mediaURL)}" alt="Скриншот обращения" loading="lazy">
+              </a>
+            `,
+          )
+          .join("")}
+      </div>
+    </section>
   `;
 }
 

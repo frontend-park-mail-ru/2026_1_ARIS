@@ -1,6 +1,7 @@
-import { apiRequest } from "./core/client";
+import { ApiError, apiRequest, createApiError, parseJson } from "./core/client";
 import type { UserRole } from "./auth";
 import { getSessionUser } from "../state/session";
+import { trackedFetch } from "../state/network-status";
 
 export type TicketCategory = "bug" | "feature_request" | "complaint" | "question" | "other";
 export type TicketStatus = "open" | "in_progress" | "waiting_user" | "closed";
@@ -16,8 +17,14 @@ export type Ticket = {
   line: TicketLine;
   assignedAgentId?: string | null;
   rating?: number | null;
+  media: TicketMedia[];
   createdAt: string;
   updatedAt?: string;
+};
+
+export type TicketMedia = {
+  mediaID: number;
+  mediaURL: string;
 };
 
 export type SupportStats = {
@@ -60,10 +67,28 @@ type RawTicket = {
   assigned_agent_id?: number | string | null;
   assignedAgentId?: number | string | null;
   rating?: number | string | null;
+  media?: RawTicketMedia[];
+  medias?: RawTicketMedia[];
+  mediaURL?: string[];
+  media_url?: string[];
   created_at?: string;
   createdAt?: string;
   updated_at?: string;
   updatedAt?: string;
+};
+
+type RawTicketMedia = {
+  mediaID?: number | string;
+  mediaId?: number | string;
+  media_id?: number | string;
+  mediaURL?: string;
+  mediaUrl?: string;
+  media_url?: string;
+  url?: string;
+};
+
+type UploadMediaResponse = {
+  media?: TicketMedia[];
 };
 
 type RawStats = {
@@ -243,6 +268,35 @@ function mapUserRole(value: string | undefined): UserRole {
   return "user";
 }
 
+function mapTicketMedia(raw: RawTicketMedia): TicketMedia | null {
+  const rawId = raw.mediaID ?? raw.mediaId ?? raw.media_id;
+  const rawUrl = raw.mediaURL ?? raw.mediaUrl ?? raw.media_url ?? raw.url;
+  const mediaID = Number(rawId);
+  const mediaURL = rawUrl ? String(rawUrl) : "";
+
+  if (!Number.isFinite(mediaID) || mediaID <= 0 || !mediaURL) {
+    return null;
+  }
+
+  return { mediaID, mediaURL };
+}
+
+function mapTicketMediaList(raw: RawTicket): TicketMedia[] {
+  const media = raw.media ?? raw.medias;
+  if (Array.isArray(media)) {
+    return media.map(mapTicketMedia).filter((item): item is TicketMedia => Boolean(item));
+  }
+
+  const urls = raw.mediaURL ?? raw.media_url;
+  if (Array.isArray(urls)) {
+    return urls
+      .map((url, index) => mapTicketMedia({ mediaID: index + 1, mediaURL: url }))
+      .filter((item): item is TicketMedia => Boolean(item));
+  }
+
+  return [];
+}
+
 function buildCategoryStats(
   byCategoryRecord?: Record<string, number>,
   byCategoryList?: RawCategoryStat[],
@@ -334,6 +388,7 @@ function mapTicket(raw: RawTicket): Ticket {
       raw.rating === null || raw.rating === undefined || raw.rating === ""
         ? null
         : Number(raw.rating),
+    media: mapTicketMediaList(raw),
     createdAt: raw.createdAt ?? raw.created_at ?? "",
     ...(updatedAt ? { updatedAt } : {}),
   };
@@ -372,6 +427,8 @@ export async function createTicket(data: {
   description: string;
   screenshot?: File | null;
 }): Promise<Ticket> {
+  const media = data.screenshot ? [await uploadSupportScreenshot(data.screenshot)] : [];
+
   const response = await fetch("/api/support/tickets", {
     method: "POST",
     credentials: "include",
@@ -384,6 +441,7 @@ export async function createTicket(data: {
       email: data.email,
       title: data.title,
       description: data.description,
+      ...(media.length ? { media } : {}),
     }),
   });
 
@@ -394,6 +452,33 @@ export async function createTicket(data: {
 
   const raw = (await response.json()) as RawTicket;
   return mapTicket(raw);
+}
+
+export async function uploadSupportScreenshot(file: File): Promise<TicketMedia> {
+  const formData = new FormData();
+  formData.append("files", file);
+
+  const response = await trackedFetch("/api/media/upload?for=support", {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+
+  const data = await parseJson<UploadMediaResponse | { error?: string }>(response, {});
+
+  if (!response.ok) {
+    throw createApiError("failed to upload support screenshot", response.status, data);
+  }
+
+  const uploadedFile = Array.isArray((data as UploadMediaResponse).media)
+    ? (data as UploadMediaResponse).media?.[0]
+    : null;
+
+  if (!uploadedFile) {
+    throw new ApiError("failed to upload support screenshot", response.status, data);
+  }
+
+  return uploadedFile;
 }
 
 export async function getMyTickets(): Promise<Ticket[]> {

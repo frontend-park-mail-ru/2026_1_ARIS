@@ -234,6 +234,27 @@ function renderPostcardMedia(images: string[] = []): string {
  */
 export function renderPostcardInner(post: PostcardPost): string {
   const sessionUser = getSessionUser();
+  const statsMarkup = sessionUser
+    ? `
+    <div class="postcard__stats">
+      ${renderPostcardStat({
+        icon: "/assets/img/icons/heart.svg",
+        count: post.likes,
+        action: "like",
+      })}
+      ${renderPostcardStat({
+        icon: "/assets/img/icons/repost.svg",
+        count: post.reposts,
+        action: "repost",
+      })}
+      ${renderPostcardStat({
+        icon: "/assets/img/icons/comment.svg",
+        count: post.comments,
+        action: "comment",
+      })}
+    </div>
+  `
+    : "";
   const displayName =
     `${post.firstName || ""} ${post.lastName || ""}`.trim() || post.author || "Пользователь";
   const profilePath = resolveProfilePath({
@@ -271,23 +292,7 @@ export function renderPostcardInner(post: PostcardPost): string {
       ${renderPostcardMedia(post.images || [])}
 
       <footer class="postcard__footer">
-        <div class="postcard__stats">
-          ${renderPostcardStat({
-            icon: "/assets/img/icons/heart.svg",
-            count: post.likes,
-            action: "like",
-          })}
-          ${renderPostcardStat({
-            icon: "/assets/img/icons/repost.svg",
-            count: post.reposts,
-            action: "repost",
-          })}
-          ${renderPostcardStat({
-            icon: "/assets/img/icons/comment.svg",
-            count: post.comments,
-            action: "comment",
-          })}
-        </div>
+        ${statsMarkup}
 
         <p class="postcard__time" ${post.timeRaw ? `title="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}>${post.time}</p>
       </footer>

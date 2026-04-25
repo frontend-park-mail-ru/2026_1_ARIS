@@ -279,7 +279,7 @@ export function renderInfoRows(profile: DisplayProfile): string {
   return `
     <dl class="profile-info-grid">
       ${rows}
-    </div>
+    </dl>
   `;
 }
 

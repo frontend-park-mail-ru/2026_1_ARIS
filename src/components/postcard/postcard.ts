@@ -305,9 +305,7 @@ export function renderPostcardInner(post: PostcardPost): string {
  * Данные передаются через атрибут data-post (JSON).
  */
 export function renderPostcard(post: PostcardPost): string {
-  const encoded = escapeHtml(JSON.stringify(post));
-  const key = post.id ? ` data-key="${escapeHtml(post.id)}"` : "";
-  return `<aris-postcard${key} data-post="${encoded}"></aris-postcard>`;
+  return renderPostcardInner(post);
 }
 
 /**

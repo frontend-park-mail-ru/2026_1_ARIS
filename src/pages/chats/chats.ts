@@ -105,10 +105,13 @@ async function refreshChatsInBackground(): Promise<void> {
 
     await Promise.all(
       chatsState.threads.map(async (thread) => {
-        ensureChatSocketSubscribed(thread.id);
         await ensureMessagesLoaded(thread.id, { background: true, force: true });
       }),
     );
+
+    if (chatsState.selectedChatId) {
+      ensureChatSocketSubscribed(chatsState.selectedChatId);
+    }
 
     applyThreadVisibilityRules();
     persistChatsData(chatsState.threads);
@@ -182,10 +185,13 @@ async function ensureChatsLoaded(): Promise<void> {
 
   await Promise.all(
     chatsState.threads.map(async (thread) => {
-      ensureChatSocketSubscribed(thread.id);
       await ensureMessagesLoaded(thread.id, { background: true });
     }),
   );
+
+  if (chatsState.selectedChatId) {
+    ensureChatSocketSubscribed(chatsState.selectedChatId);
+  }
 
   applyThreadVisibilityRules(preferredChatId);
   applySelectedChatPersistedViewState();

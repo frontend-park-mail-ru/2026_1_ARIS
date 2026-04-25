@@ -100,20 +100,19 @@ export async function createTicket(data: {
   description: string;
   screenshot?: File | null;
 }): Promise<Ticket> {
-  const formData = new FormData();
-  formData.append("category", String(CATEGORY_TO_CODE[data.category]));
-  formData.append("login", data.login);
-  formData.append("email", data.email);
-  formData.append("title", data.title);
-  formData.append("description", data.description);
-  if (data.screenshot) {
-    formData.append("screenshot", data.screenshot, data.screenshot.name);
-  }
-
   const response = await fetch("/api/support/tickets", {
     method: "POST",
     credentials: "include",
-    body: formData,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      category: CATEGORY_TO_CODE[data.category],
+      login: data.login,
+      email: data.email,
+      title: data.title,
+      description: data.description,
+    }),
   });
 
   if (!response.ok) {

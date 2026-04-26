@@ -1,11 +1,10 @@
-import { ApiError } from "./auth";
+import { ApiError, parseJson, createApiError, apiRequest } from "./core/client";
 import type { UploadedMedia } from "./profile";
 import { trackedFetch } from "../state/network-status";
-import { clearFeedCache } from "../pages/feed/feed";
+import { clearFeedCache } from "../pages/feed/cache";
 
-type ErrorResponse = {
-  error?: string;
-};
+// Повторно экспортируем ApiError для кода, который импортирует его из этого модуля.
+export { ApiError };
 
 export type PostPayload = {
   text?: string;
@@ -41,46 +40,15 @@ type UploadMediaResponse = {
   media?: UploadedMedia[];
 };
 
-async function parseJson<T>(response: Response): Promise<T> {
-  const text = await response.text();
-
-  try {
-    return text ? (JSON.parse(text) as T) : ({} as T);
-  } catch {
-    return { error: text || "invalid server response" } as T;
-  }
-}
-
-function createApiError(
-  fallbackMessage: string,
-  status: number,
-  data: ErrorResponse | unknown,
-): ApiError {
-  const message =
-    typeof data === "object" &&
-    data !== null &&
-    "error" in data &&
-    typeof (data as ErrorResponse).error === "string"
-      ? (data as ErrorResponse).error!
-      : fallbackMessage;
-
-  return new ApiError(message, status, data);
-}
-
 async function mutatePost(
   path: string,
   method: "POST" | "PATCH" | "DELETE",
   payload?: PostPayload,
 ): Promise<PostResponse | void> {
-  const requestInit: RequestInit = {
-    method,
-    credentials: "include",
-  };
+  const requestInit: RequestInit = { method, credentials: "include" };
 
   if (payload && method !== "DELETE") {
-    requestInit.headers = {
-      "Content-Type": "application/json",
-    };
+    requestInit.headers = { "Content-Type": "application/json" };
     requestInit.body = JSON.stringify(payload);
   }
 
@@ -89,7 +57,7 @@ async function mutatePost(
   const data =
     response.status === 204 || method === "DELETE"
       ? null
-      : await parseJson<PostResponse | ErrorResponse>(response);
+      : await parseJson<PostResponse | { error?: string }>(response, {});
 
   if (!response.ok) {
     throw createApiError("failed to mutate post", response.status, data);
@@ -99,16 +67,7 @@ async function mutatePost(
 }
 
 export async function getMyPosts(): Promise<PostResponse[]> {
-  const response = await trackedFetch(`/api/post/me?ts=${Date.now()}`, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  const data = await parseJson<PostsApiResponse | ErrorResponse>(response);
-
-  if (!response.ok) {
-    throw createApiError("failed to load my posts", response.status, data);
-  }
+  const data = await apiRequest<PostsApiResponse>(`/api/post/me?ts=${Date.now()}`, {}, {});
 
   if (Array.isArray(data)) {
     return data as PostResponse[];
@@ -120,19 +79,11 @@ export async function getMyPosts(): Promise<PostResponse[]> {
 }
 
 export async function getPostsByProfileId(profileId: string): Promise<PostResponse[]> {
-  const response = await trackedFetch(
+  const data = await apiRequest<PostsApiResponse>(
     `/api/post/profile/${encodeURIComponent(profileId)}?ts=${Date.now()}`,
-    {
-      method: "GET",
-      credentials: "include",
-    },
+    {},
+    {},
   );
-
-  const data = await parseJson<PostsApiResponse | ErrorResponse>(response);
-
-  if (!response.ok) {
-    throw createApiError("failed to load profile posts", response.status, data);
-  }
 
   if (Array.isArray(data)) {
     return data as PostResponse[];
@@ -169,9 +120,7 @@ export async function deletePost(postId: string | number): Promise<void> {
 
 export async function uploadPostImages(files: File[]): Promise<UploadedMedia[]> {
   const formData = new FormData();
-  files.forEach((file) => {
-    formData.append("files", file);
-  });
+  files.forEach((file) => formData.append("files", file));
 
   const response = await trackedFetch("/api/media/upload?for=post", {
     method: "POST",
@@ -179,7 +128,7 @@ export async function uploadPostImages(files: File[]): Promise<UploadedMedia[]> 
     body: formData,
   });
 
-  const data = await parseJson<UploadMediaResponse | ErrorResponse>(response);
+  const data = await parseJson<UploadMediaResponse | { error?: string }>(response, {});
 
   if (!response.ok) {
     throw createApiError("failed to upload post images", response.status, data);

@@ -7,11 +7,7 @@ import {
 } from "../../api/friends";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
 import { getSessionUser } from "../../state/session";
-
-type WidgetbarCache = {
-  guest: string | null;
-  authorised: string | null;
-};
+import { TtlCache } from "../../utils/ttl-cache";
 
 type WidgetbarUser = {
   id: string;
@@ -38,27 +34,23 @@ type WidgetbarLoadResult<T> = {
   failed: boolean;
 };
 
-/**
- * In-memory widgetbar cache for the current page session.
- * It is reset only on full page reload.
- */
-const widgetbarCache: WidgetbarCache = {
-  guest: null,
-  authorised: null,
-};
+/** Кэш виджетбара с TTL 10 минут. Ключ: "guest" | "authorised". */
+const widgetbarCache = new TtlCache<"guest" | "authorised", string>(10 * 60 * 1000);
+
+// Временный выключатель, пока виджет не будет корректно восстановлен.
+const SHOW_LATEST_EVENTS_WIDGET = false;
 
 /**
- * Clears widgetbar cache.
+ * Очищает кэш виджетбара.
  *
  * @returns {void}
  */
 export function clearWidgetbarCache(): void {
-  widgetbarCache.guest = null;
-  widgetbarCache.authorised = null;
+  widgetbarCache.clear();
 }
 
 /**
- * Renders a stub button.
+ * Рендерит кнопку-заглушку.
  *
  * @param {string} text
  * @param {string} className
@@ -77,7 +69,7 @@ function renderWidgetbarEmptyState(text: string): string {
 }
 
 /**
- * Renders a profile link.
+ * Рендерит ссылку на профиль.
  *
  * @param {string} text
  * @param {string} profileId
@@ -212,7 +204,7 @@ async function loadWidgetbarPosts(
 }
 
 /**
- * Renders popular users widget for guests.
+ * Рендерит виджет популярных пользователей для гостей.
  *
  * @returns {Promise<string>}
  */
@@ -227,8 +219,8 @@ async function renderPopularUsersWidget(): Promise<string> {
             <div class="widgetbar-person">
               ${
                 user.avatarLink
-                  ? `<img class="widgetbar-person__avatar" src="${resolveAvatarSrc(user.avatarLink)}" alt="${user.firstName} ${user.lastName}">`
-                  : `<img class="widgetbar-person__avatar" src="/assets/img/default-avatar.png" alt="${user.firstName} ${user.lastName}">`
+                  ? `<img class="widgetbar-person__avatar" loading="lazy" decoding="async" width="32" height="32" src="${resolveAvatarSrc(user.avatarLink)}" alt="${user.firstName} ${user.lastName}">`
+                  : `<img class="widgetbar-person__avatar" loading="lazy" decoding="async" width="32" height="32" src="/assets/img/default-avatar.png" alt="${user.firstName} ${user.lastName}">`
               }
               ${renderProfileLink(
                 `${user.firstName} ${user.lastName}`,
@@ -253,7 +245,7 @@ async function renderPopularUsersWidget(): Promise<string> {
 }
 
 /**
- * Renders known people widget.
+ * Рендерит виджет «Возможно, вы знакомы».
  *
  * @returns {Promise<string>}
  */
@@ -293,6 +285,10 @@ async function renderKnownPeopleWidget(): Promise<string> {
             <div class="widgetbar-person">
               <img
                 class="widgetbar-person__avatar"
+                loading="eager"
+                decoding="async"
+                width="32"
+                height="32"
                 src="${resolveAvatarSrc(user.avatarLink)}"
                 alt="${user.firstName} ${user.lastName}"
               >
@@ -314,7 +310,7 @@ async function renderKnownPeopleWidget(): Promise<string> {
 }
 
 /**
- * Renders latest events widget.
+ * Рендерит виджет последних событий.
  *
  * @returns {Promise<string>}
  */
@@ -376,7 +372,7 @@ async function renderEventsWidget(): Promise<string> {
 }
 
 /**
- * Renders guest popular posts widget.
+ * Рендерит виджет популярных постов для гостей.
  *
  * @returns {Promise<string>}
  */
@@ -408,7 +404,7 @@ async function renderGuestPopularPostsWidget(): Promise<string> {
 }
 
 /**
- * Renders authorised popular posts widget.
+ * Рендерит виджет популярных постов для авторизованного пользователя.
  *
  * @returns {Promise<string>}
  */
@@ -438,7 +434,7 @@ async function renderAuthorisedPopularPostsWidget(): Promise<string> {
 }
 
 /**
- * Renders weather widget.
+ * Рендерит погодный виджет.
  *
  * @returns {string}
  */
@@ -474,7 +470,7 @@ function renderWeatherWidget(): string {
 }
 
 /**
- * Builds widgetbar markup for authorised user.
+ * Собирает разметку виджетбара для авторизованного пользователя.
  *
  * @returns {Promise<string>}
  */
@@ -482,13 +478,13 @@ async function buildAuthorisedWidgetbar(): Promise<string> {
   return `
     <aside class="widgetbar">
       ${await renderKnownPeopleWidget()}
-      ${await renderEventsWidget()}
+      ${SHOW_LATEST_EVENTS_WIDGET ? await renderEventsWidget() : ""}
     </aside>
   `;
 }
 
 /**
- * Builds widgetbar markup for guest user.
+ * Собирает разметку виджетбара для гостя.
  *
  * @returns {Promise<string>}
  */
@@ -501,24 +497,18 @@ async function buildGuestWidgetbar(): Promise<string> {
 }
 
 /**
- * Renders the widgetbar.
- * Cached for the current browser page session.
+ * Рендерит виджетбар.
+ * Кэшируется на время текущей сессии страницы в браузере.
  *
  * @param {RenderWidgetbarOptions} options
  * @returns {Promise<string>}
  */
 export async function renderWidgetbar({ isAuthorised }: RenderWidgetbarOptions): Promise<string> {
-  if (isAuthorised) {
-    if (!widgetbarCache.authorised) {
-      widgetbarCache.authorised = await buildAuthorisedWidgetbar();
-    }
+  const key = isAuthorised ? "authorised" : "guest";
+  const cached = widgetbarCache.get(key);
+  if (cached) return cached;
 
-    return widgetbarCache.authorised;
-  }
-
-  if (!widgetbarCache.guest) {
-    widgetbarCache.guest = await buildGuestWidgetbar();
-  }
-
-  return widgetbarCache.guest;
+  const html = isAuthorised ? await buildAuthorisedWidgetbar() : await buildGuestWidgetbar();
+  widgetbarCache.set(key, html);
+  return html;
 }

@@ -69,12 +69,16 @@ function matchRoute(routePath: string, currentPath: string): MatchResult {
   return { matched: true, params };
 }
 
+type VTDocument = Document & {
+  startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+};
+
 export function createRouter(
   root: HTMLElement,
   routes: Route[],
   hooks: RouterHooks = {},
 ): AppRouter {
-  async function render(): Promise<void> {
+  async function render(resetScroll = false): Promise<void> {
     const path = normalisePath(window.location.pathname);
 
     let matchedRoute: Route | null = null;
@@ -97,7 +101,23 @@ export function createRouter(
     }
 
     document.title = matchedRoute.title;
-    root.innerHTML = await matchedRoute.render(matchedParams);
+    const html = await matchedRoute.render(matchedParams);
+
+    const applyHtml = () => {
+      if (resetScroll) window.scrollTo(0, 0);
+      root.innerHTML = html;
+    };
+
+    const vtDoc = document as VTDocument;
+    if (vtDoc.startViewTransition) {
+      try {
+        await vtDoc.startViewTransition(applyHtml).finished.catch(() => undefined);
+      } catch {
+        applyHtml();
+      }
+    } else {
+      applyHtml();
+    }
 
     await hooks.afterRender?.(root);
     window.dispatchEvent(new CustomEvent("apprender"));
@@ -108,8 +128,7 @@ export function createRouter(
       window.history.pushState({}, "", to);
     }
 
-    window.scrollTo(0, 0);
-    await render();
+    await render(true);
   }
 
   document.addEventListener("click", (event: Event) => {

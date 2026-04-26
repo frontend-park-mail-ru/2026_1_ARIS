@@ -47,7 +47,7 @@
     color: var(--color-text-name); // цвет имени автора
     font-size: var(--text-size-main);
     font-weight: var(--font-weight-medium);
-    line-height: normal;
+    line-height: var(--line-height-base);
   }
 
   &__text-container {
@@ -63,7 +63,7 @@
     color: var(--color-text-main);
     font-size: var(--text-size-main);
     font-weight: var(--font-weight-regular);
-    line-height: normal;
+    line-height: var(--line-height-relaxed);
     letter-spacing: 0;
 
     &--collapsed {
@@ -98,7 +98,7 @@
     color: var(--color-text-meta);
     font-size: var(--text-size-main);
     font-weight: var(--font-weight-medium);
-    line-height: normal;
+    line-height: var(--line-height-base);
     cursor: pointer;
 
     &:hover {
@@ -218,7 +218,7 @@
     color: var(--color-text-on-primary);
     font-size: var(--text-size-title);
     font-weight: var(--font-weight-bold);
-    line-height: 22px;
+    line-height: var(--line-height-base);
   }
 
   &__footer {
@@ -257,6 +257,11 @@
       &:active {
         transform: var(--control-press-transform); // даём эффект нажатия
       }
+
+      &:focus-visible {
+        outline: none;
+        box-shadow: var(--control-focus-ring);
+      }
     }
 
     &-button {
@@ -285,7 +290,7 @@
       color: var(--color-text-meta);
       font-size: var(--text-size-meta);
       font-weight: var(--font-weight-medium);
-      line-height: 18px;
+      line-height: var(--line-height-base);
     }
   }
 
@@ -296,7 +301,7 @@
     color: var(--color-text-meta);
     font-size: var(--text-size-meta);
     font-weight: var(--font-weight-medium);
-    line-height: 18px;
+    line-height: var(--line-height-base);
   }
 }
 

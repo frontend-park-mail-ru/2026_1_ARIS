@@ -9,7 +9,8 @@
     background-color var(--transition-control),
     color var(--transition-control),
     transform var(--transition-control),
-    border-color var(--transition-control);
+    border-color var(--transition-control),
+    box-shadow var(--transition-control);
 }
 
 %control-field-reset {

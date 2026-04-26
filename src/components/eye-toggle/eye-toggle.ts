@@ -4,7 +4,7 @@ type RenderEyeToggleOptions = {
 };
 
 /**
- * Renders a password visibility toggle button (eye icon).
+ * Рендерит кнопку переключения видимости пароля (иконка глаза).
  *
  * @param {RenderEyeToggleOptions} [options={}]
  * @returns {string}

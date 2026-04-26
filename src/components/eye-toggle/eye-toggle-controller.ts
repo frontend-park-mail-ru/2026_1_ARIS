@@ -3,7 +3,7 @@ type EyeToggleRoot = (Document | HTMLElement) & {
 };
 
 /**
- * Initializes password visibility toggle handlers.
+ * Инициализирует обработчики переключения видимости пароля.
  *
  * @param {Document | HTMLElement} [root=document]
  * @returns {void}

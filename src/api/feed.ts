@@ -1,4 +1,4 @@
-import { trackedFetch } from "../state/network-status";
+import { apiRequest } from "./core/client";
 
 export type PostcardModel = {
   id: string;
@@ -14,11 +14,6 @@ export type PostcardModel = {
   comments: number;
   reposts: number;
   images: string[];
-};
-
-type ApiError = Error & {
-  status?: number;
-  data?: unknown;
 };
 
 type FeedRequestOptions = {
@@ -55,10 +50,6 @@ type FeedResponse = {
   hasMore?: boolean;
 };
 
-type ErrorResponse = {
-  error?: string;
-};
-
 type PopularPost = {
   title: string;
 };
@@ -68,76 +59,7 @@ type PopularPostsResponse = {
 };
 
 /**
- * Safe JSON parsing
- */
-async function parseJson<T>(response: Response): Promise<T> {
-  const text = await response.text();
-
-  try {
-    return text ? (JSON.parse(text) as T) : ({} as T);
-  } catch {
-    return { error: text || "invalid server response" } as T;
-  }
-}
-
-/**
- * GET /api/feed
- */
-export async function getFeed({
-  cursor = "",
-  limit = 20,
-}: FeedRequestOptions = {}): Promise<FeedResponse> {
-  const params = new URLSearchParams();
-
-  if (cursor) params.set("cursor", cursor);
-  if (limit) params.set("limit", String(limit));
-
-  const response = await trackedFetch(`/api/feed?${params}`, {
-    credentials: "include",
-  });
-
-  const data = await parseJson<FeedResponse & ErrorResponse>(response);
-
-  if (!response.ok) {
-    const error: ApiError = new Error(data.error || "failed to load feed");
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-
-  return data;
-}
-
-/**
- * GET /api/public/feed
- */
-export async function getPublicFeed({
-  cursor = "",
-  limit = 20,
-}: FeedRequestOptions = {}): Promise<FeedResponse> {
-  const params = new URLSearchParams();
-
-  if (cursor) params.set("cursor", cursor);
-  if (limit) params.set("limit", String(limit));
-
-  const response = await trackedFetch(`/api/public/feed?${params}`, {
-    credentials: "include",
-  });
-
-  const data = await parseJson<FeedResponse & ErrorResponse>(response);
-
-  if (!response.ok) {
-    const error: ApiError = new Error(data.error || "failed to load public feed");
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-
-  return data;
-}
-
-/**
- * Relative time formatter
+ * Форматирует ISO-дату в относительную временную метку на русском языке.
  */
 function formatRelativeTime(iso?: string): string {
   if (!iso) return "";
@@ -157,7 +79,7 @@ function formatRelativeTime(iso?: string): string {
 }
 
 /**
- * Map backend item → postcard model
+ * Преобразует сырой элемент ленты из backend в PostcardModel.
  */
 export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
   return {
@@ -180,52 +102,54 @@ export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
 }
 
 /**
- * Map whole response
+ * Преобразует сырой FeedResponse в типизированные данные для UI.
  */
-export function mapFeedResponse(response: FeedResponse) {
+export function mapFeedResponse(response?: FeedResponse) {
   return {
-    items: Array.isArray(response.posts) ? response.posts.map(mapFeedItemToPostcard) : [],
-    nextCursor: response.nextCursor ?? "",
-    hasMore: Boolean(response.hasMore),
+    items: Array.isArray(response?.posts) ? response.posts.map(mapFeedItemToPostcard) : [],
+    nextCursor: response?.nextCursor ?? "",
+    hasMore: Boolean(response?.hasMore),
   };
 }
 
 /**
- * Popular posts (auth)
+ * GET /api/feed — лента авторизованного пользователя.
  */
-export async function getPopularPosts(): Promise<PopularPostsResponse> {
-  const response = await trackedFetch("/api/posts/popular", {
-    credentials: "include",
-  });
+export async function getFeed({
+  cursor = "",
+  limit = 20,
+}: FeedRequestOptions = {}): Promise<FeedResponse> {
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", cursor);
+  if (limit) params.set("limit", String(limit));
 
-  const data = await parseJson<PopularPostsResponse & ErrorResponse>(response);
-
-  if (!response.ok) {
-    const error: ApiError = new Error(data.error || "failed to load popular posts");
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-
-  return data;
+  return apiRequest<FeedResponse>(`/api/feed?${params}`, {}, {});
 }
 
 /**
- * Popular posts (public)
+ * GET /api/public/feed — публичная лента, авторизация не требуется.
+ */
+export async function getPublicFeed({
+  cursor = "",
+  limit = 20,
+}: FeedRequestOptions = {}): Promise<FeedResponse> {
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", cursor);
+  if (limit) params.set("limit", String(limit));
+
+  return apiRequest<FeedResponse>(`/api/public/feed?${params}`, {}, {});
+}
+
+/**
+ * GET /api/posts/popular — популярные посты для авторизованного пользователя.
+ */
+export async function getPopularPosts(): Promise<PopularPostsResponse> {
+  return apiRequest<PopularPostsResponse>("/api/posts/popular", {}, {});
+}
+
+/**
+ * GET /api/public/popular-posts — популярные посты для гостей.
  */
 export async function getPublicPopularPosts(): Promise<PopularPostsResponse> {
-  const response = await trackedFetch("/api/public/popular-posts", {
-    credentials: "include",
-  });
-
-  const data = await parseJson<PopularPostsResponse & ErrorResponse>(response);
-
-  if (!response.ok) {
-    const error: ApiError = new Error(data.error || "failed to load public popular posts");
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-
-  return data;
+  return apiRequest<PopularPostsResponse>("/api/public/popular-posts", {}, {});
 }

@@ -1,9 +1,7 @@
-import { ApiError } from "./auth";
-import { trackedFetch } from "../state/network-status";
-
-type ErrorResponse = {
-  error?: string;
-};
+import { ApiError, apiRequest } from "./core/client";
+import { getSessionUser } from "../state/session";
+// Повторно экспортируем ApiError для кода, который импортирует его из этого модуля.
+export { ApiError };
 
 type RawChat = {
   id?: number | string;
@@ -59,32 +57,6 @@ export type ChatMessageSocketHandlers = {
   onError?: ((event: Event) => void) | undefined;
 };
 
-async function parseJson<T>(response: Response): Promise<T> {
-  const text = await response.text();
-
-  try {
-    return text ? (JSON.parse(text) as T) : ([] as T);
-  } catch {
-    return { error: text || "invalid server response" } as T;
-  }
-}
-
-function createApiError(
-  fallbackMessage: string,
-  status: number,
-  data: ErrorResponse | unknown,
-): ApiError {
-  const message =
-    typeof data === "object" &&
-    data !== null &&
-    "error" in data &&
-    typeof (data as ErrorResponse).error === "string"
-      ? (data as ErrorResponse).error!
-      : fallbackMessage;
-
-  return new ApiError(message, status, data);
-}
-
 function mapChat(raw: RawChat): ChatSummary {
   return {
     id: String(raw.id ?? raw.ID ?? raw.uid ?? raw.Uid ?? ""),
@@ -109,16 +81,7 @@ function mapMessage(raw: RawMessage): ChatMessage {
 }
 
 export async function getChats(): Promise<ChatSummary[]> {
-  const response = await trackedFetch("/api/chats", {
-    method: "GET",
-    credentials: "include",
-  });
-
-  const data = await parseJson<RawChat[] | ErrorResponse>(response);
-
-  if (!response.ok) {
-    throw createApiError("failed to load chats", response.status, data);
-  }
+  const data = await apiRequest<RawChat[]>("/api/chats", {}, []);
 
   if (!Array.isArray(data)) {
     return [];
@@ -128,31 +91,21 @@ export async function getChats(): Promise<ChatSummary[]> {
 }
 
 export async function createPrivateChat(otherUserId: string): Promise<ChatSummary> {
-  const response = await trackedFetch(`/api/chats?otherUserId=${encodeURIComponent(otherUserId)}`, {
-    method: "POST",
-    credentials: "include",
-  });
+  const data = await apiRequest<RawChat>(
+    `/api/chats?otherUserId=${encodeURIComponent(otherUserId)}`,
+    { method: "POST" },
+    {},
+  );
 
-  const data = await parseJson<RawChat | ErrorResponse>(response);
-
-  if (!response.ok) {
-    throw createApiError("failed to create chat", response.status, data);
-  }
-
-  return mapChat(data as RawChat);
+  return mapChat(data);
 }
 
 export async function getChatMessages(chatId: string): Promise<ChatMessage[]> {
-  const response = await trackedFetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  const data = await parseJson<RawMessage[] | ErrorResponse>(response);
-
-  if (!response.ok) {
-    throw createApiError("failed to load messages", response.status, data);
-  }
+  const data = await apiRequest<RawMessage[]>(
+    `/api/chats/${encodeURIComponent(chatId)}/messages`,
+    {},
+    [],
+  );
 
   if (!Array.isArray(data)) {
     return [];
@@ -165,27 +118,17 @@ export async function sendChatMessage(
   chatId: string,
   payload: SendMessagePayload,
 ): Promise<ChatMessage> {
-  const response = await trackedFetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
+  const data = await apiRequest<RawMessage>(
+    `/api/chats/${encodeURIComponent(chatId)}/messages`,
+    { method: "POST", body: payload },
+    {},
+  );
 
-  const data = await parseJson<RawMessage | ErrorResponse>(response);
-
-  if (!response.ok) {
-    throw createApiError("failed to send message", response.status, data);
-  }
-
-  return mapMessage(data as RawMessage);
+  return mapMessage(data);
 }
 
 function getChatSocketUrl(chatId: string): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-
   return `${protocol}//${window.location.host}/ws/${encodeURIComponent(chatId)}`;
 }
 
@@ -193,6 +136,12 @@ export function subscribeToChatMessages(
   chatId: string,
   handlers: ChatMessageSocketHandlers,
 ): () => void {
+  const user = getSessionUser();
+
+  if (!user) {
+    return () => {};
+  }
+
   const socket = new WebSocket(getChatSocketUrl(chatId));
 
   socket.addEventListener("message", (event: MessageEvent<string>) => {

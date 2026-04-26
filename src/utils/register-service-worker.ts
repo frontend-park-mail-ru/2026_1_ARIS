@@ -4,8 +4,10 @@ export function registerServiceWorker(): void {
   }
 
   window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/sw.js").catch((error: unknown) => {
-      console.warn("[sw] registration failed", error);
-    });
+    void navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none" })
+      .catch((error: unknown) => {
+        console.warn("[sw] registration failed", error);
+      });
   });
 }

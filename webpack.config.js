@@ -40,7 +40,7 @@ class AssetManifestPlugin {
 
 /** @type {import('webpack').Configuration} */
 module.exports = {
-  mode: "development",
+  mode: "production",
 
   entry: "./src/main.ts",
 
@@ -51,7 +51,7 @@ module.exports = {
     publicPath: "/",
   },
 
-  devtool: "source-map",
+  devtool: false,
 
   module: {
     rules: [
@@ -91,14 +91,25 @@ module.exports = {
           to: "sw.js",
         },
         {
+          from: path.resolve(__dirname, "public/robots.txt"),
+          to: "robots.txt",
+        },
+        {
           from: path.resolve(__dirname, "public/assets/img"),
           to: "assets/img",
+          globOptions: { ignore: ["**/.DS_Store"] },
         },
       ],
     }),
   ],
 
   devServer: {
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false,
+      },
+    },
     static: {
       directory: path.resolve(__dirname, "public"),
     },

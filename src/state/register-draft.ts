@@ -1,5 +1,5 @@
 /**
- * Register form values.
+ * Значения формы регистрации.
  */
 export type RegisterValues = {
   firstName: string;
@@ -12,12 +12,12 @@ export type RegisterValues = {
 };
 
 /**
- * Available register steps.
+ * Доступные шаги регистрации.
  */
 export type RegisterStep = 1 | 2;
 
 /**
- * Register draft state.
+ * Состояние черновика регистрации.
  */
 export type RegisterDraft = {
   step: RegisterStep;
@@ -27,7 +27,7 @@ export type RegisterDraft = {
 };
 
 /**
- * Empty register values template.
+ * Шаблон пустых значений регистрации.
  */
 export const EMPTY_REGISTER_VALUES: RegisterValues = {
   firstName: "",
@@ -40,7 +40,7 @@ export const EMPTY_REGISTER_VALUES: RegisterValues = {
 };
 
 /**
- * Global register draft state.
+ * Глобальное состояние черновика регистрации.
  */
 export const registerDraft: RegisterDraft = {
   step: 1,
@@ -50,7 +50,7 @@ export const registerDraft: RegisterDraft = {
 };
 
 /**
- * Resets register draft to initial state.
+ * Сбрасывает черновик регистрации в исходное состояние.
  */
 export function resetRegisterDraft(): void {
   registerDraft.step = 1;

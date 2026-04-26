@@ -14,7 +14,7 @@ type RenderButtonOptions = {
 };
 
 /**
- * Renders a button or link component.
+ * Рендерит компонент кнопки или ссылки.
  *
  * @param {RenderButtonOptions} options
  * @returns {string}

@@ -10,7 +10,7 @@ type RenderAuthModalOptions = {
 };
 
 /**
- * Renders the authentication modal.
+ * Рендерит модальное окно авторизации.
  *
  * @param {Object} [options]
  * @param {"login"|"register"} [options.mode="login"]

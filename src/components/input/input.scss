@@ -17,6 +17,7 @@
   &:hover,
   &:focus-within {
     border-color: var(--color-border-strong);
+    box-shadow: var(--control-focus-ring);
   }
 
   &--error {
@@ -49,6 +50,7 @@
     color: var(--color-text-main);
     font-size: var(--text-size-input);
     font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-base);
 
     &::placeholder {
       color: var(--color-text-placeholder);

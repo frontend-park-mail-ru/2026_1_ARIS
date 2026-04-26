@@ -8,9 +8,15 @@
   text-decoration: none;
   font-size: var(--text-size-main);
   font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-base);
 
   &:active {
     transform: var(--control-press-transform);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--control-focus-ring);
   }
 
   &--primary {
@@ -42,8 +48,8 @@
   }
 
   &--surface {
-    border: none;
-    background: var(--color-surface-card);
+    border: var(--border-width) solid rgb(203 210 222 / 48%);
+    background: var(--color-surface-base);
     color: var(--color-interactive-primary);
 
     &:hover {

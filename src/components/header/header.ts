@@ -3,7 +3,7 @@ import { renderButton } from "../button/button";
 import { logoutUser } from "../../api/auth";
 
 /**
- * User session type (минимально необходимый)
+ * Тип пользовательской сессии (минимально необходимый)
  */
 type SessionUser = {
   id: string;
@@ -13,7 +13,7 @@ type SessionUser = {
 } | null;
 
 /**
- * Renders header for guest user.
+ * Рендерит хедер для гостя.
  *
  * @returns {string}
  */
@@ -21,7 +21,7 @@ function renderGuestHeader(): string {
   return `
     <div class="header__inner header__inner--guest">
       <a href="/feed" data-link class="header__logo-link">
-        <img class="header__logo" src="/assets/img/logo.svg" alt="ARIS">
+        <img class="header__logo" src="/assets/img/icons/logo-auth.svg" alt="ARIS">
       </a>
 
       <div class="header__guest-actions">
@@ -57,7 +57,7 @@ function renderGuestHeader(): string {
 }
 
 /**
- * Renders header for authorised user.
+ * Рендерит хедер для авторизованного пользователя.
  *
  * @returns {string}
  */
@@ -75,16 +75,16 @@ function renderAuthorisedHeader(): string {
   return `
     <div class="header__inner header__inner--authorised">
       <a href="/feed" data-link class="header__logo-link">
-        <img class="header__logo" src="/assets/img/logo.svg" alt="ARIS">
+        <img class="header__logo" src="/assets/img/icons/logo-auth.svg" alt="ARIS">
       </a>
 
-      <label class="header__search-box" aria-label="Поиск">
-        <span class="header__search-icon" aria-hidden="true">
+      <label class="header__search-box search-field" aria-label="Поиск">
+        <span class="header__search-icon search-field__icon" aria-hidden="true">
           <img src="/assets/img/icons/search.svg" alt="">
         </span>
 
         <input
-          class="header__search-input"
+          class="header__search-input search-field__input"
           type="text"
           placeholder="Поиск"
         >
@@ -93,22 +93,34 @@ function renderAuthorisedHeader(): string {
       <div class="header__user">
         <span class="header__username">${fullName}</span>
 
-        <button class="header__logout" data-logout>
-          Выйти
-        </button>
+        <div class="header__avatar-wrap" data-header-user-menu>
+          <button
+            type="button"
+            class="header__avatar-button"
+            data-header-user-menu-toggle
+            aria-label="Открыть меню профиля"
+            aria-expanded="false"
+          >
+            <img
+              class="header__avatar"
+              src="${avatarSrc}"
+              alt="${fullName}"
+            >
+          </button>
 
-        <img
-          class="header__avatar"
-          src="${avatarSrc}"
-          alt="${fullName}"
-        >
+          <div class="header__user-menu" role="menu">
+            <button type="button" class="header__user-menu-item" data-logout role="menuitem">
+              Выйти
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   `;
 }
 
 /**
- * Renders page header depending on user auth state.
+ * Рендерит хедер страницы в зависимости от состояния авторизации пользователя.
  *
  * @returns {string}
  */
@@ -123,7 +135,7 @@ export function renderHeader(): string {
 }
 
 /**
- * Initializes header behaviour (logout handler).
+ * Инициализирует поведение хедера (обработчик выхода).
  *
  * @param {Document | HTMLElement} [root=document]
  * @returns {void}
@@ -137,8 +149,35 @@ export function initHeader(root: Document | HTMLElement = document): void {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
+    const menuToggle = target.closest("[data-header-user-menu-toggle]");
+    if (menuToggle instanceof HTMLButtonElement) {
+      const menuRoot = menuToggle.closest("[data-header-user-menu]");
+      const shouldOpen = !menuRoot?.classList.contains("is-open");
+
+      root.querySelectorAll<HTMLElement>("[data-header-user-menu].is-open").forEach((node) => {
+        node.classList.remove("is-open");
+        node
+          .querySelector<HTMLButtonElement>("[data-header-user-menu-toggle]")
+          ?.setAttribute("aria-expanded", "false");
+      });
+
+      if (menuRoot instanceof HTMLElement) {
+        menuRoot.classList.toggle("is-open", shouldOpen);
+        menuToggle.setAttribute("aria-expanded", String(shouldOpen));
+      }
+      return;
+    }
+
     const btn = target.closest("[data-logout]");
-    if (!btn) return;
+    if (!btn) {
+      root.querySelectorAll<HTMLElement>("[data-header-user-menu].is-open").forEach((node) => {
+        node.classList.remove("is-open");
+        node
+          .querySelector<HTMLButtonElement>("[data-header-user-menu-toggle]")
+          ?.setAttribute("aria-expanded", "false");
+      });
+      return;
+    }
 
     try {
       await logoutUser();

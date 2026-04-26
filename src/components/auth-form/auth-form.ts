@@ -28,7 +28,7 @@ type RenderAuthFormOptions = {
 };
 
 /**
- * Renders a single auth form field with input and error area.
+ * Рендерит одно поле формы авторизации с инпутом и областью ошибки.
  *
  * @param {RenderAuthFieldOptions} options
  * @returns {string}
@@ -68,7 +68,7 @@ function renderAuthField({
 }
 
 /**
- * Renders login fields.
+ * Рендерит поля входа.
  *
  * @param {boolean} hasError
  * @param {Partial<RegisterValues>} [values={}]
@@ -99,7 +99,7 @@ function renderLoginFields(hasError: boolean, values: Partial<RegisterValues> = 
 }
 
 /**
- * Renders gender select field.
+ * Рендерит поле выбора пола.
  *
  * @param {Partial<RegisterValues>} [values={}]
  * @returns {string}
@@ -121,7 +121,7 @@ function renderGenderField(values: Partial<RegisterValues> = {}): string {
 }
 
 /**
- * Renders register step progress.
+ * Рендерит прогресс шага регистрации.
  *
  * @param {RegisterStep} step
  * @returns {string}
@@ -145,7 +145,7 @@ function renderRegisterProgress(step: RegisterStep): string {
 }
 
 /**
- * Renders register step one fields.
+ * Рендерит поля первого шага регистрации.
  *
  * @param {Partial<RegisterValues>} values
  * @returns {string}
@@ -188,7 +188,7 @@ function renderRegisterStepOneFields(values: Partial<RegisterValues> = {}): stri
 }
 
 /**
- * Renders register step two fields.
+ * Рендерит поля второго шага регистрации.
  *
  * @param {Partial<RegisterValues>} values
  * @returns {string}
@@ -276,7 +276,7 @@ function renderRegisterStepActions(step: RegisterStep): string {
 }
 
 /**
- * Renders register fields by current step.
+ * Рендерит поля регистрации для текущего шага.
  *
  * @param {RegisterStep} step
  * @param {Partial<RegisterValues>} values
@@ -299,7 +299,7 @@ function renderRegisterFields(
 }
 
 /**
- * Renders auth form.
+ * Рендерит форму авторизации.
  *
  * @param {RenderAuthFormOptions} options
  * @returns {string}
@@ -324,7 +324,7 @@ export function renderAuthForm({
       ${mode === "register" ? `data-register-step="${registerStep}"` : ""}
     >
       <div class="auth-form__header">
-        <img class="auth-form__logo" src="assets/img/logo.svg" alt="ARIS">
+        <img class="auth-form__logo" src="assets/img/logo.png" alt="ARIS">
 
         <div class="auth-form__header-text">
           <h1 class="auth-form__title">

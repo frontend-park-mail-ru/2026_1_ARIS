@@ -17,20 +17,42 @@ import "./pages/auth/auth-page.scss";
 import "./pages/chats/chats.css";
 import "./pages/friends/friends.css";
 import "./pages/profile/profile.css";
+import "./pages/support/support.scss";
+import "./pages/support-admin/support-admin.scss";
+import "./pages/support-stats/support-stats.scss";
 
+import "./components/postcard/postcard-element";
 import { createRouter } from "./router/router";
-import { renderLogin } from "./pages/login/login";
-import { renderRegister } from "./pages/register/register";
-import { renderFeed, refreshFeedCenter } from "./pages/feed/feed";
-import { renderChats } from "./pages/chats/chats";
-import { renderFriends } from "./pages/friends/friends";
-import { renderProfile } from "./pages/profile/profile";
+import { registerPrefetch, prefetchRoute } from "./prefetch/prefetch";
 import { initSession } from "./state/session";
 import { initHeader } from "./components/header/header";
 import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar";
 import { initAvatarFallback } from "./utils/avatar-fallback";
 import { initOfflineIndicator } from "./utils/offline-indicator";
 import { registerServiceWorker } from "./utils/register-service-worker";
+import { onCacheInvalidation } from "./utils/cache-channel";
+import { initSupportIframe } from "./utils/support-widget";
+
+// ---------------------------------------------------------------------------
+// Ленивые фабрики модулей страниц — webpack нарезает их в отдельные чанки
+// ---------------------------------------------------------------------------
+
+const loadFeed = () => import(/* webpackChunkName: "page-feed" */ "./pages/feed/feed");
+const loadChats = () => import(/* webpackChunkName: "page-chats" */ "./pages/chats/chats");
+const loadFriends = () => import(/* webpackChunkName: "page-friends" */ "./pages/friends/friends");
+const loadProfile = () => import(/* webpackChunkName: "page-profile" */ "./pages/profile/profile");
+const loadLogin = () => import(/* webpackChunkName: "page-login" */ "./pages/login/login");
+const loadRegister = () =>
+  import(/* webpackChunkName: "page-register" */ "./pages/register/register");
+const loadSupport = () => import(/* webpackChunkName: "page-support" */ "./pages/support/support");
+const loadSupportAdmin = () =>
+  import(/* webpackChunkName: "page-support-admin" */ "./pages/support-admin/support-admin");
+const loadSupportStats = () =>
+  import(/* webpackChunkName: "page-support-stats" */ "./pages/support-stats/support-stats");
+
+// ---------------------------------------------------------------------------
+// Маршруты
+// ---------------------------------------------------------------------------
 
 const root = document.getElementById("app");
 
@@ -41,16 +63,101 @@ if (!(root instanceof HTMLElement)) {
 registerServiceWorker();
 
 const router = createRouter(root, [
-  { path: "/", title: "ARISNET — Feed", render: renderFeed },
-  { path: "/feed", title: "ARISNET — Feed", render: renderFeed },
-  { path: "/login", title: "ARISNET — Login", render: renderLogin },
-  { path: "/register", title: "ARISNET — Register", render: renderRegister },
-  { path: "/friends", title: "ARISNET — Friends", render: renderFriends },
-  { path: "/chats", title: "ARISNET — Chats", render: renderChats },
-  { path: "/profile", title: "ARISNET — Profile", render: renderProfile },
-  { path: "/profile/:id", title: "ARISNET — Profile", render: renderProfile },
-  { path: "/id:id", title: "ARISNET — Profile", render: renderProfile },
+  { path: "/", title: "ARISNET — Feed", render: async () => (await loadFeed()).renderFeed() },
+  { path: "/feed", title: "ARISNET — Feed", render: async () => (await loadFeed()).renderFeed() },
+  {
+    path: "/login",
+    title: "ARISNET — Login",
+    render: async () => (await loadLogin()).renderLogin(),
+  },
+  {
+    path: "/register",
+    title: "ARISNET — Register",
+    render: async () => (await loadRegister()).renderRegister(),
+  },
+  {
+    path: "/friends",
+    title: "ARISNET — Friends",
+    render: async () => (await loadFriends()).renderFriends(),
+  },
+  {
+    path: "/chats",
+    title: "ARISNET — Chats",
+    render: async () => (await loadChats()).renderChats(),
+  },
+  {
+    path: "/profile",
+    title: "ARISNET — Profile",
+    render: async (p) => (await loadProfile()).renderProfile(p),
+  },
+  {
+    path: "/profile/:id",
+    title: "ARISNET — Profile",
+    render: async (p) => (await loadProfile()).renderProfile(p),
+  },
+  {
+    path: "/id:id",
+    title: "ARISNET — Profile",
+    render: async (p) => (await loadProfile()).renderProfile(p),
+  },
+  {
+    path: "/support",
+    title: "ARISNET — Support",
+    render: async () => (await loadSupport()).renderSupportWidget(),
+  },
+  {
+    path: "/support/stats",
+    title: "ARISNET — Support Stats",
+    render: async () => (await loadSupportStats()).renderSupportStats(),
+  },
+  {
+    path: "/support/admin",
+    title: "ARISNET — Support Admin",
+    render: async () => (await loadSupportAdmin()).renderSupportAdmin(),
+  },
 ]);
+
+// ---------------------------------------------------------------------------
+// Prefetch: данные + JS-чанки по hover
+// ---------------------------------------------------------------------------
+
+registerPrefetch("/", async () => (await loadFeed()).prefetchFeed());
+registerPrefetch("/feed", async () => (await loadFeed()).prefetchFeed());
+registerPrefetch("/chats", async () => (await loadChats()).prefetchChats());
+
+// Карта путей → фабрика чанка для prefetch кода при hover
+const chunkMap: Record<string, () => Promise<unknown>> = {
+  "/": loadFeed,
+  "/feed": loadFeed,
+  "/chats": loadChats,
+  "/friends": loadFriends,
+  "/profile": loadProfile,
+  "/login": loadLogin,
+  "/register": loadRegister,
+  "/support/admin": loadSupportAdmin,
+};
+
+document.addEventListener(
+  "mouseover",
+  (event: MouseEvent) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const link = target.closest("a[data-link]");
+    if (!(link instanceof HTMLAnchorElement)) return;
+    try {
+      const path = new URL(link.href).pathname.replace(/\/+$/g, "") || "/";
+      void chunkMap[path]?.(); // prefetch JS чанк
+      prefetchRoute(path); // prefetch данные
+    } catch {
+      // Игнорируем невалидные URL
+    }
+  },
+  { passive: true },
+);
+
+// ---------------------------------------------------------------------------
+// Инициализация
+// ---------------------------------------------------------------------------
 
 void (async () => {
   try {
@@ -59,16 +166,24 @@ void (async () => {
     console.error("[session] init failed", error);
   }
 
+  prefetchRoute(window.location.pathname);
+
   await router.render();
   initHeader();
   initSidebar();
   initAvatarFallback(document);
   initOfflineIndicator();
+  initSupportIframe();
 })();
 
-/**
- * Handles global session state changes by refreshing UI fragments.
- */
+onCacheInvalidation(async (key) => {
+  if (key === "feed") {
+    const { clearFeedCacheLocal, refreshFeedCenter } = await loadFeed();
+    clearFeedCacheLocal();
+    await refreshFeedCenter();
+  }
+});
+
 window.addEventListener("sessionchange", async (event: Event) => {
   try {
     const detail =
@@ -84,7 +199,7 @@ window.addEventListener("sessionchange", async (event: Event) => {
     }
 
     refreshSidebar();
-    await refreshFeedCenter();
+    await (await loadFeed()).refreshFeedCenter();
   } catch (error) {
     console.error(error);
   }

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "aris-v1";
+const CACHE_VERSION = "aris-v2";
 const STATIC_CACHE = `${CACHE_VERSION}:static`;
 const API_CACHE = `${CACHE_VERSION}:api`;
 
@@ -67,19 +67,63 @@ async function staleWhileRevalidate(request, cacheName) {
 
       return withSourceHeader(response, "network");
     })
-    .catch(() => (cached ? withSourceHeader(cached, "cache") : cached));
+    .catch(() => {
+      if (cached) {
+        return withSourceHeader(cached, "cache");
+      }
+
+      return new Response("Offline", {
+        status: 503,
+        statusText: "Service Unavailable",
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "x-aris-response-source": "offline",
+        },
+      });
+    });
 
   return cached ? withSourceHeader(cached, "cache") : networkPromise;
 }
 
+const API_CACHE_TTL = {
+  default: 5 * 60 * 1000,
+  feed: 5 * 60 * 1000,
+  popular: 10 * 60 * 1000,
+  auth: 0,
+};
+
+function getApiTtl(pathname) {
+  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/user/current")) {
+    return API_CACHE_TTL.auth;
+  }
+  if (
+    pathname.startsWith("/api/users/popular") ||
+    pathname.startsWith("/api/posts/popular") ||
+    pathname.startsWith("/api/users/suggested")
+  ) {
+    return API_CACHE_TTL.popular;
+  }
+  return API_CACHE_TTL.default;
+}
+
 async function networkFirst(request, cacheName, fallbackUrl) {
   const cache = await caches.open(cacheName);
+  const url = new URL(request.url);
+  const ttl = getApiTtl(url.pathname);
 
   try {
     const response = await fetch(request);
 
     if (response.ok) {
-      await cache.put(request, response.clone());
+      // Сохраняем ответ с меткой времени для проверки TTL
+      const headers = new Headers(response.headers);
+      headers.set("x-aris-cached-at", String(Date.now()));
+      const stamped = new Response(response.clone().body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+      await cache.put(request, stamped);
     }
 
     return withSourceHeader(response, "network");
@@ -87,7 +131,13 @@ async function networkFirst(request, cacheName, fallbackUrl) {
     const cachedResponse = await cache.match(request);
 
     if (cachedResponse) {
-      return withSourceHeader(cachedResponse, "cache");
+      // Проверяем TTL — для auth-эндпоинтов кэш не используется
+      if (ttl > 0) {
+        const cachedAt = Number(cachedResponse.headers.get("x-aris-cached-at") ?? 0);
+        if (Date.now() - cachedAt <= ttl) {
+          return withSourceHeader(cachedResponse, "cache");
+        }
+      }
     }
 
     if (fallbackUrl) {

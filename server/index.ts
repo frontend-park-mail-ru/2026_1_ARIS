@@ -7,7 +7,21 @@ const publicDir = path.resolve(__dirname, "..", "public");
 const distDir = path.resolve(__dirname, "..", "dist");
 
 app.use(morgan("dev"));
-app.use(express.static(distDir));
+
+app.use(
+  express.static(distDir, {
+    setHeaders(res, filePath) {
+      if (filePath.endsWith(".html")) {
+        res.setHeader("Cache-Control", "no-cache");
+      } else if (/\.[0-9a-f]{8,}\.(js|css)$/i.test(filePath)) {
+        // Content-hashed bundles are immutable — cache for 1 year
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=3600");
+      }
+    },
+  }),
+);
 app.use(express.static(publicDir));
 
 app.get("/image-proxy", async (req: Request, res: Response) => {

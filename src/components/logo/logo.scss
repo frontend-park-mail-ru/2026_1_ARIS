@@ -7,5 +7,6 @@
     display: block;
     width: var(--logo-width);
     height: var(--logo-height);
+    object-fit: contain;
   }
 }

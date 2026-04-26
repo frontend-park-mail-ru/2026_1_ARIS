@@ -3,7 +3,7 @@ import { renderFeed } from "../feed/feed";
 import { getSessionUser } from "../../state/session";
 
 /**
- * Renders the register page.
+ * Рендерит страницу регистрации.
  *
  * @returns {string}
  */

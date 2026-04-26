@@ -1,6 +1,6 @@
 @layer components {
   .header {
-    --header-height: 100px;
+    --header-height: 76px;
     --header-logo-width: 138px;
     --header-logo-height: 52px;
     --header-search-width: 420px;
@@ -228,7 +228,7 @@
   @supports (animation-timeline: scroll()) {
     @keyframes header-compact {
       to {
-        min-height: 60px;
+        min-height: 54px;
       }
     }
 

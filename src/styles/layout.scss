@@ -1,68 +1,67 @@
-.app-page {
-  position: relative;
-  isolation: isolate;
-  min-height: 100vh;
-  margin: 0;
-  overflow-x: hidden;
-  background: transparent;
-}
-
-.app-page::before {
-  position: fixed;
-  z-index: -1;
-  inset: 0;
-  background: var(--color-page-gradient);
-  content: "";
-  pointer-events: none;
-}
-
-.app-layout {
-  display: grid;
-  grid-template-columns:
-    var(--layout-sidebar-width)
-    var(--layout-content-width)
-    var(--layout-widgets-width);
-  column-gap: var(--layout-column-gap);
-  align-items: start;
-  width: max-content;
-  min-width: var(--layout-min-width);
-  padding:
-    var(--layout-padding-top)
-    var(--layout-padding-x)
-    var(--layout-padding-bottom);
-
-  &__left {
-    width: 100%;
-    min-width: 0;
+@layer layout {
+  .app-page {
+    position: relative;
+    isolation: isolate;
+    min-height: 100vh;
+    margin: 0;
+    overflow-x: hidden;
+    background: transparent;
   }
 
-  &__center {
-    display: flex;
-    width: 100%;
-    min-width: 0;
-    padding: 0 var(--layout-content-inner-padding-x);
-    flex-direction: column;
-    align-items: center;
-    gap: var(--layout-content-gap);
+  .app-page::before {
+    position: fixed;
+    z-index: -1;
+    inset: 0;
+    background: var(--color-page-gradient);
+    content: "";
+    pointer-events: none;
   }
 
-  &__right {
-    display: flex;
-    width: 100%;
-    min-width: 0;
-    padding-left: var(--layout-widgets-inner-padding-left);
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--layout-widgets-gap);
-  }
-
-  &--content-wide {
+  .app-layout {
+    display: grid;
     grid-template-columns:
       var(--layout-sidebar-width)
-      calc(var(--layout-content-width) + var(--layout-widgets-width) + var(--layout-column-gap));
+      var(--layout-content-width)
+      var(--layout-widgets-width);
+    column-gap: var(--layout-column-gap);
+    align-items: start;
+    width: max-content;
+    min-width: var(--layout-min-width);
+    padding: var(--layout-padding-top) var(--layout-padding-x) var(--layout-padding-bottom);
 
-    .app-layout__right {
-      display: none;
+    &__left {
+      width: 100%;
+      min-width: 0;
+    }
+
+    &__center {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      padding: 0 var(--layout-content-inner-padding-x);
+      flex-direction: column;
+      align-items: center;
+      gap: var(--layout-content-gap);
+    }
+
+    &__right {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      padding-left: var(--layout-widgets-inner-padding-left);
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--layout-widgets-gap);
+    }
+
+    &--content-wide {
+      grid-template-columns:
+        var(--layout-sidebar-width)
+        calc(var(--layout-content-width) + var(--layout-widgets-width) + var(--layout-column-gap));
+
+      .app-layout__right {
+        display: none;
+      }
     }
   }
 }

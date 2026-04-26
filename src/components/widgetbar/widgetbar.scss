@@ -1,151 +1,153 @@
-.widgetbar {
-  --widgetbar-gap: 16px;
-  --widgetbar-card-padding: 20px;
-  --widgetbar-card-gap: 12px;
-  --widgetbar-weather-gap: 10px;
-  --widgetbar-person-gap: 12px;
-  --widgetbar-events-gap: 12px;
-  --widgetbar-weather-row-gap: 8px;
-  --widgetbar-avatar-size: 32px;
-  --widgetbar-weather-icon-width: 18px;
-  --widgetbar-weather-icon-size: 14px;
-  --widgetbar-event-min-height: 44px;
+@layer components {
+  .widgetbar {
+    --widgetbar-gap: 16px;
+    --widgetbar-card-padding: 20px;
+    --widgetbar-card-gap: 12px;
+    --widgetbar-weather-gap: 10px;
+    --widgetbar-person-gap: 12px;
+    --widgetbar-events-gap: 12px;
+    --widgetbar-weather-row-gap: 8px;
+    --widgetbar-avatar-size: 32px;
+    --widgetbar-weather-icon-width: 18px;
+    --widgetbar-weather-icon-size: 14px;
+    --widgetbar-event-min-height: 44px;
 
-  display: flex; // контейнер правой колонки с виджетами
-  width: 100%; // занимает всю ширину правой колонки макета
-  flex-direction: column; // виджеты идут сверху вниз
-  align-items: flex-start; // карточки прижимаются влево
-  gap: var(--widgetbar-gap); // расстояние между карточками-виджетами
+    display: flex; // контейнер правой колонки с виджетами
+    width: 100%; // занимает всю ширину правой колонки макета
+    flex-direction: column; // виджеты идут сверху вниз
+    align-items: flex-start; // карточки прижимаются влево
+    gap: var(--widgetbar-gap); // расстояние между карточками-виджетами
 
-  &-card {
-    display: flex;
-    width: 100%;
-    padding: var(--widgetbar-card-padding);
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--widgetbar-card-gap);
-    border-radius: var(--radius-card);
-    background: var(--color-surface-card-elevated);
-    box-shadow: var(--shadow-card);
+    &-card {
+      display: flex;
+      width: 100%;
+      padding: var(--widgetbar-card-padding);
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--widgetbar-card-gap);
+      border-radius: var(--radius-card);
+      background: var(--color-surface-card-elevated);
+      box-shadow: var(--shadow-card);
 
-    &--weather {
-      gap: var(--widgetbar-weather-gap); // отдельный промежуток для погодного виджета
-    }
+      &--weather {
+        gap: var(--widgetbar-weather-gap); // отдельный промежуток для погодного виджета
+      }
 
-    &__title {
-      margin: 0; // убираем дефолтные отступы заголовка
-      color: var(--color-text-main);
-      font-size: var(--text-size-title);
-      font-weight: var(--font-weight-bold);
-      line-height: var(--line-height-base);
-    }
+      &__title {
+        margin: 0; // убираем дефолтные отступы заголовка
+        color: var(--color-text-main);
+        font-size: var(--text-size-title);
+        font-weight: var(--font-weight-bold);
+        line-height: var(--line-height-base);
+      }
 
-    &__text {
-      margin: 0; // убираем дефолтные отступы текста
-      color: var(--color-text-main);
-      font-size: var(--text-size-main);
-      font-weight: var(--font-weight-regular);
-      line-height: var(--line-height-base);
-      letter-spacing: 0;
-    }
+      &__text {
+        margin: 0; // убираем дефолтные отступы текста
+        color: var(--color-text-main);
+        font-size: var(--text-size-main);
+        font-weight: var(--font-weight-regular);
+        line-height: var(--line-height-base);
+        letter-spacing: 0;
+      }
 
-    &__empty {
-      margin: 0;
-      color: rgb(40 50 79 / 70%);
-      font-size: var(--text-size-main);
-      font-weight: var(--font-weight-regular);
-      line-height: 1.45;
-    }
+      &__empty {
+        margin: 0;
+        color: rgb(40 50 79 / 70%);
+        font-size: var(--text-size-main);
+        font-weight: var(--font-weight-regular);
+        line-height: 1.45;
+      }
 
-    &__username {
-      margin: 0; // убираем внешние отступы имени
-      color: var(--color-text-name);
-      font-size: var(--text-size-main);
-      font-weight: var(--font-weight-medium);
-      line-height: var(--line-height-base);
-      text-decoration: none; // убираем подчёркивание ссылки
+      &__username {
+        margin: 0; // убираем внешние отступы имени
+        color: var(--color-text-name);
+        font-size: var(--text-size-main);
+        font-weight: var(--font-weight-medium);
+        line-height: var(--line-height-base);
+        text-decoration: none; // убираем подчёркивание ссылки
 
-      &:hover {
-        text-decoration: underline; // при наведении показываем подчёркивание
+        &:hover {
+          text-decoration: underline; // при наведении показываем подчёркивание
+        }
+      }
+
+      &__link {
+        color: var(--color-text-link);
+        font-size: var(--text-size-main);
+        font-weight: var(--font-weight-regular);
+        line-height: var(--line-height-base);
+        text-decoration: none; // без подчёркивания по умолчанию
+
+        &:hover {
+          text-decoration: underline; // подчёркивание при наведении
+        }
+      }
+
+      &__event {
+        min-height: var(--widgetbar-event-min-height); // минимальная высота строки события
+        margin: 0; // убираем внешние отступы
+        color: var(--color-text-main);
+        font-size: var(--text-size-main);
+        font-weight: var(--font-weight-regular);
+        line-height: var(--line-height-base);
+      }
+
+      &__post-link {
+        color: var(--color-text-main);
+        font-size: var(--text-size-main);
+        font-weight: var(--font-weight-regular);
+        line-height: var(--line-height-base);
+        text-decoration: none; // без подчёркивания по умолчанию
+
+        &:hover {
+          text-decoration: underline; // подчёркивание при наведении
+        }
+      }
+
+      &__events {
+        display: flex; // контейнер списка событий — flex
+        flex-direction: column; // события идут сверху вниз
+        gap: var(--widgetbar-events-gap); // расстояние между событиями
       }
     }
 
-    &__link {
-      color: var(--color-text-link);
-      font-size: var(--text-size-main);
-      font-weight: var(--font-weight-regular);
-      line-height: var(--line-height-base);
-      text-decoration: none; // без подчёркивания по умолчанию
+    &-person {
+      display: flex; // блок "аватар + имя"
+      align-items: center; // выравнивание по вертикали
+      gap: var(--widgetbar-person-gap); // расстояние между аватаркой и именем
 
-      &:hover {
-        text-decoration: underline; // подчёркивание при наведении
+      &__avatar {
+        width: var(--widgetbar-avatar-size);
+        height: var(--widgetbar-avatar-size);
+        flex-shrink: 0;
+        border-radius: var(--radius-round);
+        background: var(--color-surface-avatar-placeholder);
+        object-fit: cover;
       }
     }
 
-    &__event {
-      min-height: var(--widgetbar-event-min-height); // минимальная высота строки события
-      margin: 0; // убираем внешние отступы
-      color: var(--color-text-main);
-      font-size: var(--text-size-main);
-      font-weight: var(--font-weight-regular);
-      line-height: var(--line-height-base);
-    }
+    &-weather-row {
+      display: flex; // строка прогноза погоды — flex
+      align-items: center; // иконка и текст по вертикали на одной линии
+      gap: var(--widgetbar-weather-row-gap); // расстояние между иконкой и текстом
 
-    &__post-link {
-      color: var(--color-text-main);
-      font-size: var(--text-size-main);
-      font-weight: var(--font-weight-regular);
-      line-height: var(--line-height-base);
-      text-decoration: none; // без подчёркивания по умолчанию
-
-      &:hover {
-        text-decoration: underline; // подчёркивание при наведении
+      &__icon {
+        display: inline-flex; // контейнер иконки — inline-flex
+        width: var(--widgetbar-weather-icon-width); // ширина контейнера иконки
+        justify-content: center; // центрируем иконку по горизонтали
+        flex-shrink: 0; // контейнер иконки не сжимается
+        color: var(--color-text-main); // цвет иконки
+        font-size: var(--widgetbar-weather-icon-size); // размер иконки
+        line-height: 1; // плотная высота строки для символа/иконки
       }
     }
 
-    &__events {
-      display: flex; // контейнер списка событий — flex
-      flex-direction: column; // события идут сверху вниз
-      gap: var(--widgetbar-events-gap); // расстояние между событиями
+    &-stub-button {
+      padding: 0; // убираем внутренние отступы кнопки-заглушки
+      border: none; // убираем рамку
+      background: transparent; // делаем фон прозрачным
+      text-align: left; // текст внутри кнопки выравнивается влево
+      cursor: pointer; // курсор-рука
     }
-  }
-
-  &-person {
-    display: flex; // блок "аватар + имя"
-    align-items: center; // выравнивание по вертикали
-    gap: var(--widgetbar-person-gap); // расстояние между аватаркой и именем
-
-    &__avatar {
-      width: var(--widgetbar-avatar-size);
-      height: var(--widgetbar-avatar-size);
-      flex-shrink: 0;
-      border-radius: var(--radius-round);
-      background: var(--color-surface-avatar-placeholder);
-      object-fit: cover;
-    }
-  }
-
-  &-weather-row {
-    display: flex; // строка прогноза погоды — flex
-    align-items: center; // иконка и текст по вертикали на одной линии
-    gap: var(--widgetbar-weather-row-gap); // расстояние между иконкой и текстом
-
-    &__icon {
-      display: inline-flex; // контейнер иконки — inline-flex
-      width: var(--widgetbar-weather-icon-width); // ширина контейнера иконки
-      justify-content: center; // центрируем иконку по горизонтали
-      flex-shrink: 0; // контейнер иконки не сжимается
-      color: var(--color-text-main); // цвет иконки
-      font-size: var(--widgetbar-weather-icon-size); // размер иконки
-      line-height: 1; // плотная высота строки для символа/иконки
-    }
-  }
-
-  &-stub-button {
-    padding: 0; // убираем внутренние отступы кнопки-заглушки
-    border: none; // убираем рамку
-    background: transparent; // делаем фон прозрачным
-    text-align: left; // текст внутри кнопки выравнивается влево
-    cursor: pointer; // курсор-рука
   }
 }

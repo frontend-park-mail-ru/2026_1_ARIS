@@ -19,6 +19,7 @@ export type PostcardModel = {
 type FeedRequestOptions = {
   cursor?: string;
   limit?: number;
+  signal?: AbortSignal;
 };
 
 type FeedAuthor = {
@@ -118,12 +119,13 @@ export function mapFeedResponse(response?: FeedResponse) {
 export async function getFeed({
   cursor = "",
   limit = 20,
+  signal,
 }: FeedRequestOptions = {}): Promise<FeedResponse> {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
   if (limit) params.set("limit", String(limit));
 
-  return apiRequest<FeedResponse>(`/api/feed?${params}`, {}, {});
+  return apiRequest<FeedResponse>(`/api/feed?${params}`, { ...(signal ? { signal } : {}) }, {});
 }
 
 /**
@@ -132,12 +134,17 @@ export async function getFeed({
 export async function getPublicFeed({
   cursor = "",
   limit = 20,
+  signal,
 }: FeedRequestOptions = {}): Promise<FeedResponse> {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
   if (limit) params.set("limit", String(limit));
 
-  return apiRequest<FeedResponse>(`/api/public/feed?${params}`, {}, {});
+  return apiRequest<FeedResponse>(
+    `/api/public/feed?${params}`,
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
 }
 
 /**

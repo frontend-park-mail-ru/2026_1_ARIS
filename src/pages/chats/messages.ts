@@ -213,7 +213,7 @@ export function appendIncomingMessage(chatId: string, message: ChatMessage): voi
 /** Загружает сообщения чата из API и объединяет их с данными треда. */
 export async function ensureMessagesLoaded(
   chatId: string,
-  options: { background?: boolean; force?: boolean } = {},
+  options: { background?: boolean; force?: boolean; signal?: AbortSignal } = {},
 ): Promise<void> {
   const thread = chatsState.threads.find((t) => t.id === chatId);
   if (!thread || thread.source !== "api") return;
@@ -224,7 +224,7 @@ export async function ensureMessagesLoaded(
 
   try {
     const previousMessages = thread.messages ?? [];
-    const rawMessages = await getChatMessages(chatId);
+    const rawMessages = await getChatMessages(chatId, options.signal);
     const nextMessages = mergeRetriableMessages(
       sortMessagesByCreatedAt(
         dedupeMessagesById(rawMessages.map((m) => mapMessageToViewMessage(m, thread))),
@@ -266,6 +266,7 @@ export async function ensureMessagesLoaded(
       refreshChatsPage(chatsRoot);
     }
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     if (!hadMessages) thread.messages = [];
     if (!options.background) {
       chatsState.errorMessage =

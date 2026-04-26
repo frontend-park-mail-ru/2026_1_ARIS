@@ -26,8 +26,12 @@ type LatestEventsResponse = {
  * @returns {Promise<SuggestedUsersResponse>}
  * @throws {ApiError}
  */
-export async function getSuggestedUsers(): Promise<SuggestedUsersResponse> {
-  return apiRequest<SuggestedUsersResponse>("/api/users/suggested", {}, {});
+export async function getSuggestedUsers(signal?: AbortSignal): Promise<SuggestedUsersResponse> {
+  return apiRequest<SuggestedUsersResponse>(
+    "/api/users/suggested",
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
 }
 
 /**
@@ -36,8 +40,12 @@ export async function getSuggestedUsers(): Promise<SuggestedUsersResponse> {
  * @returns {Promise<SuggestedUsersResponse>}
  * @throws {ApiError}
  */
-export async function getPublicPopularUsers(): Promise<SuggestedUsersResponse> {
-  return apiRequest<SuggestedUsersResponse>("/api/public/popular-users", {}, {});
+export async function getPublicPopularUsers(signal?: AbortSignal): Promise<SuggestedUsersResponse> {
+  return apiRequest<SuggestedUsersResponse>(
+    "/api/public/popular-users",
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
 }
 
 /**
@@ -46,8 +54,12 @@ export async function getPublicPopularUsers(): Promise<SuggestedUsersResponse> {
  * @returns {Promise<LatestEventsResponse>}
  * @throws {ApiError}
  */
-export async function getLatestEvents(): Promise<LatestEventsResponse> {
-  return apiRequest<LatestEventsResponse>("/api/users/latest-events", {}, {});
+export async function getLatestEvents(signal?: AbortSignal): Promise<LatestEventsResponse> {
+  return apiRequest<LatestEventsResponse>(
+    "/api/users/latest-events",
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
 }
 
 export type { SuggestedUser, LatestEventUser, SuggestedUsersResponse, LatestEventsResponse };

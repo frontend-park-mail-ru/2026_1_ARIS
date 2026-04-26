@@ -3,7 +3,7 @@ export type RouteParams = Record<string, string>;
 export type Route = {
   path: string;
   title: string;
-  render: (params?: RouteParams) => string | Promise<string>;
+  render: (params?: RouteParams, signal?: AbortSignal) => string | Promise<string>;
 };
 
 type MatchResult = {
@@ -12,6 +12,8 @@ type MatchResult = {
 };
 
 type RouterHooks = {
+  beforeRender?: () => void;
+  getSkeleton?: (path: string) => string | null;
   afterRender?: (root: HTMLElement) => void | Promise<void>;
 };
 
@@ -78,7 +80,16 @@ export function createRouter(
   routes: Route[],
   hooks: RouterHooks = {},
 ): AppRouter {
+  let navController = new AbortController();
+  let navId = 0;
+
   async function render(resetScroll = false): Promise<void> {
+    hooks.beforeRender?.();
+    navController.abort();
+    navController = new AbortController();
+    const currentNavId = ++navId;
+    const { signal } = navController;
+
     const path = normalisePath(window.location.pathname);
 
     let matchedRoute: Route | null = null;
@@ -101,22 +112,55 @@ export function createRouter(
     }
 
     document.title = matchedRoute.title;
-    const html = await matchedRoute.render(matchedParams);
 
-    const applyHtml = () => {
+    // Show skeleton synchronously (with view transition) while async render runs
+    const skeleton = hooks.getSkeleton?.(path);
+    if (skeleton) {
+      const vtDoc = document as VTDocument;
+      if (vtDoc.startViewTransition) {
+        try {
+          await vtDoc
+            .startViewTransition(() => {
+              root.innerHTML = skeleton;
+            })
+            .finished.catch(() => undefined);
+        } catch {
+          root.innerHTML = skeleton;
+        }
+      } else {
+        root.innerHTML = skeleton;
+      }
       if (resetScroll) window.scrollTo(0, 0);
-      root.innerHTML = html;
-    };
+    }
 
-    const vtDoc = document as VTDocument;
-    if (vtDoc.startViewTransition) {
-      try {
-        await vtDoc.startViewTransition(applyHtml).finished.catch(() => undefined);
-      } catch {
+    let html: string;
+    try {
+      html = await matchedRoute.render(matchedParams, signal);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      throw err;
+    }
+
+    if (navId !== currentNavId) return;
+
+    if (skeleton) {
+      // Skeleton already shown with transition — apply real content instantly
+      root.innerHTML = html;
+    } else {
+      const applyHtml = () => {
+        if (resetScroll) window.scrollTo(0, 0);
+        root.innerHTML = html;
+      };
+      const vtDoc = document as VTDocument;
+      if (vtDoc.startViewTransition) {
+        try {
+          await vtDoc.startViewTransition(applyHtml).finished.catch(() => undefined);
+        } catch {
+          applyHtml();
+        }
+      } else {
         applyHtml();
       }
-    } else {
-      applyHtml();
     }
 
     await hooks.afterRender?.(root);

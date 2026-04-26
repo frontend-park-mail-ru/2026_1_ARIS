@@ -46,8 +46,8 @@ function mapFriend(raw: RawFriend): Friend {
   };
 }
 
-async function requestFriends(path: string): Promise<Friend[]> {
-  const data = await apiRequest<RawFriendsResponse>(path, {}, {});
+async function requestFriends(path: string, signal?: AbortSignal): Promise<Friend[]> {
+  const data = await apiRequest<RawFriendsResponse>(path, { ...(signal ? { signal } : {}) }, {});
 
   if (!Array.isArray(data.friends)) {
     return [];
@@ -64,8 +64,11 @@ async function mutateFriendship(
   await apiRequest<unknown>(path, { method, body: payload }, {});
 }
 
-export function getFriends(status: FriendStatus = "accepted"): Promise<Friend[]> {
-  return requestFriends(`/api/friends/${status}`);
+export function getFriends(
+  status: FriendStatus = "accepted",
+  signal?: AbortSignal,
+): Promise<Friend[]> {
+  return requestFriends(`/api/friends/${status}`, signal);
 }
 
 export function getUserFriends(
@@ -80,12 +83,18 @@ export function getUserFriends(
   return requestFriends(path);
 }
 
-export function getIncomingFriendRequests(status: FriendStatus = "pending"): Promise<Friend[]> {
-  return requestFriends(`/api/friends/requests/incoming/${status}`);
+export function getIncomingFriendRequests(
+  status: FriendStatus = "pending",
+  signal?: AbortSignal,
+): Promise<Friend[]> {
+  return requestFriends(`/api/friends/requests/incoming/${status}`, signal);
 }
 
-export function getOutgoingFriendRequests(status: FriendStatus = "pending"): Promise<Friend[]> {
-  return requestFriends(`/api/friends/requests/outgoing/${status}`);
+export function getOutgoingFriendRequests(
+  status: FriendStatus = "pending",
+  signal?: AbortSignal,
+): Promise<Friend[]> {
+  return requestFriends(`/api/friends/requests/outgoing/${status}`, signal);
 }
 
 export function requestFriendship(friendId: string): Promise<void> {

@@ -1,12 +1,13 @@
 # 2026_1_ARIS
 
+ARISNET
+
 Проект "ВК" команды АРИС
 
 ### Команда
 
-- [Сергей Шульгиненко](https://github.com/londonwaterloo)
-- [Иван Хвостов](https://github.com/KokInside)
-- [Ринат Байков](https://github.com/ronprog)
+- [Сергей Шульгиненко](https://github.com/londonwaterloo) - Frontend
+- [Иван Хвостов](https://github.com/KokInside) - Backend
 
 ### Менторы
 
@@ -17,5 +18,6 @@
 
 ### Ссылки
 
+- [Деплой](https://arisnet.ru)
 - [Backend repository](https://github.com/go-park-mail-ru/2026_1_ARIS/)
 - [Figma](https://figma.com/design/fhzdyBQ8qjNFRCRVriSrK9/VK.com?node-id=8-16&p=f&t=u2EXBO6Pxh6QqWVC-0)

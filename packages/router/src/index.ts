@@ -72,7 +72,11 @@ function matchRoute(routePath: string, currentPath: string): MatchResult {
 }
 
 type VTDocument = Document & {
-  startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+  startViewTransition?: (cb: () => void) => {
+    finished: Promise<void>;
+    ready?: Promise<void>;
+    updateCallbackDone?: Promise<void>;
+  };
 };
 
 export function createRouter(
@@ -82,6 +86,29 @@ export function createRouter(
 ): AppRouter {
   let navController = new AbortController();
   let navId = 0;
+  let isViewTransitionRunning = false;
+
+  async function applyWithViewTransition(update: () => void): Promise<void> {
+    const vtDoc = document as VTDocument;
+
+    if (!vtDoc.startViewTransition || isViewTransitionRunning) {
+      update();
+      return;
+    }
+
+    isViewTransitionRunning = true;
+
+    try {
+      const transition = vtDoc.startViewTransition(update);
+      void transition.ready?.catch(() => undefined);
+      void transition.updateCallbackDone?.catch(() => undefined);
+      await transition.finished.catch(() => undefined);
+    } catch {
+      update();
+    } finally {
+      isViewTransitionRunning = false;
+    }
+  }
 
   async function render(resetScroll = false): Promise<void> {
     hooks.beforeRender?.();
@@ -116,20 +143,9 @@ export function createRouter(
     // Show skeleton synchronously (with view transition) while async render runs
     const skeleton = hooks.getSkeleton?.(path);
     if (skeleton) {
-      const vtDoc = document as VTDocument;
-      if (vtDoc.startViewTransition) {
-        try {
-          await vtDoc
-            .startViewTransition(() => {
-              root.innerHTML = skeleton;
-            })
-            .finished.catch(() => undefined);
-        } catch {
-          root.innerHTML = skeleton;
-        }
-      } else {
+      await applyWithViewTransition(() => {
         root.innerHTML = skeleton;
-      }
+      });
       if (resetScroll) window.scrollTo(0, 0);
     }
 
@@ -151,16 +167,7 @@ export function createRouter(
         if (resetScroll) window.scrollTo(0, 0);
         root.innerHTML = html;
       };
-      const vtDoc = document as VTDocument;
-      if (vtDoc.startViewTransition) {
-        try {
-          await vtDoc.startViewTransition(applyHtml).finished.catch(() => undefined);
-        } catch {
-          applyHtml();
-        }
-      } else {
-        applyHtml();
-      }
+      await applyWithViewTransition(applyHtml);
     }
 
     await hooks.afterRender?.(root);

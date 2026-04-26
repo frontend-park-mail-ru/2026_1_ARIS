@@ -73,16 +73,32 @@ function getSortedFeedItems(items: PostcardModel[]): PostcardModel[] {
 // Загрузка данных
 // ---------------------------------------------------------------------------
 
-async function buildGuestFeedItems(): Promise<PostcardModel[]> {
-  const response = await getPublicFeed({ limit: 100 });
+async function buildGuestFeedItems(signal?: AbortSignal): Promise<PostcardModel[]> {
+  const response = await getPublicFeed({ limit: 100, ...(signal ? { signal } : {}) });
   return getSortedFeedItems(mapFeedResponse(response).items);
 }
 
-async function buildAuthorisedFeedItems(): Promise<PostcardModel[]> {
+async function buildAuthorisedFeedItems(signal?: AbortSignal): Promise<PostcardModel[]> {
   const [feedResult, friendsResult] = await Promise.allSettled([
-    getFeed({ limit: 100 }),
-    getFriends("accepted"),
+    getFeed({ limit: 100, ...(signal ? { signal } : {}) }),
+    getFriends("accepted", signal),
   ]);
+
+  // Propagate AbortError from either request before any caching logic
+  if (
+    feedResult.status === "rejected" &&
+    feedResult.reason instanceof Error &&
+    feedResult.reason.name === "AbortError"
+  ) {
+    throw feedResult.reason;
+  }
+  if (
+    friendsResult.status === "rejected" &&
+    friendsResult.reason instanceof Error &&
+    friendsResult.reason.name === "AbortError"
+  ) {
+    throw friendsResult.reason;
+  }
 
   const friends = friendsResult.status === "fulfilled" ? friendsResult.value : [];
 
@@ -113,7 +129,10 @@ async function buildAuthorisedFeedItems(): Promise<PostcardModel[]> {
   return getSortedFeedItems(filteredItems);
 }
 
-async function getCachedFeedData(isAuthorised: boolean): Promise<FeedCenterResult> {
+async function getCachedFeedData(
+  isAuthorised: boolean,
+  signal?: AbortSignal,
+): Promise<FeedCenterResult> {
   const authKey: FeedAuthKey = isAuthorised ? "authorised" : "guest";
   const modeKey = getCurrentFeedMode();
   const cacheKey = `${authKey}:${modeKey}`;
@@ -127,11 +146,14 @@ async function getCachedFeedData(isAuthorised: boolean): Promise<FeedCenterResul
   const persistedItems = readPersistedFeedItems(authKey, modeKey);
 
   try {
-    const items = isAuthorised ? await buildAuthorisedFeedItems() : await buildGuestFeedItems();
+    const items = isAuthorised
+      ? await buildAuthorisedFeedItems(signal)
+      : await buildGuestFeedItems(signal);
     feedItemsCache.set(cacheKey, items);
     persistFeedItems(authKey, modeKey, items);
     return { kind: "items", items };
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     if (persistedItems?.length) {
       feedItemsCache.set(cacheKey, persistedItems);
       return { kind: "items", items: persistedItems };
@@ -188,9 +210,12 @@ export async function prefetchFeed(): Promise<void> {
  *
  * @returns {Promise<string>}
  */
-export async function renderFeed(): Promise<string> {
+export async function renderFeed(
+  _params?: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<string> {
   const isAuthorised = getSessionUser() !== null;
-  const feedResult = await getCachedFeedData(isAuthorised);
+  const feedResult = await getCachedFeedData(isAuthorised, signal);
   const centerMarkup = buildFeedCenter(feedResult, isAuthorised);
 
   return `

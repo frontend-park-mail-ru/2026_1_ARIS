@@ -140,7 +140,7 @@ function ensureChatsPollingStarted(): void {
 // Начальная загрузка данных
 // ---------------------------------------------------------------------------
 
-async function ensureChatsLoaded(): Promise<void> {
+async function ensureChatsLoaded(signal?: AbortSignal): Promise<void> {
   const requestedChatId = getRequestedChatId();
   const preferredChatId = requestedChatId || chatsState.selectedChatId || "";
 
@@ -157,16 +157,19 @@ async function ensureChatsLoaded(): Promise<void> {
   }
 
   if (chatsState.loaded) {
-    if (chatsState.selectedChatId) await ensureMessagesLoaded(chatsState.selectedChatId);
+    if (chatsState.selectedChatId) {
+      await ensureMessagesLoaded(chatsState.selectedChatId, { ...(signal ? { signal } : {}) });
+    }
     return;
   }
 
   try {
-    await ensureKnownChatContactsLoaded();
-    const chats = await getChats();
+    await ensureKnownChatContactsLoaded(signal);
+    const chats = await getChats(signal);
     chatsState.source = "api";
     chatsState.threads = mapApiChatsToThreads(chats);
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     const persisted = readPersistedChatsData();
     chatsState.source = "api";
     chatsState.threads = persisted;
@@ -185,7 +188,7 @@ async function ensureChatsLoaded(): Promise<void> {
 
   await Promise.all(
     chatsState.threads.map(async (thread) => {
-      await ensureMessagesLoaded(thread.id, { background: true });
+      await ensureMessagesLoaded(thread.id, { background: true, ...(signal ? { signal } : {}) });
     }),
   );
 
@@ -200,7 +203,9 @@ async function ensureChatsLoaded(): Promise<void> {
   persistChatsData(chatsState.threads);
   syncSelectedChatToUrl(chatsState.selectedChatId, { replace: true });
 
-  if (chatsState.selectedChatId) await ensureMessagesLoaded(chatsState.selectedChatId);
+  if (chatsState.selectedChatId) {
+    await ensureMessagesLoaded(chatsState.selectedChatId, { ...(signal ? { signal } : {}) });
+  }
 
   rebuildPendingOutgoingFromThreads();
 }
@@ -223,7 +228,10 @@ export async function prefetchChats(): Promise<void> {
  *
  * @returns {Promise<string>}
  */
-export async function renderChats(): Promise<string> {
+export async function renderChats(
+  _params?: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<string> {
   const isAuthorised = getSessionUser() !== null;
   const currentUserId = String(getSessionUser()?.id ?? "");
 
@@ -235,7 +243,7 @@ export async function renderChats(): Promise<string> {
   if (!isAuthorised) return renderFeed();
 
   hydratePersistedChatsUiState();
-  await ensureChatsLoaded();
+  await ensureChatsLoaded(signal);
 
   return `
     <div class="app-page">

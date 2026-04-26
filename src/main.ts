@@ -24,7 +24,7 @@ import "./pages/support-stats/support-stats.scss";
 import "./components/postcard/postcard-element";
 import { createRouter } from "./router/router";
 import { registerPrefetch, prefetchRoute } from "./prefetch/prefetch";
-import { initSession } from "./state/session";
+import { initSession, getSessionUser } from "./state/session";
 import { initHeader } from "./components/header/header";
 import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar";
 import { initAvatarFallback } from "./utils/avatar-fallback";
@@ -63,8 +63,16 @@ if (!(root instanceof HTMLElement)) {
 registerServiceWorker();
 
 const router = createRouter(root, [
-  { path: "/", title: "ARISNET — Feed", render: async () => (await loadFeed()).renderFeed() },
-  { path: "/feed", title: "ARISNET — Feed", render: async () => (await loadFeed()).renderFeed() },
+  {
+    path: "/",
+    title: "ARISNET — Feed",
+    render: async (p, s) => (await loadFeed()).renderFeed(p, s),
+  },
+  {
+    path: "/feed",
+    title: "ARISNET — Feed",
+    render: async (p, s) => (await loadFeed()).renderFeed(p, s),
+  },
   {
     path: "/login",
     title: "ARISNET — Login",
@@ -83,7 +91,7 @@ const router = createRouter(root, [
   {
     path: "/chats",
     title: "ARISNET — Chats",
-    render: async () => (await loadChats()).renderChats(),
+    render: async (p, s) => (await loadChats()).renderChats(p, s),
   },
   {
     path: "/profile",
@@ -164,6 +172,13 @@ void (async () => {
     await initSession();
   } catch (error) {
     console.error("[session] init failed", error);
+  }
+
+  if (!getSessionUser() && HTMLScriptElement.supports?.("speculationrules")) {
+    const s = document.createElement("script");
+    s.type = "speculationrules";
+    s.textContent = JSON.stringify({ prerender: [{ source: "list", urls: ["/feed"] }] });
+    document.head.appendChild(s);
   }
 
   prefetchRoute(window.location.pathname);

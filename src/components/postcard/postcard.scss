@@ -11,6 +11,8 @@
   --postcard-stat-icon-size: 16px; // размер иконок статистики
   --postcard-expand-offset: 4px; // отступ сверху у кнопки "читать полностью"
 
+  container-type: inline-size;
+
   display: flex; // карточка становится flex-контейнером
   width: 100%; // карточка занимает всю доступную ширину центральной колонки
   padding: var(--postcard-padding-y) var(--postcard-padding-x); // применяем внутренние отступы карточки
@@ -302,6 +304,36 @@
     font-size: var(--text-size-meta);
     font-weight: var(--font-weight-medium);
     line-height: var(--line-height-base);
+  }
+}
+
+/* Container query: compact layout when postcard container is narrower than 380px.
+   container-type is on .postcard itself, so only DESCENDANTS can be targeted here. */
+@container (max-width: 380px) {
+  .postcard__header {
+    gap: 8px;
+  }
+
+  .postcard__text-container {
+    padding-inline: 0;
+  }
+
+  .postcard__footer {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .postcard__stats {
+    gap: 12px;
+  }
+
+  .postcard__media {
+    height: 200px;
+  }
+
+  .postcard__media-row--top,
+  .postcard__media-row--bottom {
+    height: 96px;
   }
 }
 

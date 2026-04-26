@@ -80,8 +80,8 @@ function mapMessage(raw: RawMessage): ChatMessage {
   };
 }
 
-export async function getChats(): Promise<ChatSummary[]> {
-  const data = await apiRequest<RawChat[]>("/api/chats", {}, []);
+export async function getChats(signal?: AbortSignal): Promise<ChatSummary[]> {
+  const data = await apiRequest<RawChat[]>("/api/chats", { ...(signal ? { signal } : {}) }, []);
 
   if (!Array.isArray(data)) {
     return [];
@@ -100,10 +100,13 @@ export async function createPrivateChat(otherUserId: string): Promise<ChatSummar
   return mapChat(data);
 }
 
-export async function getChatMessages(chatId: string): Promise<ChatMessage[]> {
+export async function getChatMessages(
+  chatId: string,
+  signal?: AbortSignal,
+): Promise<ChatMessage[]> {
   const data = await apiRequest<RawMessage[]>(
     `/api/chats/${encodeURIComponent(chatId)}/messages`,
-    {},
+    { ...(signal ? { signal } : {}) },
     [],
   );
 
@@ -142,26 +145,54 @@ export function subscribeToChatMessages(
     return () => {};
   }
 
-  const socket = new WebSocket(getChatSocketUrl(chatId));
+  let socket: WebSocket;
+  let retries = 0;
+  let intentionalClose = false;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  socket.addEventListener("message", (event: MessageEvent<string>) => {
-    try {
-      const rawMessage = JSON.parse(event.data) as RawMessage;
-      const message = mapMessage(rawMessage);
-
-      if (message.id) {
-        handlers.onMessage(message);
-      }
-    } catch (error) {
-      console.error("[chats] failed to parse websocket message", error);
+  function connect(): void {
+    if (intentionalClose) return;
+    if (reconnectTimer !== null) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
     }
-  });
 
-  if (handlers.onError) {
-    socket.addEventListener("error", handlers.onError);
+    socket = new WebSocket(getChatSocketUrl(chatId));
+
+    socket.addEventListener("message", (event: MessageEvent<string>) => {
+      try {
+        const rawMessage = JSON.parse(event.data) as RawMessage;
+        const message = mapMessage(rawMessage);
+        if (message.id) handlers.onMessage(message);
+      } catch (error) {
+        console.error("[chats] failed to parse websocket message", error);
+      }
+    });
+
+    if (handlers.onError) {
+      socket.addEventListener("error", handlers.onError);
+    }
+
+    socket.addEventListener("open", () => {
+      retries = 0;
+    });
+
+    socket.addEventListener("close", () => {
+      if (intentionalClose) return;
+      const delay = Math.min(1000 * 2 ** retries, 30_000) + Math.random() * 500;
+      retries += 1;
+      reconnectTimer = setTimeout(connect, delay);
+    });
   }
 
+  connect();
+
   return () => {
+    intentionalClose = true;
+    if (reconnectTimer !== null) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
     if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
       socket.close();
     }

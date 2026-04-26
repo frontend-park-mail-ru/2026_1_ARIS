@@ -4,11 +4,23 @@ import { initAuthForm } from "../components/auth-form/auth-form-controller";
 import { initAuthModal } from "../components/auth-modal/auth-modal-controller";
 import { initEyeToggle } from "../components/eye-toggle/eye-toggle-controller";
 import { initInputMasks } from "../components/input/input-mask-controller";
+import { renderFeedSkeleton } from "../pages/feed/skeleton";
+import { renderChatsSkeleton } from "../pages/chats/skeleton";
 
 export { type RouteParams } from "@aris/router";
 
+function normalisePath(p: string): string {
+  return (p || "/").replace(/\/+$/, "") || "/";
+}
+
 export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
   return createWorkspaceRouter(root, routes, {
+    getSkeleton(path: string): string | null {
+      const p = normalisePath(path);
+      if (p === "/" || p === "/feed") return renderFeedSkeleton();
+      if (p.startsWith("/chats")) return renderChatsSkeleton();
+      return null;
+    },
     afterRender: async (nextRoot) => {
       initAuthForm(document);
       initPostcardExpand(nextRoot);

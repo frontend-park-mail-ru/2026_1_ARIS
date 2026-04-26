@@ -225,3 +225,18 @@
     box-shadow: var(--control-focus-ring);
   }
 }
+
+/* Scroll-driven animation: compact header after scrolling 120px */
+@supports (animation-timeline: scroll()) {
+  @keyframes header-compact {
+    to {
+      min-height: 60px;
+    }
+  }
+
+  .header__inner {
+    animation: header-compact linear both;
+    animation-timeline: scroll(root);
+    animation-range: 40px 120px;
+  }
+}

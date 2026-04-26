@@ -57,6 +57,7 @@ type RequestOptions = {
   headers?: Record<string, string>;
   body?: unknown;
   credentials?: RequestCredentials;
+  signal?: AbortSignal;
 };
 
 const inFlightRequests = new Map<string, Promise<unknown>>();
@@ -70,9 +71,10 @@ export async function apiRequest<T>(
   options: RequestOptions = {},
   emptyFallback: T = {} as T,
 ): Promise<T> {
-  const { body, headers = {}, method = "GET", credentials = "include" } = options;
+  const { body, headers = {}, method = "GET", credentials = "include", signal } = options;
 
-  const dedup = method === "GET" || method === "HEAD";
+  // Requests with an AbortSignal are not deduplicated — each caller manages its own lifecycle
+  const dedup = (method === "GET" || method === "HEAD") && !signal;
   const dedupKey = `${method}:${url}`;
 
   if (dedup && inFlightRequests.has(dedupKey)) {
@@ -80,6 +82,7 @@ export async function apiRequest<T>(
   }
 
   const requestInit: RequestInit = { method, credentials };
+  if (signal) requestInit.signal = signal;
 
   if (body !== undefined) {
     requestInit.body = JSON.stringify(body);

@@ -1,57 +1,10 @@
-import { renderAuthModal } from "./auth-modal";
+import { renderAuthModal, renderAuthModalPanel, type AuthMode } from "./auth-modal";
 import { registerDraft } from "../../state/register-draft";
-
-type AuthMode = "login" | "register";
 
 type BindableRoot = (Document | HTMLElement) & {
   __authModalBound?: boolean;
 };
 
-let isPointerDownOutsidePanel = false;
-
-/**
- * Удерживает фокус внутри модального окна авторизации при навигации клавишей Tab.
- *
- * @param {KeyboardEvent} event
- * @returns {void}
- */
-function trapFocusInModal(event: KeyboardEvent): void {
-  if (event.key !== "Tab") return;
-
-  const modal = document.querySelector("[data-auth-modal]");
-  if (!(modal instanceof HTMLElement)) return;
-
-  const focusableElements = modal.querySelectorAll<HTMLElement>(
-    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-  );
-
-  if (!focusableElements.length) return;
-
-  const firstElement = focusableElements[0];
-  const lastElement = focusableElements[focusableElements.length - 1];
-  const activeElement = document.activeElement;
-
-  if (!firstElement || !lastElement) return;
-
-  if (event.shiftKey) {
-    if (activeElement === firstElement) {
-      event.preventDefault();
-      lastElement.focus();
-    }
-    return;
-  }
-
-  if (activeElement === lastElement) {
-    event.preventDefault();
-    firstElement.focus();
-  }
-}
-
-/**
- * Возвращает корневой элемент модального окна, создавая его при необходимости.
- *
- * @returns {HTMLElement}
- */
 function getModalRoot(): HTMLElement {
   let modalRoot = document.getElementById("modal-root");
 
@@ -64,90 +17,59 @@ function getModalRoot(): HTMLElement {
   return modalRoot;
 }
 
-/**
- * Устанавливает фокус на первый доступный фокусируемый элемент внутри модального окна.
- *
- * @param {HTMLElement} modalRoot
- * @returns {void}
- */
-function focusFirstModalElement(modalRoot: HTMLElement): void {
-  const modal = modalRoot.querySelector("[data-auth-modal]");
-  if (!(modal instanceof HTMLElement)) return;
+function getActiveDialog(): HTMLDialogElement | null {
+  return document.querySelector<HTMLDialogElement>("dialog[data-auth-modal]");
+}
 
-  const firstFocusable = modal.querySelector(
-    'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
-  );
+function attachDialogListeners(dialog: HTMLDialogElement): void {
+  // Backdrop click: <dialog> fires click on itself when clicking ::backdrop
+  dialog.addEventListener("click", (e) => {
+    if (e.target === dialog) dialog.close();
+  });
 
-  if (firstFocusable instanceof HTMLElement) {
-    firstFocusable.focus();
-  }
+  dialog.addEventListener("close", () => {
+    document.body.classList.remove("modal-open");
+    getModalRoot().innerHTML = "";
+  });
 }
 
 /**
  * Открывает модальное окно авторизации в указанном режиме.
- *
- * @param {"login"|"register"} [mode="login"]
- * @returns {void}
  */
 export function openAuthModal(mode: AuthMode = "login"): void {
   const modalRoot = getModalRoot();
+  modalRoot.innerHTML = renderAuthModal({ mode, registerDraft });
 
-  modalRoot.innerHTML = renderAuthModal({
-    mode,
-    registerDraft,
-  });
+  const dialog = modalRoot.querySelector<HTMLDialogElement>("[data-auth-modal]");
+  if (!(dialog instanceof HTMLDialogElement)) return;
 
+  attachDialogListeners(dialog);
+  dialog.showModal();
   document.body.classList.add("modal-open");
-  focusFirstModalElement(modalRoot);
 }
 
 /**
  * Закрывает модальное окно авторизации.
- *
- * @returns {void}
  */
 export function closeAuthModal(): void {
-  const modalRoot = getModalRoot();
-  modalRoot.innerHTML = "";
-  document.body.classList.remove("modal-open");
+  getActiveDialog()?.close();
 }
 
 /**
- * Переключает содержимое модального окна авторизации в указанный режим.
- *
- * @param {"login"|"register"} mode
- * @returns {void}
+ * Переключает содержимое открытого модального окна в указанный режим.
  */
 function switchAuthModalMode(mode: AuthMode): void {
-  const modalRoot = getModalRoot();
-
-  modalRoot.innerHTML = renderAuthModal({
-    mode,
-    registerDraft,
-  });
-
-  focusFirstModalElement(modalRoot);
+  const dialog = getActiveDialog();
+  if (!dialog) return;
+  dialog.innerHTML = renderAuthModalPanel(mode, registerDraft);
 }
 
 /**
- * Инициализирует обработчики событий модального окна авторизации.
- *
- * @param {Document|HTMLElement} [root=document]
- * @returns {void}
+ * Инициализирует обработчики событий открытия/переключения модального окна.
  */
 export function initAuthModal(root: Document | HTMLElement = document): void {
   const bindableRoot = root as BindableRoot;
   if (bindableRoot.__authModalBound) return;
-
-  root.addEventListener("mousedown", (event: Event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-
-    const modal = target.closest("[data-auth-modal]");
-    const panel = target.closest(".auth-modal__panel");
-
-    isPointerDownOutsidePanel = Boolean(modal && !panel);
-  });
 
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
@@ -165,39 +87,15 @@ export function initAuthModal(root: Document | HTMLElement = document): void {
     if (switchButton) {
       event.preventDefault();
       const mode = switchButton.getAttribute("data-switch-auth-mode");
-
-      if (mode === "login" || mode === "register") {
-        switchAuthModalMode(mode);
-      }
+      if (mode === "login" || mode === "register") switchAuthModalMode(mode);
       return;
     }
-
-    const modal = target.closest("[data-auth-modal]");
-    const panel = target.closest(".auth-modal__panel");
-
-    if (modal && !panel && isPointerDownOutsidePanel) {
-      event.preventDefault();
-      closeAuthModal();
-      isPointerDownOutsidePanel = false;
-      return;
-    }
-
-    isPointerDownOutsidePanel = false;
 
     const closeButton = target.closest("[data-auth-modal-close]");
     if (closeButton) {
       event.preventDefault();
       closeAuthModal();
     }
-  });
-
-  document.addEventListener("keydown", (event: KeyboardEvent) => {
-    if (event.key === "Escape") {
-      closeAuthModal();
-      return;
-    }
-
-    trapFocusInModal(event);
   });
 
   bindableRoot.__authModalBound = true;

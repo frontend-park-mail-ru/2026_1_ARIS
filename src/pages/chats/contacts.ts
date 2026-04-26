@@ -54,18 +54,18 @@ export function rememberKnownUserContacts(users: Array<SuggestedUser | LatestEve
 }
 
 /** Загружает все доступные контакты (друзья + рекомендованные пользователи) в кэши. Если уже загружено, ничего не делает. */
-export async function ensureKnownChatContactsLoaded(): Promise<void> {
+export async function ensureKnownChatContactsLoaded(signal?: AbortSignal): Promise<void> {
   if (knownChatContactsByName.size > 0) return;
 
   try {
     const [accepted, incoming, outgoing, suggested, latestEvents, popularUsers] = await Promise.all(
       [
-        getFriends("accepted"),
-        getIncomingFriendRequests("pending"),
-        getOutgoingFriendRequests("pending"),
-        getSuggestedUsers(),
-        getLatestEvents(),
-        getPublicPopularUsers(),
+        getFriends("accepted", signal),
+        getIncomingFriendRequests("pending", signal),
+        getOutgoingFriendRequests("pending", signal),
+        getSuggestedUsers(signal),
+        getLatestEvents(signal),
+        getPublicPopularUsers(signal),
       ],
     );
 
@@ -76,6 +76,7 @@ export async function ensureKnownChatContactsLoaded(): Promise<void> {
     rememberKnownUserContacts(latestEvents.items ?? []);
     rememberKnownUserContacts(popularUsers.items ?? []);
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     console.info("[chats] source=api scope=contacts error", {
       error: error instanceof Error ? error.message : "Не получилось загрузить контакты.",
     });

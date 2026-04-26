@@ -64,12 +64,15 @@ type ProfileRoot = (Document | HTMLElement) & {
   __profileInteractionsBound?: boolean;
 };
 
-async function resolveProfileFriendState(profileId: string): Promise<ProfileFriendState> {
+async function resolveProfileFriendState(
+  profileId: string,
+  signal?: AbortSignal,
+): Promise<ProfileFriendState> {
   try {
     const [friends, incoming, outgoing] = await Promise.all([
-      getFriends("accepted"),
-      getIncomingFriendRequests("pending"),
-      getOutgoingFriendRequests("pending"),
+      getFriends("accepted", signal),
+      getIncomingFriendRequests("pending", signal),
+      getOutgoingFriendRequests("pending", signal),
     ]);
 
     const acceptedFriend = friends.find((friend) => friend.profileId === profileId);
@@ -88,6 +91,7 @@ async function resolveProfileFriendState(profileId: string): Promise<ProfileFrie
       return { relation: "outgoing" };
     }
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     console.error("[profile] source=api scope=friends failed id=%s", profileId, error);
   }
 
@@ -96,6 +100,7 @@ async function resolveProfileFriendState(profileId: string): Promise<ProfileFrie
 
 async function enrichFriendsWithAvatarLinks(
   friends: Awaited<ReturnType<typeof getFriends>>,
+  signal?: AbortSignal,
 ): Promise<Awaited<ReturnType<typeof getFriends>>> {
   return Promise.all(
     friends.map(async (friend) => {
@@ -104,34 +109,42 @@ async function enrichFriendsWithAvatarLinks(
       }
 
       try {
-        const profile = await getProfileById(friend.profileId);
+        const profile = await getProfileById(friend.profileId, signal);
         const avatarLink = normaliseAvatarLink(profile.imageLink);
         if (!avatarLink) {
           return friend;
         }
 
         return { ...friend, avatarLink };
-      } catch {
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") throw error;
         return friend;
       }
     }),
   );
 }
 
-async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
+async function resolveProfile(
+  params: ProfileParams,
+  signal?: AbortSignal,
+): Promise<DisplayProfile> {
   const sessionUser = getSessionUser();
   const requestedId = params.id ?? sessionUser?.id ?? "profile";
   const isOwnProfile = !params.id || params.id === sessionUser?.id;
 
   if (sessionUser && isOwnProfile) {
     try {
-      const [profileData, rawFriends] = await Promise.all([getMyProfile(), getFriends("accepted")]);
+      const [profileData, rawFriends] = await Promise.all([
+        getMyProfile(signal),
+        getFriends("accepted", signal),
+      ]);
       console.info("[profile] source=api scope=me id=%s", sessionUser.id, profileData);
       const profile = createOwnProfileFromApi(sessionUser.id, profileData);
-      profile.friends = await enrichFriendsWithAvatarLinks(rawFriends);
+      profile.friends = await enrichFriendsWithAvatarLinks(rawFriends, signal);
       writeJsonStorage(OWN_PROFILE_CACHE_KEY, profile);
       return profile;
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
       console.error("[profile] source=api scope=me failed id=%s", sessionUser.id, error);
 
       const cachedProfile = readJsonStorage<DisplayProfile>(OWN_PROFILE_CACHE_KEY);
@@ -146,18 +159,19 @@ async function resolveProfile(params: ProfileParams): Promise<DisplayProfile> {
 
   if (!isOwnProfile) {
     try {
-      const profileData = await getProfileById(requestedId);
+      const profileData = await getProfileById(requestedId, signal);
       console.info("[profile] source=api scope=public id=%s", requestedId, profileData);
       const profile = createPublicProfileFromApi(requestedId, profileData);
       const [friends, friendState] = await Promise.all([
-        getUserFriends(requestedId),
-        resolveProfileFriendState(requestedId),
+        getUserFriends(requestedId, "accepted", signal),
+        resolveProfileFriendState(requestedId, signal),
       ]);
-      profile.friends = await enrichFriendsWithAvatarLinks(friends);
+      profile.friends = await enrichFriendsWithAvatarLinks(friends, signal);
       profile.friendRelation = friendState.relation;
       profile.friendshipCreatedAt = friendState.friendshipCreatedAt;
       return profile;
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
       console.error("[profile] source=api scope=public failed id=%s", requestedId, error);
     }
   }
@@ -255,9 +269,14 @@ function mapFeedPostToProfilePost(
   };
 }
 
-async function resolveProfilePosts(profile: DisplayProfile): Promise<ProfilePost[]> {
+async function resolveProfilePosts(
+  profile: DisplayProfile,
+  signal?: AbortSignal,
+): Promise<ProfilePost[]> {
   try {
-    const posts = profile.isOwnProfile ? await getMyPosts() : await getPostsByProfileId(profile.id);
+    const posts = profile.isOwnProfile
+      ? await getMyPosts(signal)
+      : await getPostsByProfileId(profile.id, signal);
     const mappedPosts = posts.map((post) => mapApiPostToProfilePost(post, profile));
 
     if (profile.isOwnProfile) {
@@ -266,6 +285,7 @@ async function resolveProfilePosts(profile: DisplayProfile): Promise<ProfilePost
 
     return mappedPosts;
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     console.error("[profile] source=api scope=posts failed id=%s", profile.id, error);
 
     if (profile.isOwnProfile) {
@@ -279,11 +299,11 @@ async function resolveProfilePosts(profile: DisplayProfile): Promise<ProfilePost
   }
 }
 
-async function resolveAllPosts(): Promise<ProfilePost[]> {
+async function resolveAllPosts(signal?: AbortSignal): Promise<ProfilePost[]> {
   try {
     const [feedResult, friendsResult] = await Promise.all([
-      getFeed({ limit: 100 }),
-      getFriends("accepted"),
+      getFeed({ limit: 100, ...(signal ? { signal } : {}) }),
+      getFriends("accepted", signal),
     ]);
 
     const friends = friendsResult.status === "fulfilled" ? friendsResult.value : [];
@@ -298,12 +318,16 @@ async function resolveAllPosts(): Promise<ProfilePost[]> {
 
     return filteredItems.map(mapFeedPostToProfilePost);
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     console.error("[profile] source=api scope=all-posts failed", error);
     return [];
   }
 }
 
-export async function renderProfile(params: ProfileParams = {}): Promise<string> {
+export async function renderProfile(
+  params: ProfileParams = {},
+  signal?: AbortSignal,
+): Promise<string> {
   resetPostComposerState();
   resetAvatarModalState();
   setCurrentProfilePosts([]);
@@ -311,10 +335,10 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
   const isAuthorised = getSessionUser() !== null;
 
   if (!isAuthorised) {
-    return (await import("../feed/feed")).renderFeed();
+    return (await import("../feed/feed")).renderFeed(undefined, signal);
   }
 
-  const profile = await resolveProfile(params);
+  const profile = await resolveProfile(params, signal);
   if (profile.isMissingProfile) {
     return `
       <div class="app-page">
@@ -340,8 +364,8 @@ export async function renderProfile(params: ProfileParams = {}): Promise<string>
   }
 
   const [posts, allPosts] = await Promise.all([
-    resolveProfilePosts(profile),
-    profile.isOwnProfile ? resolveAllPosts() : Promise.resolve([]),
+    resolveProfilePosts(profile, signal),
+    profile.isOwnProfile ? resolveAllPosts(signal) : Promise.resolve([]),
   ]);
   setCurrentProfilePosts(posts);
 

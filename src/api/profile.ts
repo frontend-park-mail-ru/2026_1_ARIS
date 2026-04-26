@@ -62,14 +62,21 @@ type UploadMediaResponse = {
   media?: UploadedMedia[];
 };
 
-export async function getMyProfile(): Promise<ProfileResponse> {
-  return apiRequest<ProfileResponse>(`/api/profile/me?ts=${Date.now()}`, {}, {} as ProfileResponse);
+export async function getMyProfile(signal?: AbortSignal): Promise<ProfileResponse> {
+  return apiRequest<ProfileResponse>(
+    `/api/profile/me?ts=${Date.now()}`,
+    { ...(signal ? { signal } : {}) },
+    {} as ProfileResponse,
+  );
 }
 
-export async function getProfileById(profileId: string): Promise<ProfileResponse> {
+export async function getProfileById(
+  profileId: string,
+  signal?: AbortSignal,
+): Promise<ProfileResponse> {
   return apiRequest<ProfileResponse>(
     `/api/profile/${encodeURIComponent(profileId)}?ts=${Date.now()}`,
-    {},
+    { ...(signal ? { signal } : {}) },
     {} as ProfileResponse,
   );
 }

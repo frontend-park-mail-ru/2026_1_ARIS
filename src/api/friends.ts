@@ -74,13 +74,14 @@ export function getFriends(
 export function getUserFriends(
   profileId: string,
   status: FriendStatus = "accepted",
+  signal?: AbortSignal,
 ): Promise<Friend[]> {
   const path =
     status === "accepted"
       ? `/api/users/${encodeURIComponent(profileId)}/friends`
       : `/api/friends/${status}`;
 
-  return requestFriends(path);
+  return requestFriends(path, signal);
 }
 
 export function getIncomingFriendRequests(

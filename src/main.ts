@@ -86,7 +86,7 @@ const router = createRouter(root, [
   {
     path: "/friends",
     title: "ARISNET — Friends",
-    render: async () => (await loadFriends()).renderFriends(),
+    render: async (p, s) => (await loadFriends()).renderFriends(p, s),
   },
   {
     path: "/chats",
@@ -96,17 +96,17 @@ const router = createRouter(root, [
   {
     path: "/profile",
     title: "ARISNET — Profile",
-    render: async (p) => (await loadProfile()).renderProfile(p),
+    render: async (p, s) => (await loadProfile()).renderProfile(p, s),
   },
   {
     path: "/profile/:id",
     title: "ARISNET — Profile",
-    render: async (p) => (await loadProfile()).renderProfile(p),
+    render: async (p, s) => (await loadProfile()).renderProfile(p, s),
   },
   {
     path: "/id:id",
     title: "ARISNET — Profile",
-    render: async (p) => (await loadProfile()).renderProfile(p),
+    render: async (p, s) => (await loadProfile()).renderProfile(p, s),
   },
   {
     path: "/support",

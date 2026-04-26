@@ -59,11 +59,14 @@ async function runFriendAction(root: ParentNode, action: () => Promise<void>): P
  *
  * @returns {Promise<string>}
  */
-export async function renderFriends(): Promise<string> {
+export async function renderFriends(
+  _params?: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<string> {
   const currentUser = getSessionUser();
   const currentUserId = String(currentUser?.id ?? "");
 
-  if (!currentUser) return (await import("../feed/feed")).renderFeed();
+  if (!currentUser) return (await import("../feed/feed")).renderFeed(undefined, signal);
 
   if (friendsState.loadedForUserId !== currentUserId) {
     resetFriendsState();
@@ -71,7 +74,7 @@ export async function renderFriends(): Promise<string> {
     restoreFriendsActiveTab(currentUserId);
   }
 
-  await ensureFriendsLoaded();
+  await ensureFriendsLoaded(false, signal);
 
   return `
     <div class="app-page">

@@ -1,6 +1,10 @@
 const CACHE_VERSION = "aris-v2";
 const STATIC_CACHE = `${CACHE_VERSION}:static`;
 const API_CACHE = `${CACHE_VERSION}:api`;
+const OUTBOX_DB_NAME = "aris-outbox";
+const OUTBOX_DB_VERSION = 1;
+const OUTBOX_STORE = "requests";
+const OUTBOX_SYNC_TAG = "aris-outbox";
 
 function withSourceHeader(response, source) {
   const headers = new Headers(response.headers);
@@ -106,6 +110,115 @@ function getApiTtl(pathname) {
   return API_CACHE_TTL.default;
 }
 
+function openOutboxDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(OUTBOX_DB_NAME, OUTBOX_DB_VERSION);
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(OUTBOX_STORE)) {
+        const store = db.createObjectStore(OUTBOX_STORE, {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        store.createIndex("createdAt", "createdAt");
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("failed to open outbox db"));
+  });
+}
+
+async function readOutboxRequests(db) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(OUTBOX_STORE, "readonly");
+    const store = transaction.objectStore(OUTBOX_STORE);
+    const index = store.index("createdAt");
+    const request = index.getAll();
+
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error || new Error("failed to read outbox"));
+  });
+}
+
+async function deleteOutboxRequest(db, id) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(OUTBOX_STORE, "readwrite");
+    transaction.objectStore(OUTBOX_STORE).delete(id);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () =>
+      reject(transaction.error || new Error("failed to delete outbox item"));
+  });
+}
+
+async function updateOutboxRequest(db, item) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(OUTBOX_STORE, "readwrite");
+    transaction.objectStore(OUTBOX_STORE).put(item);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () =>
+      reject(transaction.error || new Error("failed to update outbox item"));
+  });
+}
+
+async function notifyOutboxDrained(count) {
+  const clients = await self.clients.matchAll({
+    type: "window",
+    includeUncontrolled: true,
+  });
+
+  clients.forEach((client) => {
+    client.postMessage({
+      type: "ARIS_OUTBOX_DRAINED",
+      count,
+    });
+  });
+}
+
+async function drainOutbox() {
+  const db = await openOutboxDb();
+
+  try {
+    const items = await readOutboxRequests(db);
+
+    for (const item of items) {
+      try {
+        const response = await fetch(item.url, {
+          method: item.method,
+          credentials: "include",
+          headers: item.headers || {},
+          body: item.body,
+        });
+
+        if (!response.ok) {
+          if (response.status >= 400 && response.status < 500) {
+            await deleteOutboxRequest(db, item.id);
+            continue;
+          }
+
+          throw new Error(`outbox request failed with status ${response.status}`);
+        }
+
+        await deleteOutboxRequest(db, item.id);
+      } catch (error) {
+        await updateOutboxRequest(db, {
+          ...item,
+          attempts: Number(item.attempts || 0) + 1,
+          lastError: error instanceof Error ? error.message : "outbox request failed",
+        });
+        throw error;
+      }
+    }
+
+    if (items.length > 0) {
+      await notifyOutboxDrained(items.length);
+    }
+  } finally {
+    db.close();
+  }
+}
+
 async function networkFirst(request, cacheName, fallbackUrl) {
   const cache = await caches.open(cacheName);
   const url = new URL(request.url);
@@ -181,4 +294,20 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(staleWhileRevalidate(request, STATIC_CACHE));
+});
+
+self.addEventListener("sync", (event) => {
+  if (event.tag !== OUTBOX_SYNC_TAG) {
+    return;
+  }
+
+  event.waitUntil(drainOutbox());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "ARIS_DRAIN_OUTBOX") {
+    return;
+  }
+
+  event.waitUntil(drainOutbox());
 });

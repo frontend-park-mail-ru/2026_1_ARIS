@@ -27,6 +27,7 @@ import { registerPrefetch, prefetchRoute } from "./prefetch/prefetch";
 import { initSession, getSessionUser } from "./state/session";
 import { initHeader } from "./components/header/header";
 import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar";
+import { clearWidgetbarCache } from "./components/widgetbar/widgetbar";
 import { initAvatarFallback } from "./utils/avatar-fallback";
 import { initOfflineIndicator } from "./utils/offline-indicator";
 import { registerServiceWorker } from "./utils/register-service-worker";
@@ -198,6 +199,21 @@ onCacheInvalidation(async (key) => {
     await refreshFeedCenter();
   }
 });
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (event: MessageEvent) => {
+    if (event.data?.type !== "ARIS_OUTBOX_DRAINED") {
+      return;
+    }
+
+    void (async () => {
+      const { clearFeedCacheLocal, refreshFeedCenter } = await loadFeed();
+      clearFeedCacheLocal();
+      clearWidgetbarCache();
+      await refreshFeedCenter();
+    })();
+  });
+}
 
 window.addEventListener("sessionchange", async (event: Event) => {
   try {

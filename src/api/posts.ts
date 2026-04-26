@@ -1,7 +1,8 @@
 import { ApiError, parseJson, createApiError, apiRequest } from "./core/client";
 import type { UploadedMedia } from "./profile";
-import { trackedFetch } from "../state/network-status";
+import { isNetworkUnavailableError, trackedFetch } from "../state/network-status";
 import { clearFeedCache } from "../pages/feed/cache";
+import { enqueueRequest, OutboxQueuedError, registerOutboxSync } from "../utils/outbox-idb";
 
 // Повторно экспортируем ApiError для кода, который импортирует его из этого модуля.
 export { ApiError };
@@ -46,13 +47,38 @@ async function mutatePost(
   payload?: PostPayload,
 ): Promise<PostResponse | void> {
   const requestInit: RequestInit = { method, credentials: "include" };
+  let body: string | undefined;
 
   if (payload && method !== "DELETE") {
     requestInit.headers = { "Content-Type": "application/json" };
-    requestInit.body = JSON.stringify(payload);
+    body = JSON.stringify(payload);
+    requestInit.body = body;
   }
 
-  const response = await trackedFetch(path, requestInit);
+  let response: Response;
+  try {
+    response = await trackedFetch(path, requestInit);
+  } catch (error) {
+    if (!isNetworkUnavailableError(error)) {
+      throw error;
+    }
+
+    await enqueueRequest({
+      url: path,
+      method,
+      ...(body
+        ? {
+            headers: { "Content-Type": "application/json" },
+            body,
+          }
+        : {}),
+    });
+    await registerOutboxSync().catch((syncError: unknown) => {
+      console.warn("[outbox] background sync registration failed", syncError);
+    });
+    clearFeedCache();
+    throw new OutboxQueuedError();
+  }
 
   const data =
     response.status === 204 || method === "DELETE"

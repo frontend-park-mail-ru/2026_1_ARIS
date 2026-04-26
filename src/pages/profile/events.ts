@@ -12,6 +12,7 @@ import { getSessionUser, setSessionUser } from "../../state/session";
 import { clearFeedCache } from "../feed/cache";
 import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
 import { invalidateFriendsState } from "../friends/friends";
+import { isOutboxQueuedError } from "../../utils/outbox-idb";
 
 import type { ComposerMediaItem } from "./types";
 import {
@@ -261,11 +262,13 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         })
         .catch((error: unknown) => {
           postComposerState.isSaving = false;
-          postComposerState.errorMessage = isOfflineNetworkError(error)
-            ? "Нет соединения с интернетом."
-            : error instanceof Error
-              ? error.message
-              : "Не получилось сохранить публикацию.";
+          postComposerState.errorMessage = isOutboxQueuedError(error)
+            ? "Публикация сохранена и отправится при восстановлении сети."
+            : isOfflineNetworkError(error)
+              ? "Нет соединения с интернетом."
+              : error instanceof Error
+                ? error.message
+                : "Не получилось сохранить публикацию.";
           syncPostComposerUi(root);
         });
       return;
@@ -547,11 +550,13 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         })
         .catch((error: unknown) => {
           postComposerState.isSaving = false;
-          postComposerState.errorMessage = isOfflineNetworkError(error)
-            ? "Нет соединения с интернетом."
-            : error instanceof Error
-              ? error.message
-              : "Не получилось удалить публикацию.";
+          postComposerState.errorMessage = isOutboxQueuedError(error)
+            ? "Удаление сохранено и выполнится при восстановлении сети."
+            : isOfflineNetworkError(error)
+              ? "Нет соединения с интернетом."
+              : error instanceof Error
+                ? error.message
+                : "Не получилось удалить публикацию.";
           syncPostComposerUi(root);
         });
 

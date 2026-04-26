@@ -1,113 +1,117 @@
-.ss-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  width: 100%;
-  padding: var(--space-5) 0;
-}
-
-// ---------------------------------------------------------------------------
-// Шапка
-// ---------------------------------------------------------------------------
-
-.ss-header {
-  padding-bottom: var(--space-4);
-  border-bottom: 2px solid var(--color-border-default);
-}
-
-.ss-header__title {
-  margin: 0;
-  font-size: var(--text-size-heading-md);
-  font-weight: 800;
-  color: #22315c;
-  line-height: var(--line-height-tight);
-}
-
-// ---------------------------------------------------------------------------
-// Секции
-// ---------------------------------------------------------------------------
-
-.ss-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.ss-section__title {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  color: var(--color-text-meta);
-}
-
-// ---------------------------------------------------------------------------
-// Сетка карточек
-// ---------------------------------------------------------------------------
-
-.ss-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--space-3);
-}
-
-.ss-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  min-height: 104px;
-  padding: var(--space-4) var(--space-3);
-  border: 1px solid var(--color-border-default);
-  border-radius: 16px;
-  background: rgb(255 255 255 / 72%);
-  text-align: center;
-
-  &--accent {
-    border-color: rgb(74 81 208 / 22%);
-    background: rgb(255 255 255 / 84%);
+@layer pages {
+  .ss-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    width: 100%;
+    padding: var(--space-5) 0;
   }
-}
 
-.ss-card__value {
-  font-size: 36px;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--color-text-main);
-}
+  // ---------------------------------------------------------------------------
+  // Шапка
+  // ---------------------------------------------------------------------------
 
-.ss-card__label {
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: rgb(73 83 106 / 86%);
-}
-
-// ---------------------------------------------------------------------------
-// Ошибка
-// ---------------------------------------------------------------------------
-
-.ss-error {
-  padding: var(--space-8);
-  text-align: center;
-  color: var(--color-text-muted);
-
-  p { margin: 0; }
-
-  a {
-    color: var(--color-interactive-primary);
-    text-decoration: underline;
+  .ss-header {
+    padding-bottom: var(--space-4);
+    border-bottom: 2px solid var(--color-border-default);
   }
-}
 
-.ss-placeholder {
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border-default);
-  border-radius: 14px;
-  background: rgb(255 255 255 / 68%);
-}
+  .ss-header__title {
+    margin: 0;
+    font-size: var(--text-size-heading-md);
+    font-weight: 800;
+    color: #22315c;
+    line-height: var(--line-height-tight);
+  }
 
-.ss-placeholder__text {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  // ---------------------------------------------------------------------------
+  // Секции
+  // ---------------------------------------------------------------------------
+
+  .ss-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .ss-section__title {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--color-text-meta);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Сетка карточек
+  // ---------------------------------------------------------------------------
+
+  .ss-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .ss-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    min-height: 104px;
+    padding: var(--space-4) var(--space-3);
+    border: 1px solid var(--color-border-default);
+    border-radius: 16px;
+    background: rgb(255 255 255 / 72%);
+    text-align: center;
+
+    &--accent {
+      border-color: rgb(74 81 208 / 22%);
+      background: rgb(255 255 255 / 84%);
+    }
+  }
+
+  .ss-card__value {
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--color-text-main);
+  }
+
+  .ss-card__label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: rgb(73 83 106 / 86%);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ошибка
+  // ---------------------------------------------------------------------------
+
+  .ss-error {
+    padding: var(--space-8);
+    text-align: center;
+    color: var(--color-text-muted);
+
+    p {
+      margin: 0;
+    }
+
+    a {
+      color: var(--color-interactive-primary);
+      text-decoration: underline;
+    }
+  }
+
+  .ss-placeholder {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border-default);
+    border-radius: 14px;
+    background: rgb(255 255 255 / 68%);
+  }
+
+  .ss-placeholder__text {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
 }

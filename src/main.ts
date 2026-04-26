@@ -1,5 +1,5 @@
-import "./styles/tokens.css";
 import "./styles/main.css";
+import "./styles/tokens.css";
 import "./styles/layout.scss";
 
 import "./components/button/button.scss";

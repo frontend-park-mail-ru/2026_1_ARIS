@@ -119,11 +119,11 @@ async function mapFriendToDisplay(friend: Friend): Promise<DisplayFriend> {
 }
 
 /** Параллельно загружает друзей, входящие и исходящие заявки из backend. */
-export async function loadFriendsFromBackend(): Promise<FriendsData> {
+export async function loadFriendsFromBackend(signal?: AbortSignal): Promise<FriendsData> {
   const [friends, incoming, outgoing] = await Promise.all([
-    getFriends("accepted"),
-    getIncomingFriendRequests("pending"),
-    getOutgoingFriendRequests("pending"),
+    getFriends("accepted", signal),
+    getIncomingFriendRequests("pending", signal),
+    getOutgoingFriendRequests("pending", signal),
   ]);
 
   const [mappedFriends, mappedIncoming, mappedOutgoing] = await Promise.all([
@@ -136,19 +136,20 @@ export async function loadFriendsFromBackend(): Promise<FriendsData> {
 }
 
 /** Загружает данные друзей, если они ещё не загружены, либо принудительно. */
-export async function ensureFriendsLoaded(force = false): Promise<void> {
+export async function ensureFriendsLoaded(force = false, signal?: AbortSignal): Promise<void> {
   if ((!force && friendsState.loading) || (!force && friendsState.loaded)) return;
 
   friendsState.loading = true;
   friendsState.errorMessage = "";
 
   try {
-    const data = await loadFriendsFromBackend();
+    const data = await loadFriendsFromBackend(signal);
     friendsState.friends = data.friends;
     friendsState.incoming = data.incoming;
     friendsState.outgoing = data.outgoing;
     friendsState.loaded = true;
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     friendsState.errorMessage = getFriendsErrorMessage(error, "Не удалось загрузить друзей.");
     friendsState.friends = [];
     friendsState.incoming = [];

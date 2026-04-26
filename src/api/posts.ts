@@ -66,8 +66,12 @@ async function mutatePost(
   return data as PostResponse | void;
 }
 
-export async function getMyPosts(): Promise<PostResponse[]> {
-  const data = await apiRequest<PostsApiResponse>(`/api/post/me?ts=${Date.now()}`, {}, {});
+export async function getMyPosts(signal?: AbortSignal): Promise<PostResponse[]> {
+  const data = await apiRequest<PostsApiResponse>(
+    `/api/post/me?ts=${Date.now()}`,
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
 
   if (Array.isArray(data)) {
     return data as PostResponse[];
@@ -78,10 +82,13 @@ export async function getMyPosts(): Promise<PostResponse[]> {
     : [];
 }
 
-export async function getPostsByProfileId(profileId: string): Promise<PostResponse[]> {
+export async function getPostsByProfileId(
+  profileId: string,
+  signal?: AbortSignal,
+): Promise<PostResponse[]> {
   const data = await apiRequest<PostsApiResponse>(
     `/api/post/profile/${encodeURIComponent(profileId)}?ts=${Date.now()}`,
-    {},
+    { ...(signal ? { signal } : {}) },
     {},
   );
 

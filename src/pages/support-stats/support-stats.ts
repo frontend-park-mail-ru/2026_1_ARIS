@@ -123,7 +123,10 @@ function buildStatsFromTickets(tickets: Ticket[]): SupportStats {
 // Рендер страницы
 // ---------------------------------------------------------------------------
 
-export async function renderSupportStats(): Promise<string> {
+export async function renderSupportStats(
+  _params?: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<string> {
   const isAuthorised = getSessionUser() !== null;
 
   if (!isAuthorised) {
@@ -162,14 +165,16 @@ export async function renderSupportStats(): Promise<string> {
 
   let statsHtml: string;
   try {
-    const stats = await getSupportStats();
+    const stats = await getSupportStats(signal);
     statsHtml = renderStats(stats);
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     console.warn("[support-stats] stats endpoint unavailable, fallback to all tickets", error);
     try {
-      const tickets = await getAllTickets();
+      const tickets = await getAllTickets(undefined, signal);
       statsHtml = renderStats(buildStatsFromTickets(tickets));
     } catch (ticketsError) {
+      if (ticketsError instanceof Error && ticketsError.name === "AbortError") throw ticketsError;
       console.error("[support-stats] failed to load tickets for stats", ticketsError);
       statsHtml = `
         <div class="ss-error">

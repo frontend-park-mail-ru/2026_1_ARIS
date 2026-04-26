@@ -491,10 +491,13 @@ export async function getMyTickets(): Promise<Ticket[]> {
   return list.map(mapTicket);
 }
 
-export async function getAllTickets(filter?: TicketFilter): Promise<Ticket[]> {
+export async function getAllTickets(
+  filter?: TicketFilter,
+  signal?: AbortSignal,
+): Promise<Ticket[]> {
   const raw = await apiRequest<{ tickets?: RawTicket[] } | RawTicket[]>(
     `/api/support/tickets${buildTicketFilterQuery(filter)}`,
-    {},
+    { ...(signal ? { signal } : {}) },
     [],
   );
   const list = Array.isArray(raw) ? raw : (raw.tickets ?? []);
@@ -606,8 +609,12 @@ export async function rateTicket(ticketId: string, payload: { rating: number }):
   );
 }
 
-export async function getSupportStats(): Promise<SupportStats> {
-  const raw = await apiRequest<RawStats>("/api/support/stats", {}, {});
+export async function getSupportStats(signal?: AbortSignal): Promise<SupportStats> {
+  const raw = await apiRequest<RawStats>(
+    "/api/support/stats",
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
   const byStatus = Array.isArray(raw.byStatus) ? raw.byStatus : [];
   const byCategory = buildCategoryStats(
     (raw.by_category ?? raw.byCategory) as Record<string, number> | undefined,

@@ -116,7 +116,7 @@ const router = createRouter(root, [
   {
     path: "/support/stats",
     title: "ARISNET — Support Stats",
-    render: async () => (await loadSupportStats()).renderSupportStats(),
+    render: async (p, s) => (await loadSupportStats()).renderSupportStats(p, s),
   },
   {
     path: "/support/admin",

@@ -1,7 +1,8 @@
-import { findProfileRecord } from "../profile/profile-data";
+import { getProfileRecordById } from "../profile/profile-data";
 import type { ChatSummary } from "../../api/chat";
 import {
   formatChatTime,
+  formatChatExactTime,
   formatMessageTime,
   getNormalisedPersonName,
   looksLikeDirectPersonName,
@@ -96,13 +97,10 @@ export function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
     })
     .map((chat, index) => {
       const knownContact = knownChatContactsByName.get(getNormalisedPersonName(chat.title || ""));
-      const matchedProfile = findProfileRecord({
-        id: knownContact?.profileId ?? chat.title,
-        firstName: chat.title.split(" ")[0] ?? "",
-        lastName: chat.title.split(" ").slice(1).join(" "),
-      });
-      const profileId =
-        knownContact?.profileId ?? (matchedProfile ? String(matchedProfile.publicId) : undefined);
+      const matchedProfile = knownContact?.profileId
+        ? getProfileRecordById(String(knownContact.profileId))
+        : undefined;
+      const profileId = knownContact?.profileId;
 
       return {
         id: chat.id,
@@ -116,7 +114,9 @@ export function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt ?? chat.createdAt,
         source: "api" as const,
-        profilePath: resolvePersonPath(chat.title || `Чат ${index + 1}`, profileId),
+        profilePath: profileId
+          ? resolvePersonPath(chat.title || `Чат ${index + 1}`, profileId)
+          : "/profile",
       };
     });
 }
@@ -180,6 +180,7 @@ export function getThreadPreviewState(thread: ChatViewThread): {
   text: string;
   isOwn: boolean;
   timeLabel: string;
+  timeTooltip: string;
 } {
   const messages = thread.messages ?? [];
   const lastMessage = messages[messages.length - 1];
@@ -189,12 +190,14 @@ export function getThreadPreviewState(thread: ChatViewThread): {
       text: thread.preview,
       isOwn: Boolean(thread.previewIsOwn),
       timeLabel: thread.preview.trim() ? thread.timeLabel : "",
+      timeTooltip: thread.updatedAt ? formatChatExactTime(thread.updatedAt) : "",
     };
   }
 
   return {
     text: lastMessage.text,
     isOwn: lastMessage.isOwn,
-    timeLabel: formatMessageTime(lastMessage.createdAt) || thread.timeLabel,
+    timeLabel: formatChatTime(lastMessage.createdAt) || thread.timeLabel,
+    timeTooltip: formatChatExactTime(lastMessage.createdAt),
   };
 }

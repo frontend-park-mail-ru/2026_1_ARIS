@@ -1,3 +1,5 @@
+import { markAvatarSrcBroken } from "./avatar";
+
 const AVATAR_SELECTOR = 'img[class*="avatar"]';
 const DEFAULT_AVATAR_PATTERN = /\/assets\/img\/default-avatar\.png(?:$|\?)/i;
 const AVATAR_FALLBACK_IGNORE_SELECTOR = "[data-avatar-fallback='ignore']";
@@ -44,6 +46,7 @@ function replaceWithInitials(image: HTMLImageElement): void {
   }
 
   const label = getAvatarLabel(image);
+  markAvatarSrcBroken(image.currentSrc || image.src);
   const placeholder = document.createElement("div");
 
   placeholder.className = `${image.className} avatar-fallback`;

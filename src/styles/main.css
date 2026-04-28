@@ -128,17 +128,28 @@
     display: none;
   }
 
+  img[class*="avatar"] {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-2, #f0f2f8) 25%,
+      var(--color-surface-3, #e4e8f4) 50%,
+      var(--color-surface-2, #f0f2f8) 75%
+    );
+    background-size: 200% 100%;
+    color: transparent !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    text-indent: 200% !important;
+    white-space: nowrap;
+    animation: shimmer 1.4s infinite;
+  }
+
   .avatar-fallback {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     border-radius: 50%;
-    background: linear-gradient(
-      135deg,
-      rgb(54 71 203),
-      rgb(125 135 247) 52%,
-      rgb(245 203 110)
-    ) !important;
+    background: linear-gradient(135deg, rgb(54 71 203), rgb(125 135 247)) !important;
     border: none;
     box-shadow: 0 5px 10px rgb(49 61 145 / 20%);
     color: var(--color-text-on-primary) !important;
@@ -153,6 +164,27 @@
     user-select: none;
     flex-shrink: 0;
     padding-top: 0 !important;
+  }
+
+  .avatar-skeleton {
+    display: inline-flex !important;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-2, #f0f2f8) 25%,
+      var(--color-surface-3, #e4e8f4) 50%,
+      var(--color-surface-2, #f0f2f8) 75%
+    ) !important;
+    background-size: 200% 100% !important;
+    box-shadow: none !important;
+    color: transparent !important;
+    flex-shrink: 0;
+    overflow: hidden;
+    padding: 0 !important;
+    text-decoration: none !important;
+    vertical-align: middle;
+    animation: shimmer 1.4s infinite;
   }
 
   .search-field {
@@ -243,9 +275,9 @@
     bottom: 80px;
     right: 20px;
     z-index: 1500;
-    width: 500px;
-    height: 560px;
-    max-height: calc(100vh - 100px);
+    width: 320px;
+    height: 620px;
+    max-height: calc(100vh - 84px);
     border: none;
     border-radius: var(--radius-large);
     box-shadow:
@@ -301,6 +333,7 @@
   @media (width <= 480px) {
     .support-iframe {
       width: calc(100vw - 16px);
+      height: min(680px, calc(100vh - 88px));
       right: 12px;
       bottom: 72px;
     }
@@ -314,11 +347,11 @@
 
   @keyframes shimmer {
     from {
-      background-position: -200% 0;
+      background-position: 200% 0;
     }
 
     to {
-      background-position: 200% 0;
+      background-position: -200% 0;
     }
   }
 
@@ -360,5 +393,35 @@
     ::view-transition-new(root) {
       animation: none;
     }
+  }
+}
+
+@layer utils {
+  .content-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: var(--border-width) solid rgb(255 255 255 / 62%);
+    border-radius: var(--radius-content-card);
+    background: var(--color-surface-content-card);
+    box-shadow: var(--shadow-content-card);
+  }
+
+  .content-card::before {
+    position: absolute;
+    top: -82px;
+    right: -76px;
+    z-index: 0;
+    width: 220px;
+    height: 220px;
+    background: var(--content-card-glow);
+    content: "";
+    filter: blur(8px);
+    pointer-events: none;
+  }
+
+  .content-card > * {
+    position: relative;
+    z-index: 1;
   }
 }

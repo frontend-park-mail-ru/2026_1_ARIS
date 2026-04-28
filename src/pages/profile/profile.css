@@ -180,7 +180,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgb(54 71 203), rgb(125 135 247) 52%, rgb(245 203 110));
+    background: linear-gradient(135deg, rgb(54 71 203), rgb(125 135 247));
     color: white;
     font-size: var(--text-size-display);
     font-weight: 700;
@@ -237,20 +237,24 @@
   }
 
   .profile-friend-action {
-    min-height: 32px;
-    padding: 0 14px;
-    border: 1px solid rgb(171 182 229 / 92%);
-    border-radius: 7px;
-    background: var(--color-surface-tinted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px;
+    padding: 3px var(--space-2);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-xs);
+    background: var(--color-surface-overlay);
     color: var(--color-text-main);
     font: inherit;
-    font-size: var(--text-size-label);
-    line-height: var(--line-height-solid);
+    font-size: var(--text-size-meta);
+    line-height: var(--line-height-base);
+    text-decoration: none;
     cursor: pointer;
   }
 
   .profile-friend-action:hover {
-    background: rgb(245 247 255 / 96%);
+    background: var(--color-surface-overlay);
   }
 
   .profile-friend-action--primary {
@@ -568,10 +572,10 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    border: 1px solid rgb(203 210 222 / 78%);
-    border-radius: 10px;
-    background: rgb(255 255 255 / 96%);
-    box-shadow: none;
+    border: var(--border-width) solid rgb(255 255 255 / 62%);
+    border-radius: var(--radius-content-card);
+    background: var(--color-surface-content-card);
+    box-shadow: var(--shadow-content-card);
     color: var(--color-interactive-primary);
     cursor: pointer;
     text-decoration: none;
@@ -586,9 +590,9 @@
 
   .profile-composer:hover {
     transform: none;
-    border-color: rgb(177 188 207 / 88%);
-    background: rgb(255 255 255);
-    box-shadow: 0 2px 8px rgb(15 23 42 / 6%);
+    border-color: rgb(255 255 255 / 74%);
+    background: var(--color-surface-content-card);
+    box-shadow: var(--shadow-content-card);
   }
 
   .profile-composer:focus-visible {
@@ -634,7 +638,7 @@
   }
 
   .profile-posts__header + .profile-posts__list {
-    margin-top: -16px;
+    margin-top: 0;
   }
 
   .profile-posts__item {
@@ -1071,9 +1075,7 @@
   }
 
   .profile-post--first-visible {
-    margin-top: -16px;
-    border-top: 0;
-    border-radius: 0 0 10px 10px;
+    margin-top: 0;
   }
 
   .profile-post__header {
@@ -1099,7 +1101,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgb(54 71 203), rgb(125 135 247) 52%, rgb(245 203 110));
+    background: linear-gradient(135deg, rgb(54 71 203), rgb(125 135 247));
     color: white;
     font-size: var(--text-size-main);
     font-weight: 700;
@@ -2020,7 +2022,7 @@
   }
 
   .profile-delete-modal__avatar--placeholder {
-    background: linear-gradient(135deg, rgb(54 71 203), rgb(125 135 247) 52%, rgb(245 203 110));
+    background: linear-gradient(135deg, rgb(54 71 203), rgb(125 135 247));
     color: white;
     font-size: var(--text-size-display);
     font-weight: 700;

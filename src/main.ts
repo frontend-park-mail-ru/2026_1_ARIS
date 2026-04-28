@@ -182,14 +182,13 @@ void (async () => {
     document.head.appendChild(s);
   }
 
-  prefetchRoute(window.location.pathname);
+  initSupportIframe();
 
   await router.render();
   initHeader();
   initSidebar();
   initAvatarFallback(document);
   initOfflineIndicator();
-  initSupportIframe();
 })();
 
 onCacheInvalidation(async (key) => {
@@ -220,17 +219,23 @@ window.addEventListener("sessionchange", async (event: Event) => {
     const detail =
       event instanceof CustomEvent ? (event.detail as { key?: string } | undefined) : undefined;
 
+    if (detail?.key === "init") {
+      return;
+    }
+
     if (detail?.key === "user") {
       await router.render();
       initHeader();
       initSidebar();
       initAvatarFallback(document);
-      initOfflineIndicator();
       return;
     }
 
     refreshSidebar();
-    await (await loadFeed()).refreshFeedCenter();
+    const path = window.location.pathname.replace(/\/+$/g, "") || "/";
+    if (path === "/" || path === "/feed") {
+      await (await loadFeed()).refreshFeedCenter();
+    }
   } catch (error) {
     console.error(error);
   }

@@ -35,6 +35,23 @@ export const sessionStore = new StateManager<SessionState>({
 
 const SESSION_USER_STORAGE_KEY = "arisfront:session-user";
 
+function getAvatarLinkFromPayload(payload: unknown): string {
+  if (!payload || typeof payload !== "object") {
+    return "";
+  }
+
+  const candidate =
+    "imageLink" in payload && typeof payload.imageLink === "string"
+      ? payload.imageLink
+      : "avatarLink" in payload && typeof payload.avatarLink === "string"
+        ? payload.avatarLink
+        : "avatar" in payload && typeof payload.avatar === "string"
+          ? payload.avatar
+          : "";
+
+  return candidate.trim();
+}
+
 function isUserRole(value: unknown): value is UserRole {
   return value === "user" || value === "support_l1" || value === "support_l2" || value === "admin";
 }
@@ -131,13 +148,26 @@ export function getFeedMode(): FeedMode {
   return sessionStore.get().feedMode;
 }
 
+function applySessionUser(user: User | null, emit = true): void {
+  sessionStore.patch({ user });
+  persistSessionUser(user);
+  if (emit) {
+    emitSessionChange("user");
+  }
+}
+
 /**
  * Устанавливает текущего пользователя в состояние сессии.
  */
 export function setSessionUser(user: User | null): void {
-  sessionStore.patch({ user });
-  persistSessionUser(user);
-  emitSessionChange("user");
+  applySessionUser(user, true);
+}
+
+/**
+ * Устанавливает текущего пользователя без широковещательного события sessionchange.
+ */
+export function setSessionUserSilently(user: User | null): void {
+  applySessionUser(user, false);
 }
 
 /**
@@ -178,10 +208,7 @@ export async function initSession(): Promise<void> {
       let nextUser = user.value;
 
       if (profileResult.status === "fulfilled") {
-        const avatarLink =
-          typeof profileResult.value.imageLink === "string"
-            ? profileResult.value.imageLink.trim()
-            : "";
+        const avatarLink = getAvatarLinkFromPayload(profileResult.value);
         if (avatarLink) {
           nextUser = { ...nextUser, avatarLink };
         }

@@ -1,4 +1,4 @@
-import { getSessionUser, setSessionUser } from "../../state/session";
+import { getSessionUser, setSessionUser, setSessionUserSilently } from "../../state/session";
 import {
   normalizeName,
   validateAlphabetConsistency,
@@ -104,7 +104,7 @@ export function updateSessionUserAvatarLink(nextAvatarLink?: string): void {
   }
 
   if (nextAvatarLink) {
-    setSessionUser({
+    setSessionUserSilently({
       ...sessionUser,
       avatarLink: nextAvatarLink,
     });
@@ -113,7 +113,7 @@ export function updateSessionUserAvatarLink(nextAvatarLink?: string): void {
 
   const sessionUserWithoutAvatar = { ...sessionUser };
   delete sessionUserWithoutAvatar.avatarLink;
-  setSessionUser(sessionUserWithoutAvatar);
+  setSessionUserSilently(sessionUserWithoutAvatar);
 }
 
 export function resetPostComposerState(): void {

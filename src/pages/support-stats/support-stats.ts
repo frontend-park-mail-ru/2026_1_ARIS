@@ -136,7 +136,7 @@ export async function renderSupportStats(
         <main class="app-layout">
           <aside class="app-layout__left">${renderSidebar({ isAuthorised })}</aside>
           <section class="app-layout__center">
-            <div class="ss-page" data-support-stats-page>
+            <div class="ss-page content-card" data-support-stats-page>
               <div class="ss-error"><p>Для просмотра статистики необходимо <a href="/login" data-link>войти в аккаунт</a>.</p></div>
             </div>
           </section>
@@ -153,7 +153,7 @@ export async function renderSupportStats(
         <main class="app-layout">
           <aside class="app-layout__left">${renderSidebar({ isAuthorised })}</aside>
           <section class="app-layout__center">
-            <div class="ss-page" data-support-stats-page>
+            <div class="ss-page content-card" data-support-stats-page>
               <div class="ss-error"><p>Нет доступа к статистике обращений.</p></div>
             </div>
           </section>
@@ -193,7 +193,7 @@ export async function renderSupportStats(
         </aside>
 
         <section class="app-layout__center">
-          <div class="ss-page" data-support-stats-page>
+          <div class="ss-page content-card" data-support-stats-page>
             <header class="ss-header">
               <h1 class="ss-header__title">Статистика техподдержки</h1>
             </header>

@@ -6,6 +6,9 @@ import { initEyeToggle } from "../components/eye-toggle/eye-toggle-controller";
 import { initInputMasks } from "../components/input/input-mask-controller";
 import { renderFeedSkeleton } from "../pages/feed/skeleton";
 import { renderChatsSkeleton } from "../pages/chats/skeleton";
+import { renderFriendsSkeleton } from "../pages/friends/skeleton";
+import { renderProfileSkeleton } from "../pages/profile/skeleton";
+import { initAvatarFallback } from "../utils/avatar-fallback";
 
 export { type RouteParams } from "@aris/router";
 
@@ -19,9 +22,12 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
       const p = normalisePath(path);
       if (p === "/" || p === "/feed") return renderFeedSkeleton();
       if (p.startsWith("/chats")) return renderChatsSkeleton();
+      if (p === "/friends") return renderFriendsSkeleton();
+      if (p.startsWith("/profile") || p.startsWith("/id")) return renderProfileSkeleton();
       return null;
     },
     afterRender: async (nextRoot) => {
+      initAvatarFallback(nextRoot);
       initAuthForm(document);
       initPostcardExpand(nextRoot);
       initAuthModal(document);

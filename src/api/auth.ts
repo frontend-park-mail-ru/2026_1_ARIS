@@ -49,6 +49,65 @@ export type User = {
   role?: UserRole;
 };
 
+type RawUser = {
+  id?: string | number;
+  firstName?: string;
+  lastName?: string;
+  login?: string;
+  username?: string;
+  email?: string;
+  avatarLink?: string | null;
+  avatar?: string | null;
+  imageLink?: string | null;
+  role?: unknown;
+};
+
+function mapUser(raw: RawUser | null | undefined): User | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const id = String(raw.id ?? "").trim();
+  const firstName = String(raw.firstName ?? "").trim();
+  const lastName = String(raw.lastName ?? "").trim();
+
+  if (!id || !firstName || !lastName) {
+    return null;
+  }
+
+  const user: User = {
+    id,
+    firstName,
+    lastName,
+  };
+
+  const login = String(raw.login ?? raw.username ?? "").trim();
+  if (login) {
+    user.login = login;
+  }
+
+  const email = String(raw.email ?? "").trim();
+  if (email) {
+    user.email = email;
+  }
+
+  const avatarLink = String(raw.avatarLink ?? raw.avatar ?? raw.imageLink ?? "").trim();
+  if (avatarLink) {
+    user.avatarLink = avatarLink;
+  }
+
+  if (
+    raw.role === "user" ||
+    raw.role === "support_l1" ||
+    raw.role === "support_l2" ||
+    raw.role === "admin"
+  ) {
+    user.role = raw.role;
+  }
+
+  return user;
+}
+
 /**
  * Ответ валидации первого шага.
  */
@@ -61,14 +120,20 @@ export type RegisterStepOneValidationResponse = {
  * Отправляет запрос на вход в backend.
  */
 export async function loginUser(payload: LoginPayload): Promise<User> {
-  return apiRequest<User>("/api/auth/login", { method: "POST", body: payload }, {} as User);
+  const user = await apiRequest<RawUser>("/api/auth/login", { method: "POST", body: payload }, {});
+  return mapUser(user) ?? ({ id: "", firstName: "", lastName: "" } as User);
 }
 
 /**
  * Отправляет запрос на регистрацию в backend.
  */
 export async function registerUser(payload: RegisterPayload): Promise<User> {
-  return apiRequest<User>("/api/auth/register", { method: "POST", body: payload }, {} as User);
+  const user = await apiRequest<RawUser>(
+    "/api/auth/register",
+    { method: "POST", body: payload },
+    {},
+  );
+  return mapUser(user) ?? ({ id: "", firstName: "", lastName: "" } as User);
 }
 
 /**
@@ -92,7 +157,8 @@ export async function getCurrentUser(): Promise<User | null> {
     return null;
   }
 
-  return parseJson<User>(response, {} as User);
+  const user = await parseJson<RawUser>(response, {});
+  return mapUser(user);
 }
 
 /**

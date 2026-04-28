@@ -7,6 +7,7 @@ import {
 } from "../../api/friends";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
 import { getSessionUser } from "../../state/session";
+import { prepareAvatarLinks, renderAvatarMarkup } from "../../utils/avatar";
 import { TtlCache } from "../../utils/ttl-cache";
 
 type WidgetbarUser = {
@@ -80,7 +81,20 @@ function renderProfileLink(
   text: string,
   user: Pick<WidgetbarUser, "id" | "username" | "firstName" | "lastName">,
   className: string,
+  isAuthorised: boolean,
 ): string {
+  if (!isAuthorised) {
+    return `
+      <a
+        href="/login"
+        data-open-auth-modal="login"
+        class="${className}"
+      >
+        ${text}
+      </a>
+    `;
+  }
+
   return `
     <a
       href="${resolveProfilePath({
@@ -97,16 +111,12 @@ function renderProfileLink(
   `;
 }
 
-function resolveAvatarSrc(avatarLink?: string): string {
-  if (!avatarLink) {
-    return "/assets/img/default-avatar.png";
-  }
-
-  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
-    return avatarLink;
-  }
-
-  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
+function renderWidgetbarAvatar(user: WidgetbarUser): string {
+  const label = `${user.firstName} ${user.lastName}`.trim() || user.username || "Пользователь";
+  return renderAvatarMarkup("widgetbar-person__avatar", label, user.avatarLink, {
+    width: 32,
+    height: 32,
+  });
 }
 
 function getUserKey(user: WidgetbarUser): string {
@@ -212,20 +222,18 @@ async function renderPopularUsersWidget(): Promise<string> {
   const { items, failed } = await loadWidgetbarUsers("popular-users-guest", () =>
     getPublicPopularUsers(),
   );
+  await prepareAvatarLinks(items.map((user) => user.avatarLink));
   const content = items.length
     ? items
         .map(
           (user) => `
             <div class="widgetbar-person">
-              ${
-                user.avatarLink
-                  ? `<img class="widgetbar-person__avatar" loading="lazy" decoding="async" width="32" height="32" src="${resolveAvatarSrc(user.avatarLink)}" alt="${user.firstName} ${user.lastName}">`
-                  : `<img class="widgetbar-person__avatar" loading="lazy" decoding="async" width="32" height="32" src="/assets/img/default-avatar.png" alt="${user.firstName} ${user.lastName}">`
-              }
+              ${renderWidgetbarAvatar(user)}
               ${renderProfileLink(
                 `${user.firstName} ${user.lastName}`,
                 user,
                 "widgetbar-card__username",
+                false,
               )}
             </div>
           `,
@@ -272,30 +280,24 @@ async function renderKnownPeopleWidget(): Promise<string> {
       !isArisTeamUser(user)
     );
   });
+  const visibleItems = filteredItems.slice(0, 4);
+  await prepareAvatarLinks(visibleItems.map((user) => user.avatarLink));
 
   return `
     <section class="widgetbar-card">
       <h3 class="widgetbar-card__title">Возможно, вы знакомы:</h3>
 
       ${
-        filteredItems
-          .slice(0, 4)
+        visibleItems
           .map(
             (user) => `
             <div class="widgetbar-person">
-              <img
-                class="widgetbar-person__avatar"
-                loading="eager"
-                decoding="async"
-                width="32"
-                height="32"
-                src="${resolveAvatarSrc(user.avatarLink)}"
-                alt="${user.firstName} ${user.lastName}"
-              >
+              ${renderWidgetbarAvatar(user)}
               ${renderProfileLink(
                 `${user.firstName} ${user.lastName}`,
                 user,
                 "widgetbar-card__username",
+                true,
               )}
             </div>
           `,
@@ -326,6 +328,7 @@ async function renderEventsWidget(): Promise<string> {
                 `${user.firstName} ${user.lastName}`,
                 user,
                 "widgetbar-card__username",
+                false,
               );
 
               if (user.type === 1) {

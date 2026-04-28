@@ -1,11 +1,6 @@
 import type { DisplayProfile, ProfilePost } from "./types";
-import {
-  escapeHtml,
-  getInitials,
-  getAvatarImageSrc,
-  hasVisibleValue,
-  renderAvatar,
-} from "./helpers";
+import { escapeHtml, getAvatarImageSrc, hasVisibleValue, renderAvatar } from "./helpers";
+import { renderAvatarMarkup } from "../../utils/avatar";
 
 export {
   renderAvatarModal,
@@ -33,7 +28,7 @@ export {
 
 export function renderMissingProfileCard(profile: DisplayProfile): string {
   return `
-    <article class="profile-card profile-card--missing">
+    <article class="profile-card profile-card--missing content-card">
       <header class="profile-card__hero">
         <div class="profile-card__avatar-column">
           ${renderAvatar(profile, "profile-card__avatar")}
@@ -49,7 +44,12 @@ export function renderMissingProfileCard(profile: DisplayProfile): string {
   `;
 }
 
-export function renderProfileFriendActions(profile: DisplayProfile): string {
+type ProfileFriendActionsModel = Pick<
+  DisplayProfile,
+  "isOwnProfile" | "isApiBacked" | "id" | "friendRelation"
+>;
+
+function renderProfileFriendActionsContent(profile: ProfileFriendActionsModel): string {
   if (profile.isOwnProfile || !profile.isApiBacked) {
     return "";
   }
@@ -129,6 +129,23 @@ export function renderProfileFriendActions(profile: DisplayProfile): string {
       >
         Добавить в друзья
       </button>
+    </div>
+  `;
+}
+
+export function renderProfileFriendActions(profile: ProfileFriendActionsModel): string {
+  const content = renderProfileFriendActionsContent(profile);
+  if (!content) {
+    return "";
+  }
+
+  return `
+    <div
+      data-profile-friend-actions-root
+      data-profile-id="${escapeHtml(profile.id)}"
+      data-profile-friend-relation="${escapeHtml(profile.friendRelation)}"
+    >
+      ${content}
     </div>
   `;
 }
@@ -391,18 +408,12 @@ export function renderFriends(profile: DisplayProfile): string {
                       data-link
                       class="profile-friend"
                     >
-                      <img
-                        loading="lazy"
-                        decoding="async"
-                        width="44" height="44"
-                        class="profile-friend__avatar"
-                        src="${
-                          friend.avatarLink
-                            ? `/image-proxy?url=${encodeURIComponent(friend.avatarLink)}`
-                            : "/assets/img/default-avatar.png"
-                        }"
-                        alt="${escapeHtml(`${friend.firstName} ${friend.lastName}`)}"
-                      >
+                      ${renderAvatarMarkup(
+                        "profile-friend__avatar",
+                        `${friend.firstName} ${friend.lastName}`.trim(),
+                        friend.avatarLink,
+                        { width: 44, height: 44 },
+                      )}
                       <div class="profile-friend__content">
                         <strong>${escapeHtml(`${friend.firstName} ${friend.lastName}`)}</strong>
                       </div>
@@ -501,7 +512,7 @@ export function renderProfilePosts(
       ${
         isOwnProfile
           ? `
-            <button type="button" class="profile-composer" data-profile-post-open>
+            <button type="button" class="profile-composer content-card" data-profile-post-open>
               <span class="profile-composer__icon" aria-hidden="true">+</span>
               <span class="profile-composer__label">Создать запись</span>
             </button>
@@ -509,7 +520,7 @@ export function renderProfilePosts(
           : ""
       }
 
-      <header class="profile-posts__header">
+      <header class="profile-posts__header content-card">
         ${
           isOwnProfile
             ? `
@@ -574,7 +585,7 @@ export function renderProfilePosts(
                 .map(
                   (post, index) => `
                     <article
-                      class="profile-post${index === 0 ? " profile-post--first-visible" : ""}"
+                      class="profile-post content-card${index === 0 ? " profile-post--first-visible" : ""}"
                       data-profile-post-card
                       data-profile-post-id="${escapeHtml(post.id)}"
                       data-profile-post-scope="${post.isOwnPost ? "own" : "all"}"
@@ -591,29 +602,14 @@ export function renderProfilePosts(
                           href="${renderAuthorPath(post)}"
                           data-link
                         >
-                          ${
-                            post.authorAvatarLink
-                              ? `
-                                <img
-                                  loading="lazy"
-                                  decoding="async"
-                                  width="44" height="44"
-                                  class="profile-post__avatar"
-                                  src="${escapeHtml(getAvatarImageSrc(post.authorAvatarLink))}"
-                                  alt="${escapeHtml(`${post.authorFirstName} ${post.authorLastName}`.trim())}"
-                                >
-                              `
-                              : `
-                                <div class="profile-post__avatar profile-post__avatar--placeholder" aria-hidden="true">
-                                  ${escapeHtml(
-                                    getInitials(
-                                      post.authorFirstName || post.authorUsername,
-                                      post.authorLastName,
-                                    ),
-                                  )}
-                                </div>
-                              `
-                          }
+                          ${renderAvatarMarkup(
+                            "profile-post__avatar",
+                            `${post.authorFirstName || post.authorUsername} ${
+                              post.authorLastName
+                            }`.trim(),
+                            post.authorAvatarLink,
+                            { width: 44, height: 44 },
+                          )}
 
                           <div class="profile-post__meta">
                             <strong>${escapeHtml(
@@ -688,13 +684,13 @@ export function renderProfilePosts(
                 )
                 .join("")
             : `
-                <div class="profile-posts__empty">
+                <div class="profile-posts__empty content-card">
                   <p class="profile-empty-copy">Публикаций пока нет</p>
                 </div>
               `
         }
 
-        <div class="profile-posts__empty profile-posts__empty--search" data-profile-post-search-empty hidden>
+        <div class="profile-posts__empty profile-posts__empty--search content-card" data-profile-post-search-empty hidden>
           <p class="profile-empty-copy">Ничего не найдено. Попробуйте изменить запрос.</p>
         </div>
       </div>

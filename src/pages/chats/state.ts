@@ -26,6 +26,12 @@ export let chatsPollIntervalId: number | null = null;
 /** Показывает, было ли уже применено сохранённое состояние UI в этой сессии. */
 export let hasHydratedPersistedChatsUiState = false;
 
+/**
+ * True only after initChats has been called on the rendered page.
+ * Guards refreshChatsPage from patching the skeleton during the initial async render.
+ */
+export let chatsPageMounted = false;
+
 export function setChatsRoot(root: ParentNode): void {
   chatsRoot = root;
 }
@@ -36,6 +42,10 @@ export function setChatsPollIntervalId(id: number | null): void {
 
 export function setHasHydratedPersistedChatsUiState(value: boolean): void {
   hasHydratedPersistedChatsUiState = value;
+}
+
+export function setChatsPageMounted(value: boolean): void {
+  chatsPageMounted = value;
 }
 
 /** Сбрасывает всё изменяемое состояние к начальным значениям. */
@@ -54,4 +64,5 @@ export function resetChatsStateMutable(): void {
   chatsState.unreadIncomingIdsByChatId.clear();
   chatsState.pendingOutgoingByChatId.clear();
   setHasHydratedPersistedChatsUiState(false);
+  chatsPageMounted = false;
 }

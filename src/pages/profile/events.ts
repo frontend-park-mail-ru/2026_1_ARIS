@@ -7,7 +7,7 @@ import {
   requestFriendship,
   revokeFriendRequest,
 } from "../../api/friends";
-import { getMyProfile, uploadProfileAvatar, updateMyProfile } from "../../api/profile";
+import { uploadProfileAvatar, updateMyProfile } from "../../api/profile";
 import { getSessionUser, setSessionUser } from "../../state/session";
 import { clearFeedCache } from "../feed/cache";
 import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
@@ -29,6 +29,9 @@ import {
   updateSessionUserAvatarLink,
   normaliseAvatarLink,
   clampAvatarOffsets,
+  OWN_PROFILE_CACHE_KEY,
+  readJsonStorage,
+  writeJsonStorage,
 } from "./state";
 import {
   syncAvatarModalUi,
@@ -43,6 +46,7 @@ import {
   renderProfileFieldErrors,
   clearProfileFieldErrors,
   focusFirstProfileErrorField,
+  renderProfileFriendActions,
 } from "./render";
 import {
   uploadPendingComposerImages,
@@ -54,6 +58,45 @@ import {
   getProfileFormSourceValues,
   buildProfilePatch,
 } from "./actions";
+import type { DisplayProfile } from "./types";
+
+function updateOwnProfileCacheAvatar(avatarLink?: string): void {
+  const cachedProfile = readJsonStorage<DisplayProfile>(OWN_PROFILE_CACHE_KEY);
+  if (!cachedProfile) {
+    return;
+  }
+
+  writeJsonStorage(OWN_PROFILE_CACHE_KEY, {
+    ...cachedProfile,
+    avatarLink,
+  });
+}
+
+function updateProfileFriendActions(
+  root: Document | HTMLElement,
+  profileId: string,
+  relation: "none" | "outgoing",
+): void {
+  const actionsRoot = root.querySelector("[data-profile-friend-actions-root]");
+  if (!(actionsRoot instanceof HTMLElement)) {
+    return;
+  }
+
+  const template = document.createElement("template");
+  template.innerHTML = renderProfileFriendActions({
+    id: profileId,
+    friendRelation: relation,
+    isOwnProfile: false,
+    isApiBacked: true,
+  }).trim();
+
+  const nextActionsRoot = template.content.firstElementChild;
+  if (!(nextActionsRoot instanceof HTMLElement)) {
+    return;
+  }
+
+  actionsRoot.replaceWith(nextActionsRoot);
+}
 
 // ---------------------------------------------------------------------------
 // Привязка обработчиков событий профиля
@@ -318,9 +361,9 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
       void updateMyProfile({ removeAvatar: true })
         .then(async () => {
-          const freshProfile = await getMyProfile();
           setOwnAvatarOverride(null);
-          updateSessionUserAvatarLink(normaliseAvatarLink(freshProfile.imageLink));
+          updateSessionUserAvatarLink(undefined);
+          updateOwnProfileCacheAvatar(undefined);
 
           resetAvatarModalState();
           syncAvatarModalUi(root);
@@ -367,12 +410,10 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         .then(async (file) => {
           const uploadedAvatar = await uploadProfileAvatar(file);
           await updateMyProfile({ avatarID: uploadedAvatar.mediaID });
-          const freshProfile = await getMyProfile();
-          const nextOverride =
-            normaliseAvatarLink(freshProfile.imageLink) ?? uploadedAvatar.mediaURL;
+          const nextOverride = normaliseAvatarLink(uploadedAvatar.mediaURL);
           setOwnAvatarOverride(nextOverride);
-
           updateSessionUserAvatarLink(nextOverride);
+          updateOwnProfileCacheAvatar(nextOverride);
 
           resetAvatarModalState();
           syncAvatarModalUi(root);
@@ -417,9 +458,9 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
       requestFriendButton.disabled = true;
       void requestFriendship(profileId)
-        .then(async () => {
+        .then(() => {
           invalidateFriendsState();
-          await rerenderCurrentRoute();
+          updateProfileFriendActions(root, profileId, "outgoing");
         })
         .catch((error: unknown) => {
           console.error("[profile] request friend failed", error);
@@ -437,9 +478,9 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
       revokeFriendButton.disabled = true;
       void revokeFriendRequest(profileId)
-        .then(async () => {
+        .then(() => {
           invalidateFriendsState();
-          await rerenderCurrentRoute();
+          updateProfileFriendActions(root, profileId, "none");
         })
         .catch((error: unknown) => {
           console.error("[profile] revoke friend request failed", error);

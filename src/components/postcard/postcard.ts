@@ -1,5 +1,7 @@
 import { getSessionUser } from "../../state/session";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
+import { renderAvatarMarkup } from "../../utils/avatar";
+import { resolveMediaUrl } from "../../utils/media";
 
 export type PostcardPost = {
   id?: string;
@@ -39,28 +41,12 @@ function formatStatCount(count: number): string {
   return String(count);
 }
 
-function resolveAvatarSrc(avatarLink?: string): string {
-  if (!avatarLink) {
-    return "/assets/img/default-avatar.png";
-  }
-
-  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
-    return avatarLink;
-  }
-
-  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
+function renderPostcardAvatar(post: PostcardPost, authorName: string): string {
+  return renderAvatarMarkup("postcard__avatar", authorName, post.avatar, { width: 44, height: 44 });
 }
 
 function resolveMediaSrc(mediaLink?: string): string {
-  if (!mediaLink) {
-    return "";
-  }
-
-  if (mediaLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(mediaLink)) {
-    return mediaLink;
-  }
-
-  return `/image-proxy?url=${encodeURIComponent(mediaLink)}`;
+  return resolveMediaUrl(mediaLink);
 }
 
 function escapeHtml(value: string): string {
@@ -94,6 +80,17 @@ function formatPostExactTime(iso?: string): string {
   }).format(createdAt);
 
   return `${datePart}\n${timePart}`;
+}
+
+function shouldRenderExpandButtonInitially(text: string): boolean {
+  const raw = String(text ?? "");
+  const normalized = raw.replace(/\s+/g, " ").trim();
+  const explicitLines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean).length;
+
+  return explicitLines >= 3 || normalized.length >= 140;
 }
 
 /**
@@ -234,8 +231,8 @@ function renderPostcardMedia(images: string[] = []): string {
  */
 export function renderPostcardInner(post: PostcardPost): string {
   const sessionUser = getSessionUser();
-  const statsMarkup = sessionUser
-    ? `
+  const shouldShowExpandInitially = shouldRenderExpandButtonInitially(post.text);
+  const statsMarkup = `
     <div class="postcard__stats">
       ${renderPostcardStat({
         icon: "/assets/img/icons/heart.svg",
@@ -253,8 +250,7 @@ export function renderPostcardInner(post: PostcardPost): string {
         action: "comment",
       })}
     </div>
-  `
-    : "";
+  `;
   const displayName =
     `${post.firstName || ""} ${post.lastName || ""}`.trim() || post.author || "Пользователь";
   const profilePath = resolveProfilePath({
@@ -265,16 +261,9 @@ export function renderPostcardInner(post: PostcardPost): string {
   });
 
   return `
-    <article class="postcard">
+    <article class="postcard content-card">
       <header class="postcard__header">
-        <img
-          class="postcard__avatar"
-          src="${resolveAvatarSrc(post.avatar)}"
-          alt="${displayName}"
-          width="44" height="44"
-          decoding="async"
-          loading="lazy"
-        >
+        ${renderPostcardAvatar(post, displayName)}
         <a
           href="${sessionUser ? profilePath : "/login"}"
           ${sessionUser ? "data-link" : 'data-open-auth-modal="login"'}
@@ -286,7 +275,7 @@ export function renderPostcardInner(post: PostcardPost): string {
 
       <div class="postcard__text-container">
         <p class="postcard__text postcard__text--collapsed">${post.text}</p>
-        <button type="button" class="postcard__expand postcard__expand--hidden">читать полностью</button>
+        <button type="button" class="postcard__expand${shouldShowExpandInitially ? "" : " postcard__expand--hidden"}">читать полностью</button>
       </div>
 
       ${renderPostcardMedia(post.images || [])}
@@ -294,7 +283,7 @@ export function renderPostcardInner(post: PostcardPost): string {
       <footer class="postcard__footer">
         ${statsMarkup}
 
-        <p class="postcard__time" ${post.timeRaw ? `title="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}>${post.time}</p>
+        <p class="postcard__time" ${post.timeRaw ? `data-tooltip="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}>${post.time}</p>
       </footer>
     </article>
   `;

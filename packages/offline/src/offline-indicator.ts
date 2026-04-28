@@ -24,6 +24,7 @@ export function initOfflineIndicator(): void {
 
   let hideTimeoutId: number | null = null;
   let lastStatus = getNetworkStatus();
+  let hasShownUnavailable = lastStatus === "unavailable";
 
   const showStatus = (status: NetworkStatus): void => {
     if (hideTimeoutId !== null) {
@@ -34,8 +35,13 @@ export function initOfflineIndicator(): void {
     indicator.textContent = getStatusMessage(status);
 
     if (status === "unavailable") {
+      hasShownUnavailable = true;
       indicator.hidden = false;
       document.body.classList.add("has-network-status");
+      return;
+    }
+
+    if (!hasShownUnavailable) {
       return;
     }
 

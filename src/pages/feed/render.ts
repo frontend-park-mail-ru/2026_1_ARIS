@@ -5,7 +5,7 @@ import type { PostcardModel } from "../../api/feed";
 export function renderEmptyFriendsFeed(): string {
   return `
     <section class="app-layout__center">
-      <section class="feed-empty-state">
+      <section class="feed-empty-state content-card">
         <h2 class="feed-empty-state__title">Постов друзей пока нет</h2>
         <p class="feed-empty-state__text">
           Как только друзья начнут публиковать новые записи, они появятся здесь.
@@ -19,7 +19,7 @@ export function renderEmptyFriendsFeed(): string {
 export function renderEmptyPublicFeed(): string {
   return `
     <section class="app-layout__center">
-      <section class="feed-empty-state">
+      <section class="feed-empty-state content-card">
         <h2 class="feed-empty-state__title">Публикаций пока нет</h2>
         <p class="feed-empty-state__text">
           Как только в сети появятся новые посты, они сразу отобразятся здесь.
@@ -33,7 +33,7 @@ export function renderEmptyPublicFeed(): string {
 export function renderOfflineFeedFallback(isAuthorised: boolean): string {
   return `
     <section class="app-layout__center">
-      <section class="feed-empty-state">
+      <section class="feed-empty-state content-card">
         <h2 class="feed-empty-state__title">Лента временно недоступна</h2>
         <p class="feed-empty-state__text">
           ${isAuthorised ? "Нет соединения с интернетом." : "Не удалось загрузить публичную ленту."}

@@ -1,6 +1,14 @@
-import { chatsState } from "./state";
+import { chatsState, chatsPageMounted } from "./state";
 import { domPatch } from "../../vdom/patch";
-import { escapeHtml, getAvatarSrc, getMessageDeliveryLabel } from "./helpers";
+import {
+  escapeHtml,
+  formatChatDayLabel,
+  formatChatExactTime,
+  getChatDateKey,
+  getMessageDeliveryLabel,
+  isChatDateToday,
+  renderAvatarElement,
+} from "./helpers";
 import { getFilteredThreads, getSelectedThread, getThreadPreviewState } from "./threads";
 import { readPersistedChatsUiState, persistChatsUiState } from "./storage";
 import { hasHydratedPersistedChatsUiState, setHasHydratedPersistedChatsUiState } from "./state";
@@ -58,6 +66,12 @@ export function clearScrollState(): void {
 export function getChatMessagesContainer(root: ParentNode = document): HTMLElement | null {
   const container = root.querySelector(".chat-messages");
   return container instanceof HTMLElement ? container : null;
+}
+
+export function setChatMessagesReady(root: ParentNode = document): void {
+  const container = getChatMessagesContainer(root);
+  if (!container) return;
+  container.setAttribute("data-chat-scroll-ready", "true");
 }
 
 export function scrollChatToBottom(root: ParentNode = document): void {
@@ -216,22 +230,53 @@ function renderMessages(thread?: ChatViewThread): string {
     return '<div class="chat-view__empty">Сообщений пока нет.</div>';
   }
 
-  return messages.map((message: ChatViewMessage) => renderMessageBubble(message)).join("");
+  let previousDateKey = "";
+
+  return messages
+    .map((message: ChatViewMessage) => {
+      const dateKey = getChatDateKey(message.createdAt);
+      const divider =
+        dateKey && dateKey !== previousDateKey
+          ? renderMessageDateDivider(message.createdAt, dateKey)
+          : "";
+      previousDateKey = dateKey || previousDateKey;
+      return `${divider}${renderMessageBubble(message)}`;
+    })
+    .join("");
+}
+
+function renderMessageDateDivider(value: string | undefined, dateKey: string): string {
+  const label = formatChatDayLabel(value);
+  if (!label) return "";
+
+  return `
+    <div
+      class="chat-date-divider"
+      data-chat-day-divider
+      data-chat-date-key="${escapeHtml(dateKey)}"
+      data-chat-date-label="${escapeHtml(label)}"
+      data-chat-date-is-today="${isChatDateToday(value) ? "true" : "false"}"
+    >
+      <span class="chat-date-divider__label">${escapeHtml(label)}</span>
+    </div>
+  `;
 }
 
 function renderMessageBubble(message: ChatViewMessage): string {
   const isFailed = message.deliveryState === "failed";
+  const dateLabel = formatChatDayLabel(message.createdAt);
+  const dateKey = getChatDateKey(message.createdAt);
+  const exactTime = formatChatExactTime(message.createdAt);
 
   return `
     <article
       class="chat-bubble${message.isOwn ? " chat-bubble--own" : ""}${isFailed ? " chat-bubble--failed" : ""}"
       data-chat-message-id="${escapeHtml(message.id)}"
+      data-chat-date-key="${escapeHtml(dateKey)}"
+      data-chat-date-label="${escapeHtml(dateLabel)}"
+      data-chat-date-is-today="${isChatDateToday(message.createdAt) ? "true" : "false"}"
     >
-      <img
-        class="chat-bubble__avatar"
-        src="${getAvatarSrc(message.avatarLink)}"
-        alt="${escapeHtml(message.authorName)}"
-      >
+      ${renderAvatarElement("chat-bubble__avatar", message.authorName, message.avatarLink)}
       <div class="chat-bubble__body">
         <h3 class="chat-bubble__author">
           <a
@@ -245,7 +290,11 @@ function renderMessageBubble(message: ChatViewMessage): string {
         <p class="chat-bubble__text">${escapeHtml(message.text)}</p>
       </div>
       <div class="chat-bubble__meta">
-        <span class="chat-bubble__time">${escapeHtml(getMessageDeliveryLabel(message))}</span>
+        <time
+          class="chat-bubble__time"
+          ${message.createdAt ? `datetime="${escapeHtml(message.createdAt)}"` : ""}
+          ${exactTime ? `data-tooltip="${escapeHtml(exactTime)}"` : ""}
+        >${escapeHtml(getMessageDeliveryLabel(message))}</time>
         ${
           isFailed
             ? `<button
@@ -306,11 +355,7 @@ function renderThreadsList(threads: ChatViewThread[]): string {
           data-chat-select="${escapeHtml(thread.id)}"
           data-key="${escapeHtml(thread.id)}"
         >
-          <img
-            class="chat-thread__avatar"
-            src="${getAvatarSrc(thread.avatarLink)}"
-            alt="${escapeHtml(thread.title)}"
-          >
+          ${renderAvatarElement("chat-thread__avatar", thread.title, thread.avatarLink)}
           <div class="chat-thread__content">
             <strong class="chat-thread__title">${escapeHtml(thread.title)}</strong>
             <div class="chat-thread__meta">
@@ -318,7 +363,10 @@ function renderThreadsList(threads: ChatViewThread[]): string {
                 ${previewState.isOwn ? '<span class="chat-thread__preview-prefix">Вы:</span> ' : ""}
                 ${escapeHtml(previewState.text)}
               </span>
-              <span class="chat-thread__time">${escapeHtml(previewState.timeLabel)}</span>
+              <time
+                class="chat-thread__time"
+                ${previewState.timeTooltip ? `data-tooltip="${escapeHtml(previewState.timeTooltip)}"` : ""}
+              >${escapeHtml(previewState.timeLabel)}</time>
             </div>
           </div>
         </button>
@@ -340,7 +388,7 @@ export function renderChatsContent(): string {
   }
 
   return `
-    <section class="chats-page" data-chats-page>
+    <section class="chats-page content-card" data-chats-page>
       <aside class="chats-sidebar">
         <h1 class="chats-sidebar__title">Сообщения</h1>
 
@@ -364,11 +412,11 @@ export function renderChatsContent(): string {
         ${
           selectedThread
             ? `<header class="chat-header">
-                 <img
-                   class="chat-header__avatar"
-                   src="${getAvatarSrc(selectedThread.avatarLink)}"
-                   alt="${escapeHtml(selectedThread.title)}"
-                 >
+                 ${renderAvatarElement(
+                   "chat-header__avatar",
+                   selectedThread.title,
+                   selectedThread.avatarLink,
+                 )}
                  <div>
                    <h2 class="chat-header__title">
                      <a
@@ -389,7 +437,7 @@ export function renderChatsContent(): string {
             : ""
         }
 
-        <div class="chat-messages">
+        <div class="chat-messages" data-chat-scroll-ready="${chatsPageMounted ? "true" : "false"}">
           ${renderMessages(selectedThread)}
         </div>
 
@@ -431,6 +479,7 @@ export function renderChatsContent(): string {
 
 /** Перерендеривает страницу чатов на месте, сохраняя фокус и позицию прокрутки. */
 export function refreshChatsPage(root: ParentNode = document): void {
+  if (!chatsPageMounted) return;
   const container = root.querySelector("[data-chats-page]");
   if (!(container instanceof HTMLElement)) return;
 

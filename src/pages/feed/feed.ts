@@ -5,6 +5,7 @@ import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { getFeed, getPublicFeed, mapFeedResponse, type PostcardModel } from "../../api/feed";
 import { getFriends, type Friend } from "../../api/friends";
 import { getFeedMode, getSessionUser } from "../../state/session";
+import { prepareAvatarLinks } from "../../utils/avatar";
 
 import type { FeedMode, FeedAuthKey, FeedCenterResult, ActiveFeedState } from "./types";
 import {
@@ -216,6 +217,10 @@ export async function renderFeed(
 ): Promise<string> {
   const isAuthorised = getSessionUser() !== null;
   const feedResult = await getCachedFeedData(isAuthorised, signal);
+  await prepareAvatarLinks([
+    getSessionUser()?.avatarLink,
+    ...(feedResult.kind === "items" ? feedResult.items.map((item) => item.avatar) : []),
+  ]);
   const centerMarkup = buildFeedCenter(feedResult, isAuthorised);
 
   return `

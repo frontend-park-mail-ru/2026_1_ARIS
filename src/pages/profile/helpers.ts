@@ -1,4 +1,5 @@
 import type { DisplayProfile } from "./types";
+import { renderAvatarMarkup } from "../../utils/avatar";
 
 export function escapeHtml(value: string): string {
   return value
@@ -18,7 +19,12 @@ export function getAvatarImageSrc(avatarLink?: string): string {
     return "/assets/img/default-avatar.png";
   }
 
-  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
+  if (
+    avatarLink.startsWith("/image-proxy?url=") ||
+    avatarLink.startsWith("data:") ||
+    avatarLink.startsWith("blob:") ||
+    /^https?:\/\//i.test(avatarLink)
+  ) {
     return avatarLink;
   }
 
@@ -35,27 +41,9 @@ export function hasVisibleValue(value?: string): boolean {
 }
 
 export function renderAvatar(profile: DisplayProfile, className: string): string {
-  if (profile.isMissingProfile) {
-    return `
-      <div class="${className} ${className}--placeholder" aria-hidden="true">
-        ?
-      </div>
-    `;
-  }
+  const label = profile.isMissingProfile
+    ? "Профиль"
+    : `${profile.firstName} ${profile.lastName}`.trim() || "Пользователь";
 
-  if (profile.avatarLink) {
-    return `
-      <img
-        class="${className}"
-        src="${getAvatarImageSrc(profile.avatarLink)}"
-        alt="${escapeHtml(`${profile.firstName} ${profile.lastName}`)}"
-      >
-    `;
-  }
-
-  return `
-    <div class="${className} ${className}--placeholder" aria-hidden="true">
-      ${escapeHtml(getInitials(profile.firstName, profile.lastName))}
-    </div>
-  `;
+  return renderAvatarMarkup(className, label, profile.avatarLink);
 }

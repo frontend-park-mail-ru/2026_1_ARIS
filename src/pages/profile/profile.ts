@@ -58,6 +58,7 @@ import {
   renderWork,
   renderPersonal,
 } from "./render";
+import { prepareAvatarLinks } from "../../utils/avatar";
 import { applyProfilePostFilters, bindProfileEvents, initProfilePostListLayout } from "./events";
 
 type ProfileRoot = (Document | HTMLElement) & {
@@ -339,6 +340,12 @@ export async function renderProfile(
   }
 
   const profile = await resolveProfile(params, signal);
+  await prepareAvatarLinks([
+    getSessionUser()?.avatarLink,
+    profile.avatarLink,
+    ...profile.friends.map((friend) => friend.avatarLink),
+  ]);
+
   if (profile.isMissingProfile) {
     return `
       <div class="app-page">
@@ -366,6 +373,13 @@ export async function renderProfile(
   const [posts, allPosts] = await Promise.all([
     resolveProfilePosts(profile, signal),
     profile.isOwnProfile ? resolveAllPosts(signal) : Promise.resolve([]),
+  ]);
+  await prepareAvatarLinks([
+    getSessionUser()?.avatarLink,
+    profile.avatarLink,
+    ...profile.friends.map((friend) => friend.avatarLink),
+    ...posts.map((post) => post.authorAvatarLink),
+    ...allPosts.map((post) => post.authorAvatarLink),
   ]);
   setCurrentProfilePosts(posts);
 
@@ -395,7 +409,7 @@ export async function renderProfile(
 
         <section class="app-layout__center">
           <section class="profile-page">
-            <article class="profile-card">
+            <article class="profile-card content-card">
               <header class="profile-card__hero">
                 <div class="profile-card__avatar-column">
                   ${

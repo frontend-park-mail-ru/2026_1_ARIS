@@ -68,12 +68,7 @@
       rgb(76 94 201) 52%,
       rgb(242 179 65) 100%
     );
-    --color-gradient-avatar: linear-gradient(
-      135deg,
-      rgb(54 71 203) 0%,
-      rgb(125 135 247) 56%,
-      rgb(245 203 110) 100%
-    );
+    --color-gradient-avatar: linear-gradient(135deg, rgb(54 71 203) 0%, rgb(125 135 247) 100%);
     --color-page-gradient: linear-gradient(
       135deg,
       #3242d3 0%,
@@ -106,6 +101,11 @@
     --color-surface-backdrop: rgb(0 0 0 / 28%);
     --color-surface-backdrop-soft: rgb(0 0 0 / 26%);
     --color-surface-card: #fff;
+    --color-surface-content-card: linear-gradient(
+      180deg,
+      rgb(255 255 255 / 98%),
+      rgb(248 249 255 / 94%)
+    );
     --color-surface-card-elevated: radial-gradient(
       141.49% 141.42% at 0% 0%,
       #efeffa 0%,
@@ -113,7 +113,7 @@
     );
     --color-surface-input: #e1e6ee;
     --color-surface-input-error: #fed7d7;
-    --color-surface-avatar-placeholder: #f1cc4f;
+    --color-surface-avatar-placeholder: #e4e8f4;
 
     /* ================= ГРАНИЦЫ ================= */
 
@@ -143,19 +143,28 @@
     --shadow-md: 0 8px 20px rgb(0 0 0 / 30%);
     --shadow-lg: 0 24px 48px rgb(54 67 143 / 14%);
     --shadow-avatar: 0 8px 18px rgb(49 61 145 / 18%);
-    --shadow-card: 0 4px 12px rgb(0 0 0 / 35%);
+    --shadow-card-soft: 0 0 0 1px rgb(255 255 255 / 28%), 0 2px 5px rgb(35 45 120 / 10%);
+    --shadow-card: var(--shadow-card-soft);
     --shadow-card-elevated: var(--shadow-lg);
+    --shadow-content-card: var(--shadow-card-soft);
+    --content-card-glow: radial-gradient(
+      circle,
+      rgb(252 215 106 / 42%) 0%,
+      rgb(252 215 106 / 20%) 38%,
+      transparent 72%
+    );
 
     /* ================= РАДИУСЫ ================= */
 
     --radius-xs: 4px;
     --radius-sm: 6px;
-    --radius-card: 20px;
+    --radius-card: 16px;
     --radius-input: 10px;
     --radius-small: 8px;
     --radius-panel: 12px;
     --radius-pill: 999px;
     --radius-large: 28px;
+    --radius-content-card: 18px;
     --radius-round: 50%;
 
     /* ================= АВАТАР ================= */

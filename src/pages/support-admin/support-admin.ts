@@ -225,7 +225,7 @@ export async function renderSupportAdmin(): Promise<string> {
         <main class="app-layout">
           <aside class="app-layout__left">${renderSidebar({ isAuthorised })}</aside>
           <section class="app-layout__center">
-            <div class="sa-page" data-support-admin-page>
+            <div class="sa-page content-card" data-support-admin-page>
               <div class="sa-access"><p>Нет доступа к панели обращений.</p></div>
             </div>
           </section>
@@ -255,7 +255,7 @@ export async function renderSupportAdmin(): Promise<string> {
               <button type="submit" class="sa-btn sa-btn--primary">Обновить</button>
             </form>
 
-            <div class="sa-workspace">
+            <div class="sa-workspace content-card">
               <aside class="sa-list" data-sa-ticket-list>
                 <p class="sa-empty">Загрузка тикетов…</p>
               </aside>

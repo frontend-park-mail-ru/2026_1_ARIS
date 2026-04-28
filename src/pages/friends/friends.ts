@@ -2,13 +2,15 @@ import {
   acceptFriendRequest,
   declineFriendRequest,
   deleteFriend,
+  type Friend,
   revokeFriendRequest,
 } from "../../api/friends";
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { clearWidgetbarCache, renderWidgetbar } from "../../components/widgetbar/widgetbar";
-import { createPrivateChat } from "../../api/chat";
+import { createPrivateChat, getChats } from "../../api/chat";
 import { getSessionUser } from "../../state/session";
+import { prepareAvatarLinks } from "../../utils/avatar";
 
 import {
   friendsState,
@@ -24,6 +26,35 @@ import { renderFriendsContent, refreshFriendsPage, refreshFriendsSearchResults }
 type FriendsRoot = (Document | HTMLElement) & {
   __friendsBound?: boolean;
 };
+
+function normaliseChatTitle(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function navigateToChat(chatId: string): void {
+  window.history.pushState({}, "", `/chats?chatId=${encodeURIComponent(chatId)}`);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+async function resolveChatIdForFriend(friend: Friend): Promise<string> {
+  const createdChat = await createPrivateChat(friend.profileId);
+  if (createdChat.id) {
+    return createdChat.id;
+  }
+
+  const friendName = normaliseChatTitle(`${friend.firstName} ${friend.lastName}`);
+  const chats = await getChats();
+  const matchedChat = chats.find((chat) => {
+    const chatTitle = normaliseChatTitle(chat.title);
+    return chatTitle === friendName;
+  });
+
+  if (matchedChat?.id) {
+    return matchedChat.id;
+  }
+
+  throw new Error("Не удалось определить созданный чат.");
+}
 
 /** Сбрасывает кэш данных друзей и очищает кэш виджетбара. */
 export function invalidateFriendsState(): void {
@@ -75,6 +106,12 @@ export async function renderFriends(
   }
 
   await ensureFriendsLoaded(false, signal);
+  await prepareAvatarLinks([
+    currentUser.avatarLink,
+    ...friendsState.friends.map((friend) => friend.avatarLink),
+    ...friendsState.incoming.map((friend) => friend.avatarLink),
+    ...friendsState.outgoing.map((friend) => friend.avatarLink),
+  ]);
 
   return `
     <div class="app-page">
@@ -139,14 +176,21 @@ export function initFriends(root: Document | HTMLElement = document): void {
     if (openChatButton instanceof HTMLButtonElement) {
       const friendId = openChatButton.getAttribute("data-friend-open-chat") ?? "";
       if (!friendId) return;
+      const friend = findFriendById(friendId);
+      if (!friend) {
+        friendsState.errorMessage = "Не удалось найти пользователя для открытия чата.";
+        refreshFriendsPage(root);
+        return;
+      }
 
-      void createPrivateChat(friendId)
-        .then((chat) => {
-          window.history.pushState({}, "", `/chats?chatId=${encodeURIComponent(chat.id)}`);
-          window.dispatchEvent(new PopStateEvent("popstate"));
+      openChatButton.disabled = true;
+      void resolveChatIdForFriend(friend)
+        .then((chatId) => {
+          navigateToChat(chatId);
         })
         .catch((error: unknown) => {
           friendsState.errorMessage = getFriendsErrorMessage(error, "Не удалось открыть чат.");
+          openChatButton.disabled = false;
           refreshFriendsPage(root);
         });
       return;

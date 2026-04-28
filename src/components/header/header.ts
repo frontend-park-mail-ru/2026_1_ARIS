@@ -1,6 +1,7 @@
 import { clearSessionUser, getSessionUser } from "../../state/session";
 import { renderButton } from "../button/button";
 import { logoutUser } from "../../api/auth";
+import { renderAvatarMarkup } from "../../utils/avatar";
 
 /**
  * Тип пользовательской сессии (минимально необходимый)
@@ -11,6 +12,10 @@ type SessionUser = {
   lastName: string;
   avatarLink?: string;
 } | null;
+
+function renderHeaderAvatar(className: string, label: string, avatarLink?: string): string {
+  return renderAvatarMarkup(className, label, avatarLink, { loading: "eager" });
+}
 
 /**
  * Рендерит хедер для гостя.
@@ -46,11 +51,7 @@ function renderGuestHeader(): string {
 
       <a href="/login" data-open-auth-modal="login" class="header__user">
         <span class="header__username">Твоя страничка</span>
-        <img
-          class="header__avatar"
-          src="/assets/img/default-avatar.png"
-          alt="Гостевой профиль"
-        >
+        ${renderHeaderAvatar("header__avatar", "Гостевой профиль")}
       </a>
     </div>
   `;
@@ -65,12 +66,6 @@ function renderAuthorisedHeader(): string {
   const user = getSessionUser() as SessionUser;
 
   const fullName = user ? `${user.firstName} ${user.lastName}` : "";
-
-  const avatarSrc = !user?.avatarLink
-    ? "/assets/img/default-avatar.png"
-    : user.avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(user.avatarLink)
-      ? user.avatarLink
-      : `/image-proxy?url=${encodeURIComponent(user.avatarLink)}`;
 
   return `
     <div class="header__inner header__inner--authorised">
@@ -101,11 +96,7 @@ function renderAuthorisedHeader(): string {
             aria-label="Открыть меню профиля"
             aria-expanded="false"
           >
-            <img
-              class="header__avatar"
-              src="${avatarSrc}"
-              alt="${fullName}"
-            >
+            ${renderHeaderAvatar("header__avatar", fullName || "Профиль", user?.avatarLink)}
           </button>
 
           <div class="header__user-menu" role="menu">

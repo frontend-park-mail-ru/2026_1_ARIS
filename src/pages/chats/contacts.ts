@@ -12,6 +12,7 @@ import {
   getOutgoingFriendRequests,
   type Friend,
 } from "../../api/friends";
+import { getProfileById } from "../../api/profile";
 import { getNormalisedPersonName } from "./helpers";
 import type { KnownChatContact } from "./types";
 
@@ -37,20 +38,43 @@ export function clearKnownContacts(): void {
  * @param {Friend[]} friends Пользователи, которых нужно сохранить.
  * @returns {void}
  */
-export function rememberKnownChatContacts(friends: Friend[]): void {
-  friends.forEach((friend) => {
-    const fullName = `${friend.firstName} ${friend.lastName}`.trim();
-    if (!fullName) return;
-
-    knownChatContactsByName.set(getNormalisedPersonName(fullName), {
-      profileId: friend.profileId,
-      avatarLink: friend.avatarLink,
-    });
-
-    if (friend.status === "accepted" && friend.profileId) {
-      acceptedFriendProfileIds.add(String(friend.profileId));
+async function resolveFriendAvatarLink(
+  friend: Friend,
+  signal?: AbortSignal,
+): Promise<string | undefined> {
+  try {
+    const profile = await getProfileById(friend.profileId, signal);
+    const profileAvatarLink = profile.imageLink?.trim();
+    return profileAvatarLink || friend.avatarLink;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
     }
-  });
+
+    return friend.avatarLink;
+  }
+}
+
+export async function rememberKnownChatContacts(
+  friends: Friend[],
+  signal?: AbortSignal,
+): Promise<void> {
+  await Promise.all(
+    friends.map(async (friend) => {
+      const avatarLink = await resolveFriendAvatarLink(friend, signal);
+      const fullName = `${friend.firstName} ${friend.lastName}`.trim();
+      if (!fullName) return;
+
+      knownChatContactsByName.set(getNormalisedPersonName(fullName), {
+        profileId: friend.profileId,
+        avatarLink,
+      });
+
+      if (friend.status === "accepted" && friend.profileId) {
+        acceptedFriendProfileIds.add(String(friend.profileId));
+      }
+    }),
+  );
 }
 
 /**
@@ -72,9 +96,9 @@ export async function ensureKnownChatContactsLoaded(signal?: AbortSignal): Promi
       getOutgoingFriendRequests("pending", signal),
     ]);
 
-    rememberKnownChatContacts(accepted);
-    rememberKnownChatContacts(incoming);
-    rememberKnownChatContacts(outgoing);
+    await rememberKnownChatContacts(accepted, signal);
+    await rememberKnownChatContacts(incoming, signal);
+    await rememberKnownChatContacts(outgoing, signal);
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     console.info("[chats] source=api scope=contacts error", {

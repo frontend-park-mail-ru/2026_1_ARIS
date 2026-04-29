@@ -121,14 +121,14 @@ function getRequestedChatId(): string {
 function ensureChatSocketSubscribed(chatId: string): void {
   if (chatsState.source !== "api" || chatsState.unsubscribeByChatId.has(chatId)) return;
 
-  const unsubscribe = subscribeToChatMessages(chatId, {
+  const subscription = subscribeToChatMessages(chatId, {
     onMessage: (message) => appendIncomingMessage(chatId, message),
     onError: () => {
       console.info("[chats] source=ws scope=messages error", { chatId });
     },
   });
 
-  chatsState.unsubscribeByChatId.set(chatId, unsubscribe);
+  chatsState.unsubscribeByChatId.set(chatId, subscription);
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +147,7 @@ async function refreshChatsInBackground(): Promise<void> {
     await ensureKnownChatContactsLoaded();
     const chats = await getChats();
     const listChanged = mergeApiThreads(mapApiChatsToThreads(chats));
+    chatsState.threads.forEach((thread) => ensureChatSocketSubscribed(thread.id));
 
     await Promise.all(
       chatsState.threads.map(async (thread) => {
@@ -220,14 +221,11 @@ async function doLoadChats(): Promise<void> {
   }
 
   chatsState.loaded = true;
+  chatsState.threads.forEach((thread) => ensureChatSocketSubscribed(thread.id));
 
   await Promise.all(
     chatsState.threads.map((thread) => ensureMessagesLoaded(thread.id, { background: true })),
   );
-
-  if (chatsState.selectedChatId) {
-    ensureChatSocketSubscribed(chatsState.selectedChatId);
-  }
 
   applyThreadVisibilityRules(preferredChatId);
   applySelectedChatPersistedViewState();

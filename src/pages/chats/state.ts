@@ -75,7 +75,7 @@ export function setChatsPageMounted(value: boolean): void {
 
 /** Сбрасывает всё изменяемое состояние к начальным значениям. */
 export function resetChatsStateMutable(): void {
-  chatsState.unsubscribeByChatId.forEach((unsubscribe) => unsubscribe());
+  chatsState.unsubscribeByChatId.forEach((subscription) => subscription.close());
   chatsStore.reset(createInitialChatsState());
   setHasHydratedPersistedChatsUiState(false);
   setChatsPageMounted(false);

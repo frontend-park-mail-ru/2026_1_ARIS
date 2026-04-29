@@ -1,3 +1,5 @@
+import type { ChatMessageSocketSubscription } from "../../api/chat";
+
 /**
  * Типы страницы чатов.
  *
@@ -140,8 +142,8 @@ export type ChatsState = {
   actionErrorMessage: string;
   /** Идентификатор пользователя, для которого загружено текущее состояние. */
   loadedForUserId: string;
-  /** Карта функций отписки от WebSocket по chatId. */
-  unsubscribeByChatId: Map<string, () => void>;
+  /** Карта активных WebSocket-подписок по chatId. */
+  unsubscribeByChatId: Map<string, ChatMessageSocketSubscription>;
   /** Непрочитанные входящие сообщения по chatId. */
   unreadIncomingIdsByChatId: Map<string, Set<string>>;
   /** Очередь локально ожидающих отправки сообщений по chatId. */

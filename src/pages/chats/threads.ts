@@ -112,10 +112,10 @@ export function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
         profileId,
         isFriend: profileId ? acceptedFriendProfileIds.has(String(profileId)) : false,
         avatarLink:
-          chat.avatarLink ??
-          storedHint?.avatarLink ??
+          matchedProfile?.avatarLink ??
           knownContact?.avatarLink ??
-          matchedProfile?.avatarLink,
+          storedHint?.avatarLink ??
+          chat.avatarLink,
         preview: "",
         previewIsOwn: false,
         timeLabel: formatChatTime(chat.updatedAt ?? chat.createdAt),
@@ -152,6 +152,15 @@ export function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
     };
 
     if (merged.messages?.length) {
+      merged.messages = merged.messages.map((message) =>
+        message.isOwn
+          ? message
+          : {
+              ...message,
+              avatarLink: merged.avatarLink ?? message.avatarLink,
+              profilePath: merged.profilePath ?? message.profilePath,
+            },
+      );
       syncThreadProfilePathFromMessages(merged);
       updateThreadPreview(merged);
     }

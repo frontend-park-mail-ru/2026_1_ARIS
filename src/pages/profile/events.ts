@@ -45,6 +45,7 @@ import {
   setAvatarZoom,
   rotateAvatar,
   buildAvatarFile,
+  ensureAvatarEditorSource,
 } from "./avatar";
 import { syncPostComposerUi } from "./composer";
 import {
@@ -377,6 +378,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       avatarModalState.open = true;
       avatarModalState.errorMessage = "";
       syncAvatarModalUi(root);
+      ensureAvatarEditorSource(root);
       return;
     }
 

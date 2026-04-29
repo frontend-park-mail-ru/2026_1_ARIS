@@ -119,7 +119,7 @@ module.exports = {
     },
     historyApiFallback: true,
     port: 3001,
-    open: true,
+    open: process.env.WEBPACK_OPEN === "true",
     proxy: [
       {
         context: ["/api", "/image-proxy"],

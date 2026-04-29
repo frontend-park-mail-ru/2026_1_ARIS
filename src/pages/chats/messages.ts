@@ -31,6 +31,27 @@ import type { ChatViewMessage, ChatViewThread } from "./types";
 
 const chatAuthorAvatarLinkByProfileId = new Map<string, string | undefined>();
 
+function syncThreadIdentityFromRawMessages(
+  thread: ChatViewThread,
+  messages: ChatMessage[],
+  authorAvatarLinks?: ReadonlyMap<string, string | undefined>,
+): void {
+  const otherMessage = messages.find(
+    (message) => !isOwnMessage(message.authorId, message.authorName),
+  );
+  if (!otherMessage) return;
+
+  const otherProfileId = String(otherMessage.authorId ?? "").trim();
+  if (otherProfileId) {
+    thread.profileId = otherProfileId;
+    thread.profilePath = resolvePersonPath(otherMessage.authorName ?? thread.title, otherProfileId);
+  }
+
+  if (otherProfileId && authorAvatarLinks?.has(otherProfileId)) {
+    thread.avatarLink = authorAvatarLinks.get(otherProfileId) ?? undefined;
+  }
+}
+
 /** Удаляет дубликаты сообщений по id, сохраняя последнее вхождение. */
 export function dedupeMessagesById(messages: ChatViewMessage[]): ChatViewMessage[] {
   const byId = new Map<string, ChatViewMessage>();
@@ -249,6 +270,8 @@ export function appendIncomingMessage(chatId: string, message: ChatMessage): voi
   const thread = chatsState.threads.find((t) => t.id === chatId);
   if (!thread || thread.source !== "api") return;
 
+  syncThreadIdentityFromRawMessages(thread, [message], chatAuthorAvatarLinkByProfileId);
+
   const isNotOwn = !isOwnMessage(message.authorId, message.authorName);
   const shouldNotify =
     chatId === chatsState.selectedChatId && isNotOwn && !isSelectedChatPinnedToBottomRef();
@@ -292,10 +315,7 @@ export async function ensureMessagesLoaded(
     const previousMessages = thread.messages ?? [];
     const rawMessages = await getChatMessages(chatId, options.signal);
     const authorAvatarLinks = await resolveAuthorAvatarLinks(rawMessages, options.signal);
-    const threadProfileId = String(thread.profileId ?? "").trim();
-    if (threadProfileId && authorAvatarLinks.has(threadProfileId)) {
-      thread.avatarLink = authorAvatarLinks.get(threadProfileId) ?? undefined;
-    }
+    syncThreadIdentityFromRawMessages(thread, rawMessages, authorAvatarLinks);
 
     const nextMessages = mergeRetriableMessages(
       sortMessagesByCreatedAt(

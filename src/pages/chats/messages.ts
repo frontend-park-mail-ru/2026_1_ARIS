@@ -46,21 +46,24 @@ export function getUnreadMessageKey(message: ChatViewMessage): string {
   return `fallback:${message.authorName}:${message.createdAt ?? ""}:${message.text}`;
 }
 
-/** Возвращает локальные сообщения с ошибкой, которые можно отправить повторно для треда. */
-export function getRetriableMessages(thread: ChatViewThread): ChatViewMessage[] {
+/** Возвращает локальные сообщения, которые ещё не подтверждены сервером. */
+export function getUnconfirmedMessages(thread: ChatViewThread): ChatViewMessage[] {
   return [...(thread.messages ?? [])].filter(
-    (m) => m.isOwn && m.id.startsWith("local-") && m.deliveryState === "failed",
+    (m) =>
+      m.isOwn &&
+      m.id.startsWith("local-") &&
+      (m.deliveryState === "failed" || m.deliveryState === "sending"),
   );
 }
 
-/** Объединяет сообщения с ошибкой и ожидающие отправки со свежим списком сообщений из API, чтобы не потерять их. */
+/** Объединяет неподтверждённые локальные сообщения со свежим списком из API, чтобы не терять optimistic UI. */
 export function mergeRetriableMessages(
   messages: ChatViewMessage[],
   thread: ChatViewThread,
 ): ChatViewMessage[] {
-  const retriable = getRetriableMessages(thread);
-  if (!retriable.length) return messages;
-  return sortMessagesByCreatedAt(dedupeMessagesById([...messages, ...retriable]));
+  const unconfirmed = getUnconfirmedMessages(thread);
+  if (!unconfirmed.length) return messages;
+  return sortMessagesByCreatedAt(dedupeMessagesById([...messages, ...unconfirmed]));
 }
 
 export function addPendingOutgoing(chatId: string, message: ChatViewMessage): void {

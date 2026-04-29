@@ -100,6 +100,22 @@ export type ChatMessageSocketHandlers = {
   onMessage: (message: ChatMessage) => void;
   /** Вызывается при ошибке сокета, если обработчик передан. */
   onError?: ((event: Event) => void) | undefined;
+  /** Вызывается после успешного открытия WebSocket-соединения. */
+  onOpen?: (() => void) | undefined;
+  /** Вызывается после закрытия WebSocket-соединения. */
+  onClose?: (() => void) | undefined;
+};
+
+/**
+ * Управляющий объект WebSocket-подписки на чат.
+ */
+export type ChatMessageSocketSubscription = {
+  /** Пытается отправить сообщение через уже открытый сокет. */
+  send: (payload: SendMessagePayload) => boolean;
+  /** Показывает, открыт ли сокет прямо сейчас. */
+  isOpen: () => boolean;
+  /** Закрывает подписку и останавливает переподключения. */
+  close: () => void;
 };
 
 /**
@@ -314,24 +330,28 @@ function getChatSocketUrl(chatId: string): string {
  *
  * @param {string} chatId Идентификатор чата.
  * @param {ChatMessageSocketHandlers} handlers Обработчики событий сокета.
- * @returns {() => void} Функция отписки и закрытия соединения.
+ * @returns {ChatMessageSocketSubscription} Управляющий объект подписки.
  * @example
- * const unsubscribe = subscribeToChatMessages("5", {
+ * const subscription = subscribeToChatMessages("5", {
  *   onMessage: (message) => console.log(message.text),
  * });
- * unsubscribe();
+ * subscription.close();
  */
 export function subscribeToChatMessages(
   chatId: string,
   handlers: ChatMessageSocketHandlers,
-): () => void {
+): ChatMessageSocketSubscription {
   const user = getSessionUser();
 
   if (!user) {
-    return () => {};
+    return {
+      send: () => false,
+      isOpen: () => false,
+      close: () => {},
+    };
   }
 
-  let socket: WebSocket;
+  let socket: WebSocket | null = null;
   let retries = 0;
   let intentionalClose = false;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -361,9 +381,11 @@ export function subscribeToChatMessages(
 
     socket.addEventListener("open", () => {
       retries = 0;
+      handlers.onOpen?.();
     });
 
     socket.addEventListener("close", () => {
+      handlers.onClose?.();
       if (intentionalClose) return;
       const delay = Math.min(1000 * 2 ** retries, 30_000) + Math.random() * 500;
       retries += 1;
@@ -373,14 +395,28 @@ export function subscribeToChatMessages(
 
   connect();
 
-  return () => {
-    intentionalClose = true;
-    if (reconnectTimer !== null) {
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
-    }
-    if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-      socket.close();
-    }
+  return {
+    send: (payload: SendMessagePayload): boolean => {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        return false;
+      }
+
+      socket.send(JSON.stringify(payload));
+      return true;
+    },
+    isOpen: (): boolean => Boolean(socket && socket.readyState === WebSocket.OPEN),
+    close: (): void => {
+      intentionalClose = true;
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      if (
+        socket &&
+        (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
+      ) {
+        socket.close();
+      }
+    },
   };
 }

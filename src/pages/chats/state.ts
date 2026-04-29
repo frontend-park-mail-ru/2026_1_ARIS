@@ -1,3 +1,8 @@
+/**
+ * Состояние страницы чатов.
+ *
+ * Содержит runtime-состояние, кэши и вспомогательные функции управления состоянием.
+ */
 import { StateManager } from "../../state/StateManager";
 import type { ChatsState } from "./types";
 
@@ -47,8 +52,8 @@ export let chatsPollIntervalId: number | null = null;
 export let hasHydratedPersistedChatsUiState = false;
 
 /**
- * True only after initChats has been called on the rendered page.
- * Guards refreshChatsPage from patching the skeleton during the initial async render.
+ * Становится `true` только после вызова `initChats` на отрисованной странице.
+ * Защищает `refreshChatsPage` от патча скелетона во время первичного асинхронного рендера.
  */
 export let chatsPageMounted = false;
 

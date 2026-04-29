@@ -1,3 +1,6 @@
+/**
+ * Разметка модального окна авторизации.
+ */
 import { renderAuthForm } from "../auth-form/auth-form";
 import { renderModalCloseButton } from "../modal-close/modal-close";
 import type { RegisterDraft } from "../../state/register-draft";

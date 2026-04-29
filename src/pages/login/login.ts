@@ -1,3 +1,8 @@
+/**
+ * Страница входа.
+ *
+ * Если пользователь уже авторизован, вместо формы сразу возвращает ленту.
+ */
 import { renderAuthForm } from "../../components/auth-form/auth-form";
 import { renderFeed } from "../feed/feed";
 import { getSessionUser } from "../../state/session";
@@ -5,7 +10,7 @@ import { getSessionUser } from "../../state/session";
 /**
  * Рендерит страницу входа.
  *
- * @returns {string}
+ * @returns {Promise<string>} HTML страницы входа или ленты.
  */
 export async function renderLogin(): Promise<string> {
   if (getSessionUser()) {

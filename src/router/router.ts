@@ -1,3 +1,8 @@
+/**
+ * Конфигурация клиентского роутера.
+ *
+ * Связывает маршруты, скелетоны страниц и post-render инициализацию.
+ */
 import { createRouter as createWorkspaceRouter, type AppRouter, type Route } from "@aris/router";
 import { initPostcardExpand } from "../components/postcard/postcard";
 import { initAuthForm } from "../components/auth-form/auth-form-controller";
@@ -36,6 +41,21 @@ function stripChatIdFromNonChatsUrl(): void {
   }
 }
 
+/**
+ * Создаёт основной роутер приложения.
+ *
+ * Помимо маршрутизации, роутер отвечает за:
+ * - показ скелетонов во время переключения страниц
+ * - подключение поведенческих инициализаторов после рендера
+ * - ленивую загрузку тяжёлых страниц
+ *
+ * @param {HTMLElement} root Корневой контейнер приложения.
+ * @param {Route[]} routes Список маршрутов.
+ * @returns {AppRouter} Настроенный экземпляр роутера.
+ *
+ * @example
+ * const router = createRouter(root, routes);
+ */
 export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
   return createWorkspaceRouter(root, routes, {
     getSkeleton(path: string): string | null {
@@ -47,6 +67,7 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
       return null;
     },
     afterRender: async (nextRoot) => {
+      // Очищаем `chatId` вне страницы чатов, чтобы состояние URL не протекало между разделами.
       stripChatIdFromNonChatsUrl();
       initAvatarFallback(nextRoot);
       initAuthForm(document);

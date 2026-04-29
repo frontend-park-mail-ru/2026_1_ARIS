@@ -1,3 +1,8 @@
+/**
+ * Точка входа клиентского приложения.
+ *
+ * Инициализирует инфраструктуру, роутер и глобальные обработчики.
+ */
 import "./styles/main.css";
 import "./styles/tokens.css";
 import "./styles/layout.scss";
@@ -36,7 +41,7 @@ import { onCacheInvalidation } from "./utils/cache-channel";
 import { initSupportIframe } from "./utils/support-widget";
 
 // ---------------------------------------------------------------------------
-// Ленивые фабрики модулей страниц — webpack нарезает их в отдельные чанки
+// Ленивые фабрики модулей страниц — webpack выносит их в отдельные чанки.
 // ---------------------------------------------------------------------------
 
 const loadFeed = () => import(/* webpackChunkName: "page-feed" */ "./pages/feed/feed");
@@ -163,14 +168,14 @@ registerServiceWorker();
 const router = createRouter(root, routes);
 
 // ---------------------------------------------------------------------------
-// Prefetch: данные + JS-чанки по hover
+// Предзагрузка данных и JS-чанков по наведению.
 // ---------------------------------------------------------------------------
 
 registerPrefetch("/", async () => (await loadFeed()).prefetchFeed());
 registerPrefetch("/feed", async () => (await loadFeed()).prefetchFeed());
 registerPrefetch("/chats", async () => (await loadChats()).prefetchChats());
 
-// Карта путей → фабрика чанка для prefetch кода при hover
+// Карта путей для предзагрузки JS-чанков.
 const chunkMap: Record<string, () => Promise<unknown>> = {
   "/": loadFeed,
   "/feed": loadFeed,
@@ -191,8 +196,8 @@ document.addEventListener(
     if (!(link instanceof HTMLAnchorElement)) return;
     try {
       const path = new URL(link.href).pathname.replace(/\/+$/g, "") || "/";
-      void chunkMap[path]?.(); // prefetch JS чанк
-      prefetchRoute(path); // prefetch данные
+      void chunkMap[path]?.(); // Предзагружаем JS-чанк.
+      prefetchRoute(path); // Предзагружаем данные маршрута.
     } catch {
       // Игнорируем невалидные URL
     }

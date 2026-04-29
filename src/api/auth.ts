@@ -1,13 +1,24 @@
+/**
+ * API для аутентификации и регистрации.
+ *
+ * Содержит:
+ * - вход и выход пользователя;
+ * - регистрацию;
+ * - получение текущей сессии;
+ * - серверную валидацию первого шага регистрации.
+ */
 import { ApiError, apiRequest } from "./core/client";
 
-// Повторно экспортируем ApiError, чтобы не сломать существующие импорты (chat, profile, posts, friends).
+// Повторно экспортируем `ApiError`, чтобы сохранить текущие импорты в других модулях.
 export { ApiError };
 
 /**
  * Тело запроса для входа.
  */
 export type LoginPayload = {
+  /** Логин пользователя. */
   login: string;
+  /** Пароль пользователя. */
   password: string;
 };
 
@@ -15,12 +26,19 @@ export type LoginPayload = {
  * Тело запроса для регистрации.
  */
 export type RegisterPayload = {
+  /** Имя пользователя. */
   firstName: string;
+  /** Фамилия пользователя. */
   lastName: string;
+  /** Дата рождения в формате поля формы. */
   birthday: string;
+  /** Пол пользователя в серверном формате. */
   gender: number;
+  /** Желаемый логин. */
   login: string;
+  /** Пароль. */
   password1: string;
+  /** Повтор пароля. */
   password2: string;
 };
 
@@ -28,23 +46,36 @@ export type RegisterPayload = {
  * Тело запроса для валидации первого шага регистрации.
  */
 export type RegisterStepOnePayload = {
+  /** Логин для проверки доступности и формата. */
   login: string;
+  /** Пароль первого ввода. */
   password1: string;
+  /** Повтор пароля. */
   password2: string;
 };
 
+/**
+ * Роль пользователя в системе.
+ */
 export type UserRole = "user" | "support_l1" | "support_l2" | "admin";
 
 /**
  * Минимальная форма данных авторизованного пользователя на клиенте.
  */
 export type User = {
+  /** Идентификатор пользователя. */
   id: string;
+  /** Имя пользователя. */
   firstName: string;
+  /** Фамилия пользователя. */
   lastName: string;
+  /** Логин. */
   login?: string;
+  /** Электронная почта. */
   email?: string;
+  /** Ссылка на аватар. */
   avatarLink?: string;
+  /** Роль пользователя в системе. */
   role?: UserRole;
 };
 
@@ -111,12 +142,22 @@ function mapUser(raw: RawUser | null | undefined): User | null {
  * Ответ валидации первого шага.
  */
 export type RegisterStepOneValidationResponse = {
+  /** Общий признак успешной валидации. */
   ok?: boolean;
+  /** Ошибки по полям, если проверка не прошла. */
   errors?: Record<string, string>;
 };
 
 /**
- * Отправляет запрос на вход в backend.
+ * Отправляет запрос на вход на сервер.
+ *
+ * Возвращает минимальный набор данных пользователя, достаточный
+ * для инициализации клиентской сессии после авторизации.
+ *
+ * @param {LoginPayload} payload Данные формы входа.
+ * @returns {Promise<User>} Нормализованный объект пользователя.
+ * @example
+ * const user = await loginUser({ login: "demo", password: "secret" });
  */
 export async function loginUser(payload: LoginPayload): Promise<User> {
   const user = await apiRequest<RawUser>("/api/auth/login", { method: "POST", body: payload }, {});
@@ -124,7 +165,15 @@ export async function loginUser(payload: LoginPayload): Promise<User> {
 }
 
 /**
- * Отправляет запрос на регистрацию в backend.
+ * Отправляет запрос на регистрацию на сервер.
+ *
+ * Используется после клиентской валидации, когда форма уже собрана
+ * и готова к созданию новой учётной записи.
+ *
+ * @param {RegisterPayload} payload Полные данные формы регистрации.
+ * @returns {Promise<User>} Созданный пользователь в клиентском формате.
+ * @example
+ * const user = await registerUser(formValues);
  */
 export async function registerUser(payload: RegisterPayload): Promise<User> {
   const user = await apiRequest<RawUser>(
@@ -136,7 +185,11 @@ export async function registerUser(payload: RegisterPayload): Promise<User> {
 }
 
 /**
- * Отправляет запрос на выход в backend.
+ * Отправляет запрос на выход на сервер.
+ *
+ * @returns {Promise<unknown>}
+ * @example
+ * await logoutUser();
  */
 export async function logoutUser(): Promise<unknown> {
   await apiRequest<unknown>("/api/auth/logout", { method: "POST" });
@@ -144,7 +197,14 @@ export async function logoutUser(): Promise<unknown> {
 }
 
 /**
- * Запрашивает текущего авторизованного пользователя из backend.
+ * Запрашивает текущего авторизованного пользователя с сервера.
+ *
+ * Если сервер отвечает ошибкой авторизации, функция возвращает `null`,
+ * чтобы вызывающий код мог безопасно переключиться в гостевой режим.
+ *
+ * @returns {Promise<User | null>} Текущий пользователь или `null`.
+ * @example
+ * const currentUser = await getCurrentUser();
  */
 export async function getCurrentUser(): Promise<User | null> {
   try {
@@ -159,7 +219,18 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 /**
- * Валидирует первый шаг регистрации на backend.
+ * Валидирует первый шаг регистрации на сервере.
+ *
+ * Нужна для ранней проверки логина и пароля до перехода к следующим шагам формы.
+ *
+ * @param {RegisterStepOnePayload} payload Данные первого шага регистрации.
+ * @returns {Promise<RegisterStepOneValidationResponse>} Результат серверной проверки.
+ * @example
+ * const validation = await validateRegisterStepOne({
+ *   login: "demo",
+ *   password1: "secret123",
+ *   password2: "secret123",
+ * });
  */
 export async function validateRegisterStepOne(
   payload: RegisterStepOnePayload,

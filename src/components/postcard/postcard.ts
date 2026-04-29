@@ -1,21 +1,51 @@
+/**
+ * Компонент карточки поста в ленте.
+ *
+ * Отвечает за:
+ * - отображение автора, текста и вложений;
+ * - рендер счётчиков лайков, репостов и комментариев;
+ * - управление раскрытием длинного текста;
+ * - приоритизацию главного изображения для LCP.
+ *
+ * Не отвечает за:
+ * - загрузку данных ленты;
+ * - синхронизацию состояния лайков с сервером;
+ * - маршрутизацию страниц.
+ */
 import { getSessionUser } from "../../state/session";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
 import { renderAvatarMarkup } from "../../utils/avatar";
 import { resolveMediaUrl } from "../../utils/media";
 
+/**
+ * Модель поста для карточки ленты.
+ */
 export type PostcardPost = {
+  /** Идентификатор поста. */
   id?: string;
+  /** Логин или короткое имя автора. */
   author?: string;
+  /** Идентификатор профиля автора. */
   authorId?: string;
+  /** Имя автора. */
   firstName?: string;
+  /** Фамилия автора. */
   lastName?: string;
+  /** Ссылка на аватар автора. */
   avatar: string;
+  /** Основной текст публикации. */
   text: string;
+  /** Короткая подпись времени для карточки. */
   time: string;
+  /** Полная дата публикации в ISO-формате. */
   timeRaw?: string;
+  /** Количество лайков. */
   likes: number;
+  /** Количество комментариев. */
   comments: number;
+  /** Количество репостов. */
   reposts: number;
+  /** Список изображений поста в порядке отображения. */
   images?: string[];
 };
 
@@ -112,10 +142,19 @@ function shouldRenderExpandButtonInitially(text: string): boolean {
 }
 
 /**
- * Рендерит элемент футера карточки поста.
+ * Рендерит кнопку или ссылку статистики под карточкой поста.
+ *
+ * Использует разную разметку для гостя и авторизованного пользователя,
+ * потому что гостя нужно привести к авторизации, а не выполнять действие сразу.
  *
  * @param {PostcardStatOptions} options
- * @returns {string}
+ * @returns {string} HTML элемента статистики.
+ * @example
+ * renderPostcardStat({
+ *   icon: "/assets/img/icons/heart.svg",
+ *   count: 12,
+ *   action: "like",
+ * });
  */
 function renderPostcardStat({ icon, count, action }: PostcardStatOptions): string {
   const isAuthorised = getSessionUser() !== null;
@@ -152,10 +191,17 @@ function renderPostcardMediaImage(src: string, prioritize = false): string {
 }
 
 /**
- * Рендерит медиаблок карточки поста.
+ * Рендерит сетку изображений поста.
+ *
+ * Выбирает раскладку по количеству картинок и может приоритизировать
+ * первое изображение, если карточка попадает в начальную видимую область.
  *
  * @param {string[]} images
- * @returns {string}
+ * @returns {string} HTML медиаблока.
+ * @example
+ * renderPostcardMedia(["/img/1.jpg", "/img/2.jpg"], {
+ *   prioritizeFirstImage: true,
+ * });
  */
 function renderPostcardMedia(images: string[] = [], options: PostcardMediaOptions = {}): string {
   if (images.length === 0) {
@@ -250,8 +296,17 @@ function renderPostcardMedia(images: string[] = [], options: PostcardMediaOption
 }
 
 /**
- * Рендерит внутренний HTML карточки поста (используется внутри Shadow DOM и напрямую).
- * Экспортируется для использования в ArisPostcard Web Component.
+ * Рендерит внутренний HTML карточки поста.
+ *
+ * Эта функция нужна как единый источник разметки и для обычного рендера,
+ * и для веб-компонента `ArisPostcard`, чтобы логика отображения не расходилась
+ * между разными способами использования карточки.
+ *
+ * @param {PostcardPost} post Данные публикации.
+ * @param {RenderPostcardOptions} [options={}] Дополнительные параметры рендера.
+ * @returns {string} HTML содержимого карточки.
+ * @example
+ * const html = renderPostcardInner(post, { prioritizeMedia: true });
  */
 export function renderPostcardInner(
   post: PostcardPost,
@@ -319,8 +374,16 @@ export function renderPostcardInner(
 }
 
 /**
- * Рендерит карточку поста как <aris-postcard> Web Component с Shadow DOM.
- * Данные передаются через атрибут data-post (JSON).
+ * Рендерит карточку поста как веб-компонент `<aris-postcard>`.
+ *
+ * Такой вариант изолирует стили внутри `Shadow DOM` и позволяет безопасно
+ * встраивать карточку в разные части интерфейса без утечек CSS.
+ *
+ * @param {PostcardPost} post Данные публикации.
+ * @param {RenderPostcardOptions} [options={}] Дополнительные параметры рендера.
+ * @returns {string} HTML-строка карточки.
+ * @example
+ * const html = renderPostcard(post);
  */
 export function renderPostcard(post: PostcardPost, options: RenderPostcardOptions = {}): string {
   return renderPostcardInner(post, options);
@@ -372,8 +435,15 @@ export function initPostcardExpand(root: Document | HTMLElement = document): voi
 }
 
 /**
- * Инициализирует кнопку "читать полностью" внутри Shadow Root конкретной карточки.
- * Используется в ArisPostcard.connectedCallback().
+ * Инициализирует кнопку «читать полностью» внутри `Shadow Root` конкретной карточки.
+ *
+ * Нужна, чтобы логика раскрытия длинного текста жила рядом с карточкой
+ * и не требовала отдельного глобального обработчика для каждого экземпляра.
+ *
+ * @param {ShadowRoot} shadow `Shadow Root` конкретной карточки.
+ * @returns {void}
+ * @example
+ * initPostcardExpandInShadow(this.shadowRoot);
  */
 export function initPostcardExpandInShadow(shadow: ShadowRoot): void {
   requestAnimationFrame(() => {

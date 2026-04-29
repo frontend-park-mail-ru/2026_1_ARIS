@@ -1,11 +1,21 @@
+/**
+ * Рендер страницы ленты.
+ *
+ * Содержит функции генерации HTML и обновления DOM для страницы.
+ */
 import { renderPostcard } from "../../components/postcard/postcard";
 import type { PostcardModel } from "../../api/feed";
 
 type RenderFeedCardsOptions = {
+  /** Нужно ли дать первой карточке приоритетную загрузку медиа. */
   prioritizeFirstCardMedia?: boolean;
 };
 
-/** Рендерит блок пустого состояния, когда у пользователя нет постов друзей. */
+/**
+ * Рендерит пустое состояние, когда у пользователя нет постов друзей.
+ *
+ * @returns {string} HTML центральной колонки.
+ */
 export function renderEmptyFriendsFeed(): string {
   return `
     <section class="app-layout__center">
@@ -19,7 +29,11 @@ export function renderEmptyFriendsFeed(): string {
   `;
 }
 
-/** Рендерит блок пустого состояния для публичной ленты. */
+/**
+ * Рендерит пустое состояние публичной ленты.
+ *
+ * @returns {string} HTML центральной колонки.
+ */
 export function renderEmptyPublicFeed(): string {
   return `
     <section class="app-layout__center">
@@ -33,7 +47,12 @@ export function renderEmptyPublicFeed(): string {
   `;
 }
 
-/** Рендерит резервный блок для офлайн-сценария. */
+/**
+ * Рендерит резервное состояние ленты для офлайн-сценария.
+ *
+ * @param {boolean} isAuthorised Открыта ли лента авторизованным пользователем.
+ * @returns {string} HTML центральной колонки.
+ */
 export function renderOfflineFeedFallback(isAuthorised: boolean): string {
   return `
     <section class="app-layout__center">
@@ -48,7 +67,13 @@ export function renderOfflineFeedFallback(isAuthorised: boolean): string {
   `;
 }
 
-/** Рендерит индикатор состояния бесконечной прокрутки. */
+/**
+ * Рендерит индикатор бесконечной прокрутки.
+ *
+ * @param {boolean} hasMore Есть ли ещё элементы в ленте.
+ * @param {boolean} isLoading Идёт ли сейчас дозагрузка.
+ * @returns {string} HTML индикатора.
+ */
 export function renderFeedStatus(hasMore: boolean, isLoading: boolean): string {
   const hiddenClass = hasMore ? "" : " feed-infinite-status--hidden";
   const text = isLoading
@@ -58,7 +83,13 @@ export function renderFeedStatus(hasMore: boolean, isLoading: boolean): string {
   return `<div class="feed-infinite-status${hiddenClass}" data-feed-status>${text}</div>`;
 }
 
-/** Рендерит набор HTML-строк карточек постов. */
+/**
+ * Рендерит набор карточек постов.
+ *
+ * @param {PostcardModel[]} items Карточки постов.
+ * @param {RenderFeedCardsOptions} [options={}] Дополнительные настройки рендера.
+ * @returns {string} HTML списка карточек.
+ */
 export function renderFeedCards(
   items: PostcardModel[],
   options: RenderFeedCardsOptions = {},
@@ -72,7 +103,13 @@ export function renderFeedCards(
     .join("");
 }
 
-/** Рендерит центральную колонку ленты с первоначально видимой порцией карточек. */
+/**
+ * Рендерит центральную колонку ленты с первой порцией карточек.
+ *
+ * @param {PostcardModel[]} items Полный набор карточек.
+ * @param {number} renderedCount Количество карточек, видимых сразу.
+ * @returns {string} HTML центральной колонки.
+ */
 export function renderIncrementalFeedCenter(items: PostcardModel[], renderedCount: number): string {
   const visibleItems = items.slice(0, renderedCount);
 

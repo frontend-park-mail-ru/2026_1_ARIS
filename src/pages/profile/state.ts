@@ -1,3 +1,8 @@
+/**
+ * Состояние страницы профиля.
+ *
+ * Содержит runtime-состояние, кэши и вспомогательные функции управления состоянием.
+ */
 import { getSessionUser, setSessionUserSilently } from "../../state/session";
 import { StateManager } from "../../state/StateManager";
 import {

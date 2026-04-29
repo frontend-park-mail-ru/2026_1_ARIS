@@ -1,33 +1,66 @@
+/**
+ * API для работы с постами.
+ *
+ * Содержит:
+ * - загрузку своих и чужих постов;
+ * - создание, редактирование и удаление;
+ * - загрузку изображений для публикаций;
+ * - офлайн-очередь через outbox при проблемах сети.
+ */
 import { ApiError, apiRequest } from "./core/client";
 import type { UploadedMedia } from "./profile";
 import { isNetworkUnavailableError } from "../state/network-status";
 import { clearFeedCache } from "../pages/feed/cache";
 import { enqueueRequest, OutboxQueuedError, registerOutboxSync } from "../utils/outbox-idb";
 
-// Повторно экспортируем ApiError для кода, который импортирует его из этого модуля.
+// Повторно экспортируем `ApiError`, чтобы сохранить текущие импорты в других модулях.
 export { ApiError };
 
+/**
+ * Тело запроса на создание или обновление поста.
+ */
 export type PostPayload = {
+  /** Текст публикации. */
   text?: string;
+  /** Загруженные медиафайлы, привязываемые к посту. */
   media?: UploadedMedia[];
 };
 
+/**
+ * Медиавложение поста в клиентском формате.
+ */
 export type PostMedia = {
+  /** Идентификатор медиафайла. */
   mediaID: number;
+  /** Ссылка на изображение. */
   mediaURL: string;
 };
 
+/**
+ * Пост в ответах API.
+ */
 export type PostResponse = {
+  /** Идентификатор поста. */
   id: number;
+  /** Идентификатор профиля автора. */
   profileID: number;
+  /** Нормализованные медиавложения поста. */
   media?: PostMedia[];
+  /** Устаревшее поле backend со списком ссылок на медиа. */
   mediaURL?: string[];
+  /** Текст публикации. */
   text?: string;
+  /** Имя автора. */
   firstName?: string;
+  /** Фамилия автора. */
   lastName?: string;
+  /** Идентификатор учётной записи автора. */
   userAccountID?: number;
+  /** Ссылка на аватар автора. */
   avatarURL?: string;
+  /** Дата создания в формате ISO. */
   createdAt?: string;
+  /** Дата обновления в формате ISO. */
   updatedAt?: string;
 };
 
@@ -114,10 +147,20 @@ async function mutatePost(
       console.warn("[outbox] background sync registration failed", syncError);
     });
     clearFeedCache();
+    // При офлайн-ошибке ставим запрос в outbox, чтобы пользователь
+    // не потерял действие и смог продолжить работу без сети.
     throw new OutboxQueuedError();
   }
 }
 
+/**
+ * Загружает посты текущего пользователя.
+ *
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<PostResponse[]>} Список постов собственного профиля.
+ * @example
+ * const posts = await getMyPosts();
+ */
 export async function getMyPosts(signal?: AbortSignal): Promise<PostResponse[]> {
   const data = await apiRequest<PostsApiResponse>(
     `/api/post/me?ts=${Date.now()}`,
@@ -134,6 +177,15 @@ export async function getMyPosts(signal?: AbortSignal): Promise<PostResponse[]> 
     : [];
 }
 
+/**
+ * Загружает посты выбранного профиля.
+ *
+ * @param {string} profileId Идентификатор профиля.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<PostResponse[]>} Список постов выбранного профиля.
+ * @example
+ * const posts = await getPostsByProfileId("7");
+ */
 export async function getPostsByProfileId(
   profileId: string,
   signal?: AbortSignal,
@@ -153,12 +205,32 @@ export async function getPostsByProfileId(
     : [];
 }
 
+/**
+ * Создаёт новый пост.
+ *
+ * После успешной отправки очищает кэш ленты, потому что новая публикация
+ * должна появиться в актуальных списках без ручного обновления страницы.
+ *
+ * @param {PostPayload} payload Данные новой публикации.
+ * @returns {Promise<PostResponse>} Созданный пост.
+ * @example
+ * const post = await createPost({ text: "Новая запись" });
+ */
 export async function createPost(payload: PostPayload): Promise<PostResponse> {
   const data = await mutatePost("/api/post/upload", "POST", payload);
   clearFeedCache();
   return data as PostResponse;
 }
 
+/**
+ * Обновляет существующий пост.
+ *
+ * @param {string | number} postId Идентификатор поста.
+ * @param {PostPayload} payload Новое содержимое поста.
+ * @returns {Promise<PostResponse>} Обновлённый пост.
+ * @example
+ * await updatePost(5, { text: "Обновлённый текст" });
+ */
 export async function updatePost(
   postId: string | number,
   payload: PostPayload,
@@ -172,11 +244,30 @@ export async function updatePost(
   return data as PostResponse;
 }
 
+/**
+ * Удаляет пост по идентификатору.
+ *
+ * @param {string | number} postId Идентификатор удаляемого поста.
+ * @returns {Promise<void>}
+ * @example
+ * await deletePost(5);
+ */
 export async function deletePost(postId: string | number): Promise<void> {
   await mutatePost(`/api/post/${encodeURIComponent(String(postId))}`, "DELETE");
   clearFeedCache();
 }
 
+/**
+ * Загружает изображения для поста в медиахранилище.
+ *
+ * Используется до создания или редактирования поста, чтобы получить
+ * устойчивые `mediaID`, которые потом можно передать в `PostPayload`.
+ *
+ * @param {File[]} files Список изображений для загрузки.
+ * @returns {Promise<UploadedMedia[]>} Загруженные файлы с идентификаторами и ссылками.
+ * @example
+ * const uploaded = await uploadPostImages(files);
+ */
 export async function uploadPostImages(files: File[]): Promise<UploadedMedia[]> {
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));

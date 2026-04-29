@@ -1,3 +1,12 @@
+/**
+ * Страница чатов.
+ *
+ * Отвечает за:
+ * - загрузку списка диалогов и сообщений
+ * - восстановление persisted-состояния
+ * - подписку на входящие сообщения
+ * - фоновое обновление списка чатов
+ */
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { getChats, subscribeToChatMessages } from "../../api/chat";
@@ -40,9 +49,14 @@ type ChatRoot = (Document | HTMLElement) & {
 // Сброс состояния
 // ---------------------------------------------------------------------------
 
-// Deduplicates concurrent ensureChatsLoaded calls (prefetch + render race on reload).
+// Хранит текущую загрузку, чтобы параллельные вызовы не стартовали повторно.
 let chatsLoadingPromise: Promise<void> | null = null;
 
+/**
+ * Сбрасывает runtime-состояние страницы чатов.
+ *
+ * @returns {void}
+ */
 function resetChatsState(): void {
   resetChatsStateMutable();
   clearScrollState();
@@ -54,6 +68,14 @@ function resetChatsState(): void {
 // Восстановление ожидающих исходящих сообщений после офлайн-перезагрузки
 // ---------------------------------------------------------------------------
 
+/**
+ * Восстанавливает локальные исходящие сообщения после перезагрузки.
+ *
+ * Нужен для офлайн-сценария, когда пользователь отправил сообщение,
+ * но страница была обновлена до подтверждения сервера.
+ *
+ * @returns {void}
+ */
 function rebuildPendingOutgoingFromThreads(): void {
   chatsState.pendingOutgoingByChatId.clear();
 
@@ -77,6 +99,11 @@ function rebuildPendingOutgoingFromThreads(): void {
 // Вспомогательные функции для URL
 // ---------------------------------------------------------------------------
 
+/**
+ * Возвращает `chatId`, запрошенный через query-параметр.
+ *
+ * @returns {string} Идентификатор чата или пустая строка.
+ */
 function getRequestedChatId(): string {
   return new URLSearchParams(window.location.search).get("chatId") ?? "";
 }
@@ -85,6 +112,12 @@ function getRequestedChatId(): string {
 // Подписка на WebSocket
 // ---------------------------------------------------------------------------
 
+/**
+ * Подписывает выбранный чат на WebSocket, если это ещё не сделано.
+ *
+ * @param {string} chatId Идентификатор чата.
+ * @returns {void}
+ */
 function ensureChatSocketSubscribed(chatId: string): void {
   if (chatsState.source !== "api" || chatsState.unsubscribeByChatId.has(chatId)) return;
 
@@ -102,6 +135,11 @@ function ensureChatSocketSubscribed(chatId: string): void {
 // Фоновый опрос
 // ---------------------------------------------------------------------------
 
+/**
+ * Фоново обновляет список чатов и сообщения.
+ *
+ * @returns {Promise<void>}
+ */
 async function refreshChatsInBackground(): Promise<void> {
   if (!chatsState.loaded || chatsState.source !== "api") return;
 
@@ -131,6 +169,11 @@ async function refreshChatsInBackground(): Promise<void> {
   }
 }
 
+/**
+ * Запускает интервальный опрос страницы чатов.
+ *
+ * @returns {void}
+ */
 function ensureChatsPollingStarted(): void {
   if (chatsPollIntervalId !== null) return;
 
@@ -147,6 +190,11 @@ function ensureChatsPollingStarted(): void {
 // Начальная загрузка данных
 // ---------------------------------------------------------------------------
 
+/**
+ * Выполняет полную начальную загрузку страницы чатов.
+ *
+ * @returns {Promise<void>}
+ */
 async function doLoadChats(): Promise<void> {
   const preferredChatId = getRequestedChatId() || chatsState.selectedChatId || "";
 
@@ -195,6 +243,12 @@ async function doLoadChats(): Promise<void> {
   rebuildPendingOutgoingFromThreads();
 }
 
+/**
+ * Гарантирует, что данные чатов загружены и выбранный диалог восстановлен.
+ *
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<void>}
+ */
 async function ensureChatsLoaded(signal?: AbortSignal): Promise<void> {
   const preferredChatId = getRequestedChatId() || chatsState.selectedChatId || "";
 
@@ -217,8 +271,7 @@ async function ensureChatsLoaded(signal?: AbortSignal): Promise<void> {
     return;
   }
 
-  // Deduplicate: if a load is already in flight, join it instead of starting another.
-  // This prevents prefetch + render from racing each other on browser reload.
+  // Если загрузка уже идёт, используем тот же Promise вместо повторного запуска.
   if (!chatsLoadingPromise) {
     chatsLoadingPromise = doLoadChats().finally(() => {
       chatsLoadingPromise = null;
@@ -235,6 +288,8 @@ async function ensureChatsLoaded(signal?: AbortSignal): Promise<void> {
 
 /**
  * Предзагружает список чатов. Если уже загружено — возвращается мгновенно.
+ *
+ * @returns {Promise<void>}
  */
 export async function prefetchChats(): Promise<void> {
   if (!getSessionUser()) return;
@@ -245,7 +300,9 @@ export async function prefetchChats(): Promise<void> {
 /**
  * Рендерит полный HTML страницы чатов.
  *
- * @returns {Promise<string>}
+ * @param {Record<string, string>} [_params] Параметры маршрута.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<string>} HTML страницы.
  */
 export async function renderChats(
   _params?: Record<string, string>,
@@ -259,8 +316,7 @@ export async function renderChats(
     chatsState.loadedForUserId = currentUserId;
   }
 
-  // Prevent background refreshChatsPage calls from patching the skeleton
-  // while the async render is in flight (e.g. ensureMessagesLoaded background).
+  // Не даём фоновому обновлению патчить скелетон, пока асинхронный рендер ещё не завершён.
   setChatsPageMounted(false);
 
   if (!isAuthorised) return renderFeed();

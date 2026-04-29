@@ -1,3 +1,6 @@
+/**
+ * Подсказки сопоставления чатов с профилями.
+ */
 import { getSessionUser } from "../../state/session";
 
 type ChatContactHint = {

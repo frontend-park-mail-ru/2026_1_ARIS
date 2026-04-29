@@ -1,10 +1,20 @@
+/**
+ * Шапка приложения.
+ *
+ * Отвечает за:
+ * - рендер гостевого и авторизованного состояния
+ * - отображение имени и аватара текущего пользователя
+ * - меню профиля и выход из аккаунта
+ *
+ * Не отвечает за загрузку данных пользователя: header работает поверх `session`.
+ */
 import { clearSessionUser, getSessionUser } from "../../state/session";
 import { renderButton } from "../button/button";
 import { logoutUser } from "../../api/auth";
 import { renderAvatarMarkup } from "../../utils/avatar";
 
 /**
- * Тип пользовательской сессии (минимально необходимый)
+ * Минимальный срез данных пользователя, который нужен header.
  */
 type SessionUser = {
   id: string;
@@ -13,6 +23,14 @@ type SessionUser = {
   avatarLink?: string;
 } | null;
 
+/**
+ * Рендерит аватар в размерах, согласованных с дизайном header.
+ *
+ * @param {string} className CSS-класс элемента аватара.
+ * @param {string} label Имя пользователя для `alt`.
+ * @param {string} [avatarLink] Ссылка на изображение профиля.
+ * @returns {string} HTML-разметка аватара.
+ */
 function renderHeaderAvatar(className: string, label: string, avatarLink?: string): string {
   return renderAvatarMarkup(className, label, avatarLink, {
     width: 56,
@@ -24,7 +42,7 @@ function renderHeaderAvatar(className: string, label: string, avatarLink?: strin
 /**
  * Рендерит хедер для гостя.
  *
- * @returns {string}
+ * @returns {string} HTML-разметка гостевой шапки.
  */
 function renderGuestHeader(): string {
   return `
@@ -64,7 +82,7 @@ function renderGuestHeader(): string {
 /**
  * Рендерит хедер для авторизованного пользователя.
  *
- * @returns {string}
+ * @returns {string} HTML-разметка авторизованной шапки.
  */
 function renderAuthorisedHeader(): string {
   const user = getSessionUser() as SessionUser;
@@ -117,7 +135,10 @@ function renderAuthorisedHeader(): string {
 /**
  * Рендерит хедер страницы в зависимости от состояния авторизации пользователя.
  *
- * @returns {string}
+ * @returns {string} HTML-разметка шапки.
+ *
+ * @example
+ * root.innerHTML = renderHeader();
  */
 export function renderHeader(): string {
   const isAuthorised = getSessionUser() !== null;
@@ -130,10 +151,13 @@ export function renderHeader(): string {
 }
 
 /**
- * Инициализирует поведение хедера (обработчик выхода).
+ * Инициализирует интерактивное поведение header.
  *
- * @param {Document | HTMLElement} [root=document]
+ * @param {Document | HTMLElement} [root=document] Корень, внутри которого живёт header.
  * @returns {void}
+ *
+ * @example
+ * initHeader(document);
  */
 export function initHeader(root: Document | HTMLElement = document): void {
   const rootEl = root as Document & { __headerBound?: boolean };
@@ -179,7 +203,7 @@ export function initHeader(root: Document | HTMLElement = document): void {
       clearSessionUser();
       window.location.href = "/";
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Ошибка выхода из аккаунта:", error);
     }
   });
 

@@ -1,3 +1,6 @@
+/**
+ * Контроллер модального окна авторизации.
+ */
 import { renderAuthModal, renderAuthModalPanel, type AuthMode } from "./auth-modal";
 import { registerDraft } from "../../state/register-draft";
 
@@ -24,13 +27,13 @@ function getActiveDialog(): HTMLDialogElement | null {
 function attachDialogListeners(dialog: HTMLDialogElement): void {
   let backdropPressStarted = false;
 
-  // Track where the pointer press started so text selection inside the form
-  // does not close the dialog when the pointer is released on the backdrop.
+  // Запоминаем начало нажатия по фону, чтобы выделение текста внутри формы
+  // не закрывало диалог при отпускании кнопки мыши на фоне.
   dialog.addEventListener("pointerdown", (e) => {
     backdropPressStarted = e.target === dialog;
   });
 
-  // Backdrop click: <dialog> fires click on itself when clicking ::backdrop
+  // При клике по ::backdrop элемент <dialog> получает событие click на самом себе.
   dialog.addEventListener("click", (e) => {
     if (backdropPressStarted && e.target === dialog) {
       dialog.close();

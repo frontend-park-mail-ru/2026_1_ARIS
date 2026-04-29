@@ -1,3 +1,8 @@
+/**
+ * Вспомогательные функции страницы админки поддержки.
+ *
+ * Содержит локальные утилиты, используемые модулями страницы.
+ */
 import type { TicketCategory, TicketLine, TicketStatus } from "../../api/support";
 import { getSessionRole } from "../../state/role";
 

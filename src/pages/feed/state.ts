@@ -1,3 +1,8 @@
+/**
+ * Состояние страницы ленты.
+ *
+ * Содержит runtime-состояние, кэши и вспомогательные функции управления состоянием.
+ */
 import type { PostcardModel } from "../../api/feed";
 import type { ActiveFeedState } from "./types";
 import { StateManager } from "../../state/StateManager";
@@ -10,7 +15,7 @@ type FeedCoreState = {
   isRefreshInFlight: boolean;
 };
 
-/** Реактивное хранилище состояния ленты. Можно подписаться на изменения через feedStore.subscribe(). */
+/** Реактивное хранилище состояния ленты. На изменения можно подписаться через `feedStore.subscribe()`. */
 export const feedStore = new StateManager<FeedCoreState>({
   active: null,
   isScrollBound: false,

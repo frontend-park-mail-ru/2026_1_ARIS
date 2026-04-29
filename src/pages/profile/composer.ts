@@ -1,3 +1,6 @@
+/**
+ * Разметка и вспомогательные функции компоновщика постов профиля.
+ */
 import { postComposerState } from "./state";
 import { escapeHtml } from "./helpers";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";

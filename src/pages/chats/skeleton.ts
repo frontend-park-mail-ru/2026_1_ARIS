@@ -1,3 +1,8 @@
+/**
+ * Скелетон страницы чатов.
+ *
+ * Содержит разметку загрузочного состояния страницы.
+ */
 import { renderHeaderSkeleton } from "../../components/header/header-skeleton";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 

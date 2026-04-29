@@ -1,3 +1,8 @@
+/**
+ * Рендер страницы поддержки.
+ *
+ * Содержит функции генерации HTML и обновления DOM для страницы.
+ */
 import type { Ticket, TicketCategory, TicketMessage } from "../../api/support";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { CATEGORY_LABELS, STATUS_LABELS, escapeHtml, formatDate } from "./helpers";
@@ -8,6 +13,12 @@ function renderCategoryOptions(): string {
     .join("");
 }
 
+/**
+ * Рендерит карточку обращения в списке тикетов.
+ *
+ * @param {Ticket} ticket Обращение пользователя.
+ * @returns {string} HTML карточки.
+ */
 function renderTicketCard(ticket: Ticket): string {
   return `
     <button type="button" class="sw-ticket" data-ticket-id="${escapeHtml(ticket.id)}">
@@ -21,6 +32,12 @@ function renderTicketCard(ticket: Ticket): string {
   `;
 }
 
+/**
+ * Рендерит список обращений пользователя.
+ *
+ * @param {Ticket[]} tickets Набор обращений.
+ * @returns {string} HTML списка обращений.
+ */
 export function renderTicketsList(tickets: Ticket[]): string {
   if (!tickets.length) {
     return `<p class="sw-empty">У вас пока нет обращений.</p>`;
@@ -29,6 +46,12 @@ export function renderTicketsList(tickets: Ticket[]): string {
   return tickets.map(renderTicketCard).join("");
 }
 
+/**
+ * Рендерит содержимое модального окна обращения.
+ *
+ * @param {Ticket} ticket Выбранное обращение.
+ * @returns {string} HTML содержимого модалки.
+ */
 export function renderTicketDetails(ticket: Ticket): string {
   return `
     <div class="sw-ticket-modal__meta">
@@ -44,6 +67,12 @@ export function renderTicketDetails(ticket: Ticket): string {
   `;
 }
 
+/**
+ * Рендерит блок с вложениями обращения.
+ *
+ * @param {Ticket} ticket Обращение пользователя.
+ * @returns {string} HTML блока вложений.
+ */
 function renderTicketAttachments(ticket: Ticket): string {
   if (!ticket.media.length) {
     return "";
@@ -67,6 +96,12 @@ function renderTicketAttachments(ticket: Ticket): string {
   `;
 }
 
+/**
+ * Рендерит панель оценки закрытого обращения.
+ *
+ * @param {Ticket} ticket Обращение пользователя.
+ * @returns {string} HTML блока оценки.
+ */
 export function renderRatingPanel(ticket: Ticket): string {
   if (ticket.status !== "closed") {
     return "";
@@ -100,6 +135,11 @@ export function renderRatingPanel(ticket: Ticket): string {
   `;
 }
 
+/**
+ * Рендерит чат внутри обращения.
+ *
+ * @returns {string} HTML блока переписки.
+ */
 function renderTicketChatPanel(): string {
   return `
     <section class="sw-chat" data-sw-chat>
@@ -118,6 +158,13 @@ function renderTicketChatPanel(): string {
   `;
 }
 
+/**
+ * Рендерит одно сообщение в чате обращения.
+ *
+ * @param {TicketMessage} message Сообщение переписки.
+ * @param {string} currentUserId Идентификатор текущего пользователя.
+ * @returns {string} HTML сообщения.
+ */
 export function renderChatMessage(message: TicketMessage, currentUserId: string): string {
   const isOwn = message.authorId === currentUserId;
   const roleLabel = message.authorRole === "user" ? "" : " · поддержка";
@@ -135,6 +182,11 @@ export function renderChatMessage(message: TicketMessage, currentUserId: string)
   `;
 }
 
+/**
+ * Рендерит полный виджет техподдержки.
+ *
+ * @returns {string} HTML виджета.
+ */
 export function renderSupportWidget(): string {
   return `
     <div class="support-widget" data-support-page>

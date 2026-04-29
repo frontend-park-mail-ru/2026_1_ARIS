@@ -1,3 +1,8 @@
+/**
+ * Вспомогательные функции страницы профиля.
+ *
+ * Содержит локальные утилиты, используемые модулями страницы.
+ */
 import type { DisplayProfile } from "./types";
 import { renderAvatarMarkup, type AvatarOptions } from "../../utils/avatar";
 

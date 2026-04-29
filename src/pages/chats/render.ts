@@ -1,3 +1,8 @@
+/**
+ * Рендер страницы чатов.
+ *
+ * Содержит функции генерации HTML и обновления DOM для страницы.
+ */
 import { chatsState, chatsPageMounted } from "./state";
 import { domPatch } from "../../vdom/patch";
 import {

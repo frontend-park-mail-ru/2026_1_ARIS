@@ -1,3 +1,6 @@
+/**
+ * Левая навигационная колонка приложения.
+ */
 import { getFeedMode, getSessionUser, setFeedMode, type FeedMode } from "../../state/session";
 import { clearFeedCache } from "../../pages/feed/cache";
 import { clearWidgetbarCache } from "../widgetbar/widgetbar";
@@ -30,8 +33,8 @@ function normalisePath(path: string): string {
 /**
  * Рендерит элемент навигации боковой панели.
  *
- * @param {SidebarItemOptions} options
- * @returns {string}
+ * @param {SidebarItemOptions} options Параметры элемента меню.
+ * @returns {string} HTML-разметка пункта боковой панели.
  */
 function renderSidebarItem({
   href = "#",
@@ -77,8 +80,8 @@ function renderSidebarItem({
 /**
  * Рендерит левую боковую панель.
  *
- * @param {RenderSidebarOptions} [options={}]
- * @returns {string}
+ * @param {RenderSidebarOptions} [options={}] Параметры рендера.
+ * @returns {string} HTML-разметка боковой панели.
  */
 export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {}): string {
   const currentPath = normalisePath(window.location.pathname);
@@ -165,7 +168,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
 /**
  * Инициализирует элементы управления боковой панели.
  *
- * @param {Document|HTMLElement} [root=document]
+ * @param {Document|HTMLElement} [root=document] Корень, внутри которого живёт sidebar.
  * @returns {void}
  */
 export function initSidebar(root: Document | HTMLElement = document): void {

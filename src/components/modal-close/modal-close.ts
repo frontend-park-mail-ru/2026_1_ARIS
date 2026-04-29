@@ -1,3 +1,6 @@
+/**
+ * Кнопка закрытия модальных окон.
+ */
 import { renderButton } from "../button/button";
 
 type RenderModalCloseButtonOptions = {

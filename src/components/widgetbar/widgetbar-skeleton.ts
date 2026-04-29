@@ -1,3 +1,11 @@
+/**
+ * Скелетон правой колонки с виджетами.
+ */
+/**
+ * Рендерит placeholder-версию widgetbar.
+ *
+ * @returns {string} HTML-разметка скелетона.
+ */
 export function renderWidgetbarSkeleton(): string {
   const nameWidths = [110, 140, 100, 125];
 

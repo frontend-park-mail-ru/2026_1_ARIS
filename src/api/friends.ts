@@ -1,8 +1,24 @@
+/**
+ * Модуль слоя API.
+ *
+ * Содержит клиентские запросы и нормализацию данных для интерфейса.
+ */
+/**
+ * API для работы с друзьями и заявками в друзья.
+ *
+ * Содержит:
+ * - загрузку списков друзей и заявок;
+ * - отправку, принятие, отклонение и отзыв заявок;
+ * - удаление из друзей.
+ */
 import { ApiError, apiRequest } from "./core/client";
 
-// Повторно экспортируем ApiError для кода, который импортирует его из этого модуля.
+// Повторно экспортируем `ApiError`, чтобы сохранить текущие импорты в других модулях.
 export { ApiError };
 
+/**
+ * Сырой объект пользователя в ответах API по друзьям.
+ */
 type RawFriend = {
   avatarID?: number | null;
   id?: number | string;
@@ -16,19 +32,35 @@ type RawFriend = {
   createdAt?: string;
 };
 
+/**
+ * Сырой ответ API со списком друзей или заявок.
+ */
 type RawFriendsResponse = {
   friends?: RawFriend[];
 };
 
+/**
+ * Статус дружбы в клиентском коде.
+ */
 export type FriendStatus = "pending" | "accepted";
 
+/**
+ * Пользователь в списке друзей или заявок.
+ */
 export type Friend = {
+  /** Идентификатор профиля. */
   profileId: string;
+  /** Имя пользователя. */
   firstName: string;
+  /** Фамилия пользователя. */
   lastName: string;
+  /** Логин пользователя. */
   username: string;
+  /** Текущий статус дружбы. */
   status: FriendStatus;
+  /** Ссылка на аватар пользователя. */
   avatarLink?: string | undefined;
+  /** Дата создания дружбы или заявки в формате ISO. */
   createdAt?: string | undefined;
 };
 
@@ -64,6 +96,15 @@ async function mutateFriendship(
   await apiRequest<unknown>(path, { method, body: payload }, {});
 }
 
+/**
+ * Загружает список друзей текущего пользователя по статусу.
+ *
+ * @param {FriendStatus} [status=\"accepted\"] Нужный статус дружбы.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<Friend[]>} Нормализованный список друзей или заявок.
+ * @example
+ * const acceptedFriends = await getFriends();
+ */
 export function getFriends(
   status: FriendStatus = "accepted",
   signal?: AbortSignal,
@@ -71,6 +112,16 @@ export function getFriends(
   return requestFriends(`/api/friends/${status}`, signal);
 }
 
+/**
+ * Загружает друзей выбранного профиля.
+ *
+ * @param {string} profileId Идентификатор профиля.
+ * @param {FriendStatus} [status=\"accepted\"] Нужный статус дружбы.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<Friend[]>} Список друзей или заявок для указанного профиля.
+ * @example
+ * const friends = await getUserFriends(\"7\");
+ */
 export function getUserFriends(
   profileId: string,
   status: FriendStatus = "accepted",
@@ -84,6 +135,13 @@ export function getUserFriends(
   return requestFriends(path, signal);
 }
 
+/**
+ * Загружает входящие заявки в друзья.
+ *
+ * @param {FriendStatus} [status=\"pending\"] Нужный статус заявок.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<Friend[]>} Список входящих заявок.
+ */
 export function getIncomingFriendRequests(
   status: FriendStatus = "pending",
   signal?: AbortSignal,
@@ -91,6 +149,13 @@ export function getIncomingFriendRequests(
   return requestFriends(`/api/friends/requests/incoming/${status}`, signal);
 }
 
+/**
+ * Загружает исходящие заявки в друзья.
+ *
+ * @param {FriendStatus} [status=\"pending\"] Нужный статус заявок.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<Friend[]>} Список исходящих заявок.
+ */
 export function getOutgoingFriendRequests(
   status: FriendStatus = "pending",
   signal?: AbortSignal,
@@ -98,22 +163,54 @@ export function getOutgoingFriendRequests(
   return requestFriends(`/api/friends/requests/outgoing/${status}`, signal);
 }
 
+/**
+ * Отправляет заявку в друзья.
+ *
+ * @param {string} friendId Идентификатор профиля получателя.
+ * @returns {Promise<void>}
+ * @example
+ * await requestFriendship(\"7\");
+ */
 export function requestFriendship(friendId: string): Promise<void> {
   return mutateFriendship("/api/friends/request", "POST", { friendID: Number(friendId) });
 }
 
+/**
+ * Принимает входящую заявку в друзья.
+ *
+ * @param {string} requesterId Идентификатор отправителя заявки.
+ * @returns {Promise<void>}
+ */
 export function acceptFriendRequest(requesterId: string): Promise<void> {
   return mutateFriendship(`/api/friends/accept/${encodeURIComponent(requesterId)}`, "POST");
 }
 
+/**
+ * Отклоняет входящую заявку в друзья.
+ *
+ * @param {string} requesterId Идентификатор отправителя заявки.
+ * @returns {Promise<void>}
+ */
 export function declineFriendRequest(requesterId: string): Promise<void> {
   return mutateFriendship(`/api/friends/decline/${encodeURIComponent(requesterId)}`, "POST");
 }
 
+/**
+ * Отзывает ранее отправленную заявку в друзья.
+ *
+ * @param {string} addresseeId Идентификатор адресата заявки.
+ * @returns {Promise<void>}
+ */
 export function revokeFriendRequest(addresseeId: string): Promise<void> {
   return mutateFriendship(`/api/friends/request/${encodeURIComponent(addresseeId)}`, "DELETE");
 }
 
+/**
+ * Удаляет пользователя из друзей.
+ *
+ * @param {string} friendId Идентификатор профиля друга.
+ * @returns {Promise<void>}
+ */
 export function deleteFriend(friendId: string): Promise<void> {
   return mutateFriendship(`/api/friends/${encodeURIComponent(friendId)}`, "DELETE");
 }

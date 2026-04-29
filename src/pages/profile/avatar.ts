@@ -1,3 +1,6 @@
+/**
+ * Управление аватаром профиля и связанными действиями.
+ */
 import type { DisplayProfile } from "./types";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import {

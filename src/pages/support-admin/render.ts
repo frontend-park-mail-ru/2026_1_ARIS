@@ -1,3 +1,8 @@
+/**
+ * Рендер страницы админки поддержки.
+ *
+ * Содержит функции генерации HTML и обновления DOM для страницы.
+ */
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import type { Ticket, TicketLine, TicketMessage } from "../../api/support";

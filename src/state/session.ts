@@ -1,3 +1,12 @@
+/**
+ * Глобальное состояние пользовательской сессии.
+ *
+ * Отвечает за:
+ * - восстановление пользователя из `localStorage`
+ * - синхронизацию с серверной сессией
+ * - хранение текущего режима ленты
+ * - рассылку событий `sessionchange`
+ */
 import { getCurrentUser, type User, type UserRole } from "../api/auth";
 import { getMyProfile } from "../api/profile";
 import { isNetworkUnavailableError } from "./network-status";
@@ -12,7 +21,9 @@ export type FeedMode = "by-time" | "for-you";
  * Глобальное состояние клиентской сессии.
  */
 export type SessionState = {
+  /** Авторизованный пользователь или `null`, если пользователь гость. */
   user: User | null;
+  /** Выбранный режим сортировки ленты. */
   feedMode: FeedMode;
 };
 
@@ -36,6 +47,18 @@ export const sessionStore = new StateManager<SessionState>({
 const SESSION_USER_STORAGE_KEY = "arisfront:session-user";
 const PUBLIC_GUEST_SESSION_PATHS = new Set(["/", "/feed", "/login", "/register", "/support"]);
 
+/**
+ * Извлекает ссылку на аватар из произвольного payload профиля.
+ *
+ * Нужен как защитный слой между фронтом и backend-контрактом:
+ * сервер в разных ручках использует разные имена поля.
+ *
+ * @param {unknown} payload Ответ API профиля.
+ * @returns {string} Нормализованная ссылка на аватар или пустая строка.
+ *
+ * @example
+ * getAvatarLinkFromPayload({ imageLink: "/media/avatar.jpg" });
+ */
 function getAvatarLinkFromPayload(payload: unknown): string {
   if (!payload || typeof payload !== "object") {
     return "";
@@ -57,6 +80,14 @@ function isUserRole(value: unknown): value is UserRole {
   return value === "user" || value === "support_l1" || value === "support_l2" || value === "admin";
 }
 
+/**
+ * Восстанавливает пользователя из `localStorage`.
+ *
+ * @returns {User | null} Последний сохранённый пользователь или `null`.
+ *
+ * @example
+ * const user = readPersistedSessionUser();
+ */
 function readPersistedSessionUser(): User | null {
   try {
     const raw = localStorage.getItem(SESSION_USER_STORAGE_KEY);
@@ -97,6 +128,15 @@ function readPersistedSessionUser(): User | null {
   }
 }
 
+/**
+ * Сохраняет пользователя в `localStorage`.
+ *
+ * @param {User | null} user Пользователь для сохранения.
+ * @returns {void}
+ *
+ * @example
+ * persistSessionUser(currentUser);
+ */
 function persistSessionUser(user: User | null): void {
   try {
     if (!user) {
@@ -110,11 +150,31 @@ function persistSessionUser(user: User | null): void {
   }
 }
 
+/**
+ * Приводит pathname к единому виду без хвостовых слешей.
+ *
+ * @param {string} pathname Исходный путь.
+ * @returns {string} Нормализованный путь.
+ */
 function normalizePathname(pathname: string): string {
   const normalized = pathname.replace(/\/+$/g, "");
   return normalized || "/";
 }
 
+/**
+ * Определяет, нужно ли делать auth-probe на backend при старте приложения.
+ *
+ * Для гостевых публичных страниц без сохранённой сессии лишний запрос только
+ * создаёт шум в консоли и ухудшает Lighthouse, поэтому здесь есть ранний выход.
+ *
+ * @param {User | null} savedUser Пользователь, восстановленный из `localStorage`.
+ * @returns {boolean} `true`, если серверную сессию нужно проверить.
+ *
+ * @example
+ * if (shouldProbeBackendSession(savedUser)) {
+ *   await getCurrentUser();
+ * }
+ */
 function shouldProbeBackendSession(savedUser: User | null): boolean {
   if (savedUser) {
     return true;
@@ -146,7 +206,7 @@ function emitSessionChange(key: SessionChangeDetail["key"]): void {
 }
 
 /**
- * Возвращает snapshot состояния сессии только для чтения.
+ * Возвращает снимок состояния сессии только для чтения.
  */
 export function getSessionState(): SessionState {
   return sessionStore.get() as SessionState;
@@ -166,6 +226,13 @@ export function getFeedMode(): FeedMode {
   return sessionStore.get().feedMode;
 }
 
+/**
+ * Применяет пользователя к состоянию и при необходимости рассылает событие.
+ *
+ * @param {User | null} user Пользователь для сохранения.
+ * @param {boolean} [emit=true] Нужно ли отправить `sessionchange`.
+ * @returns {void}
+ */
 function applySessionUser(user: User | null, emit = true): void {
   sessionStore.patch({ user });
   persistSessionUser(user);
@@ -176,6 +243,12 @@ function applySessionUser(user: User | null, emit = true): void {
 
 /**
  * Устанавливает текущего пользователя в состояние сессии.
+ *
+ * @param {User | null} user Новый пользователь.
+ * @returns {void}
+ *
+ * @example
+ * setSessionUser(user);
  */
 export function setSessionUser(user: User | null): void {
   applySessionUser(user, true);
@@ -183,6 +256,9 @@ export function setSessionUser(user: User | null): void {
 
 /**
  * Устанавливает текущего пользователя без широковещательного события sessionchange.
+ *
+ * @param {User | null} user Новый пользователь.
+ * @returns {void}
  */
 export function setSessionUserSilently(user: User | null): void {
   applySessionUser(user, false);
@@ -190,6 +266,8 @@ export function setSessionUserSilently(user: User | null): void {
 
 /**
  * Удаляет текущего пользователя из состояния сессии.
+ *
+ * @returns {void}
  */
 export function clearSessionUser(): void {
   sessionStore.patch({ user: null });
@@ -199,6 +277,12 @@ export function clearSessionUser(): void {
 
 /**
  * Устанавливает текущий режим ленты.
+ *
+ * @param {FeedMode} mode Новый режим ленты.
+ * @returns {void}
+ *
+ * @example
+ * setFeedMode("for-you");
  */
 export function setFeedMode(mode: FeedMode): void {
   sessionStore.patch({ feedMode: mode });
@@ -207,7 +291,12 @@ export function setFeedMode(mode: FeedMode): void {
 }
 
 /**
- * Инициализирует состояние сессии из localStorage и backend-сессии.
+ * Инициализирует состояние сессии из `localStorage` и серверной сессии.
+ *
+ * @returns {Promise<void>}
+ *
+ * @example
+ * await initSession();
  */
 export async function initSession(): Promise<void> {
   const savedMode = localStorage.getItem("feedMode");

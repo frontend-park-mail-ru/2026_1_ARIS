@@ -1,3 +1,8 @@
+/**
+ * Модуль слоя API.
+ *
+ * Содержит клиентские запросы и нормализацию данных для интерфейса.
+ */
 import { trackedFetch } from "../../state/network-status";
 
 /**
@@ -20,7 +25,7 @@ type ErrorResponse = {
 };
 
 /**
- * Безопасно парсит JSON-тело ответа.
+ * Безопасно разбирает JSON-тело ответа.
  * Возвращает `fallback`, если тело пустое или не поддаётся разбору.
  */
 export async function parseJson<T>(response: Response, fallback: T): Promise<T> {
@@ -29,12 +34,12 @@ export async function parseJson<T>(response: Response, fallback: T): Promise<T> 
   try {
     return text ? (JSON.parse(text) as T) : fallback;
   } catch {
-    return { error: text || "invalid server response" } as T;
+    return { error: text || "Некорректный ответ сервера" } as T;
   }
 }
 
 /**
- * Создаёт типизированную ApiError из неуспешного ответа.
+ * Создаёт экземпляр `ApiError` из неуспешного ответа.
  */
 export function createApiError(
   fallbackMessage: string,
@@ -75,7 +80,7 @@ function isBodyInit(value: unknown): value is BodyInit {
 
 /**
  * Выполняет типизированный API-запрос с автоматическим разбором JSON и обработкой ошибок.
- * GET/HEAD запросы дедуплицируются: одновременные вызовы одного URL получают тот же Promise.
+ * GET- и HEAD-запросы дедуплицируются: одновременные вызовы одного URL получают один `Promise`.
  */
 export async function apiRequest<T>(
   url: string,
@@ -84,7 +89,7 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const { body, headers = {}, method = "GET", credentials = "include", signal } = options;
 
-  // Requests with an AbortSignal are not deduplicated — each caller manages its own lifecycle
+  // Запросы с AbortSignal не дедуплицируются: каждый вызов управляет своим жизненным циклом сам.
   const dedup = (method === "GET" || method === "HEAD") && !signal;
   const dedupKey = `${method}:${url}`;
 
@@ -112,7 +117,9 @@ export async function apiRequest<T>(
   const promise = trackedFetch(url, requestInit)
     .then((response) =>
       parseJson<T>(response, emptyFallback).then((data) => {
-        if (!response.ok) throw createApiError(`request to ${url} failed`, response.status, data);
+        if (!response.ok) {
+          throw createApiError(`Ошибка запроса к ${url}`, response.status, data);
+        }
         return data;
       }),
     )

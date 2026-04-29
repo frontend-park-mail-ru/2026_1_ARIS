@@ -1,3 +1,6 @@
+/**
+ * Локальные данные и helper-функции для dev-профилей.
+ */
 export type ProfileRecord = {
   id: string;
   publicId: number;

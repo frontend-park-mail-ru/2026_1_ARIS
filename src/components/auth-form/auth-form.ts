@@ -1,3 +1,6 @@
+/**
+ * Разметка формы авторизации и регистрации.
+ */
 import { renderButton } from "../button/button";
 import { renderInput } from "../input/input";
 import type { RegisterStep, RegisterValues } from "../../state/register-draft";
@@ -30,8 +33,8 @@ type RenderAuthFormOptions = {
 /**
  * Рендерит одно поле формы авторизации с инпутом и областью ошибки.
  *
- * @param {RenderAuthFieldOptions} options
- * @returns {string}
+ * @param {RenderAuthFieldOptions} options Параметры поля.
+ * @returns {string} HTML-разметка поля.
  */
 function renderAuthField({
   type,
@@ -70,9 +73,9 @@ function renderAuthField({
 /**
  * Рендерит поля входа.
  *
- * @param {boolean} hasError
- * @param {Partial<RegisterValues>} [values={}]
- * @returns {string}
+ * @param {boolean} hasError Нужно ли показать ошибочное состояние полей.
+ * @param {Partial<RegisterValues>} [values={}] Текущие значения формы.
+ * @returns {string} HTML-разметка полей входа.
  */
 function renderLoginFields(hasError: boolean, values: Partial<RegisterValues> = {}): string {
   const state: InputState = hasError ? "error" : "default";
@@ -101,8 +104,8 @@ function renderLoginFields(hasError: boolean, values: Partial<RegisterValues> = 
 /**
  * Рендерит поле выбора пола.
  *
- * @param {Partial<RegisterValues>} [values={}]
- * @returns {string}
+ * @param {Partial<RegisterValues>} [values={}] Значения формы регистрации.
+ * @returns {string} HTML-разметка select-поля.
  */
 function renderGenderField(values: Partial<RegisterValues> = {}): string {
   return `
@@ -123,8 +126,8 @@ function renderGenderField(values: Partial<RegisterValues> = {}): string {
 /**
  * Рендерит прогресс шага регистрации.
  *
- * @param {RegisterStep} step
- * @returns {string}
+ * @param {RegisterStep} step Текущий шаг регистрации.
+ * @returns {string} HTML-разметка индикатора прогресса.
  */
 function renderRegisterProgress(step: RegisterStep): string {
   return `
@@ -147,8 +150,8 @@ function renderRegisterProgress(step: RegisterStep): string {
 /**
  * Рендерит поля первого шага регистрации.
  *
- * @param {Partial<RegisterValues>} values
- * @returns {string}
+ * @param {Partial<RegisterValues>} values Текущие значения формы.
+ * @returns {string} HTML-разметка первого шага.
  */
 function renderRegisterStepOneFields(values: Partial<RegisterValues> = {}): string {
   return `
@@ -190,8 +193,8 @@ function renderRegisterStepOneFields(values: Partial<RegisterValues> = {}): stri
 /**
  * Рендерит поля второго шага регистрации.
  *
- * @param {Partial<RegisterValues>} values
- * @returns {string}
+ * @param {Partial<RegisterValues>} values Текущие значения формы.
+ * @returns {string} HTML-разметка второго шага.
  */
 function renderRegisterStepTwoFields(values: Partial<RegisterValues> = {}): string {
   return `
@@ -278,9 +281,9 @@ function renderRegisterStepActions(step: RegisterStep): string {
 /**
  * Рендерит поля регистрации для текущего шага.
  *
- * @param {RegisterStep} step
- * @param {Partial<RegisterValues>} values
- * @returns {string}
+ * @param {RegisterStep} step Текущий шаг регистрации.
+ * @param {Partial<RegisterValues>} values Текущие значения формы.
+ * @returns {string} HTML-разметка активного шага регистрации.
  */
 function renderRegisterFields(
   step: RegisterStep,
@@ -301,8 +304,8 @@ function renderRegisterFields(
 /**
  * Рендерит форму авторизации.
  *
- * @param {RenderAuthFormOptions} options
- * @returns {string}
+ * @param {RenderAuthFormOptions} options Параметры формы.
+ * @returns {string} HTML-разметка формы авторизации или регистрации.
  */
 export function renderAuthForm({
   mode,

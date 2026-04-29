@@ -1,18 +1,39 @@
+/**
+ * API ленты и преобразование постов в карточки интерфейса.
+ *
+ * Содержит:
+ * - загрузку авторизованной и публичной ленты
+ * - запросы популярных постов
+ * - нормализацию backend-ответов в `PostcardModel`
+ */
 import { apiRequest } from "./core/client";
 
 export type PostcardModel = {
+  /** Идентификатор поста. */
   id: string;
+  /** Идентификатор автора. */
   authorId: string;
+  /** Логин или username автора. */
   author: string;
+  /** Имя автора. */
   firstName: string;
+  /** Фамилия автора. */
   lastName: string;
+  /** Ссылка на аватар автора. */
   avatar: string;
+  /** Относительное время публикации для UI. */
   time: string;
+  /** Исходная дата публикации для сортировки и tooltip. */
   timeRaw: string;
+  /** Текст поста. */
   text: string;
+  /** Количество лайков. */
   likes: number;
+  /** Количество комментариев. */
   comments: number;
+  /** Количество репостов. */
   reposts: number;
+  /** Ссылки на изображения поста. */
   images: string[];
 };
 
@@ -61,6 +82,9 @@ type PopularPostsResponse = {
 
 /**
  * Форматирует ISO-дату в относительную временную метку на русском языке.
+ *
+ * @param {string} [iso] Дата публикации в ISO-формате.
+ * @returns {string} Относительная подпись времени.
  */
 function formatRelativeTime(iso?: string): string {
   if (!iso) return "";
@@ -80,7 +104,13 @@ function formatRelativeTime(iso?: string): string {
 }
 
 /**
- * Преобразует сырой элемент ленты из backend в PostcardModel.
+ * Преобразует сырой элемент ленты с сервера в `PostcardModel`.
+ *
+ * @param {FeedItem} item Сырой объект поста из API.
+ * @returns {PostcardModel} Нормализованная карточка для UI.
+ *
+ * @example
+ * const card = mapFeedItemToPostcard(rawPost);
  */
 export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
   return {
@@ -103,7 +133,10 @@ export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
 }
 
 /**
- * Преобразует сырой FeedResponse в типизированные данные для UI.
+ * Преобразует сырой `FeedResponse` в типизированные данные для интерфейса.
+ *
+ * @param {FeedResponse} [response] Ответ API ленты.
+ * @returns {{ items: PostcardModel[]; nextCursor: string; hasMore: boolean }} Данные для интерфейса.
  */
 export function mapFeedResponse(response?: FeedResponse) {
   return {
@@ -115,6 +148,12 @@ export function mapFeedResponse(response?: FeedResponse) {
 
 /**
  * GET /api/feed — лента авторизованного пользователя.
+ *
+ * @param {FeedRequestOptions} [options={}] Параметры пагинации и сигнал отмены.
+ * @returns {Promise<FeedResponse>} Сырой ответ API ленты.
+ *
+ * @example
+ * const response = await getFeed({ limit: 20 });
  */
 export async function getFeed({
   cursor = "",
@@ -130,6 +169,9 @@ export async function getFeed({
 
 /**
  * GET /api/public/feed — публичная лента, авторизация не требуется.
+ *
+ * @param {FeedRequestOptions} [options={}] Параметры пагинации и сигнал отмены.
+ * @returns {Promise<FeedResponse>} Сырой ответ публичной ленты.
  */
 export async function getPublicFeed({
   cursor = "",
@@ -149,6 +191,8 @@ export async function getPublicFeed({
 
 /**
  * GET /api/posts/popular — популярные посты для авторизованного пользователя.
+ *
+ * @returns {Promise<PopularPostsResponse>} Список популярных постов.
  */
 export async function getPopularPosts(): Promise<PopularPostsResponse> {
   return apiRequest<PopularPostsResponse>("/api/posts/popular", {}, {});
@@ -156,6 +200,8 @@ export async function getPopularPosts(): Promise<PopularPostsResponse> {
 
 /**
  * GET /api/public/popular-posts — популярные посты для гостей.
+ *
+ * @returns {Promise<PopularPostsResponse>} Список популярных постов.
  */
 export async function getPublicPopularPosts(): Promise<PopularPostsResponse> {
   return apiRequest<PopularPostsResponse>("/api/public/popular-posts", {}, {});

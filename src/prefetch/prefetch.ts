@@ -1,3 +1,8 @@
+/**
+ * Инфраструктура предзагрузки маршрутов.
+ *
+ * Управляет регистрацией и запуском предзагрузки данных по маршрутам.
+ */
 type PrefetchLoader = () => Promise<void>;
 
 const registry = new Map<string, PrefetchLoader>();
@@ -8,7 +13,7 @@ export function registerPrefetch(path: string, loader: PrefetchLoader): void {
 }
 
 /**
- * Запускает предзагрузку данных для маршрута (fire-and-forget).
+ * Запускает предзагрузку данных для маршрута без ожидания результата.
  * Если загрузка уже идёт или данные в кэше — лоадер вернётся мгновенно.
  */
 export function prefetchRoute(path: string): void {

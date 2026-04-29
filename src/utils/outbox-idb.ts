@@ -1,15 +1,28 @@
+/**
+ * IndexedDB-хранилище отложенных сетевых запросов.
+ *
+ * Используется для offline-first сценариев, когда запись нельзя отправить
+ * сразу и её нужно сохранить до фоновой синхронизации.
+ */
 const OUTBOX_DB_NAME = "aris-outbox";
 const OUTBOX_DB_VERSION = 1;
 const OUTBOX_STORE = "requests";
 export const OUTBOX_SYNC_TAG = "aris-outbox";
 
 export type OutboxRequest = {
+  /** Автоинкрементный идентификатор записи в IndexedDB. */
   id?: number;
+  /** URL исходного запроса. */
   url: string;
+  /** HTTP-метод запроса. */
   method: "POST" | "PATCH" | "DELETE";
+  /** Заголовки исходного запроса. */
   headers?: Record<string, string>;
+  /** Сериализованное тело запроса. */
   body?: string;
+  /** Время постановки в очередь. */
   createdAt: number;
+  /** Количество попыток повторной отправки. */
   attempts: number;
 };
 
@@ -19,6 +32,11 @@ type SyncRegistrationWithSync = ServiceWorkerRegistration & {
   };
 };
 
+/**
+ * Открывает IndexedDB-хранилище outbox.
+ *
+ * @returns {Promise<IDBDatabase>} Подключение к базе.
+ */
 function openOutboxDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(OUTBOX_DB_NAME, OUTBOX_DB_VERSION);
@@ -35,10 +53,17 @@ function openOutboxDb(): Promise<IDBDatabase> {
     };
 
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("failed to open outbox db"));
+    request.onerror = () =>
+      reject(request.error ?? new Error("Не удалось открыть outbox-хранилище."));
   });
 }
 
+/**
+ * Ставит запрос в очередь фоновой синхронизации.
+ *
+ * @param {Omit<OutboxRequest, "createdAt" | "attempts">} request Исходный запрос без служебных полей.
+ * @returns {Promise<void>}
+ */
 export async function enqueueRequest(
   request: Omit<OutboxRequest, "createdAt" | "attempts">,
 ): Promise<void> {
@@ -55,12 +80,20 @@ export async function enqueueRequest(
     } satisfies OutboxRequest);
 
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error("failed to enqueue request"));
+    transaction.onerror = () =>
+      reject(transaction.error ?? new Error("Не удалось добавить запрос в outbox."));
   });
 
   db.close();
 }
 
+/**
+ * Регистрирует фоновую синхронизацию для обработки outbox.
+ *
+ * Если `Background Sync` недоступен, посылает сообщение активному service worker.
+ *
+ * @returns {Promise<void>}
+ */
 export async function registerOutboxSync(): Promise<void> {
   if (!("serviceWorker" in navigator)) return;
 
@@ -76,11 +109,17 @@ export async function registerOutboxSync(): Promise<void> {
 
 export class OutboxQueuedError extends Error {
   constructor() {
-    super("Request queued for background sync");
+    super("Запрос поставлен в очередь фоновой синхронизации.");
     this.name = "OutboxQueuedError";
   }
 }
 
+/**
+ * Проверяет, что ошибка означает успешную постановку запроса в outbox.
+ *
+ * @param {unknown} error Проверяемая ошибка.
+ * @returns {error is OutboxQueuedError}
+ */
 export function isOutboxQueuedError(error: unknown): error is OutboxQueuedError {
   return error instanceof Error && error.name === "OutboxQueuedError";
 }

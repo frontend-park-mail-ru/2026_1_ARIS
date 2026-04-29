@@ -1,3 +1,12 @@
+/**
+ * Страница профиля.
+ *
+ * Отвечает за:
+ * - загрузку собственного и публичного профиля
+ * - сборку постов профиля
+ * - подготовку данных для рендера секций
+ * - инициализацию интерактивных сценариев страницы
+ */
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import {
@@ -99,6 +108,13 @@ async function resolveProfileFriendState(
   return { relation: "none" };
 }
 
+/**
+ * Обогащает список друзей ссылками на аватар, если API друзей их не прислало.
+ *
+ * @param {Awaited<ReturnType<typeof getFriends>>} friends Исходный список друзей.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<Awaited<ReturnType<typeof getFriends>>>} Список с заполненными avatarLink.
+ */
 async function enrichFriendsWithAvatarLinks(
   friends: Awaited<ReturnType<typeof getFriends>>,
   signal?: AbortSignal,
@@ -125,6 +141,13 @@ async function enrichFriendsWithAvatarLinks(
   );
 }
 
+/**
+ * Загружает и собирает отображаемую модель профиля.
+ *
+ * @param {ProfileParams} params Параметры маршрута профиля.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<DisplayProfile>} Модель профиля для рендера.
+ */
 async function resolveProfile(
   params: ProfileParams,
   signal?: AbortSignal,
@@ -181,6 +204,12 @@ async function resolveProfile(
   return resolveMockProfile(params);
 }
 
+/**
+ * Форматирует дату поста в относительную подпись для профиля.
+ *
+ * @param {string} [iso] Исходная дата поста.
+ * @returns {string} Подпись времени.
+ */
 function formatPostRelativeTime(iso?: string): string {
   if (!iso) return "";
 
@@ -208,6 +237,13 @@ function formatPostRelativeTime(iso?: string): string {
   }).format(createdAt);
 }
 
+/**
+ * Преобразует API-пост в модель карточки профиля.
+ *
+ * @param {PostResponse} post Пост из backend API.
+ * @param {DisplayProfile} profile Профиль владельца постов.
+ * @returns {ProfilePost} Нормализованный пост.
+ */
 function mapApiPostToProfilePost(post: PostResponse, profile: DisplayProfile): ProfilePost {
   const media = Array.isArray(post.media)
     ? post.media.filter(
@@ -248,6 +284,16 @@ function mapApiPostToProfilePost(post: PostResponse, profile: DisplayProfile): P
   return nextPost;
 }
 
+/**
+ * Загружает и нормализует посты профиля.
+ *
+ * Для собственного профиля результат дополнительно кешируется локально,
+ * чтобы офлайн-возврат в профиль не выглядел пустым.
+ *
+ * @param {DisplayProfile} profile Профиль страницы.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<ProfilePost[]>} Список постов профиля.
+ */
 async function resolveProfilePosts(
   profile: DisplayProfile,
   signal?: AbortSignal,
@@ -458,6 +504,6 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
   initProfilePostListLayout(root);
 }
 
-// Экспортируемый путь для resolveProfilePath — используется другими модулями.
+// Экспортируемый путь для `resolveProfilePath`, который используют другие модули.
 export { normalizeProfileId };
 export { ownAvatarOverride, setOwnAvatarOverride, currentProfilePosts };

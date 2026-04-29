@@ -1,3 +1,6 @@
+/**
+ * Рендер формы редактирования профиля.
+ */
 import type { DisplayProfile, EditableProfileFields, ProfileFieldErrorMap } from "./types";
 import { escapeHtml } from "./helpers";
 

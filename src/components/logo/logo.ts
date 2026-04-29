@@ -1,7 +1,7 @@
 /**
  * Рендерит логотип приложения.
  *
- * @returns {string}
+ * @returns {string} HTML-разметка логотипа со ссылкой на ленту.
  */
 export function renderLogo(): string {
   return `

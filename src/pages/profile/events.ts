@@ -1,3 +1,8 @@
+/**
+ * Обработчики событий страницы профиля.
+ *
+ * Содержит пользовательские сценарии и реакцию интерфейса на действия пользователя.
+ */
 import { createOrResolvePrivateChatId } from "../../api/chat";
 import { createPost, deletePost, updatePost } from "../../api/posts";
 import {

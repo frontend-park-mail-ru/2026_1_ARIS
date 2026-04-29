@@ -1,3 +1,8 @@
+/**
+ * Рендер страницы статистики поддержки.
+ *
+ * Содержит функции генерации HTML и обновления DOM для страницы.
+ */
 import type { SupportStats, Ticket } from "../../api/support";
 
 function escapeHtml(str: string | number): string {

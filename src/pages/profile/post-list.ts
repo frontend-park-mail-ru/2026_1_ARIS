@@ -1,3 +1,6 @@
+/**
+ * Логика списка постов на странице профиля.
+ */
 function getActiveProfilePostFilter(root: Document | HTMLElement): "all" | "own" {
   const activeButton = root.querySelector<HTMLElement>("[data-profile-post-filter].is-active");
   return activeButton?.getAttribute("data-profile-post-filter") === "own" ? "own" : "all";

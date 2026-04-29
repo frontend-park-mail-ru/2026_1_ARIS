@@ -1,3 +1,8 @@
+/**
+ * Вспомогательные функции страницы чатов.
+ *
+ * Содержит локальные утилиты, используемые модулями страницы.
+ */
 import { getSessionUser } from "../../state/session";
 import { renderAvatarMarkup, resolveAvatarSrc } from "../../utils/avatar";
 import { resolveProfilePath } from "../profile/profile-data";

@@ -1,3 +1,12 @@
+/**
+ * Страница друзей.
+ *
+ * Отвечает за:
+ * - рендер списков друзей и заявок
+ * - запуск действий над дружбой
+ * - открытие приватного чата из карточки пользователя
+ * - синхронизацию активной вкладки и поиска
+ */
 import {
   acceptFriendRequest,
   declineFriendRequest,
@@ -28,11 +37,23 @@ type FriendsRoot = (Document | HTMLElement) & {
   __friendsBound?: boolean;
 };
 
+/**
+ * Переводит пользователя на страницу чатов с выбранным диалогом.
+ *
+ * @param {string} chatId Идентификатор чата.
+ * @returns {void}
+ */
 function navigateToChat(chatId: string): void {
   window.history.pushState({}, "", `/chats?chatId=${encodeURIComponent(chatId)}`);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+/**
+ * Создаёт или находит приватный чат для друга.
+ *
+ * @param {Friend} friend Пользователь, с которым открывается диалог.
+ * @returns {Promise<string>} Идентификатор чата.
+ */
 async function resolveChatIdForFriend(friend: Friend): Promise<string> {
   return createOrResolvePrivateChatId(friend.profileId, {
     expectedTitle: `${friend.firstName} ${friend.lastName}`,
@@ -51,6 +72,13 @@ export function invalidateFriendsState(): void {
   clearWidgetbarCache();
 }
 
+/**
+ * Выполняет действие над дружбой с общим UI-обработчиком загрузки и ошибок.
+ *
+ * @param {ParentNode} root Корень страницы друзей.
+ * @param {() => Promise<void>} action Асинхронное действие.
+ * @returns {Promise<void>}
+ */
 async function runFriendAction(root: ParentNode, action: () => Promise<void>): Promise<void> {
   friendsState.loading = true;
   friendsState.errorMessage = "";
@@ -71,7 +99,9 @@ async function runFriendAction(root: ParentNode, action: () => Promise<void>): P
 /**
  * Рендерит полный HTML страницы друзей.
  *
- * @returns {Promise<string>}
+ * @param {Record<string, string>} [_params] Параметры маршрута.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<string>} HTML страницы.
  */
 export async function renderFriends(
   _params?: Record<string, string>,
@@ -117,7 +147,8 @@ export async function renderFriends(
 /**
  * Подключает все обработчики событий для страницы друзей.
  *
- * @param {Document | HTMLElement} root
+ * @param {Document | HTMLElement} [root=document] Корень страницы друзей.
+ * @returns {void}
  */
 export function initFriends(root: Document | HTMLElement = document): void {
   const bindableRoot = root as FriendsRoot;

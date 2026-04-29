@@ -1,3 +1,6 @@
+/**
+ * Загрузка, отправка и синхронизация сообщений страницы чатов.
+ */
 import { getChatMessages, sendChatMessage } from "../../api/chat";
 import type { ChatMessage } from "../../api/chat";
 import { getSessionUser } from "../../state/session";

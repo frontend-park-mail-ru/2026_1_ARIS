@@ -1,3 +1,9 @@
+/**
+ * Страница статистики техподдержки.
+ *
+ * Загружает сводные показатели и показывает fallback на список тикетов,
+ * если endpoint статистики временно недоступен.
+ */
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { getSessionUser } from "../../state/session";

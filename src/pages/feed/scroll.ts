@@ -1,3 +1,6 @@
+/**
+ * Бесконечная прокрутка ленты.
+ */
 import { initPostcardExpand } from "../../components/postcard/postcard";
 import { activeFeedState, setActiveFeedState } from "./state";
 import { renderFeedCards } from "./render";

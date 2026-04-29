@@ -1,7 +1,8 @@
 /**
  * Форматирует сырую строку даты в вид `dd/mm/yyyy`.
- * @param {string} digits
- * @returns {string}
+ *
+ * @param {string} digits Последовательность цифр без разделителей.
+ * @returns {string} Дата в пользовательском формате.
  */
 function formatDateDigits(digits: string): string {
   const clean = digits.replace(/\D/g, "").slice(0, 8);
@@ -79,6 +80,9 @@ type MaskRoot = (Document | HTMLElement) & {
 
 /**
  * Инициализирует маски ввода внутри указанного корня.
+ *
+ * @param {Document | HTMLElement} [root=document] Корень для делегированных обработчиков.
+ * @returns {void}
  */
 export function initInputMasks(root: Document | HTMLElement = document): void {
   const bindableRoot = root as MaskRoot;

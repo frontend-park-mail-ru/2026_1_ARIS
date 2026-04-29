@@ -1,3 +1,8 @@
+/**
+ * Вспомогательные функции страницы поддержки.
+ *
+ * Содержит локальные утилиты, используемые модулями страницы.
+ */
 import type { TicketCategory, TicketStatus } from "../../api/support";
 
 export const CATEGORY_LABELS: Record<TicketCategory, string> = {

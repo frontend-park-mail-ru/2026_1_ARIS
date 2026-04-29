@@ -1,3 +1,8 @@
+/**
+ * Состояние страницы друзей.
+ *
+ * Содержит runtime-состояние, кэши и вспомогательные функции управления состоянием.
+ */
 import {
   getFriends,
   getIncomingFriendRequests,
@@ -14,6 +19,9 @@ const FRIENDS_ACTIVE_TAB_STORAGE_KEY = "friends.activeTab";
 /** Кэш уже определённых учебных подписей по profileId, чтобы не делать лишние API-запросы. */
 export const friendEducationCache = new Map<string, string>();
 
+/**
+ * Реактивное хранилище данных страницы друзей.
+ */
 export const friendsStore = new StateManager<FriendsState>({
   loaded: false,
   loadedForUserId: "",
@@ -28,8 +36,8 @@ export const friendsStore = new StateManager<FriendsState>({
 });
 
 /**
- * Прокси над friendsStore: чтения возвращают актуальный снимок, записи вызывают patch().
- * Позволяет использовать friendsState.x = y везде без изменения вызывающего кода.
+ * Прокси над `friendsStore`: чтения возвращают актуальный снимок, записи вызывают `patch()`.
+ * Позволяет использовать `friendsState.x = y` без изменений вызывающего кода.
  */
 export const friendsState = new Proxy({} as FriendsState, {
   get(_target, prop: string) {
@@ -41,6 +49,14 @@ export const friendsState = new Proxy({} as FriendsState, {
   },
 });
 
+/**
+ * Преобразует ошибку загрузки друзей в сообщение для UI.
+ *
+ * @param {unknown} error Исходная ошибка.
+ * @param {string} fallbackMessage Сообщение по умолчанию.
+ * @param {string} [unavailableMessage="Нет соединения с сервером."] Сообщение для офлайн-сценария.
+ * @returns {string} Текст ошибки для отображения пользователю.
+ */
 export function getFriendsErrorMessage(
   error: unknown,
   fallbackMessage: string,
@@ -50,6 +66,11 @@ export function getFriendsErrorMessage(
   return error instanceof Error ? error.message : fallbackMessage;
 }
 
+/**
+ * Сбрасывает состояние страницы друзей к начальному виду.
+ *
+ * @returns {void}
+ */
 export function resetFriendsState(): void {
   friendsState.loaded = false;
   friendsState.loading = false;
@@ -81,7 +102,12 @@ export function restoreFriendsActiveTab(userId: string): void {
   }
 }
 
-/** Сохраняет текущую активную вкладку в sessionStorage. */
+/**
+ * Сохраняет активную вкладку в `sessionStorage`.
+ *
+ * @param {string} userId Идентификатор текущего пользователя.
+ * @returns {void}
+ */
 export function persistFriendsActiveTab(userId: string): void {
   if (!userId) return;
   try {
@@ -106,7 +132,7 @@ async function resolveFriendEducationLabel(friend: Friend): Promise<string> {
       return institution;
     }
   } catch {
-    // Переходим к резервному варианту с username.
+    // Переходим к резервному варианту с логином пользователя.
   }
 
   const fallback = friend.username ? `@${friend.username}` : "Пользователь ARIS";
@@ -118,7 +144,12 @@ async function mapFriendToDisplay(friend: Friend): Promise<DisplayFriend> {
   return { ...friend, educationLabel: await resolveFriendEducationLabel(friend) };
 }
 
-/** Параллельно загружает друзей, входящие и исходящие заявки из backend. */
+/**
+ * Параллельно загружает друзей и заявки с сервера.
+ *
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<FriendsData>} Наборы друзей для всех вкладок.
+ */
 export async function loadFriendsFromBackend(signal?: AbortSignal): Promise<FriendsData> {
   const [friends, incoming, outgoing] = await Promise.all([
     getFriends("accepted", signal),
@@ -135,7 +166,16 @@ export async function loadFriendsFromBackend(signal?: AbortSignal): Promise<Frie
   return { friends: mappedFriends, incoming: mappedIncoming, outgoing: mappedOutgoing };
 }
 
-/** Загружает данные друзей, если они ещё не загружены, либо принудительно. */
+/**
+ * Загружает данные страницы друзей.
+ *
+ * Без `force` повторный запрос не делается, если данные уже есть:
+ * это защищает интерфейс от лишних сетевых скачков между вкладками.
+ *
+ * @param {boolean} [force=false] Игнорировать ли локальный флаг `loaded`.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<void>}
+ */
 export async function ensureFriendsLoaded(force = false, signal?: AbortSignal): Promise<void> {
   if ((!force && friendsState.loading) || (!force && friendsState.loaded)) return;
 
@@ -160,7 +200,12 @@ export async function ensureFriendsLoaded(force = false, signal?: AbortSignal): 
   }
 }
 
-/** Ищет друга по profileId в любом из трёх списков. */
+/**
+ * Ищет пользователя в любом списке страницы друзей.
+ *
+ * @param {string} friendId Идентификатор профиля.
+ * @returns {DisplayFriend | null} Найденный пользователь или `null`.
+ */
 export function findFriendById(friendId: string): DisplayFriend | null {
   return (
     friendsState.friends.find((f) => f.profileId === friendId) ??
@@ -170,7 +215,11 @@ export function findFriendById(friendId: string): DisplayFriend | null {
   );
 }
 
-/** Возвращает список друзей, видимых в текущей вкладке с учётом поискового запроса. */
+/**
+ * Возвращает список друзей для текущей вкладки и строки поиска.
+ *
+ * @returns {DisplayFriend[]} Отфильтрованный набор карточек друзей.
+ */
 export function getVisibleFriends(): DisplayFriend[] {
   const source =
     friendsState.activeTab === "accepted"

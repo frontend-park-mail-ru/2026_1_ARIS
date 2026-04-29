@@ -1,5 +1,15 @@
+/**
+ * Скелетон шапки приложения.
+ *
+ * Повторяет структуру header, чтобы при асинхронном старте не прыгал layout.
+ */
 import { getSessionUser } from "../../state/session";
 
+/**
+ * Рендерит скелетон шапки для гостя или авторизованного пользователя.
+ *
+ * @returns {string} HTML-разметка скелетона.
+ */
 export function renderHeaderSkeleton(): string {
   const user = getSessionUser();
   const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : "";

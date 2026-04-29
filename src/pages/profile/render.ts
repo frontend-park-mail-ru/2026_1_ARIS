@@ -1,3 +1,8 @@
+/**
+ * Рендер страницы профиля.
+ *
+ * Содержит функции генерации HTML и обновления DOM для страницы.
+ */
 import type { DisplayProfile, ProfilePost } from "./types";
 import { escapeHtml, getAvatarImageSrc, hasVisibleValue, renderAvatar } from "./helpers";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
@@ -212,7 +217,7 @@ export function renderDeleteFriendModal(profile: DisplayProfile): string {
   `;
 }
 
-// Локальный форматтер даты дружбы — не импортируем из state во избежание цикличной зависимости.
+// Локальный форматтер даты дружбы, чтобы не импортировать его из state и не создавать цикличную зависимость.
 function formatFriendshipDateLocal(value?: string): string {
   if (!value) {
     return "";

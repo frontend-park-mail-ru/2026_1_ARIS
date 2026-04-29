@@ -1,7 +1,18 @@
+/**
+ * Встраиваемый iframe-виджет техподдержки.
+ *
+ * Создаёт кнопку открытия и лениво монтирует iframe только в момент первого открытия,
+ * чтобы техподдержка не утяжеляла начальную загрузку каждой страницы.
+ */
 let widgetInitialised = false;
 
+/**
+ * Инициализирует iframe-виджет техподдержки.
+ *
+ * @returns {void}
+ */
 export function initSupportIframe(): void {
-  // Не создавать виджет внутри самого iframe
+  // Внутри iframe виджет не нужен, иначе получится рекурсивное вложение.
   if (window.self !== window.top) return;
   if (widgetInitialised) return;
   widgetInitialised = true;

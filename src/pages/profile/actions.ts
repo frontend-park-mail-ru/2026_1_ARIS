@@ -1,3 +1,6 @@
+/**
+ * Действия страницы профиля: сохранение, удаление и побочные эффекты UI.
+ */
 import { uploadPostImages } from "../../api/posts";
 import { normalizeName } from "../../utils/profile-validation";
 import type { UpdateProfilePayload } from "../../api/profile";

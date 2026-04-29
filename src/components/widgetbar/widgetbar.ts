@@ -1,3 +1,11 @@
+/**
+ * Правая колонка с рекомендательными виджетами.
+ *
+ * Отвечает за:
+ * - подбор пользователей для гостя и авторизованного пользователя
+ * - объединение нескольких источников рекомендаций
+ * - кэширование готовой разметки на короткое время
+ */
 import { getSuggestedUsers, getPublicPopularUsers, getLatestEvents } from "../../api/users";
 import {
   getFriends,
@@ -48,9 +56,9 @@ export function clearWidgetbarCache(): void {
 /**
  * Рендерит кнопку-заглушку.
  *
- * @param {string} text
- * @param {string} className
- * @returns {string}
+ * @param {string} text Текст кнопки.
+ * @param {string} className CSS-класс.
+ * @returns {string} HTML-разметка кнопки.
  */
 function renderStubButton(text: string, className: string): string {
   return `
@@ -60,6 +68,12 @@ function renderStubButton(text: string, className: string): string {
   `;
 }
 
+/**
+ * Рендерит пустое состояние карточки виджетбара.
+ *
+ * @param {string} text Текст сообщения.
+ * @returns {string} HTML-разметка пустого состояния.
+ */
 function renderWidgetbarEmptyState(text: string): string {
   return `<p class="widgetbar-card__empty">${text}</p>`;
 }
@@ -67,10 +81,14 @@ function renderWidgetbarEmptyState(text: string): string {
 /**
  * Рендерит ссылку на профиль.
  *
- * @param {string} text
- * @param {string} profileId
- * @param {string} className
- * @returns {string}
+ * Для гостя ссылка ведёт в авторизацию, чтобы не показывать защищённые профили
+ * как будто они доступны без сессии.
+ *
+ * @param {string} text Текст ссылки.
+ * @param {Pick<WidgetbarUser, "id" | "username" | "firstName" | "lastName">} user Пользователь ссылки.
+ * @param {string} className CSS-класс ссылки.
+ * @param {boolean} isAuthorised Авторизован ли текущий пользователь.
+ * @returns {string} HTML-разметка ссылки.
  */
 function renderProfileLink(
   text: string,
@@ -106,6 +124,12 @@ function renderProfileLink(
   `;
 }
 
+/**
+ * Рендерит аватар пользователя для карточек виджетбара.
+ *
+ * @param {WidgetbarUser} user Пользователь виджета.
+ * @returns {string} HTML-разметка аватара.
+ */
 function renderWidgetbarAvatar(user: WidgetbarUser): string {
   const label = `${user.firstName} ${user.lastName}`.trim() || user.username || "Пользователь";
   return renderAvatarMarkup("widgetbar-person__avatar", label, user.avatarLink, {
@@ -138,6 +162,12 @@ function isArisTeamUser(user: WidgetbarUser): boolean {
   );
 }
 
+/**
+ * Объединяет несколько групп пользователей без дублей.
+ *
+ * @param {WidgetbarUser[][]} groups Наборы пользователей из разных источников.
+ * @returns {WidgetbarUser[]} Уникальный список пользователей.
+ */
 function mergeUniqueUsers(groups: WidgetbarUser[][]): WidgetbarUser[] {
   const seen = new Set<string>();
   const result: WidgetbarUser[] = [];
@@ -157,6 +187,13 @@ function mergeUniqueUsers(groups: WidgetbarUser[][]): WidgetbarUser[] {
   return result;
 }
 
+/**
+ * Загружает список пользователей для виджета с безопасным fallback.
+ *
+ * @param {string} scope Техническое имя источника для логов.
+ * @param {() => Promise<{ items?: WidgetbarUser[] | WidgetbarEventUser[] }>} loader Функция загрузки.
+ * @returns {Promise<WidgetbarLoadResult<WidgetbarUser>>} Результат с флагом ошибки.
+ */
 async function loadWidgetbarUsers(
   scope: string,
   loader: () => Promise<{ items?: WidgetbarUser[] | WidgetbarEventUser[] }>,
@@ -176,6 +213,13 @@ async function loadWidgetbarUsers(
   }
 }
 
+/**
+ * Загружает идентификаторы пользователей, которых нужно исключить из рекомендаций.
+ *
+ * @param {string} scope Техническое имя источника для логов.
+ * @param {() => Promise<Array<{ profileId: string }>>} loader Функция загрузки.
+ * @returns {Promise<string[]>} Идентификаторы профилей.
+ */
 async function loadExcludedFriendIds(
   scope: string,
   loader: () => Promise<Array<{ profileId: string }>>,
@@ -192,7 +236,7 @@ async function loadExcludedFriendIds(
 /**
  * Рендерит виджет популярных пользователей для гостей.
  *
- * @returns {Promise<string>}
+ * @returns {Promise<string>} HTML карточки виджета.
  */
 async function renderPopularUsersWidget(): Promise<string> {
   const { items, failed } = await loadWidgetbarUsers("popular-users-guest", () =>
@@ -231,7 +275,7 @@ async function renderPopularUsersWidget(): Promise<string> {
 /**
  * Рендерит виджет «Возможно, вы знакомы».
  *
- * @returns {Promise<string>}
+ * @returns {Promise<string>} HTML карточки виджета.
  */
 async function renderKnownPeopleWidget(): Promise<string> {
   const [suggestedResult, popularResult, eventResult, friends, incoming, outgoing] =

@@ -1,3 +1,8 @@
+/**
+ * Рендер страницы друзей.
+ *
+ * Содержит функции генерации HTML и обновления DOM для страницы.
+ */
 import { friendsState, getVisibleFriends } from "./state";
 import type { DisplayFriend, FriendsTab } from "./types";
 import { TAB_TITLES } from "./types";

@@ -1,7 +1,20 @@
+/**
+ * Утилиты для аватаров.
+ *
+ * Отвечают за:
+ * - безопасный рендер разметки аватара
+ * - нормализацию ссылок на изображения
+ * - fallback на инициалы
+ * - мягкую предзагрузку изображений
+ */
 export type AvatarOptions = {
+  /** Ширина изображения в пикселях. */
   width?: number;
+  /** Высота изображения в пикселях. */
   height?: number;
+  /** Режим загрузки изображения. */
   loading?: "eager" | "lazy";
+  /** Приоритет сетевой загрузки. */
   fetchPriority?: "high" | "low" | "auto";
 };
 
@@ -9,6 +22,15 @@ const EMPTY_AVATAR_VALUES = new Set(["", "null", "undefined", "none"]);
 const brokenAvatarSrcSet = new Set<string>();
 const loadedAvatarSrcSet = new Set<string>();
 
+/**
+ * Экранирует строку для безопасной вставки в HTML.
+ *
+ * @param {string} value Исходное значение.
+ * @returns {string} Экранированная строка.
+ *
+ * @example
+ * escapeHtml("<admin>");
+ */
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -18,6 +40,15 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Строит инициалы пользователя для fallback-аватара.
+ *
+ * @param {string} name Отображаемое имя пользователя.
+ * @returns {string} Две буквы для кружка-аватара.
+ *
+ * @example
+ * getAvatarInitials("Сергей Шульгиненко");
+ */
 export function getAvatarInitials(name: string): string {
   const cleaned = name.replace(/^@+/, "").trim().split(/\s+/).filter(Boolean);
 
@@ -54,6 +85,15 @@ function normaliseAvatarSrc(avatarLink?: string | null): string {
   return `/image-proxy?url=${encodeURIComponent(link)}`;
 }
 
+/**
+ * Помечает адрес аватара как нерабочий.
+ *
+ * Нужен, чтобы не гонять повторные запросы к уже сломанному изображению
+ * и быстрее показывать fallback с инициалами.
+ *
+ * @param {string | null | undefined} src Исходная ссылка на аватар.
+ * @returns {void}
+ */
 export function markAvatarSrcBroken(src?: string | null): void {
   const avatarSrc = normaliseAvatarSrc(src);
   if (avatarSrc) {
@@ -61,6 +101,12 @@ export function markAvatarSrcBroken(src?: string | null): void {
   }
 }
 
+/**
+ * Возвращает пригодный для рендера адрес аватара.
+ *
+ * @param {string | null | undefined} avatarLink Ссылка из данных пользователя.
+ * @returns {string} Рабочая ссылка или пустая строка для fallback-рендера.
+ */
 export function resolveAvatarSrc(avatarLink?: string | null): string {
   const avatarSrc = normaliseAvatarSrc(avatarLink);
   return avatarSrc && !brokenAvatarSrcSet.has(avatarSrc) ? avatarSrc : "";
@@ -83,7 +129,7 @@ function preloadAvatarSrc(src: string, timeoutMs: number): Promise<void> {
     };
 
     image.onload = () => {
-      // Image confirmed valid — move it out of broken if timeout placed it there.
+      // Если изображение успешно загрузилось, убираем его из списка битых адресов.
       brokenAvatarSrcSet.delete(src);
       loadedAvatarSrcSet.add(src);
       resolveOnce();
@@ -105,14 +151,27 @@ function preloadAvatarSrc(src: string, timeoutMs: number): Promise<void> {
       return;
     }
 
-    // On timeout, stop blocking skeleton replacement but keep the URL eligible
-    // for rendering as <img>. Only a real image error should trigger initials.
+    // По таймауту перестаём ждать предзагрузку, но не считаем адрес битым.
+    // Инициалы показываем только после реальной ошибки загрузки.
     window.setTimeout(() => {
       resolveOnce();
     }, timeoutMs);
   });
 }
 
+/**
+ * Предзагружает набор аватаров перед рендером.
+ *
+ * Используется там, где важно избежать мигания fallback-инициалов
+ * в момент первой отрисовки списка.
+ *
+ * @param {Array<string | null | undefined>} avatarLinks Ссылки на аватары.
+ * @param {number} [timeoutMs=900] Максимальное время ожидания одной картинки.
+ * @returns {Promise<void>}
+ *
+ * @example
+ * await prepareAvatarLinks([user.avatarLink, friend.avatarLink]);
+ */
 export async function prepareAvatarLinks(
   avatarLinks: Array<string | null | undefined>,
   timeoutMs = 900,
@@ -121,6 +180,18 @@ export async function prepareAvatarLinks(
   await Promise.all(srcs.map((src) => preloadAvatarSrc(src, timeoutMs)));
 }
 
+/**
+ * Возвращает HTML-разметку аватара с fallback на инициалы.
+ *
+ * @param {string} className CSS-класс корневого элемента аватара.
+ * @param {string} label Подпись для `alt` и `aria-label`.
+ * @param {string | null | undefined} [avatarLink] Ссылка на аватар пользователя.
+ * @param {AvatarOptions} [options={}] Дополнительные параметры изображения.
+ * @returns {string} Готовая HTML-строка.
+ *
+ * @example
+ * renderAvatarMarkup("header__avatar", "Иван Иванов", user.avatarLink);
+ */
 export function renderAvatarMarkup(
   className: string,
   label: string,

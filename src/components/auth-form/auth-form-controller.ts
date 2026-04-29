@@ -1,3 +1,6 @@
+/**
+ * Контроллер формы авторизации и регистрации.
+ */
 import { ApiError, loginUser, registerUser, validateRegisterStepOne } from "../../api/auth";
 import { getMyProfile } from "../../api/profile";
 import { setSessionUser } from "../../state/session";

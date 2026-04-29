@@ -1,3 +1,8 @@
+/**
+ * Автоматический fallback аватаров на инициалы.
+ *
+ * Следит за DOM и заменяет невалидные изображения аватаров на буквенный placeholder.
+ */
 import { markAvatarSrcBroken } from "./avatar";
 
 const AVATAR_SELECTOR = 'img[class*="avatar"]';
@@ -98,6 +103,12 @@ function processAvatarFallbacks(root: ParentNode): void {
   });
 }
 
+/**
+ * Инициализирует глобальный fallback для аватаров.
+ *
+ * @param {ParentNode} [root=document] Корень, внутри которого нужно обработать аватары.
+ * @returns {void}
+ */
 export function initAvatarFallback(root: ParentNode = document): void {
   processAvatarFallbacks(root);
 

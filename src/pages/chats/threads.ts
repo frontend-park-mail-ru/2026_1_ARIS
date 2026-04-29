@@ -1,3 +1,6 @@
+/**
+ * Преобразование и правила отображения тредов страницы чатов.
+ */
 import { getProfileRecordById } from "../profile/profile-data";
 import type { ChatSummary } from "../../api/chat";
 import { getChatContactHint } from "./contact-hints";

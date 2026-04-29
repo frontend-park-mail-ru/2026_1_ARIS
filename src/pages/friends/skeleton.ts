@@ -1,3 +1,8 @@
+/**
+ * Скелетон страницы друзей.
+ *
+ * Содержит разметку загрузочного состояния страницы.
+ */
 import { renderHeaderSkeleton } from "../../components/header/header-skeleton";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbarSkeleton } from "../../components/widgetbar/widgetbar-skeleton";

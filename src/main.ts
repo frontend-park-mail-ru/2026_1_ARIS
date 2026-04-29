@@ -52,6 +52,37 @@ const loadSupportAdmin = () =>
 const loadSupportStats = () =>
   import(/* webpackChunkName: "page-support-stats" */ "./pages/support-stats/support-stats");
 
+function normalisePathname(pathname: string): string {
+  return pathname.replace(/\/+$/g, "") || "/";
+}
+
+function matchesRoutePath(pathname: string, routePath: string): boolean {
+  const normalisedPathname = normalisePathname(pathname);
+  const normalisedRoutePath = normalisePathname(routePath);
+
+  if (!normalisedRoutePath.includes(":")) {
+    return normalisedPathname === normalisedRoutePath;
+  }
+
+  if (normalisedRoutePath === "/profile/:id") {
+    return /^\/profile\/[^/]+$/i.test(normalisedPathname);
+  }
+
+  if (normalisedRoutePath === "/id:id") {
+    return /^\/id[^/]+$/i.test(normalisedPathname);
+  }
+
+  return false;
+}
+
+function getBootstrapDocumentTitle(
+  pathname: string,
+  routes: Array<{ path: string; title?: string }>,
+): string {
+  const matchedRoute = routes.find((route) => matchesRoutePath(pathname, route.path));
+  return matchedRoute?.title ?? "ARISNET";
+}
+
 // ---------------------------------------------------------------------------
 // Маршруты
 // ---------------------------------------------------------------------------
@@ -62,9 +93,7 @@ if (!(root instanceof HTMLElement)) {
   throw new Error('Root element "#app" not found');
 }
 
-registerServiceWorker();
-
-const router = createRouter(root, [
+const routes = [
   {
     path: "/",
     title: "ARISNET — Feed",
@@ -125,7 +154,13 @@ const router = createRouter(root, [
     title: "ARISNET — Support Admin",
     render: async () => (await loadSupportAdmin()).renderSupportAdmin(),
   },
-]);
+];
+
+document.title = getBootstrapDocumentTitle(window.location.pathname, routes);
+
+registerServiceWorker();
+
+const router = createRouter(root, routes);
 
 // ---------------------------------------------------------------------------
 // Prefetch: данные + JS-чанки по hover

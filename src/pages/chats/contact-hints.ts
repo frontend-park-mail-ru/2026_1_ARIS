@@ -2,9 +2,9 @@ import { getSessionUser } from "../../state/session";
 
 type ChatContactHint = {
   chatId: string;
-  profileId?: string;
-  title?: string;
-  avatarLink?: string;
+  profileId?: string | undefined;
+  title?: string | undefined;
+  avatarLink?: string | undefined;
 };
 
 const CHAT_CONTACT_HINTS_KEY_PREFIX = "arisfront:chat-contact-hints";

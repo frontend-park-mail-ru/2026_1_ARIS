@@ -1,25 +1,13 @@
+/**
+ * Действия страницы профиля: сохранение, удаление и побочные эффекты UI.
+ */
 import { uploadPostImages } from "../../api/posts";
-import { updateMyProfile } from "../../api/profile";
 import { normalizeName } from "../../utils/profile-validation";
 import type { UpdateProfilePayload } from "../../api/profile";
 
 import type { ComposerMediaItem, EditableProfileFields } from "./types";
-import {
-  postComposerState,
-  avatarModalState,
-  validateProfilePatch,
-  hasProfileFieldErrors,
-  setOwnAvatarOverride,
-  updateSessionUserAvatarLink,
-  normaliseAvatarLink,
-} from "./state";
-import { syncAvatarModalUi } from "./avatar";
-import { syncPostComposerUi } from "./composer";
-import {
-  renderProfileFieldErrors,
-  clearProfileFieldErrors,
-  focusFirstProfileErrorField,
-} from "./render";
+import { postComposerState, validateProfilePatch, hasProfileFieldErrors } from "./state";
+import { renderProfileFieldErrors, clearProfileFieldErrors } from "./render";
 
 export async function uploadPendingComposerImages(): Promise<void> {
   const pendingItems = postComposerState.mediaItems.filter((item) => !item.isUploaded && item.file);

@@ -1,3 +1,12 @@
+/**
+ * Страница ленты.
+ *
+ * Отвечает за:
+ * - загрузку публичной и авторизованной ленты
+ * - использование памяти и persistent-кэша
+ * - построение центральной колонки
+ * - мягкое обновление контента без полного rerender страницы
+ */
 import { domPatch } from "../../vdom/patch";
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
@@ -5,6 +14,7 @@ import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { getFeed, getPublicFeed, mapFeedResponse, type PostcardModel } from "../../api/feed";
 import { getFriends, type Friend } from "../../api/friends";
 import { getFeedMode, getSessionUser } from "../../state/session";
+import { prepareAvatarLinks } from "../../utils/avatar";
 
 import type { FeedMode, FeedAuthKey, FeedCenterResult, ActiveFeedState } from "./types";
 import {
@@ -27,10 +37,6 @@ export { initFeedInfiniteScroll } from "./scroll";
 
 const FEED_BATCH_SIZE = 10;
 
-// ---------------------------------------------------------------------------
-// Вспомогательные функции
-// ---------------------------------------------------------------------------
-
 function isOfflineNetworkError(error: unknown): boolean {
   return !navigator.onLine || error instanceof TypeError;
 }
@@ -50,6 +56,15 @@ function getCurrentFeedMode(): FeedMode {
   return isFeedMode(mode) ? mode : "by-time";
 }
 
+/**
+ * Сортирует элементы ленты в зависимости от выбранного режима.
+ *
+ * Для режима `for-you` используется перемешивание, чтобы выдача ощущалась
+ * менее предсказуемой без отдельного рекомендательного backend-слоя.
+ *
+ * @param {PostcardModel[]} items Элементы ленты.
+ * @returns {PostcardModel[]} Отсортированный массив.
+ */
 function getSortedFeedItems(items: PostcardModel[]): PostcardModel[] {
   const result = [...items];
 
@@ -69,22 +84,33 @@ function getSortedFeedItems(items: PostcardModel[]): PostcardModel[] {
   return result.sort((a, b) => new Date(b.timeRaw).getTime() - new Date(a.timeRaw).getTime());
 }
 
-// ---------------------------------------------------------------------------
-// Загрузка данных
-// ---------------------------------------------------------------------------
-
+/**
+ * Загружает публичную ленту для гостевой страницы.
+ *
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<PostcardModel[]>} Готовые карточки ленты.
+ */
 async function buildGuestFeedItems(signal?: AbortSignal): Promise<PostcardModel[]> {
   const response = await getPublicFeed({ limit: 100, ...(signal ? { signal } : {}) });
   return getSortedFeedItems(mapFeedResponse(response).items);
 }
 
+/**
+ * Загружает ленту для авторизованного пользователя.
+ *
+ * После загрузки feed дополнительно подтягиваются друзья, чтобы в карточках
+ * использовать более точные имя и аватар автора, чем в сыром feed-ответе.
+ *
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<PostcardModel[]>} Готовые карточки ленты.
+ */
 async function buildAuthorisedFeedItems(signal?: AbortSignal): Promise<PostcardModel[]> {
   const [feedResult, friendsResult] = await Promise.allSettled([
     getFeed({ limit: 100, ...(signal ? { signal } : {}) }),
     getFriends("accepted", signal),
   ]);
 
-  // Propagate AbortError from either request before any caching logic
+  // Пробрасываем AbortError до любой логики кэширования.
   if (
     feedResult.status === "rejected" &&
     feedResult.reason instanceof Error &&
@@ -129,6 +155,13 @@ async function buildAuthorisedFeedItems(signal?: AbortSignal): Promise<PostcardM
   return getSortedFeedItems(filteredItems);
 }
 
+/**
+ * Возвращает данные ленты из памяти, persistent-кэша или сети.
+ *
+ * @param {boolean} isAuthorised Открыта ли лента авторизованным пользователем.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<FeedCenterResult>} Результат для центральной колонки.
+ */
 async function getCachedFeedData(
   isAuthorised: boolean,
   signal?: AbortSignal,
@@ -137,7 +170,7 @@ async function getCachedFeedData(
   const modeKey = getCurrentFeedMode();
   const cacheKey = `${authKey}:${modeKey}`;
 
-  // Если в памяти есть свежие данные (в пределах TTL) — сразу возвращаем без сетевого запроса.
+  // Если в памяти есть свежие данные в пределах TTL, сразу возвращаем их без сетевого запроса.
   const cachedItems = feedItemsCache.get(cacheKey);
   if (cachedItems?.length) {
     return { kind: "items", items: cachedItems };
@@ -163,10 +196,13 @@ async function getCachedFeedData(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Вспомогательные функции центральной колонки (используются в renderFeed и refreshFeedCenter)
-// ---------------------------------------------------------------------------
-
+/**
+ * Строит HTML центральной колонки и синхронизирует runtime-состояние ленты.
+ *
+ * @param {FeedCenterResult} feedResult Данные или готовый HTML.
+ * @param {boolean} isAuthorised Открыта ли лента авторизованным пользователем.
+ * @returns {string} Разметка центральной колонки.
+ */
 function buildFeedCenter(feedResult: FeedCenterResult, isAuthorised: boolean): string {
   if (feedResult.kind === "html") {
     disconnectFeedObserver();
@@ -189,12 +225,13 @@ function buildFeedCenter(feedResult: FeedCenterResult, isAuthorised: boolean): s
   return renderIncrementalFeedCenter(nextState.items, nextState.renderedCount);
 }
 
-// ---------------------------------------------------------------------------
-// Публичный API
-// ---------------------------------------------------------------------------
-
 /**
  * Предзагружает данные ленты в кэш. Если кэш актуален — возвращается мгновенно.
+ *
+ * @returns {Promise<void>}
+ *
+ * @example
+ * await prefetchFeed();
  */
 export async function prefetchFeed(): Promise<void> {
   const isAuthorised = getSessionUser() !== null;
@@ -208,7 +245,12 @@ export async function prefetchFeed(): Promise<void> {
 /**
  * Рендерит HTML страницы ленты.
  *
- * @returns {Promise<string>}
+ * @param {Record<string, string>} [_params] Параметры маршрута.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<string>} HTML страницы.
+ *
+ * @example
+ * const html = await renderFeed();
  */
 export async function renderFeed(
   _params?: Record<string, string>,
@@ -216,6 +258,10 @@ export async function renderFeed(
 ): Promise<string> {
   const isAuthorised = getSessionUser() !== null;
   const feedResult = await getCachedFeedData(isAuthorised, signal);
+  await prepareAvatarLinks([
+    getSessionUser()?.avatarLink,
+    ...(feedResult.kind === "items" ? feedResult.items.map((item) => item.avatar) : []),
+  ]);
   const centerMarkup = buildFeedCenter(feedResult, isAuthorised);
 
   return `
@@ -238,6 +284,9 @@ export async function renderFeed(
  * Обновляет центральную колонку ленты на месте без полного перерендера страницы.
  *
  * @returns {Promise<void>}
+ *
+ * @example
+ * await refreshFeedCenter();
  */
 export async function refreshFeedCenter(): Promise<void> {
   const center = document.querySelector(".app-layout__center");
@@ -256,10 +305,6 @@ export async function refreshFeedCenter(): Promise<void> {
   initFeedInfiniteScroll();
 }
 
-// ---------------------------------------------------------------------------
-// Глобальные слушатели обновления
-// ---------------------------------------------------------------------------
-
 function isFeedRouteActive(): boolean {
   const path = window.location.pathname.replace(/\/+$/g, "") || "/";
   return path === "/" || path === "/feed";
@@ -271,7 +316,7 @@ async function refreshFeedOnReturn(): Promise<void> {
   try {
     await refreshFeedCenter();
   } catch (error) {
-    console.error("[feed] refresh on return failed", error);
+    console.error("[feed] Не удалось обновить ленту при возврате на вкладку.", error);
   } finally {
     setIsFeedRefreshInFlight(false);
   }

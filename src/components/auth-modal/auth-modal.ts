@@ -1,5 +1,8 @@
-import { renderButton } from "../button/button";
+/**
+ * Разметка модального окна авторизации.
+ */
 import { renderAuthForm } from "../auth-form/auth-form";
+import { renderModalCloseButton } from "../modal-close/modal-close";
 import type { RegisterDraft } from "../../state/register-draft";
 
 export type AuthMode = "login" | "register";
@@ -12,13 +15,9 @@ type RenderAuthModalOptions = {
 export function renderAuthModalPanel(mode: AuthMode, draft: RegisterDraft | null): string {
   return `
     <div class="auth-modal__panel">
-      ${renderButton({
-        text: "×",
-        variant: "surface",
-        tag: "button",
-        type: "button",
+      ${renderModalCloseButton({
         className: "auth-modal__close",
-        attributes: 'aria-label="Закрыть" data-auth-modal-close',
+        attributes: "data-auth-modal-close",
       })}
 
       ${renderAuthForm({

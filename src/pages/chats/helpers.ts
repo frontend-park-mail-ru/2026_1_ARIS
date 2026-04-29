@@ -1,6 +1,27 @@
+/**
+ * Вспомогательные функции страницы чатов.
+ *
+ * Содержит локальные утилиты, используемые модулями страницы.
+ */
 import { getSessionUser } from "../../state/session";
+import { renderAvatarMarkup, resolveAvatarSrc } from "../../utils/avatar";
 import { resolveProfilePath } from "../profile/profile-data";
 import type { ChatViewMessage } from "./types";
+
+const CHAT_MONTH_SHORT = [
+  "янв",
+  "фев",
+  "мар",
+  "апр",
+  "май",
+  "июн",
+  "июл",
+  "авг",
+  "сен",
+  "окт",
+  "ноя",
+  "дек",
+] as const;
 
 /** Сортирует сообщения по времени создания `createdAt` в хронологическом порядке. */
 export function sortMessagesByCreatedAt(messages: ChatViewMessage[]): ChatViewMessage[] {
@@ -29,11 +50,11 @@ export function escapeHtml(value: string): string {
 
 /** Формирует URL аватара, направляя относительные ссылки через image proxy. */
 export function getAvatarSrc(avatarLink?: string): string {
-  if (!avatarLink) return "/assets/img/default-avatar.png";
-  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
-    return avatarLink;
-  }
-  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
+  return resolveAvatarSrc(avatarLink);
+}
+
+export function renderAvatarElement(className: string, label: string, avatarLink?: string): string {
+  return renderAvatarMarkup(className, label, avatarLink);
 }
 
 /** Возвращает полное имя текущего пользователя или пустую строку. */
@@ -65,28 +86,89 @@ export function getNormalisedPersonName(fullName: string): string {
   return fullName.trim().toLowerCase();
 }
 
-/** Форматирует дату в подпись вида `22 февр. 23:45`. */
-export function formatChatTime(value?: string): string {
-  if (!value) return "";
+function parseDate(value?: string): Date | null {
+  if (!value) return null;
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isSameCalendarDate(left: Date, right: Date): boolean {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function formatShortMonthDate(date: Date): string {
+  return `${String(date.getDate()).padStart(2, "0")} ${CHAT_MONTH_SHORT[date.getMonth()]}`;
+}
+
+/** Возвращает ключ календарной даты вида `2026-04-28`. */
+export function getChatDateKey(value?: string): string {
+  const parsed = parseDate(value);
+  if (!parsed) return "";
+  return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+}
+
+/** Возвращает true, если дата относится к сегодняшнему дню. */
+export function isChatDateToday(value?: string): boolean {
+  const parsed = parseDate(value);
+  if (!parsed) return false;
+  return isSameCalendarDate(parsed, new Date());
+}
+
+/** Форматирует дату в компактную подпись списка чатов. */
+export function formatChatTime(value?: string): string {
+  const parsed = parseDate(value);
+  if (!parsed) return "";
+  if (isSameCalendarDate(parsed, new Date())) {
+    return formatMessageTime(value);
+  }
+  const base = formatShortMonthDate(parsed);
+  return parsed.getFullYear() === new Date().getFullYear()
+    ? base
+    : `${base} ${parsed.getFullYear()}`;
+}
+
+/** Форматирует дату в подпись времени вида `23:45` для пузырей сообщений. */
+export function formatMessageTime(value?: string): string {
+  const parsed = parseDate(value);
+  if (!parsed) return "";
   return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "short",
     hour: "2-digit",
     minute: "2-digit",
   }).format(parsed);
 }
 
-/** Форматирует дату в подпись времени вида `23:45` для пузырей сообщений. */
-export function formatMessageTime(value?: string): string {
-  if (!value) return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return new Intl.DateTimeFormat("ru-RU", {
+/** Форматирует точную дату и время для tooltip по образцу постов. */
+export function formatChatExactTime(value?: string): string {
+  const parsed = parseDate(value);
+  if (!parsed) return "";
+  const datePart = new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
+  const timePart = new Intl.DateTimeFormat("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
   }).format(parsed);
+  return `${datePart}\n${timePart}`;
+}
+
+/** Форматирует подпись разделителя сообщений по дням. */
+export function formatChatDayLabel(value?: string): string {
+  const parsed = parseDate(value);
+  if (!parsed) return "";
+  if (isSameCalendarDate(parsed, new Date())) return "Сегодня";
+  const datePart = new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+  }).format(parsed);
+  return parsed.getFullYear() === new Date().getFullYear()
+    ? datePart
+    : `${datePart} ${parsed.getFullYear()}`;
 }
 
 /** Возвращает человекочитаемую подпись статуса доставки сообщения. */
@@ -120,9 +202,21 @@ export function isOwnMessage(authorId?: string, authorName?: string): boolean {
   return false;
 }
 
+function normalisePathname(pathname: string): string {
+  return pathname.replace(/\/+$/g, "") || "/";
+}
+
+function isChatsPath(pathname: string): boolean {
+  return normalisePathname(pathname) === "/chats";
+}
+
 /** Обновляет параметр `chatId` в URL страницы чатов без перезагрузки. */
 export function syncSelectedChatToUrl(chatId: string, options: { replace?: boolean } = {}): void {
   const nextUrl = new URL(window.location.href);
+  if (!isChatsPath(nextUrl.pathname)) {
+    return;
+  }
+
   if (chatId) {
     nextUrl.searchParams.set("chatId", chatId);
   } else {
@@ -137,5 +231,20 @@ export function syncSelectedChatToUrl(chatId: string, options: { replace?: boole
     window.history.replaceState({}, "", nextPath);
   } else {
     window.history.pushState({}, "", nextPath);
+  }
+}
+
+/** Удаляет случайно прилипший `chatId` на не-чатовых маршрутах. */
+export function stripChatIdFromNonChatsUrl(): void {
+  const nextUrl = new URL(window.location.href);
+  if (isChatsPath(nextUrl.pathname) || !nextUrl.searchParams.has("chatId")) {
+    return;
+  }
+
+  nextUrl.searchParams.delete("chatId");
+  const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextPath !== currentPath) {
+    window.history.replaceState({}, "", nextPath);
   }
 }

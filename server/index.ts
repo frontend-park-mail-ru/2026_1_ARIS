@@ -5,6 +5,7 @@ import path from "path";
 const app = express();
 const publicDir = path.resolve(__dirname, "..", "public");
 const distDir = path.resolve(__dirname, "..", "dist");
+const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
 
 app.use(morgan("dev"));
 
@@ -34,7 +35,11 @@ app.get("/image-proxy", async (req: Request, res: Response) => {
   }
 
   try {
-    const response = await fetch(url);
+    const resolvedUrl =
+      /^https?:\/\//i.test(url) || url.startsWith("data:")
+        ? url
+        : new URL(url, backendUrl).toString();
+    const response = await fetch(resolvedUrl);
 
     if (!response.ok) {
       res.status(response.status).send("Fetch failed");

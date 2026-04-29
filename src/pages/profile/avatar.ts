@@ -1,4 +1,8 @@
+/**
+ * Управление аватаром профиля и связанными действиями.
+ */
 import type { DisplayProfile } from "./types";
+import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import {
   avatarModalState,
   AVATAR_MIN_SIZE,
@@ -29,20 +33,24 @@ export function renderAvatarModal(profile: DisplayProfile): string {
         </div>
       `
     : `
-        <div
-          class="profile-avatar-modal__current-image profile-avatar-modal__current-image--placeholder"
-          data-profile-avatar-current-image
-          aria-hidden="true"
-        >
+      <div
+        class="profile-avatar-modal__current-image profile-avatar-modal__current-image--placeholder"
+        data-profile-avatar-current-image
+        aria-hidden="true"
+      >
+        <span class="profile-avatar-modal__initials">
           ${escapeHtml(getInitials(profile.firstName, profile.lastName))}
-        </div>
-      `;
+        </span>
+      </div>
+    `;
 
   return `
     <div
       class="profile-avatar-modal"
       data-profile-avatar-modal
-      data-profile-current-avatar-src="${escapeHtml(getAvatarImageSrc(profile.avatarLink))}"
+      data-profile-current-avatar-src="${
+        profile.avatarLink ? escapeHtml(getAvatarImageSrc(profile.avatarLink)) : ""
+      }"
       hidden
     >
       <section
@@ -53,14 +61,10 @@ export function renderAvatarModal(profile: DisplayProfile): string {
       >
         <header class="profile-avatar-modal__header">
           <h2 class="profile-avatar-modal__title">Изменить аватар</h2>
-          <button
-            type="button"
-            class="profile-avatar-modal__close"
-            data-profile-avatar-close
-            aria-label="Закрыть"
-          >
-            ×
-          </button>
+          ${renderModalCloseButton({
+            className: "profile-avatar-modal__close",
+            attributes: "data-profile-avatar-close",
+          })}
         </header>
 
         <p class="profile-avatar-modal__text">
@@ -177,14 +181,10 @@ export function renderAvatarDeleteModal(): string {
       >
         <header class="profile-avatar-delete-modal__header">
           <h2 class="profile-avatar-delete-modal__title">Удалить аватар</h2>
-          <button
-            type="button"
-            class="profile-avatar-delete-modal__close"
-            data-profile-avatar-delete-close
-            aria-label="Закрыть"
-          >
-            ×
-          </button>
+          ${renderModalCloseButton({
+            className: "profile-avatar-delete-modal__close",
+            attributes: "data-profile-avatar-delete-close",
+          })}
         </header>
 
         <p class="profile-avatar-delete-modal__text">
@@ -359,6 +359,7 @@ export async function loadAvatarFromUrl(
   try {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
       const previewImage = new Image();
+      previewImage.crossOrigin = "anonymous";
       previewImage.onload = () => resolve(previewImage);
       previewImage.onerror = () => reject(new Error("Не получилось загрузить текущее фото."));
       previewImage.src = src;
@@ -379,7 +380,11 @@ export function ensureAvatarEditorSource(root: ParentNode): void {
   }
 
   const currentAvatarSrc = readCurrentAvatarSrc(root);
-  if (!currentAvatarSrc || currentAvatarSrc === "/assets/img/default-avatar.png") {
+  if (
+    !currentAvatarSrc ||
+    currentAvatarSrc.includes("default-avatar") ||
+    currentAvatarSrc.startsWith("data:")
+  ) {
     return;
   }
 
@@ -449,6 +454,7 @@ export async function buildAvatarFile(root: ParentNode): Promise<File> {
 
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const previewImage = new Image();
+    previewImage.crossOrigin = "anonymous";
     previewImage.onload = () => resolve(previewImage);
     previewImage.onerror = () => reject(new Error("Не получилось подготовить изображение."));
     previewImage.src = avatarModalState.objectUrl!;

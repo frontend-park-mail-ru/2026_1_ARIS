@@ -1,24 +1,57 @@
+/**
+ * Сборщики отображаемой модели профиля.
+ *
+ * Преобразуют разные источники данных в единый `DisplayProfile`:
+ * - моковые записи
+ * - fallback-профили
+ * - ответы backend API
+ */
 import { getSessionUser } from "../../state/session";
 import { getProfileRecordById, type ProfileRecord } from "./profile-data";
 import type { ProfileResponse } from "../../api/profile";
 import type { DisplayProfile, EditableProfileFields, ProfileParams } from "./types";
 import { normalizeProfileId, normaliseAvatarLink, resolveOwnAvatarLink } from "./state";
 
+/**
+ * Нормализует часть имени до вида `Имя`.
+ *
+ * @param {string} value Исходное значение.
+ * @returns {string} Отформатированная часть имени.
+ */
 export function formatNamePart(value: string): string {
   if (!value) return "";
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 }
 
+/**
+ * Возвращает значение или человекочитаемый fallback.
+ *
+ * @param {string} value Исходное значение.
+ * @param {string} [fallback="Не указано"] Текст-заглушка.
+ * @returns {string} Очищенное значение или fallback.
+ */
 export function valueOrFallback(value: string, fallback = "Не указано"): string {
   return value.trim() || fallback;
 }
 
+/**
+ * Преобразует код пола в подпись для интерфейса.
+ *
+ * @param {EditableProfileFields["gender"]} value Значение из формы или API.
+ * @returns {string} Подпись для отображения.
+ */
 export function formatGender(value: EditableProfileFields["gender"]): string {
   if (value === "male") return "Мужской";
   if (value === "female") return "Женский";
   return "Не указано";
 }
 
+/**
+ * Форматирует дату рождения в локализованную строку.
+ *
+ * @param {string} [value] Дата в ISO-формате.
+ * @returns {string} Подпись для интерфейса.
+ */
 export function normaliseDate(value?: string): string {
   if (!value) return "";
 
@@ -41,6 +74,12 @@ export function normaliseDate(value?: string): string {
   }).format(parsed);
 }
 
+/**
+ * Форматирует дату дружбы без технического суффикса `г.`.
+ *
+ * @param {string} [value] Исходная дата.
+ * @returns {string} Отформатированная дата.
+ */
 export function formatFriendshipDate(value?: string): string {
   if (!value) {
     return "";
@@ -60,6 +99,15 @@ export function formatFriendshipDate(value?: string): string {
     .replace(/\s*г\.$/, "");
 }
 
+/**
+ * Строит резервную идентичность профиля по его id.
+ *
+ * Нужен, чтобы даже частично заполненный или отсутствующий профиль
+ * выглядел в интерфейсе как осмысленная сущность, а не как пустой объект.
+ *
+ * @param {string | number} profileId Идентификатор профиля.
+ * @returns {{ firstName: string; lastName: string; username: string }} Резервные данные профиля.
+ */
 export function getFallbackIdentity(profileId: string | number): {
   firstName: string;
   lastName: string;
@@ -81,6 +129,13 @@ export function getFallbackIdentity(profileId: string | number): {
   };
 }
 
+/**
+ * Преобразует локальную запись профиля в отображаемую модель страницы.
+ *
+ * @param {ProfileRecord} profile Исходная запись.
+ * @param {boolean} isOwnProfile Открыт ли собственный профиль.
+ * @returns {DisplayProfile} Модель для рендера.
+ */
 export function mapRecordToDisplayProfile(
   profile: ProfileRecord,
   isOwnProfile: boolean,
@@ -146,6 +201,13 @@ export function mapRecordToDisplayProfile(
   };
 }
 
+/**
+ * Создаёт fallback-профиль, когда полных данных ещё нет.
+ *
+ * @param {string | number} profileId Идентификатор профиля.
+ * @param {boolean} [useSessionIdentity=false] Нужно ли брать имя и аватар из активной сессии.
+ * @returns {DisplayProfile} Временная модель профиля.
+ */
 export function createFallbackProfile(
   profileId: string | number,
   useSessionIdentity = false,
@@ -216,6 +278,12 @@ export function createFallbackProfile(
   };
 }
 
+/**
+ * Создаёт модель отсутствующего профиля.
+ *
+ * @param {string} profileId Идентификатор профиля.
+ * @returns {DisplayProfile} Профиль-заглушка для сценария 404/удаления.
+ */
 export function createMissingProfile(profileId: string): DisplayProfile {
   return {
     id: profileId,
@@ -261,6 +329,12 @@ export function createMissingProfile(profileId: string): DisplayProfile {
   };
 }
 
+/**
+ * Возвращает профиль из локальных моков или fallback-данных.
+ *
+ * @param {ProfileParams} params Параметры маршрута профиля.
+ * @returns {DisplayProfile} Модель профиля для рендера.
+ */
 export function resolveMockProfile(params: ProfileParams): DisplayProfile {
   const sessionUser = getSessionUser();
   const profileId = params.id ?? sessionUser?.id ?? "profile";
@@ -301,6 +375,13 @@ export function resolveMockProfile(params: ProfileParams): DisplayProfile {
   return ownProfileFallback ?? createFallbackProfile(profileId, !params.id);
 }
 
+/**
+ * Преобразует API-ответ собственного профиля в отображаемую модель.
+ *
+ * @param {string} profileId Идентификатор профиля.
+ * @param {ProfileResponse} data Ответ backend API.
+ * @returns {DisplayProfile} Нормализованная модель профиля.
+ */
 export function createOwnProfileFromApi(profileId: string, data: ProfileResponse): DisplayProfile {
   const educationItem = data.education?.[0];
   const workItem = data.work?.[0];
@@ -361,6 +442,13 @@ export function createOwnProfileFromApi(profileId: string, data: ProfileResponse
   };
 }
 
+/**
+ * Преобразует API-ответ публичного профиля в отображаемую модель.
+ *
+ * @param {string} profileId Идентификатор профиля.
+ * @param {ProfileResponse} data Ответ backend API.
+ * @returns {DisplayProfile} Нормализованная модель профиля.
+ */
 export function createPublicProfileFromApi(
   profileId: string,
   data: ProfileResponse,

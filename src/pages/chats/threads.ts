@@ -1,7 +1,12 @@
-import { findProfileRecord } from "../profile/profile-data";
+/**
+ * Преобразование и правила отображения тредов страницы чатов.
+ */
+import { getProfileRecordById } from "../profile/profile-data";
 import type { ChatSummary } from "../../api/chat";
+import { getChatContactHint } from "./contact-hints";
 import {
   formatChatTime,
+  formatChatExactTime,
   formatMessageTime,
   getNormalisedPersonName,
   looksLikeDirectPersonName,
@@ -66,21 +71,20 @@ function getThreadCounterpartyName(thread: ChatViewThread): string {
   return otherMessage?.authorName?.trim() || thread.title.trim();
 }
 
-/** Возвращает true, если тред нужно показывать (личный чат между пользователями). */
-export function isEligibleDirectThread(thread: ChatViewThread): boolean {
-  if (thread.isFriend) return true;
-  if ((thread.messages?.length ?? 0) === 0) return false;
+/** Возвращает true, если тред должен быть виден в левой колонке списка. */
+export function shouldShowThreadInSidebar(thread: ChatViewThread): boolean {
+  if (!hasThreadActivity(thread)) return false;
   return looksLikeDirectPersonName(getThreadCounterpartyName(thread));
 }
 
-/** Фильтрует `chatsState.threads`, оставляя только подходящие треды, и заново выбирает чат. */
+/** Обновляет выбранный чат после загрузки/слияния списка тредов. */
 export function applyThreadVisibilityRules(preferredChatId = ""): void {
   const previousSelectedChatId = chatsState.selectedChatId;
-  chatsState.threads = chatsState.threads.filter(isEligibleDirectThread);
   sortThreadsByUpdatedAt();
   chatsState.selectedChatId =
     chatsState.threads.find((t) => t.id === preferredChatId)?.id ??
     chatsState.threads.find((t) => t.id === previousSelectedChatId)?.id ??
+    chatsState.threads.find((t) => shouldShowThreadInSidebar(t))?.id ??
     chatsState.threads[0]?.id ??
     "";
 }
@@ -95,28 +99,32 @@ export function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
       return rightTime - leftTime;
     })
     .map((chat, index) => {
+      const storedHint = getChatContactHint(chat.id);
       const knownContact = knownChatContactsByName.get(getNormalisedPersonName(chat.title || ""));
-      const matchedProfile = findProfileRecord({
-        id: knownContact?.profileId ?? chat.title,
-        firstName: chat.title.split(" ")[0] ?? "",
-        lastName: chat.title.split(" ").slice(1).join(" "),
-      });
-      const profileId =
-        knownContact?.profileId ?? (matchedProfile ? String(matchedProfile.publicId) : undefined);
+      const matchedProfile = knownContact?.profileId
+        ? getProfileRecordById(String(knownContact.profileId))
+        : undefined;
+      const profileId = knownContact?.profileId ?? storedHint?.profileId;
 
       return {
         id: chat.id,
         title: chat.title || `Чат ${index + 1}`,
         profileId,
         isFriend: profileId ? acceptedFriendProfileIds.has(String(profileId)) : false,
-        avatarLink: chat.avatarLink ?? knownContact?.avatarLink ?? matchedProfile?.avatarLink,
+        avatarLink:
+          chat.avatarLink ??
+          storedHint?.avatarLink ??
+          knownContact?.avatarLink ??
+          matchedProfile?.avatarLink,
         preview: "",
         previewIsOwn: false,
         timeLabel: formatChatTime(chat.updatedAt ?? chat.createdAt),
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt ?? chat.createdAt,
         source: "api" as const,
-        profilePath: resolvePersonPath(chat.title || `Чат ${index + 1}`, profileId),
+        profilePath: profileId
+          ? resolvePersonPath(chat.title || `Чат ${index + 1}`, profileId)
+          : "/profile",
       };
     });
 }
@@ -137,6 +145,7 @@ export function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
       timeLabel: existing?.messages?.length ? existing.timeLabel : thread.timeLabel,
       createdAt: existing?.createdAt ?? thread.createdAt,
       updatedAt: existing?.updatedAt ?? thread.updatedAt,
+      avatarLink: thread.avatarLink ?? existing?.avatarLink,
       profileId: thread.profileId ?? existing?.profileId,
       isFriend: thread.isFriend ?? existing?.isFriend,
       profilePath: thread.profilePath ?? existing?.profilePath,
@@ -162,8 +171,9 @@ export function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
 /** Возвращает треды, отфильтрованные по текущему поисковому запросу. */
 export function getFilteredThreads(): ChatViewThread[] {
   const query = chatsState.query.trim().toLowerCase();
-  if (!query) return chatsState.threads;
-  return chatsState.threads.filter((thread) => {
+  const visibleThreads = chatsState.threads.filter((thread) => shouldShowThreadInSidebar(thread));
+  if (!query) return visibleThreads;
+  return visibleThreads.filter((thread) => {
     const lastMessage = thread.messages?.[thread.messages.length - 1];
     const preview = lastMessage?.text ?? thread.preview;
     return [thread.title, preview].join(" ").toLowerCase().includes(query);
@@ -172,7 +182,7 @@ export function getFilteredThreads(): ChatViewThread[] {
 
 /** Возвращает текущий выбранный тред из списка отфильтрованных тредов. */
 export function getSelectedThread(filteredThreads: ChatViewThread[]): ChatViewThread | undefined {
-  return filteredThreads.find((t) => t.id === chatsState.selectedChatId) ?? filteredThreads[0];
+  return chatsState.threads.find((t) => t.id === chatsState.selectedChatId) ?? filteredThreads[0];
 }
 
 /** Возвращает состояние превью (text, isOwn, timeLabel), вычисленное по последнему сообщению или резервным данным. */
@@ -180,6 +190,7 @@ export function getThreadPreviewState(thread: ChatViewThread): {
   text: string;
   isOwn: boolean;
   timeLabel: string;
+  timeTooltip: string;
 } {
   const messages = thread.messages ?? [];
   const lastMessage = messages[messages.length - 1];
@@ -189,12 +200,14 @@ export function getThreadPreviewState(thread: ChatViewThread): {
       text: thread.preview,
       isOwn: Boolean(thread.previewIsOwn),
       timeLabel: thread.preview.trim() ? thread.timeLabel : "",
+      timeTooltip: thread.updatedAt ? formatChatExactTime(thread.updatedAt) : "",
     };
   }
 
   return {
     text: lastMessage.text,
     isOwn: lastMessage.isOwn,
-    timeLabel: formatMessageTime(lastMessage.createdAt) || thread.timeLabel,
+    timeLabel: formatChatTime(lastMessage.createdAt) || thread.timeLabel,
+    timeTooltip: formatChatExactTime(lastMessage.createdAt),
   };
 }

@@ -1,4 +1,9 @@
-import { createPrivateChat } from "../../api/chat";
+/**
+ * Обработчики событий страницы профиля.
+ *
+ * Содержит пользовательские сценарии и реакцию интерфейса на действия пользователя.
+ */
+import { createOrResolvePrivateChatId } from "../../api/chat";
 import { createPost, deletePost, updatePost } from "../../api/posts";
 import {
   acceptFriendRequest,
@@ -7,11 +12,12 @@ import {
   requestFriendship,
   revokeFriendRequest,
 } from "../../api/friends";
-import { getMyProfile, uploadProfileAvatar, updateMyProfile } from "../../api/profile";
+import { uploadProfileAvatar, updateMyProfile, getMyProfile } from "../../api/profile";
 import { getSessionUser, setSessionUser } from "../../state/session";
 import { clearFeedCache } from "../feed/cache";
 import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
 import { invalidateFriendsState } from "../friends/friends";
+import { rememberChatContactHint } from "../chats/contact-hints";
 import { isOutboxQueuedError } from "../../utils/outbox-idb";
 
 import type { ComposerMediaItem } from "./types";
@@ -29,6 +35,9 @@ import {
   updateSessionUserAvatarLink,
   normaliseAvatarLink,
   clampAvatarOffsets,
+  OWN_PROFILE_CACHE_KEY,
+  readJsonStorage,
+  writeJsonStorage,
 } from "./state";
 import {
   syncAvatarModalUi,
@@ -36,13 +45,13 @@ import {
   setAvatarZoom,
   rotateAvatar,
   buildAvatarFile,
-  ensureAvatarEditorSource,
 } from "./avatar";
 import { syncPostComposerUi } from "./composer";
 import {
   renderProfileFieldErrors,
   clearProfileFieldErrors,
   focusFirstProfileErrorField,
+  renderProfileFriendActions,
 } from "./render";
 import {
   uploadPendingComposerImages,
@@ -54,6 +63,89 @@ import {
   getProfileFormSourceValues,
   buildProfilePatch,
 } from "./actions";
+import {
+  applyProfilePostFilters,
+  closeProfilePostMenus,
+  closeProfilePostSearch,
+  openProfilePostSearch,
+  switchProfilePostFilter,
+} from "./post-list";
+import type { DisplayProfile } from "./types";
+
+function updateOwnProfileCacheAvatar(avatarLink?: string): void {
+  const cachedProfile = readJsonStorage<DisplayProfile>(OWN_PROFILE_CACHE_KEY);
+  if (!cachedProfile) {
+    return;
+  }
+
+  writeJsonStorage(OWN_PROFILE_CACHE_KEY, {
+    ...cachedProfile,
+    avatarLink,
+  });
+}
+
+function updateProfileFriendActions(
+  root: Document | HTMLElement,
+  profileId: string,
+  relation: "none" | "outgoing",
+): void {
+  const actionsRoot = root.querySelector("[data-profile-friend-actions-root]");
+  if (!(actionsRoot instanceof HTMLElement)) {
+    return;
+  }
+
+  const template = document.createElement("template");
+  template.innerHTML = renderProfileFriendActions({
+    id: profileId,
+    friendRelation: relation,
+    isOwnProfile: false,
+    isApiBacked: true,
+  }).trim();
+
+  const nextActionsRoot = template.content.firstElementChild;
+  if (!(nextActionsRoot instanceof HTMLElement)) {
+    return;
+  }
+
+  actionsRoot.replaceWith(nextActionsRoot);
+}
+
+async function resolveChatIdForProfile(profileId: string, profileName: string): Promise<string> {
+  return createOrResolvePrivateChatId(profileId, { expectedTitle: profileName });
+}
+
+function readProfileAvatarLinkFromRoot(root: Document | HTMLElement): string | undefined {
+  const avatarImage = root.querySelector<HTMLImageElement>(".profile-card__avatar");
+  const avatarSrc = avatarImage?.getAttribute("src")?.trim();
+  return avatarSrc || undefined;
+}
+
+function bindFloatingPostMenuActions(
+  menu: HTMLElement,
+  root: Document | HTMLElement,
+  postId: string,
+): void {
+  const editButton = menu.querySelector<HTMLButtonElement>(`[data-profile-post-edit="${postId}"]`);
+  if (editButton) {
+    editButton.onclick = () => {
+      closeProfilePostMenus(root);
+      openEditPostComposer(postId);
+      syncPostComposerUi(root);
+    };
+  }
+
+  const deleteButton = menu.querySelector<HTMLButtonElement>(
+    `[data-profile-post-delete="${postId}"]`,
+  );
+  if (deleteButton) {
+    deleteButton.onclick = () => {
+      closeProfilePostMenus(root);
+      postComposerState.deleteConfirmPostId = postId;
+      postComposerState.errorMessage = "";
+      syncPostComposerUi(root);
+    };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Привязка обработчиков событий профиля
@@ -93,18 +185,24 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         return;
       }
 
-      const menu = root.querySelector<HTMLElement>(`[data-profile-post-menu="${postId}"]`);
+      const menu = document.querySelector<HTMLElement>(`[data-profile-post-menu="${postId}"]`);
       const isExpanded = postMenuToggle.getAttribute("aria-expanded") === "true";
       closeProfilePostMenus(root);
 
       if (menu && !isExpanded) {
+        const rect = postMenuToggle.getBoundingClientRect();
+        menu.style.top = `${rect.bottom + 8}px`;
+        menu.style.right = `${window.innerWidth - rect.right}px`;
+        menu.style.left = "auto";
+        document.body.appendChild(menu);
+        bindFloatingPostMenuActions(menu, root, postId);
         menu.hidden = false;
         postMenuToggle.setAttribute("aria-expanded", "true");
       }
       return;
     }
 
-    if (!target.closest(".profile-post__actions")) {
+    if (!target.closest(".profile-post__actions") && !target.closest("[data-profile-post-menu]")) {
       closeProfilePostMenus(root);
     }
 
@@ -279,7 +377,6 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       avatarModalState.open = true;
       avatarModalState.errorMessage = "";
       syncAvatarModalUi(root);
-      ensureAvatarEditorSource(root);
       return;
     }
 
@@ -318,9 +415,9 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
       void updateMyProfile({ removeAvatar: true })
         .then(async () => {
-          const freshProfile = await getMyProfile();
           setOwnAvatarOverride(null);
-          updateSessionUserAvatarLink(normaliseAvatarLink(freshProfile.imageLink));
+          updateSessionUserAvatarLink(undefined);
+          updateOwnProfileCacheAvatar(undefined);
 
           resetAvatarModalState();
           syncAvatarModalUi(root);
@@ -366,13 +463,15 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       void buildAvatarFile(root)
         .then(async (file) => {
           const uploadedAvatar = await uploadProfileAvatar(file);
-          await updateMyProfile({ avatarID: uploadedAvatar.mediaID });
-          const freshProfile = await getMyProfile();
-          const nextOverride =
-            normaliseAvatarLink(freshProfile.imageLink) ?? uploadedAvatar.mediaURL;
-          setOwnAvatarOverride(nextOverride);
 
+          await updateMyProfile({ avatarID: uploadedAvatar.mediaID });
+
+          const freshProfile = await getMyProfile();
+          const nextOverride = normaliseAvatarLink(freshProfile.imageLink);
+
+          setOwnAvatarOverride(nextOverride);
           updateSessionUserAvatarLink(nextOverride);
+          updateOwnProfileCacheAvatar(nextOverride);
 
           resetAvatarModalState();
           syncAvatarModalUi(root);
@@ -397,9 +496,18 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         return;
       }
 
-      void createPrivateChat(profileId)
-        .then((chat) => {
-          window.history.pushState({}, "", `/chats?chatId=${encodeURIComponent(chat.id)}`);
+      const profileName =
+        root.querySelector(".profile-card__hero-copy h1")?.textContent?.trim() || profileId;
+
+      void resolveChatIdForProfile(profileId, profileName)
+        .then((chatId) => {
+          rememberChatContactHint({
+            chatId,
+            profileId,
+            title: profileName,
+            avatarLink: readProfileAvatarLinkFromRoot(root),
+          });
+          window.history.pushState({}, "", `/chats?chatId=${encodeURIComponent(chatId)}`);
           window.dispatchEvent(new PopStateEvent("popstate"));
         })
         .catch((error: unknown) => {
@@ -417,9 +525,9 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
       requestFriendButton.disabled = true;
       void requestFriendship(profileId)
-        .then(async () => {
+        .then(() => {
           invalidateFriendsState();
-          await rerenderCurrentRoute();
+          updateProfileFriendActions(root, profileId, "outgoing");
         })
         .catch((error: unknown) => {
           console.error("[profile] request friend failed", error);
@@ -437,9 +545,9 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
       revokeFriendButton.disabled = true;
       void revokeFriendRequest(profileId)
-        .then(async () => {
+        .then(() => {
           invalidateFriendsState();
-          await rerenderCurrentRoute();
+          updateProfileFriendActions(root, profileId, "none");
         })
         .catch((error: unknown) => {
           console.error("[profile] revoke friend request failed", error);
@@ -890,115 +998,24 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     if (!target.matches("[data-profile-post-search]")) return;
     applyProfilePostFilters(root);
   });
-}
 
-function getActiveProfilePostFilter(root: Document | HTMLElement): "all" | "own" {
-  const activeButton = root.querySelector<HTMLElement>("[data-profile-post-filter].is-active");
-  return activeButton?.getAttribute("data-profile-post-filter") === "own" ? "own" : "all";
-}
-
-function switchProfilePostFilter(root: Document | HTMLElement, nextFilter: "all" | "own"): void {
-  const scrollX = window.scrollX;
-  const scrollY = window.scrollY;
-  preserveProfilePostsHeight(root);
-
-  root.querySelectorAll<HTMLButtonElement>("[data-profile-post-filter]").forEach((button) => {
-    const isActive = button.getAttribute("data-profile-post-filter") === nextFilter;
-    button.classList.toggle("is-active", isActive);
-    button.setAttribute("aria-pressed", String(isActive));
-  });
-
-  applyProfilePostFilters(root);
-  preserveProfilePostsHeight(root);
-
-  window.scrollTo(scrollX, scrollY);
-  requestAnimationFrame(() => {
-    window.scrollTo(scrollX, scrollY);
-  });
-}
-
-function preserveProfilePostsHeight(root: Document | HTMLElement): void {
-  const postsList = root.querySelector<HTMLElement>("[data-profile-post-list]");
-  if (!postsList) {
-    return;
-  }
-
-  const currentHeight = Math.ceil(postsList.getBoundingClientRect().height);
-  const storedHeight = Number(postsList.dataset.profilePostsMinHeight || 0);
-  const nextHeight = Math.max(currentHeight, storedHeight);
-
-  postsList.dataset.profilePostsMinHeight = String(nextHeight);
-  postsList.style.minHeight = `${nextHeight}px`;
-}
-
-function openProfilePostSearch(root: Document | HTMLElement): void {
-  const toolbar = root.querySelector<HTMLElement>("[data-profile-post-toolbar]");
-  const searchPanel = root.querySelector<HTMLElement>("[data-profile-post-search-panel]");
-  const searchInput = root.querySelector<HTMLInputElement>("[data-profile-post-search]");
-
-  if (toolbar) toolbar.hidden = true;
-  if (searchPanel) searchPanel.hidden = false;
-  searchInput?.focus();
-}
-
-function closeProfilePostSearch(root: Document | HTMLElement): void {
-  const toolbar = root.querySelector<HTMLElement>("[data-profile-post-toolbar]");
-  const searchPanel = root.querySelector<HTMLElement>("[data-profile-post-search-panel]");
-  const searchInput = root.querySelector<HTMLInputElement>("[data-profile-post-search]");
-
-  if (searchInput) {
-    searchInput.value = "";
-  }
-
-  if (searchPanel) searchPanel.hidden = true;
-  if (toolbar) toolbar.hidden = false;
-  applyProfilePostFilters(root);
-}
-
-function closeProfilePostMenus(root: Document | HTMLElement): void {
-  root.querySelectorAll<HTMLElement>("[data-profile-post-menu]").forEach((menu) => {
-    menu.hidden = true;
-  });
-
-  root.querySelectorAll<HTMLButtonElement>("[data-profile-post-menu-toggle]").forEach((button) => {
-    button.setAttribute("aria-expanded", "false");
-  });
-}
-
-export function applyProfilePostFilters(root: Document | HTMLElement): void {
-  const queryInput = root.querySelector<HTMLInputElement>("[data-profile-post-search]");
-  const query = queryInput?.value.trim().toLowerCase() ?? "";
-  const scope = getActiveProfilePostFilter(root);
-  const cards = root.querySelectorAll<HTMLElement>("[data-profile-post-card]");
-  let visibleCount = 0;
-  let firstVisibleCard: HTMLElement | null = null;
-
-  cards.forEach((card) => {
-    const cardScope = card.getAttribute("data-profile-post-scope") ?? "all";
-    const searchable = card.getAttribute("data-profile-post-searchable") ?? "";
-    const matchesScope = scope === "all" || cardScope === "own";
-    const matchesQuery = !query || searchable.includes(query);
-    const isVisible = matchesScope && matchesQuery;
-
-    card.hidden = !isVisible;
-    card.classList.remove("profile-post--first-visible");
-    if (isVisible) {
-      visibleCount += 1;
-      firstVisibleCard ??= card;
-    }
-  });
-
-  firstVisibleCard?.classList.add("profile-post--first-visible");
-
-  const searchEmptyState = root.querySelector<HTMLElement>("[data-profile-post-search-empty]");
-  if (searchEmptyState) {
-    searchEmptyState.hidden = visibleCount > 0 || !query;
-  }
-}
-
-export function initProfilePostListLayout(root: Document | HTMLElement): void {
-  preserveProfilePostsHeight(root);
-  requestAnimationFrame(() => {
-    preserveProfilePostsHeight(root);
-  });
+  window.addEventListener(
+    "scroll",
+    () => {
+      const openMenu = document.querySelector<HTMLElement>(
+        "[data-profile-post-menu]:not([hidden])",
+      );
+      if (!openMenu) return;
+      const postId = openMenu.getAttribute("data-profile-post-menu");
+      if (!postId) return;
+      const toggle = root.querySelector<HTMLButtonElement>(
+        `[data-profile-post-menu-toggle="${postId}"]`,
+      );
+      if (!toggle) return;
+      const rect = toggle.getBoundingClientRect();
+      openMenu.style.top = `${rect.bottom + 8}px`;
+      openMenu.style.right = `${window.innerWidth - rect.right}px`;
+    },
+    { passive: true },
+  );
 }

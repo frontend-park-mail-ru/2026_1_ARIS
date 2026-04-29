@@ -1,6 +1,11 @@
-import { getSessionUser, setSessionUser } from "../../state/session";
+/**
+ * Состояние страницы профиля.
+ *
+ * Содержит runtime-состояние, кэши и вспомогательные функции управления состоянием.
+ */
+import { getSessionUser, setSessionUserSilently } from "../../state/session";
+import { StateManager } from "../../state/StateManager";
 import {
-  normalizeName,
   validateAlphabetConsistency,
   validateIsoBirthDate,
   validateName,
@@ -8,7 +13,6 @@ import {
 } from "../../utils/profile-validation";
 import type { UpdateProfilePayload } from "../../api/profile";
 import type {
-  DisplayProfile,
   EditableProfileFields,
   ProfileFieldErrorMap,
   ProfilePost,
@@ -22,47 +26,92 @@ export const DEFAULT_AVATAR_CROP_SIZE = 152;
 export const OWN_PROFILE_CACHE_KEY = "arisfront:profile:me";
 export const OWN_PROFILE_POSTS_CACHE_KEY = "arisfront:profile:me:posts";
 
+type ProfileRuntimeState = {
+  ownAvatarOverride: string | null | undefined;
+  currentProfilePosts: ProfilePost[];
+  postComposer: PostComposerState;
+  avatarModal: AvatarModalState;
+};
+
 export let ownAvatarOverride: string | null | undefined = undefined;
 export function setOwnAvatarOverride(value: string | null | undefined): void {
   ownAvatarOverride = value;
+  profileStore.patch({ ownAvatarOverride: value });
 }
 
 export let currentProfilePosts: ProfilePost[] = [];
 export function setCurrentProfilePosts(posts: ProfilePost[]): void {
   currentProfilePosts = posts;
+  profileStore.patch({ currentProfilePosts: posts });
 }
 
-export const postComposerState: PostComposerState = {
-  open: false,
-  mode: "create",
-  editingPostId: null,
-  deleteConfirmPostId: null,
-  isSaving: false,
-  errorMessage: "",
-  text: "",
-  mediaItems: [],
-};
+function createInitialPostComposerState(): PostComposerState {
+  return {
+    open: false,
+    mode: "create",
+    editingPostId: null,
+    deleteConfirmPostId: null,
+    isSaving: false,
+    errorMessage: "",
+    text: "",
+    mediaItems: [],
+  };
+}
 
-export const avatarModalState: AvatarModalState = {
-  open: false,
-  deleteConfirmOpen: false,
-  isSaving: false,
-  errorMessage: "",
-  objectUrl: null,
-  fileName: "",
-  naturalWidth: 0,
-  naturalHeight: 0,
-  scale: 1,
-  minScale: 1,
-  rotation: 0,
-  offsetX: 0,
-  offsetY: 0,
-  dragPointerId: null,
-  dragStartX: 0,
-  dragStartY: 0,
-  dragStartOffsetX: 0,
-  dragStartOffsetY: 0,
-};
+function createInitialAvatarModalState(): AvatarModalState {
+  return {
+    open: false,
+    deleteConfirmOpen: false,
+    isSaving: false,
+    errorMessage: "",
+    objectUrl: null,
+    fileName: "",
+    naturalWidth: 0,
+    naturalHeight: 0,
+    scale: 1,
+    minScale: 1,
+    rotation: 0,
+    offsetX: 0,
+    offsetY: 0,
+    dragPointerId: null,
+    dragStartX: 0,
+    dragStartY: 0,
+    dragStartOffsetX: 0,
+    dragStartOffsetY: 0,
+  };
+}
+
+const mutablePostComposerState = createInitialPostComposerState();
+const mutableAvatarModalState = createInitialAvatarModalState();
+
+/** Реактивное состояние страницы профиля. */
+export const profileStore = new StateManager<ProfileRuntimeState>({
+  ownAvatarOverride,
+  currentProfilePosts,
+  postComposer: mutablePostComposerState,
+  avatarModal: mutableAvatarModalState,
+});
+
+function createProfileStateProxy<T extends object>(
+  target: T,
+  key: "postComposer" | "avatarModal",
+): T {
+  return new Proxy(target, {
+    set(obj, prop: string | symbol, value: unknown) {
+      Reflect.set(obj, prop, value);
+      profileStore.patch({ [key]: obj } as Partial<ProfileRuntimeState>);
+      return true;
+    },
+  });
+}
+
+function publishPostComposerState(): void {
+  profileStore.patch({ postComposer: mutablePostComposerState });
+}
+
+export const postComposerState = createProfileStateProxy(mutablePostComposerState, "postComposer");
+
+export const avatarModalState = createProfileStateProxy(mutableAvatarModalState, "avatarModal");
 
 export function readJsonStorage<T>(key: string): T | null {
   try {
@@ -104,7 +153,7 @@ export function updateSessionUserAvatarLink(nextAvatarLink?: string): void {
   }
 
   if (nextAvatarLink) {
-    setSessionUser({
+    setSessionUserSilently({
       ...sessionUser,
       avatarLink: nextAvatarLink,
     });
@@ -113,7 +162,7 @@ export function updateSessionUserAvatarLink(nextAvatarLink?: string): void {
 
   const sessionUserWithoutAvatar = { ...sessionUser };
   delete sessionUserWithoutAvatar.avatarLink;
-  setSessionUser(sessionUserWithoutAvatar);
+  setSessionUserSilently(sessionUserWithoutAvatar);
 }
 
 export function resetPostComposerState(): void {
@@ -156,6 +205,7 @@ export function removeComposerMediaItem(index: number): void {
   }
 
   postComposerState.mediaItems.splice(index, 1);
+  publishPostComposerState();
 }
 
 export function revokeAvatarObjectUrl(): void {

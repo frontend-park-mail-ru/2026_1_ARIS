@@ -1,6 +1,6 @@
-# 2026_1_ARIS
+# ARIS Frontend
 
-Проект "ВК" команды АРИС — социальная сеть, разработанная на TypeScript без фреймворков.
+Frontend социальной сети ARIS.
 
 ### Команда
 
@@ -20,6 +20,10 @@
 - [Backend repository](https://github.com/go-park-mail-ru/2026_1_ARIS/)
 - [Figma](https://figma.com/design/fhzdyBQ8qjNFRCRVriSrK9/VK.com?node-id=8-16&p=f&t=u2EXBO6Pxh6QqWVC-0)
 
+### Описание
+
+Проект написан на TypeScript без UI-фреймворков и построен как SPA с собственным роутером, набором переиспользуемых компонентов и явным разделением между страницами, API-слоем и состоянием приложения.
+
 ### Стек технологий
 
 - **TypeScript** — без React/Vue; каждая страница — отдельный модуль
@@ -27,6 +31,28 @@
 - **Custom `@aris/router`** — клиентский SPA-роутер (пакет в `packages/router`)
 - **CSS Custom Properties** — дизайн-токены в `src/styles/tokens.css`
 - **Service Worker** — офлайн-поддержка через `packages/offline`
+
+### Быстрый старт
+
+Требования:
+
+- `Node.js 20+`
+- `npm 10+`
+
+Установка и запуск:
+
+```bash
+npm install
+npm run dev
+```
+
+По умолчанию frontend поднимается локально, а сетевые запросы идут в backend, настроенный в проекте и dev-конфиге.
+
+Production-сборка:
+
+```bash
+npm run build
+```
 
 ### Архитектура
 
@@ -44,33 +70,61 @@ src/
 │       ├── render.ts  # HTML-генераторы
 │       └── <page>.ts  # Точка входа: renderPage() + initPage()
 ├── state/         # Глобальное состояние (session, StateManager)
+├── utils/         # Кэширование, offline-инструменты и общие helper-функции
+├── router/        # Сборка и настройка клиентского роутера
 └── styles/        # Глобальные стили и токены
 ```
 
 `StateManager<T>` — реактивное хранилище с методами `patch()` / `subscribe()`, используется в `sessionStore` и `friendsStore`.
 
+Дополнительные пакеты:
+
+- `packages/router` — внутренний пакет клиентского роутера;
+- `packages/offline` — инфраструктура offline-режима, сетевого статуса и service worker-механик.
+
+### Структура каталогов
+
+- `pages/` — страницы приложения (`feed`, `profile`, `friends`, `chats`)
+- `components/` — переиспользуемые UI-компоненты
+- `api/` — работа с backend и нормализация ответов
+- `state/` — глобальное состояние и инфраструктурные store
+- `utils/` — утилиты, кэширование, service worker, offline-механики
+- `router/` — конфигурация маршрутизации и post-render инициализация
+- `public/` — статические файлы, иконки и service worker
+
+### Принципы
+
+- Разделение ответственности:
+  страницы отвечают за сценарий целиком, компоненты — за локальный UI, `api/` — за сетевое взаимодействие.
+- Offline-first:
+  используются `service worker`, outbox и локальное сохранение данных, чтобы интерфейс оставался полезным при нестабильной сети.
+- Кэширование:
+  лента и часть пользовательских данных кэшируются в памяти и в браузерном хранилище для ускорения повторных открытий.
+
 ### Разработка
 
 ```bash
-# Установка зависимостей
 npm install
-
-# Режим разработки с hot-reload
 npm run dev
-
-# Production-сборка в dist/
 npm run build
-
-# Линтинг
 npm run lint
 ```
 
+Основные скрипты:
+
+- `npm run dev` — локальный dev-сервер;
+- `npm run build` — production-сборка в `dist/`;
+- `npm run lint` — проверка качества кода;
+- `npm run deploy` — публикация сборки через локальный deploy-скрипт команды.
+
 ### Деплой
 
-Сборка публикуется на self-hosted nginx-сервер скриптом:
+Сборка публикуется на self-hosted nginx-сервер командным скриптом:
 
 ```bash
 npm run deploy          # запускает scripts/deploy.sh
 # или напрямую:
 APP_ROOT=/var/www/aris bash scripts/deploy.sh
 ```
+
+Этот сценарий рассчитан на инфраструктуру команды и локальное окружение деплоя. Для стороннего развёртывания обычно достаточно production-сборки из `dist/`.

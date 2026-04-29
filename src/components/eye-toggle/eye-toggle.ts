@@ -1,3 +1,6 @@
+/**
+ * Разметка переключателя видимости пароля.
+ */
 type RenderEyeToggleOptions = {
   isVisible?: boolean;
   className?: string;
@@ -6,8 +9,8 @@ type RenderEyeToggleOptions = {
 /**
  * Рендерит кнопку переключения видимости пароля (иконка глаза).
  *
- * @param {RenderEyeToggleOptions} [options={}]
- * @returns {string}
+ * @param {RenderEyeToggleOptions} [options={}] Параметры кнопки.
+ * @returns {string} HTML-разметка переключателя.
  */
 export function renderEyeToggle({
   isVisible = false,

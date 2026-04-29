@@ -1,6 +1,9 @@
+/**
+ * Левая навигационная колонка приложения.
+ */
 import { getFeedMode, getSessionUser, setFeedMode, type FeedMode } from "../../state/session";
-import { isSupportAgent } from "../../state/role";
 import { clearFeedCache } from "../../pages/feed/cache";
+import { clearWidgetbarCache } from "../widgetbar/widgetbar";
 import { domPatch } from "../../vdom/patch";
 
 type SidebarItemOptions = {
@@ -9,6 +12,8 @@ type SidebarItemOptions = {
   icon: string;
   isActive?: boolean;
   isStub?: boolean;
+  reloadOnClick?: boolean;
+  preventWhenActive?: boolean;
   attributes?: string;
 };
 
@@ -28,8 +33,8 @@ function normalisePath(path: string): string {
 /**
  * Рендерит элемент навигации боковой панели.
  *
- * @param {SidebarItemOptions} options
- * @returns {string}
+ * @param {SidebarItemOptions} options Параметры элемента меню.
+ * @returns {string} HTML-разметка пункта боковой панели.
  */
 function renderSidebarItem({
   href = "#",
@@ -37,12 +42,21 @@ function renderSidebarItem({
   icon,
   isActive = false,
   isStub = false,
+  reloadOnClick = false,
+  preventWhenActive = false,
   attributes = "",
 }: SidebarItemOptions): string {
   const itemClass = isActive ? "sidebar-item sidebar-item--active" : "sidebar-item";
-  const isModalTrigger = attributes.includes("data-open-auth-modal");
+  const hasAuthModalTrigger = attributes.includes("data-open-auth-modal=");
+  const linkAttributes = [
+    reloadOnClick || hasAuthModalTrigger ? "" : "data-link",
+    preventWhenActive && isActive ? 'data-sidebar-current="true"' : "",
+    attributes,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-  if (isStub || isModalTrigger) {
+  if (isStub) {
     return `
       <button type="button" class="${itemClass} sidebar-item--button" ${attributes}>
         <span class="sidebar-item__icon" aria-hidden="true">
@@ -54,7 +68,7 @@ function renderSidebarItem({
   }
 
   return `
-    <a href="${href}" data-link class="${itemClass}" ${attributes}>
+    <a href="${href}" class="${itemClass}" ${linkAttributes}>
       <span class="sidebar-item__icon" aria-hidden="true">
         <img src="${icon}" alt="">
       </span>
@@ -66,20 +80,19 @@ function renderSidebarItem({
 /**
  * Рендерит левую боковую панель.
  *
- * @param {RenderSidebarOptions} [options={}]
- * @returns {string}
+ * @param {RenderSidebarOptions} [options={}] Параметры рендера.
+ * @returns {string} HTML-разметка боковой панели.
  */
 export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {}): string {
   const currentPath = normalisePath(window.location.pathname);
   const isFeedRoute = currentPath === "/" || currentPath === "/feed";
+  const feedHref = currentPath === "/" ? "/" : "/feed";
   const isProfileRoute =
     currentPath === "/profile" ||
     currentPath.startsWith("/profile/") ||
     /^\/id[^/]+$/.test(currentPath);
   const isFriendsRoute = currentPath === "/friends";
   const isChatsRoute = currentPath === "/chats";
-  const supportHref = isSupportAgent() ? "/support/admin" : "/support/stats";
-  const supportLabel = isSupportAgent() ? "Тикеты" : "Поддержка";
   const isForYouActive = getFeedMode() === "for-you";
   const isByTimeActive = getFeedMode() === "by-time";
 
@@ -87,10 +100,12 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
     <aside class="sidebar">
       <section class="sidebar-card sidebar-card--menu">
         ${renderSidebarItem({
-          href: "/feed",
+          href: feedHref,
           label: "Лента",
           icon: "/assets/img/icons/home.svg",
           isActive: isFeedRoute,
+          reloadOnClick: true,
+          attributes: isFeedRoute ? 'data-sidebar-feed-refresh="true"' : "",
         })}
 
         ${renderSidebarItem({
@@ -99,7 +114,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           icon: "/assets/img/icons/profile.svg",
           isActive: isProfileRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
-          isStub: false,
+          preventWhenActive: true,
         })}
 
         ${renderSidebarItem({
@@ -108,7 +123,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           icon: "/assets/img/icons/friends.svg",
           isActive: isFriendsRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
-          isStub: false,
+          preventWhenActive: true,
         })}
 
         ${renderSidebarItem({
@@ -117,27 +132,8 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           icon: "/assets/img/icons/chat.svg",
           isActive: isChatsRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
-          isStub: false,
+          preventWhenActive: true,
         })}
-
-        ${renderSidebarItem({
-          href: "/profile",
-          label: "Настройки",
-          icon: "/assets/img/icons/settings.svg",
-          attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
-          isStub: isAuthorised,
-        })}
-
-        ${
-          isAuthorised
-            ? renderSidebarItem({
-                href: supportHref,
-                label: supportLabel,
-                icon: "/assets/img/icons/chat.svg",
-                isActive: currentPath === supportHref,
-              })
-            : ""
-        }
       </section>
 
       ${
@@ -172,33 +168,54 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
 /**
  * Инициализирует элементы управления боковой панели.
  *
- * @param {Document|HTMLElement} [root=document]
+ * @param {Document|HTMLElement} [root=document] Корень, внутри которого живёт sidebar.
  * @returns {void}
  */
 export function initSidebar(root: Document | HTMLElement = document): void {
   const bindableRoot = root as SidebarRoot;
   if (bindableRoot.__sidebarBound) return;
 
-  root.addEventListener("click", (event: Event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
+  root.addEventListener(
+    "click",
+    (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
 
-    const button = target.closest("[data-feed-mode]");
-    if (!button) return;
+      const currentSidebarLink = target.closest('a[data-sidebar-current="true"]');
+      if (currentSidebarLink instanceof HTMLAnchorElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
 
-    event.preventDefault();
+      const feedRefreshLink = target.closest('a[data-sidebar-feed-refresh="true"]');
+      if (feedRefreshLink instanceof HTMLAnchorElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        clearFeedCache();
+        clearWidgetbarCache();
+        window.dispatchEvent(new PopStateEvent("popstate"));
+        return;
+      }
 
-    const mode = button.getAttribute("data-feed-mode");
-    if (mode !== "for-you" && mode !== "by-time") return;
+      const button = target.closest("[data-feed-mode]");
+      if (!button) return;
 
-    if (mode === "for-you") {
-      clearFeedCache();
-    }
+      event.preventDefault();
 
-    setFeedMode(mode as FeedMode);
-    refreshSidebar();
-    void import("../../pages/feed/feed").then((m) => m.refreshFeedCenter());
-  });
+      const mode = button.getAttribute("data-feed-mode");
+      if (mode !== "for-you" && mode !== "by-time") return;
+
+      if (mode === "for-you") {
+        clearFeedCache();
+      }
+
+      setFeedMode(mode as FeedMode);
+      refreshSidebar();
+      void import("../../pages/feed/feed").then((m) => m.refreshFeedCenter());
+    },
+    true,
+  );
 
   bindableRoot.__sidebarBound = true;
 }

@@ -40,7 +40,7 @@ class AssetManifestPlugin {
 
 /** @type {import('webpack').Configuration} */
 module.exports = {
-  mode: "production",
+  mode: "development",
 
   entry: "./src/main.ts",
 
@@ -51,7 +51,11 @@ module.exports = {
     publicPath: "/",
   },
 
-  devtool: false,
+  devtool: "eval-cheap-module-source-map",
+
+  performance: {
+    hints: false,
+  },
 
   module: {
     rules: [

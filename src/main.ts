@@ -1,3 +1,8 @@
+/**
+ * Точка входа клиентского приложения.
+ *
+ * Инициализирует инфраструктуру, роутер и глобальные обработчики.
+ */
 import "./styles/main.css";
 import "./styles/tokens.css";
 import "./styles/layout.scss";
@@ -6,6 +11,7 @@ import "./components/button/button.scss";
 import "./components/header/header.scss";
 import "./components/input/input.scss";
 import "./components/logo/logo.scss";
+import "./components/modal-close/modal-close.scss";
 import "./components/sidebar/sidebar.scss";
 import "./components/widgetbar/widgetbar.scss";
 import "./components/postcard/postcard.scss";
@@ -35,7 +41,7 @@ import { onCacheInvalidation } from "./utils/cache-channel";
 import { initSupportIframe } from "./utils/support-widget";
 
 // ---------------------------------------------------------------------------
-// Ленивые фабрики модулей страниц — webpack нарезает их в отдельные чанки
+// Ленивые фабрики модулей страниц — webpack выносит их в отдельные чанки.
 // ---------------------------------------------------------------------------
 
 const loadFeed = () => import(/* webpackChunkName: "page-feed" */ "./pages/feed/feed");
@@ -51,6 +57,37 @@ const loadSupportAdmin = () =>
 const loadSupportStats = () =>
   import(/* webpackChunkName: "page-support-stats" */ "./pages/support-stats/support-stats");
 
+function normalisePathname(pathname: string): string {
+  return pathname.replace(/\/+$/g, "") || "/";
+}
+
+function matchesRoutePath(pathname: string, routePath: string): boolean {
+  const normalisedPathname = normalisePathname(pathname);
+  const normalisedRoutePath = normalisePathname(routePath);
+
+  if (!normalisedRoutePath.includes(":")) {
+    return normalisedPathname === normalisedRoutePath;
+  }
+
+  if (normalisedRoutePath === "/profile/:id") {
+    return /^\/profile\/[^/]+$/i.test(normalisedPathname);
+  }
+
+  if (normalisedRoutePath === "/id:id") {
+    return /^\/id[^/]+$/i.test(normalisedPathname);
+  }
+
+  return false;
+}
+
+function getBootstrapDocumentTitle(
+  pathname: string,
+  routes: Array<{ path: string; title?: string }>,
+): string {
+  const matchedRoute = routes.find((route) => matchesRoutePath(pathname, route.path));
+  return matchedRoute?.title ?? "ARISNET";
+}
+
 // ---------------------------------------------------------------------------
 // Маршруты
 // ---------------------------------------------------------------------------
@@ -61,9 +98,7 @@ if (!(root instanceof HTMLElement)) {
   throw new Error('Root element "#app" not found');
 }
 
-registerServiceWorker();
-
-const router = createRouter(root, [
+const routes = [
   {
     path: "/",
     title: "ARISNET — Feed",
@@ -124,17 +159,23 @@ const router = createRouter(root, [
     title: "ARISNET — Support Admin",
     render: async () => (await loadSupportAdmin()).renderSupportAdmin(),
   },
-]);
+];
+
+document.title = getBootstrapDocumentTitle(window.location.pathname, routes);
+
+registerServiceWorker();
+
+const router = createRouter(root, routes);
 
 // ---------------------------------------------------------------------------
-// Prefetch: данные + JS-чанки по hover
+// Предзагрузка данных и JS-чанков по наведению.
 // ---------------------------------------------------------------------------
 
 registerPrefetch("/", async () => (await loadFeed()).prefetchFeed());
 registerPrefetch("/feed", async () => (await loadFeed()).prefetchFeed());
 registerPrefetch("/chats", async () => (await loadChats()).prefetchChats());
 
-// Карта путей → фабрика чанка для prefetch кода при hover
+// Карта путей для предзагрузки JS-чанков.
 const chunkMap: Record<string, () => Promise<unknown>> = {
   "/": loadFeed,
   "/feed": loadFeed,
@@ -155,8 +196,8 @@ document.addEventListener(
     if (!(link instanceof HTMLAnchorElement)) return;
     try {
       const path = new URL(link.href).pathname.replace(/\/+$/g, "") || "/";
-      void chunkMap[path]?.(); // prefetch JS чанк
-      prefetchRoute(path); // prefetch данные
+      void chunkMap[path]?.(); // Предзагружаем JS-чанк.
+      prefetchRoute(path); // Предзагружаем данные маршрута.
     } catch {
       // Игнорируем невалидные URL
     }
@@ -182,14 +223,13 @@ void (async () => {
     document.head.appendChild(s);
   }
 
-  prefetchRoute(window.location.pathname);
+  initSupportIframe();
 
   await router.render();
   initHeader();
   initSidebar();
   initAvatarFallback(document);
   initOfflineIndicator();
-  initSupportIframe();
 })();
 
 onCacheInvalidation(async (key) => {
@@ -220,17 +260,23 @@ window.addEventListener("sessionchange", async (event: Event) => {
     const detail =
       event instanceof CustomEvent ? (event.detail as { key?: string } | undefined) : undefined;
 
+    if (detail?.key === "init") {
+      return;
+    }
+
     if (detail?.key === "user") {
       await router.render();
       initHeader();
       initSidebar();
       initAvatarFallback(document);
-      initOfflineIndicator();
       return;
     }
 
     refreshSidebar();
-    await (await loadFeed()).refreshFeedCenter();
+    const path = window.location.pathname.replace(/\/+$/g, "") || "/";
+    if (path === "/" || path === "/feed") {
+      await (await loadFeed()).refreshFeedCenter();
+    }
   } catch (error) {
     console.error(error);
   }

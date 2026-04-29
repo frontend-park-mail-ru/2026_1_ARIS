@@ -1,58 +1,100 @@
-import { ApiError, apiRequest, createApiError, parseJson } from "./core/client";
+/**
+ * API техподдержки.
+ *
+ * Содержит:
+ * - создание и чтение обращений
+ * - переписку по тикету
+ * - действия операторов поддержки
+ * - загрузку статистики и вложений
+ */
+import { ApiError, apiRequest } from "./core/client";
 import type { UserRole } from "./auth";
 import { getSessionUser } from "../state/session";
-import { trackedFetch } from "../state/network-status";
 
 export type TicketCategory = "bug" | "feature_request" | "complaint" | "question" | "other";
 export type TicketStatus = "open" | "in_progress" | "waiting_user" | "closed";
 export type TicketLine = 1 | 2;
 
 export type Ticket = {
+  /** Идентификатор тикета. */
   id: string;
+  /** Публичный uid обращения. */
   uid: string;
+  /** Категория обращения. */
   category: TicketCategory;
+  /** Краткий заголовок. */
   title: string;
+  /** Подробное описание проблемы. */
   description: string;
+  /** Текущий статус тикета. */
   status: TicketStatus;
+  /** Линия поддержки, на которой находится тикет. */
   line: TicketLine;
+  /** Назначенный оператор или `null`. */
   assignedAgentId?: string | null;
+  /** Оценка пользователя после закрытия обращения. */
   rating?: number | null;
+  /** Вложения тикета. */
   media: TicketMedia[];
+  /** Дата создания. */
   createdAt: string;
+  /** Дата последнего обновления. */
   updatedAt?: string;
 };
 
 export type TicketMedia = {
+  /** Идентификатор медиафайла. */
   mediaID: number;
+  /** Ссылка на медиафайл. */
   mediaURL: string;
 };
 
 export type SupportStats = {
+  /** Общее количество обращений. */
   total: number;
+  /** Количество открытых тикетов. */
   open: number;
+  /** Количество тикетов в работе. */
   inProgress: number;
+  /** Количество тикетов в ожидании пользователя. */
   waitingUser: number;
+  /** Количество закрытых тикетов. */
   closed: number;
+  /** Распределение обращений по категориям. */
   byCategory: Record<TicketCategory, number>;
+  /** Распределение по линиям поддержки. */
   byLine: Record<"l1" | "l2", number>;
+  /** Средняя оценка закрытых обращений. */
   avgRating: number | null;
+  /** Распределение оценок. */
   ratingDistribution: Record<"1" | "2" | "3" | "4" | "5", number>;
 };
 
 export type TicketMessage = {
+  /** Идентификатор сообщения. */
   id: string;
+  /** Идентификатор тикета. */
   ticketId: string;
+  /** Текст сообщения. */
   text: string;
+  /** Идентификатор автора сообщения. */
   authorId: string;
+  /** Имя автора сообщения. */
   authorName: string;
+  /** Роль автора сообщения. */
   authorRole: UserRole;
+  /** Дата создания сообщения. */
   createdAt: string;
 };
 
 export type TicketFilter = {
+  /** Фильтр по статусу. */
   status?: TicketStatus;
+  /** Фильтр по категории. */
   category?: TicketCategory;
+  /** Фильтр по линии поддержки. */
   line?: TicketLine;
+  /** Фильтр по назначенному оператору. */
   assignedAgentId?: string;
 };
 
@@ -419,6 +461,12 @@ function buildTicketFilterQuery(filter?: TicketFilter): string {
   return query ? `?${query}` : "";
 }
 
+/**
+ * Создаёт новое обращение в поддержку.
+ *
+ * @param {{ category: TicketCategory; login: string; email: string; title: string; description: string; screenshot?: File | null; }} data Данные формы обращения.
+ * @returns {Promise<Ticket>} Созданный тикет.
+ */
 export async function createTicket(data: {
   category: TicketCategory;
   login: string;
@@ -429,58 +477,56 @@ export async function createTicket(data: {
 }): Promise<Ticket> {
   const media = data.screenshot ? [await uploadSupportScreenshot(data.screenshot)] : [];
 
-  const response = await fetch("/api/support/tickets", {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
+  const raw = await apiRequest<RawTicket>(
+    "/api/support/tickets",
+    {
+      method: "POST",
+      body: {
+        category: CATEGORY_TO_CODE[data.category],
+        login: data.login,
+        email: data.email,
+        title: data.title,
+        description: data.description,
+        ...(media.length ? { media } : {}),
+      },
     },
-    body: JSON.stringify({
-      category: CATEGORY_TO_CODE[data.category],
-      login: data.login,
-      email: data.email,
-      title: data.title,
-      description: data.description,
-      ...(media.length ? { media } : {}),
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`request to /api/support/tickets failed: ${response.status} ${text}`);
-  }
-
-  const raw = (await response.json()) as RawTicket;
+    {},
+  );
   return mapTicket(raw);
 }
 
+/**
+ * Загружает скриншот обращения.
+ *
+ * @param {File} file Файл изображения.
+ * @returns {Promise<TicketMedia>} Загруженное вложение.
+ */
 export async function uploadSupportScreenshot(file: File): Promise<TicketMedia> {
   const formData = new FormData();
   formData.append("files", file);
 
-  const response = await trackedFetch("/api/media/upload?for=support", {
-    method: "POST",
-    credentials: "include",
-    body: formData,
-  });
-
-  const data = await parseJson<UploadMediaResponse | { error?: string }>(response, {});
-
-  if (!response.ok) {
-    throw createApiError("failed to upload support screenshot", response.status, data);
-  }
+  const data = await apiRequest<UploadMediaResponse>(
+    "/api/media/upload?for=support",
+    { method: "POST", body: formData },
+    {},
+  );
 
   const uploadedFile = Array.isArray((data as UploadMediaResponse).media)
     ? (data as UploadMediaResponse).media?.[0]
     : null;
 
   if (!uploadedFile) {
-    throw new ApiError("failed to upload support screenshot", response.status, data);
+    throw new ApiError("Не удалось загрузить скриншот обращения.", 200, data);
   }
 
   return uploadedFile;
 }
 
+/**
+ * Возвращает обращения текущего пользователя.
+ *
+ * @returns {Promise<Ticket[]>} Список обращений.
+ */
 export async function getMyTickets(): Promise<Ticket[]> {
   const raw = await apiRequest<{ tickets?: RawTicket[] } | RawTicket[]>(
     "/api/support/tickets/my",
@@ -491,6 +537,13 @@ export async function getMyTickets(): Promise<Ticket[]> {
   return list.map(mapTicket);
 }
 
+/**
+ * Возвращает все обращения по фильтру для операторского интерфейса.
+ *
+ * @param {TicketFilter} [filter] Параметры фильтрации.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<Ticket[]>} Список обращений.
+ */
 export async function getAllTickets(
   filter?: TicketFilter,
   signal?: AbortSignal,
@@ -504,11 +557,24 @@ export async function getAllTickets(
   return list.map(mapTicket);
 }
 
+/**
+ * Возвращает одно обращение по id.
+ *
+ * @param {string} id Идентификатор тикета.
+ * @returns {Promise<Ticket>} Обращение пользователя.
+ */
 export async function getTicketById(id: string): Promise<Ticket> {
   const raw = await apiRequest<RawTicket>(`/api/support/tickets/${encodeURIComponent(id)}`, {}, {});
   return mapTicket(raw);
 }
 
+/**
+ * Обновляет статус обращения.
+ *
+ * @param {string} id Идентификатор тикета.
+ * @param {TicketStatus} status Новый статус.
+ * @returns {Promise<void>}
+ */
 export async function updateTicketStatus(id: string, status: TicketStatus): Promise<void> {
   await apiRequest<unknown>(
     `/api/support/tickets/${encodeURIComponent(id)}/status`,
@@ -520,6 +586,12 @@ export async function updateTicketStatus(id: string, status: TicketStatus): Prom
   );
 }
 
+/**
+ * Загружает переписку по обращению.
+ *
+ * @param {string} ticketId Идентификатор тикета.
+ * @returns {Promise<TicketMessage[]>} Сообщения обращения.
+ */
 export async function getTicketMessages(ticketId: string): Promise<TicketMessage[]> {
   const raw = await apiRequest<{ messages?: RawTicketMessage[] } | RawTicketMessage[]>(
     `/api/support/tickets/${encodeURIComponent(ticketId)}/messages`,
@@ -530,6 +602,13 @@ export async function getTicketMessages(ticketId: string): Promise<TicketMessage
   return list.map(mapTicketMessage).filter((message) => Boolean(message.id));
 }
 
+/**
+ * Отправляет сообщение в чат обращения.
+ *
+ * @param {string} ticketId Идентификатор тикета.
+ * @param {{ text: string }} payload Текст сообщения.
+ * @returns {Promise<TicketMessage>} Отправленное сообщение.
+ */
 export async function sendTicketMessage(
   ticketId: string,
   payload: { text: string },
@@ -547,6 +626,13 @@ function getSupportSocketUrl(ticketId: string): string {
   return `${protocol}//${window.location.host}/ws/support/${encodeURIComponent(ticketId)}`;
 }
 
+/**
+ * Подписывает интерфейс на входящие сообщения по тикету.
+ *
+ * @param {string} ticketId Идентификатор тикета.
+ * @param {{ onMessage: (message: TicketMessage) => void; onError?: (event: Event) => void; }} handlers Обработчики событий сокета.
+ * @returns {() => void} Функция отписки.
+ */
 export function subscribeToTicketMessages(
   ticketId: string,
   handlers: {
@@ -567,7 +653,7 @@ export function subscribeToTicketMessages(
         handlers.onMessage(message);
       }
     } catch (error) {
-      console.error("[support] failed to parse websocket message", error);
+      console.error("[support] Не удалось разобрать сообщение WebSocket.", error);
     }
   });
 
@@ -582,6 +668,13 @@ export function subscribeToTicketMessages(
   };
 }
 
+/**
+ * Назначает тикет на оператора.
+ *
+ * @param {string} ticketId Идентификатор тикета.
+ * @param {string} agentId Идентификатор оператора.
+ * @returns {Promise<void>}
+ */
 export async function assignTicket(ticketId: string, agentId: string): Promise<void> {
   await apiRequest<unknown>(
     `/api/support/tickets/${encodeURIComponent(ticketId)}/assign`,
@@ -590,6 +683,13 @@ export async function assignTicket(ticketId: string, agentId: string): Promise<v
   );
 }
 
+/**
+ * Эскалирует тикет на следующую линию поддержки.
+ *
+ * @param {string} ticketId Идентификатор тикета.
+ * @param {{ reason?: string }} [payload={}] Дополнительная причина эскалации.
+ * @returns {Promise<void>}
+ */
 export async function escalateTicket(
   ticketId: string,
   payload: { reason?: string } = {},
@@ -601,6 +701,13 @@ export async function escalateTicket(
   );
 }
 
+/**
+ * Сохраняет пользовательскую оценку по закрытому обращению.
+ *
+ * @param {string} ticketId Идентификатор тикета.
+ * @param {{ rating: number }} payload Оценка пользователя.
+ * @returns {Promise<void>}
+ */
 export async function rateTicket(ticketId: string, payload: { rating: number }): Promise<void> {
   await apiRequest<unknown>(
     `/api/support/tickets/${encodeURIComponent(ticketId)}/rating`,
@@ -609,6 +716,12 @@ export async function rateTicket(ticketId: string, payload: { rating: number }):
   );
 }
 
+/**
+ * Загружает агрегированную статистику техподдержки.
+ *
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<SupportStats>} Сводная статистика поддержки.
+ */
 export async function getSupportStats(signal?: AbortSignal): Promise<SupportStats> {
   const raw = await apiRequest<RawStats>(
     "/api/support/stats",

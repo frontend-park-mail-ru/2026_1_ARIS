@@ -1,6 +1,9 @@
+/**
+ * Бесконечная прокрутка ленты.
+ */
 import { initPostcardExpand } from "../../components/postcard/postcard";
 import { activeFeedState, setActiveFeedState } from "./state";
-import { renderFeedCards, renderFeedStatus } from "./render";
+import { renderFeedCards } from "./render";
 
 let feedObserver: IntersectionObserver | null = null;
 

@@ -1,25 +1,43 @@
+/**
+ * Базовый компонент текстового поля.
+ *
+ * Используется для обычных инпутов и для паролей с переключателем видимости.
+ */
 import { renderEyeToggle } from "../eye-toggle/eye-toggle";
 
 type InputState = "default" | "error";
 
 type RenderInputOptions = {
+  /** Тип HTML-поля. */
   type?: string;
+  /** Имя поля. */
   name?: string;
+  /** Placeholder поля. */
   placeholder?: string;
+  /** Текущее значение. */
   value?: string;
+  /** Визуальное состояние поля. */
   state?: InputState;
+  /** Нужно ли показывать кнопку видимости пароля. */
   withToggle?: boolean;
+  /** Видим ли пароль в текущий момент. */
   isVisible?: boolean;
+  /** Заблокировано ли поле. */
   disabled?: boolean;
+  /** Дополнительные CSS-классы. */
   className?: string;
+  /** Произвольные HTML-атрибуты. */
   attributes?: string;
 };
 
 /**
  * Рендерит компонент поля ввода.
  *
- * @param {RenderInputOptions} [options={}]
- * @returns {string}
+ * @param {RenderInputOptions} [options={}] Параметры рендера.
+ * @returns {string} HTML-разметка поля.
+ *
+ * @example
+ * renderInput({ type: "password", withToggle: true });
  */
 export function renderInput({
   type = "text",

@@ -1,3 +1,6 @@
+/**
+ * Persisted-хранилище состояния страницы чатов.
+ */
 import { getSessionUser } from "../../state/session";
 import { chatsState } from "./state";
 import { sortMessagesByCreatedAt } from "./helpers";

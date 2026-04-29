@@ -1,17 +1,38 @@
+/**
+ * Встраиваемый iframe-виджет техподдержки.
+ *
+ * Создаёт кнопку открытия и лениво монтирует iframe только в момент первого открытия,
+ * чтобы техподдержка не утяжеляла начальную загрузку каждой страницы.
+ */
 let widgetInitialised = false;
 
+/**
+ * Инициализирует iframe-виджет техподдержки.
+ *
+ * @returns {void}
+ */
 export function initSupportIframe(): void {
-  // Не создавать виджет внутри самого iframe
+  // Внутри iframe виджет не нужен, иначе получится рекурсивное вложение.
   if (window.self !== window.top) return;
   if (widgetInitialised) return;
   widgetInitialised = true;
 
-  const iframe = document.createElement("iframe");
-  iframe.src = "/support";
-  iframe.className = "support-iframe";
-  iframe.setAttribute("frameborder", "0");
-  iframe.setAttribute("title", "Техподдержка");
-  iframe.setAttribute("loading", "lazy");
+  let iframe: HTMLIFrameElement | null = null;
+
+  const ensureIframe = (): HTMLIFrameElement => {
+    if (iframe) return iframe;
+
+    iframe = document.createElement("iframe");
+    iframe.src = "/support";
+    iframe.className = "support-iframe";
+    iframe.id = "support-iframe";
+    iframe.setAttribute("frameborder", "0");
+    iframe.setAttribute("title", "Техподдержка");
+    iframe.setAttribute("loading", "lazy");
+    document.body.appendChild(iframe);
+
+    return iframe;
+  };
 
   const btn = document.createElement("button");
   btn.className = "support-toggle-btn";
@@ -26,13 +47,12 @@ export function initSupportIframe(): void {
       <circle cx="12" cy="17" r="1" fill="currentColor"/>
     </svg>
   `;
-  iframe.id = "support-iframe";
 
-  document.body.appendChild(iframe);
   document.body.appendChild(btn);
 
   const syncState = (isOpen: boolean): void => {
-    iframe.classList.toggle("support-iframe--open", isOpen);
+    const frame = isOpen ? ensureIframe() : iframe;
+    frame?.classList.toggle("support-iframe--open", isOpen);
     btn.setAttribute("aria-expanded", String(isOpen));
     btn.classList.toggle("support-toggle-btn--active", isOpen);
   };
@@ -40,7 +60,7 @@ export function initSupportIframe(): void {
   const closeIframe = (): void => syncState(false);
 
   btn.addEventListener("click", () => {
-    const isOpen = !iframe.classList.contains("support-iframe--open");
+    const isOpen = !(iframe?.classList.contains("support-iframe--open") ?? false);
     syncState(isOpen);
   });
 
@@ -55,7 +75,7 @@ export function initSupportIframe(): void {
   });
 
   document.addEventListener("keydown", (e: KeyboardEvent) => {
-    if (e.key === "Escape" && iframe.classList.contains("support-iframe--open")) {
+    if (e.key === "Escape" && iframe?.classList.contains("support-iframe--open")) {
       closeIframe();
     }
   });

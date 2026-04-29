@@ -1,9 +1,19 @@
+/**
+ * Моковые данные страницы чатов.
+ *
+ * Используются как резервный источник локальных тредов, пока страница
+ * не перешла полностью на API-данные или когда нужен предсказуемый dev-сценарий.
+ */
 import { getSessionUser } from "../../state/session";
-import { PROFILE_RECORDS, resolveProfilePath } from "../profile/profile-data";
+import { PROFILE_RECORDS } from "../profile/profile-data";
 import { resolvePersonPath, getCurrentUserProfilePath } from "./helpers";
 import type { ChatViewThread } from "./types";
 
-/** Создаёт начальный набор моковых тредов чата, которые показываются до загрузки API. */
+/**
+ * Создаёт набор моковых тредов чата.
+ *
+ * @returns {ChatViewThread[]} Тестовые диалоги для локального сценария.
+ */
 export function createMockThreads(): ChatViewThread[] {
   const byId = (id: string) => PROFILE_RECORDS.find((p) => p.id === id);
   const currentUser = getSessionUser();

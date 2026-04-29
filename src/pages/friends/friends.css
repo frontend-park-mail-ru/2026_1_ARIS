@@ -128,6 +128,8 @@
 
   .friends-card__avatar.avatar-fallback {
     display: inline-flex !important;
+    font-size: 24px;
+    letter-spacing: 0;
   }
 
   .friends-card__body {
@@ -211,37 +213,6 @@
     font-size: var(--text-size-heading-sm);
     font-weight: 600;
     color: var(--color-text-main);
-  }
-
-  .friends-modal__close {
-    display: inline-flex;
-    width: 45px;
-    min-width: 45px;
-    height: 45px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-input);
-    background: var(--color-surface-card);
-    color: var(--color-interactive-primary);
-    font: inherit;
-    font-size: var(--text-size-heading-md);
-    line-height: var(--line-height-solid);
-    cursor: pointer;
-    transition:
-      background-color var(--transition-control),
-      color var(--transition-control),
-      transform var(--transition-control);
-  }
-
-  .friends-modal__close:hover {
-    background: var(--color-interactive-secondary-hover);
-  }
-
-  .friends-modal__close:focus-visible {
-    outline: var(--control-focus-outline);
-    outline-offset: 2px;
   }
 
   .friends-modal__text,
@@ -335,6 +306,10 @@
     .friends-card__avatar {
       width: 92px;
       height: 92px;
+    }
+
+    .friends-card__avatar.avatar-fallback {
+      font-size: 25px;
     }
   }
 }

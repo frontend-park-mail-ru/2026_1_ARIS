@@ -1,6 +1,14 @@
+/**
+ * Страница профиля.
+ *
+ * Отвечает за:
+ * - загрузку собственного и публичного профиля
+ * - сборку постов профиля
+ * - подготовку данных для рендера секций
+ * - инициализацию интерактивных сценариев страницы
+ */
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
-import { getFeed, mapFeedResponse } from "../../api/feed";
 import {
   getMyPosts,
   getPostsByProfileId,
@@ -58,7 +66,9 @@ import {
   renderWork,
   renderPersonal,
 } from "./render";
-import { applyProfilePostFilters, bindProfileEvents, initProfilePostListLayout } from "./events";
+import { prepareAvatarLinks } from "../../utils/avatar";
+import { bindProfileEvents } from "./events";
+import { applyProfilePostFilters, initProfilePostListLayout } from "./post-list";
 
 type ProfileRoot = (Document | HTMLElement) & {
   __profileInteractionsBound?: boolean;
@@ -98,6 +108,13 @@ async function resolveProfileFriendState(
   return { relation: "none" };
 }
 
+/**
+ * Обогащает список друзей ссылками на аватар, если API друзей их не прислало.
+ *
+ * @param {Awaited<ReturnType<typeof getFriends>>} friends Исходный список друзей.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<Awaited<ReturnType<typeof getFriends>>>} Список с заполненными avatarLink.
+ */
 async function enrichFriendsWithAvatarLinks(
   friends: Awaited<ReturnType<typeof getFriends>>,
   signal?: AbortSignal,
@@ -124,6 +141,13 @@ async function enrichFriendsWithAvatarLinks(
   );
 }
 
+/**
+ * Загружает и собирает отображаемую модель профиля.
+ *
+ * @param {ProfileParams} params Параметры маршрута профиля.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<DisplayProfile>} Модель профиля для рендера.
+ */
 async function resolveProfile(
   params: ProfileParams,
   signal?: AbortSignal,
@@ -180,6 +204,12 @@ async function resolveProfile(
   return resolveMockProfile(params);
 }
 
+/**
+ * Форматирует дату поста в относительную подпись для профиля.
+ *
+ * @param {string} [iso] Исходная дата поста.
+ * @returns {string} Подпись времени.
+ */
 function formatPostRelativeTime(iso?: string): string {
   if (!iso) return "";
 
@@ -207,6 +237,13 @@ function formatPostRelativeTime(iso?: string): string {
   }).format(createdAt);
 }
 
+/**
+ * Преобразует API-пост в модель карточки профиля.
+ *
+ * @param {PostResponse} post Пост из backend API.
+ * @param {DisplayProfile} profile Профиль владельца постов.
+ * @returns {ProfilePost} Нормализованный пост.
+ */
 function mapApiPostToProfilePost(post: PostResponse, profile: DisplayProfile): ProfilePost {
   const media = Array.isArray(post.media)
     ? post.media.filter(
@@ -228,7 +265,7 @@ function mapApiPostToProfilePost(post: PostResponse, profile: DisplayProfile): P
     authorFirstName: post.firstName ?? profile.firstName,
     authorLastName: post.lastName ?? profile.lastName,
     authorUsername: profile.username,
-    authorAvatarLink: normaliseAvatarLink(post.avatarURL) ?? profile.avatarLink,
+    authorAvatarLink: normaliseAvatarLink(post.avatarURL) ?? profile.avatarLink ?? "",
     isOwnPost: profile.isOwnProfile,
     text: typeof post.text === "string" ? post.text : "",
     time: formatPostRelativeTime(post.createdAt),
@@ -247,28 +284,16 @@ function mapApiPostToProfilePost(post: PostResponse, profile: DisplayProfile): P
   return nextPost;
 }
 
-function mapFeedPostToProfilePost(
-  item: ReturnType<typeof mapFeedResponse>["items"][number],
-): ProfilePost {
-  return {
-    id: item.id,
-    authorId: item.authorId,
-    authorFirstName: item.firstName,
-    authorLastName: item.lastName,
-    authorUsername: item.author,
-    authorAvatarLink: normaliseAvatarLink(item.avatar),
-    isOwnPost: false,
-    text: item.text,
-    time: item.time,
-    timeRaw: item.timeRaw,
-    likes: item.likes,
-    reposts: item.reposts,
-    comments: item.comments,
-    media: [],
-    images: item.images,
-  };
-}
-
+/**
+ * Загружает и нормализует посты профиля.
+ *
+ * Для собственного профиля результат дополнительно кешируется локально,
+ * чтобы офлайн-возврат в профиль не выглядел пустым.
+ *
+ * @param {DisplayProfile} profile Профиль страницы.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<ProfilePost[]>} Список постов профиля.
+ */
 async function resolveProfilePosts(
   profile: DisplayProfile,
   signal?: AbortSignal,
@@ -299,31 +324,6 @@ async function resolveProfilePosts(
   }
 }
 
-async function resolveAllPosts(signal?: AbortSignal): Promise<ProfilePost[]> {
-  try {
-    const [feedResult, friendsResult] = await Promise.all([
-      getFeed({ limit: 100, ...(signal ? { signal } : {}) }),
-      getFriends("accepted", signal),
-    ]);
-
-    const friends = friendsResult.status === "fulfilled" ? friendsResult.value : [];
-    const friendIds = new Set(friends.map((f) => String(f.profileId)));
-
-    if (feedResult.status === "rejected") {
-      throw feedResult.reason;
-    }
-
-    const mapped = mapFeedResponse(feedResult.value);
-    const filteredItems = mapped.items.filter((item) => friendIds.has(String(item.authorId)));
-
-    return filteredItems.map(mapFeedPostToProfilePost);
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") throw error;
-    console.error("[profile] source=api scope=all-posts failed", error);
-    return [];
-  }
-}
-
 export async function renderProfile(
   params: ProfileParams = {},
   signal?: AbortSignal,
@@ -339,6 +339,12 @@ export async function renderProfile(
   }
 
   const profile = await resolveProfile(params, signal);
+  await prepareAvatarLinks([
+    getSessionUser()?.avatarLink,
+    profile.avatarLink,
+    ...profile.friends.map((friend) => friend.avatarLink),
+  ]);
+
   if (profile.isMissingProfile) {
     return `
       <div class="app-page">
@@ -363,9 +369,14 @@ export async function renderProfile(
     `;
   }
 
-  const [posts, allPosts] = await Promise.all([
-    resolveProfilePosts(profile, signal),
-    profile.isOwnProfile ? resolveAllPosts(signal) : Promise.resolve([]),
+  const posts = await resolveProfilePosts(profile, signal);
+  const allPosts: ProfilePost[] = [];
+  await prepareAvatarLinks([
+    getSessionUser()?.avatarLink,
+    profile.avatarLink,
+    ...profile.friends.map((friend) => friend.avatarLink),
+    ...posts.map((post) => post.authorAvatarLink),
+    ...allPosts.map((post) => post.authorAvatarLink),
   ]);
   setCurrentProfilePosts(posts);
 
@@ -395,7 +406,7 @@ export async function renderProfile(
 
         <section class="app-layout__center">
           <section class="profile-page">
-            <article class="profile-card">
+            <article class="profile-card content-card">
               <header class="profile-card__hero">
                 <div class="profile-card__avatar-column">
                   ${
@@ -407,10 +418,20 @@ export async function renderProfile(
                           data-profile-avatar-open
                           aria-label="Изменить аватар"
                         >
-                          ${renderAvatar(profile, "profile-card__avatar")}
+                          ${renderAvatar(profile, "profile-card__avatar", {
+                            width: 96,
+                            height: 96,
+                            loading: "eager",
+                            fetchPriority: "high",
+                          })}
                         </button>
                       `
-                      : renderAvatar(profile, "profile-card__avatar")
+                      : renderAvatar(profile, "profile-card__avatar", {
+                          width: 96,
+                          height: 96,
+                          loading: "eager",
+                          fetchPriority: "high",
+                        })
                   }
                 </div>
 
@@ -483,6 +504,6 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
   initProfilePostListLayout(root);
 }
 
-// Экспортируемый путь для resolveProfilePath — используется другими модулями.
+// Экспортируемый путь для `resolveProfilePath`, который используют другие модули.
 export { normalizeProfileId };
 export { ownAvatarOverride, setOwnAvatarOverride, currentProfilePosts };

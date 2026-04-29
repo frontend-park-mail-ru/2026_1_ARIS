@@ -1,3 +1,6 @@
+/**
+ * Локальные данные и helper-функции для dev-профилей.
+ */
 export type ProfileRecord = {
   id: string;
   publicId: number;
@@ -231,8 +234,13 @@ export function findProfileRecord({
 }
 
 export function resolveProfilePath(input: ProfileMatchInput): string {
+  const explicitId = String(input.id ?? "").trim();
+  if (explicitId) {
+    return `/id${encodeURIComponent(explicitId)}`;
+  }
+
   const matchedProfile = findProfileRecord(input);
-  const profileId = matchedProfile?.publicId ?? input.id ?? "";
+  const profileId = matchedProfile?.publicId ?? "";
 
   return profileId ? `/id${profileId}` : "/profile";
 }

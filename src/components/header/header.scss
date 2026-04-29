@@ -1,6 +1,6 @@
 @layer components {
   .header {
-    --header-height: 100px;
+    --header-height: 76px;
     --header-logo-width: 138px;
     --header-logo-height: 52px;
     --header-search-width: 420px;
@@ -73,8 +73,8 @@
     &__logo {
       display: block;
       width: var(--header-logo-width);
-      height: var(--header-logo-height);
-      object-fit: contain;
+      height: auto;
+      max-height: var(--header-logo-height);
       flex-shrink: 0;
     }
 
@@ -192,8 +192,6 @@
         transform var(--transition-control);
     }
 
-    &__avatar-wrap:hover &__user-menu,
-    &__avatar-wrap:focus-within &__user-menu,
     &__avatar-wrap.is-open &__user-menu {
       opacity: 1;
       pointer-events: auto;
@@ -229,7 +227,7 @@
   @supports (animation-timeline: scroll()) {
     @keyframes header-compact {
       to {
-        min-height: 60px;
+        min-height: 54px;
       }
     }
 

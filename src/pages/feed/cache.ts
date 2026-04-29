@@ -1,3 +1,6 @@
+/**
+ * Persistent-кэш страницы ленты.
+ */
 import type { PostcardModel } from "../../api/feed";
 import type { FeedAuthKey, FeedMode } from "./types";
 import { feedItemsCache, setActiveFeedState } from "./state";

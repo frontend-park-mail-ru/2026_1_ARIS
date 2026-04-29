@@ -27,6 +27,35 @@ function normalisePath(pathname: string): string {
   return noTrailing === "" ? "/" : noTrailing;
 }
 
+async function preloadImages(html: string): Promise<void> {
+  try {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = html;
+    const srcs: string[] = [];
+    tpl.content.querySelectorAll<HTMLImageElement>("img[src]").forEach((img) => {
+      const src = img.getAttribute("src");
+      // Skip static assets — already cached by the service worker.
+      if (!src || src.startsWith("/assets/")) return;
+      srcs.push(src);
+    });
+    if (!srcs.length) return;
+    // Keep Image references alive in Promise closures so they aren't GC'd
+    // before the network request completes and the HTTP cache is populated.
+    await Promise.all(
+      srcs.map(
+        (src) =>
+          new Promise<void>((resolve) => {
+            const img = new Image();
+            img.onload = img.onerror = () => resolve();
+            img.src = src;
+          }),
+      ),
+    );
+  } catch {
+    // ignore
+  }
+}
+
 function matchRoute(routePath: string, currentPath: string): MatchResult {
   const routeParts = normalisePath(routePath).split("/").filter(Boolean);
   const currentParts = normalisePath(currentPath).split("/").filter(Boolean);
@@ -72,7 +101,11 @@ function matchRoute(routePath: string, currentPath: string): MatchResult {
 }
 
 type VTDocument = Document & {
-  startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+  startViewTransition?: (cb: () => void) => {
+    finished: Promise<void>;
+    ready?: Promise<void>;
+    updateCallbackDone?: Promise<void>;
+  };
 };
 
 export function createRouter(
@@ -82,6 +115,29 @@ export function createRouter(
 ): AppRouter {
   let navController = new AbortController();
   let navId = 0;
+  let isViewTransitionRunning = false;
+
+  async function applyWithViewTransition(update: () => void): Promise<void> {
+    const vtDoc = document as VTDocument;
+
+    if (!vtDoc.startViewTransition || isViewTransitionRunning) {
+      update();
+      return;
+    }
+
+    isViewTransitionRunning = true;
+
+    try {
+      const transition = vtDoc.startViewTransition(update);
+      void transition.ready?.catch(() => undefined);
+      void transition.updateCallbackDone?.catch(() => undefined);
+      await transition.finished.catch(() => undefined);
+    } catch {
+      update();
+    } finally {
+      isViewTransitionRunning = false;
+    }
+  }
 
   async function render(resetScroll = false): Promise<void> {
     hooks.beforeRender?.();
@@ -113,23 +169,13 @@ export function createRouter(
 
     document.title = matchedRoute.title;
 
-    // Show skeleton synchronously (with view transition) while async render runs
+    // Show skeleton synchronously while async render runs. Do not wrap skeleton
+    // in View Transitions: the old page snapshot can visually leak into loading
+    // states and briefly show unrelated empty states from the previous route.
     const skeleton = hooks.getSkeleton?.(path);
+    const skeletonShownAt = skeleton ? Date.now() : 0;
     if (skeleton) {
-      const vtDoc = document as VTDocument;
-      if (vtDoc.startViewTransition) {
-        try {
-          await vtDoc
-            .startViewTransition(() => {
-              root.innerHTML = skeleton;
-            })
-            .finished.catch(() => undefined);
-        } catch {
-          root.innerHTML = skeleton;
-        }
-      } else {
-        root.innerHTML = skeleton;
-      }
+      root.innerHTML = skeleton;
       if (resetScroll) window.scrollTo(0, 0);
     }
 
@@ -144,24 +190,29 @@ export function createRouter(
     if (navId !== currentNavId) return;
 
     if (skeleton) {
-      // Skeleton already shown with transition — apply real content instantly
-      root.innerHTML = html;
-    } else {
-      const applyHtml = () => {
-        if (resetScroll) window.scrollTo(0, 0);
-        root.innerHTML = html;
-      };
-      const vtDoc = document as VTDocument;
-      if (vtDoc.startViewTransition) {
-        try {
-          await vtDoc.startViewTransition(applyHtml).finished.catch(() => undefined);
-        } catch {
-          applyHtml();
-        }
-      } else {
-        applyHtml();
-      }
+      const elapsed = Date.now() - skeletonShownAt;
+      // Kick off image fetches and wait until they're cached OR the hard
+      // deadline is reached. Images are held in Promise closures so they
+      // can't be GC'd before the HTTP cache is populated.
+      const IMAGE_MAX_WAIT_MS = 3000;
+      const MIN_SKELETON_MS = 900;
+      const imagesDone = preloadImages(html);
+      const deadline = new Promise<void>((resolve) =>
+        setTimeout(resolve, Math.max(0, IMAGE_MAX_WAIT_MS - elapsed)),
+      );
+      const minVisible = new Promise<void>((resolve) =>
+        setTimeout(resolve, Math.max(0, MIN_SKELETON_MS - elapsed)),
+      );
+      // Show content only after images are ready (or timeout) AND the
+      // skeleton has been visible for at least MIN_SKELETON_MS.
+      await Promise.all([Promise.race([imagesDone, deadline]), minVisible]);
+      if (navId !== currentNavId) return;
     }
+
+    await applyWithViewTransition(() => {
+      if (resetScroll && !skeleton) window.scrollTo(0, 0);
+      root.innerHTML = html;
+    });
 
     await hooks.afterRender?.(root);
     window.dispatchEvent(new CustomEvent("apprender"));

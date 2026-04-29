@@ -62,7 +62,7 @@ export async function trackedFetch(
     const response = await fetch(input, init);
     const responseSource = response.headers.get("x-aris-response-source");
 
-    if (responseSource === "cache") {
+    if (responseSource === "cache" && !navigator.onLine) {
       markConnectionUnavailable();
     } else {
       markConnectionAvailable();
@@ -70,6 +70,9 @@ export async function trackedFetch(
 
     return response;
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
+    }
     markConnectionUnavailable();
     throw error;
   }

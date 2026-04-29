@@ -1,6 +1,13 @@
+/**
+ * Рендер страницы друзей.
+ *
+ * Содержит функции генерации HTML и обновления DOM для страницы.
+ */
 import { friendsState, getVisibleFriends } from "./state";
 import type { DisplayFriend, FriendsTab } from "./types";
 import { TAB_TITLES } from "./types";
+import { renderModalCloseButton } from "../../components/modal-close/modal-close";
+import { renderAvatarMarkup } from "../../utils/avatar";
 
 function escapeHtml(value: string): string {
   return value
@@ -11,16 +18,12 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function getAvatarSrc(avatarLink?: string): string {
-  if (!avatarLink) return "/assets/img/default-avatar.png";
-  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
-    return avatarLink;
-  }
-  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
-}
-
 function getFriendName(friend: DisplayFriend): string {
   return `${friend.firstName} ${friend.lastName}`.trim() || friend.username || "Пользователь";
+}
+
+function renderFriendAvatar(friend: DisplayFriend, className: string): string {
+  return renderAvatarMarkup(className, getFriendName(friend), friend.avatarLink);
 }
 
 function formatFriendshipSince(createdAt?: string): string {
@@ -113,7 +116,7 @@ export function renderFriendsList(): string {
       return `
         <article class="friends-card" data-friend-id="${escapeHtml(friend.profileId)}">
           <a href="${profilePath}" data-link class="friends-card__avatar-link">
-            <img class="friends-card__avatar" src="${getAvatarSrc(friend.avatarLink)}" alt="${escapeHtml(friendName)}">
+            ${renderFriendAvatar(friend, "friends-card__avatar")}
           </a>
           <div class="friends-card__body">
             <a href="${profilePath}" data-link class="friends-card__name">${escapeHtml(friendName)}</a>
@@ -139,10 +142,13 @@ export function renderDeleteModal(): string {
       <section class="friends-modal__dialog" role="dialog" aria-modal="true" aria-label="Удалить из друзей">
         <header class="friends-modal__header">
           <h2 class="friends-modal__title">Удалить из друзей</h2>
-          <button type="button" class="friends-modal__close" data-friends-modal-close aria-label="Закрыть">×</button>
+          ${renderModalCloseButton({
+            className: "friends-modal__close",
+            attributes: "data-friends-modal-close",
+          })}
         </header>
         <div class="friends-modal__identity">
-          <img class="friends-modal__avatar" src="${getAvatarSrc(friend.avatarLink)}" alt="${escapeHtml(friendName)}">
+          ${renderFriendAvatar(friend, "friends-modal__avatar")}
           <p class="friends-modal__name">${escapeHtml(friendName)}</p>
         </div>
         <p class="friends-modal__text">Вы действительно хотите удалить этого пользователя из друзей?</p>
@@ -164,7 +170,7 @@ export function renderFriendsContent(): string {
 
   return `
     <section class="friends-page" data-friends-page>
-      <section class="friends-panel">
+      <section class="friends-panel content-card">
         <header class="friends-panel__header">
           <p class="friends-panel__summary">
             ${totalCount === 0 ? "У вас пока нет друзей." : `У вас в друзьях ${getFriendsCountLabel(totalCount)}.`}

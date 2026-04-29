@@ -1,3 +1,8 @@
+/**
+ * Обработчики событий страницы чатов.
+ *
+ * Содержит пользовательские сценарии и реакцию интерфейса на действия пользователя.
+ */
 import { sendChatMessage } from "../../api/chat";
 import { getSessionUser } from "../../state/session";
 import { chatsState } from "./state";

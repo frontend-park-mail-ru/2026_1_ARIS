@@ -1,19 +1,51 @@
+/**
+ * Компонент карточки поста в ленте.
+ *
+ * Отвечает за:
+ * - отображение автора, текста и вложений;
+ * - рендер счётчиков лайков, репостов и комментариев;
+ * - управление раскрытием длинного текста;
+ * - приоритизацию главного изображения для LCP.
+ *
+ * Не отвечает за:
+ * - загрузку данных ленты;
+ * - синхронизацию состояния лайков с сервером;
+ * - маршрутизацию страниц.
+ */
 import { getSessionUser } from "../../state/session";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
+import { renderAvatarMarkup } from "../../utils/avatar";
+import { resolveMediaUrl } from "../../utils/media";
 
+/**
+ * Модель поста для карточки ленты.
+ */
 export type PostcardPost = {
+  /** Идентификатор поста. */
   id?: string;
+  /** Логин или короткое имя автора. */
   author?: string;
+  /** Идентификатор профиля автора. */
   authorId?: string;
+  /** Имя автора. */
   firstName?: string;
+  /** Фамилия автора. */
   lastName?: string;
+  /** Ссылка на аватар автора. */
   avatar: string;
+  /** Основной текст публикации. */
   text: string;
+  /** Короткая подпись времени для карточки. */
   time: string;
+  /** Полная дата публикации в ISO-формате. */
   timeRaw?: string;
+  /** Количество лайков. */
   likes: number;
+  /** Количество комментариев. */
   comments: number;
+  /** Количество репостов. */
   reposts: number;
+  /** Список изображений поста в порядке отображения. */
   images?: string[];
 };
 
@@ -21,6 +53,14 @@ type PostcardStatOptions = {
   icon: string;
   count: number;
   action: string;
+};
+
+type PostcardMediaOptions = {
+  prioritizeFirstImage?: boolean;
+};
+
+type RenderPostcardOptions = {
+  prioritizeMedia?: boolean;
 };
 
 type PostcardRoot = (Document | HTMLElement) & {
@@ -39,28 +79,22 @@ function formatStatCount(count: number): string {
   return String(count);
 }
 
-function resolveAvatarSrc(avatarLink?: string): string {
-  if (!avatarLink) {
-    return "/assets/img/default-avatar.png";
-  }
+function getPostcardStatAccessibleName(action: string, count: number): string {
+  const nounByAction: Record<string, string> = {
+    like: "лайков",
+    repost: "репостов",
+    comment: "комментариев",
+  };
 
-  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
-    return avatarLink;
-  }
+  return `${formatStatCount(count)} ${nounByAction[action] ?? action}`.trim();
+}
 
-  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
+function renderPostcardAvatar(post: PostcardPost, authorName: string): string {
+  return renderAvatarMarkup("postcard__avatar", authorName, post.avatar, { width: 44, height: 44 });
 }
 
 function resolveMediaSrc(mediaLink?: string): string {
-  if (!mediaLink) {
-    return "";
-  }
-
-  if (mediaLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(mediaLink)) {
-    return mediaLink;
-  }
-
-  return `/image-proxy?url=${encodeURIComponent(mediaLink)}`;
+  return resolveMediaUrl(mediaLink);
 }
 
 function escapeHtml(value: string): string {
@@ -96,14 +130,35 @@ function formatPostExactTime(iso?: string): string {
   return `${datePart}\n${timePart}`;
 }
 
+function shouldRenderExpandButtonInitially(text: string): boolean {
+  const raw = String(text ?? "");
+  const normalized = raw.replace(/\s+/g, " ").trim();
+  const explicitLines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean).length;
+
+  return explicitLines >= 3 || normalized.length >= 140;
+}
+
 /**
- * Рендерит элемент футера карточки поста.
+ * Рендерит кнопку или ссылку статистики под карточкой поста.
+ *
+ * Использует разную разметку для гостя и авторизованного пользователя,
+ * потому что гостя нужно привести к авторизации, а не выполнять действие сразу.
  *
  * @param {PostcardStatOptions} options
- * @returns {string}
+ * @returns {string} HTML элемента статистики.
+ * @example
+ * renderPostcardStat({
+ *   icon: "/assets/img/icons/heart.svg",
+ *   count: 12,
+ *   action: "like",
+ * });
  */
 function renderPostcardStat({ icon, count, action }: PostcardStatOptions): string {
   const isAuthorised = getSessionUser() !== null;
+  const accessibleName = getPostcardStatAccessibleName(action, count);
 
   if (isAuthorised) {
     return `
@@ -111,7 +166,7 @@ function renderPostcardStat({ icon, count, action }: PostcardStatOptions): strin
         type="button"
         class="postcard__stat postcard__stat-button"
         data-action="${action}"
-        aria-label="${action}"
+        aria-label="${accessibleName}"
       >
         <span class="postcard__stat-icon" aria-hidden="true">
           <img src="${icon}" alt="">
@@ -122,7 +177,7 @@ function renderPostcardStat({ icon, count, action }: PostcardStatOptions): strin
   }
 
   return `
-    <a href="/login" data-open-auth-modal="login" class="postcard__stat postcard__stat-link" aria-label="${action}">
+    <a href="/login" data-open-auth-modal="login" class="postcard__stat postcard__stat-link" aria-label="${accessibleName}">
       <span class="postcard__stat-icon" aria-hidden="true">
         <img src="${icon}" alt="">
       </span>
@@ -131,22 +186,35 @@ function renderPostcardStat({ icon, count, action }: PostcardStatOptions): strin
   `;
 }
 
+function renderPostcardMediaImage(src: string, prioritize = false): string {
+  return `<img class="postcard__media-item" loading="${prioritize ? "eager" : "lazy"}"${prioritize ? ' fetchpriority="high"' : ""} decoding="async" src="${resolveMediaSrc(src)}" alt="">`;
+}
+
 /**
- * Рендерит медиаблок карточки поста.
+ * Рендерит сетку изображений поста.
+ *
+ * Выбирает раскладку по количеству картинок и может приоритизировать
+ * первое изображение, если карточка попадает в начальную видимую область.
  *
  * @param {string[]} images
- * @returns {string}
+ * @returns {string} HTML медиаблока.
+ * @example
+ * renderPostcardMedia(["/img/1.jpg", "/img/2.jpg"], {
+ *   prioritizeFirstImage: true,
+ * });
  */
-function renderPostcardMedia(images: string[] = []): string {
+function renderPostcardMedia(images: string[] = [], options: PostcardMediaOptions = {}): string {
   if (images.length === 0) {
     return "";
   }
+
+  const prioritizeFirstImage = Boolean(options.prioritizeFirstImage);
 
   if (images.length === 1) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--single">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
         </div>
       </div>
     `;
@@ -156,8 +224,8 @@ function renderPostcardMedia(images: string[] = []): string {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--double">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
+          ${renderPostcardMediaImage(images[1] ?? "")}
         </div>
       </div>
     `;
@@ -167,9 +235,9 @@ function renderPostcardMedia(images: string[] = []): string {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--triple">
-          <img class="postcard__media-item postcard__media-item--featured" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage).replace('class="postcard__media-item"', 'class="postcard__media-item postcard__media-item--featured"')}
+          ${renderPostcardMediaImage(images[1] ?? "")}
+          ${renderPostcardMediaImage(images[2] ?? "")}
         </div>
       </div>
     `;
@@ -181,9 +249,8 @@ function renderPostcardMedia(images: string[] = []): string {
         <div class="postcard__media-grid postcard__media-grid--quad">
           ${images
             .slice(0, 4)
-            .map(
-              (image) =>
-                `<img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(image)}" alt="">`,
+            .map((image, index) =>
+              renderPostcardMediaImage(image, prioritizeFirstImage && index === 0),
             )
             .join("")}
         </div>
@@ -195,14 +262,14 @@ function renderPostcardMedia(images: string[] = []): string {
     return `
       <div class="postcard__media postcard__media--five">
         <div class="postcard__media-row postcard__media-row--top">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
+          ${renderPostcardMediaImage(images[1] ?? "")}
         </div>
 
         <div class="postcard__media-row postcard__media-row--bottom">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[3] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[4] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[2] ?? "")}
+          ${renderPostcardMediaImage(images[3] ?? "")}
+          ${renderPostcardMediaImage(images[4] ?? "")}
         </div>
       </div>
     `;
@@ -211,16 +278,16 @@ function renderPostcardMedia(images: string[] = []): string {
   return `
     <div class="postcard__media postcard__media--five-plus">
       <div class="postcard__media-row postcard__media-row--top">
-        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
-        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
+        ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
+        ${renderPostcardMediaImage(images[1] ?? "")}
+        ${renderPostcardMediaImage(images[2] ?? "")}
       </div>
 
       <div class="postcard__media-row postcard__media-row--bottom">
-        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[3] ?? "")}" alt="">
-        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[4] ?? "")}" alt="">
+        ${renderPostcardMediaImage(images[3] ?? "")}
+        ${renderPostcardMediaImage(images[4] ?? "")}
         <div class="postcard__media-overlay">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[5] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[5] ?? "")}
           <span class="postcard__media-overlay-count">+${images.length - 5}</span>
         </div>
       </div>
@@ -229,13 +296,25 @@ function renderPostcardMedia(images: string[] = []): string {
 }
 
 /**
- * Рендерит внутренний HTML карточки поста (используется внутри Shadow DOM и напрямую).
- * Экспортируется для использования в ArisPostcard Web Component.
+ * Рендерит внутренний HTML карточки поста.
+ *
+ * Эта функция нужна как единый источник разметки и для обычного рендера,
+ * и для веб-компонента `ArisPostcard`, чтобы логика отображения не расходилась
+ * между разными способами использования карточки.
+ *
+ * @param {PostcardPost} post Данные публикации.
+ * @param {RenderPostcardOptions} [options={}] Дополнительные параметры рендера.
+ * @returns {string} HTML содержимого карточки.
+ * @example
+ * const html = renderPostcardInner(post, { prioritizeMedia: true });
  */
-export function renderPostcardInner(post: PostcardPost): string {
+export function renderPostcardInner(
+  post: PostcardPost,
+  options: RenderPostcardOptions = {},
+): string {
   const sessionUser = getSessionUser();
-  const statsMarkup = sessionUser
-    ? `
+  const shouldShowExpandInitially = shouldRenderExpandButtonInitially(post.text);
+  const statsMarkup = `
     <div class="postcard__stats">
       ${renderPostcardStat({
         icon: "/assets/img/icons/heart.svg",
@@ -253,8 +332,7 @@ export function renderPostcardInner(post: PostcardPost): string {
         action: "comment",
       })}
     </div>
-  `
-    : "";
+  `;
   const displayName =
     `${post.firstName || ""} ${post.lastName || ""}`.trim() || post.author || "Пользователь";
   const profilePath = resolveProfilePath({
@@ -265,16 +343,9 @@ export function renderPostcardInner(post: PostcardPost): string {
   });
 
   return `
-    <article class="postcard">
+    <article class="postcard content-card">
       <header class="postcard__header">
-        <img
-          class="postcard__avatar"
-          src="${resolveAvatarSrc(post.avatar)}"
-          alt="${displayName}"
-          width="44" height="44"
-          decoding="async"
-          loading="lazy"
-        >
+        ${renderPostcardAvatar(post, displayName)}
         <a
           href="${sessionUser ? profilePath : "/login"}"
           ${sessionUser ? "data-link" : 'data-open-auth-modal="login"'}
@@ -286,26 +357,36 @@ export function renderPostcardInner(post: PostcardPost): string {
 
       <div class="postcard__text-container">
         <p class="postcard__text postcard__text--collapsed">${post.text}</p>
-        <button type="button" class="postcard__expand postcard__expand--hidden">читать полностью</button>
+        <button type="button" class="postcard__expand${shouldShowExpandInitially ? "" : " postcard__expand--hidden"}">читать полностью</button>
       </div>
 
-      ${renderPostcardMedia(post.images || [])}
+      ${renderPostcardMedia(post.images || [], {
+        prioritizeFirstImage: options.prioritizeMedia,
+      })}
 
       <footer class="postcard__footer">
         ${statsMarkup}
 
-        <p class="postcard__time" ${post.timeRaw ? `title="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}>${post.time}</p>
+        <p class="postcard__time" ${post.timeRaw ? `data-tooltip="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}>${post.time}</p>
       </footer>
     </article>
   `;
 }
 
 /**
- * Рендерит карточку поста как <aris-postcard> Web Component с Shadow DOM.
- * Данные передаются через атрибут data-post (JSON).
+ * Рендерит карточку поста как веб-компонент `<aris-postcard>`.
+ *
+ * Такой вариант изолирует стили внутри `Shadow DOM` и позволяет безопасно
+ * встраивать карточку в разные части интерфейса без утечек CSS.
+ *
+ * @param {PostcardPost} post Данные публикации.
+ * @param {RenderPostcardOptions} [options={}] Дополнительные параметры рендера.
+ * @returns {string} HTML-строка карточки.
+ * @example
+ * const html = renderPostcard(post);
  */
-export function renderPostcard(post: PostcardPost): string {
-  return renderPostcardInner(post);
+export function renderPostcard(post: PostcardPost, options: RenderPostcardOptions = {}): string {
+  return renderPostcardInner(post, options);
 }
 
 /**
@@ -354,8 +435,15 @@ export function initPostcardExpand(root: Document | HTMLElement = document): voi
 }
 
 /**
- * Инициализирует кнопку "читать полностью" внутри Shadow Root конкретной карточки.
- * Используется в ArisPostcard.connectedCallback().
+ * Инициализирует кнопку «читать полностью» внутри `Shadow Root` конкретной карточки.
+ *
+ * Нужна, чтобы логика раскрытия длинного текста жила рядом с карточкой
+ * и не требовала отдельного глобального обработчика для каждого экземпляра.
+ *
+ * @param {ShadowRoot} shadow `Shadow Root` конкретной карточки.
+ * @returns {void}
+ * @example
+ * initPostcardExpandInShadow(this.shadowRoot);
  */
 export function initPostcardExpandInShadow(shadow: ShadowRoot): void {
   requestAnimationFrame(() => {

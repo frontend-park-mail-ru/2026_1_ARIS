@@ -1,3 +1,6 @@
+/**
+ * Контроллер модального окна авторизации.
+ */
 import { renderAuthModal, renderAuthModalPanel, type AuthMode } from "./auth-modal";
 import { registerDraft } from "../../state/register-draft";
 
@@ -22,12 +25,25 @@ function getActiveDialog(): HTMLDialogElement | null {
 }
 
 function attachDialogListeners(dialog: HTMLDialogElement): void {
-  // Backdrop click: <dialog> fires click on itself when clicking ::backdrop
+  let backdropPressStarted = false;
+
+  // Запоминаем начало нажатия по фону, чтобы выделение текста внутри формы
+  // не закрывало диалог при отпускании кнопки мыши на фоне.
+  dialog.addEventListener("pointerdown", (e) => {
+    backdropPressStarted = e.target === dialog;
+  });
+
+  // При клике по ::backdrop элемент <dialog> получает событие click на самом себе.
   dialog.addEventListener("click", (e) => {
-    if (e.target === dialog) dialog.close();
+    if (backdropPressStarted && e.target === dialog) {
+      dialog.close();
+    }
+
+    backdropPressStarted = false;
   });
 
   dialog.addEventListener("close", () => {
+    backdropPressStarted = false;
     document.body.classList.remove("modal-open");
     getModalRoot().innerHTML = "";
   });

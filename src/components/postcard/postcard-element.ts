@@ -1,3 +1,6 @@
+/**
+ * Web Component-обёртка для карточки поста.
+ */
 import { renderPostcardInner, initPostcardExpand, type PostcardPost } from "./postcard";
 
 export class ArisPostcard extends HTMLElement {

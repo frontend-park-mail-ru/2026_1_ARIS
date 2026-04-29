@@ -1,3 +1,8 @@
+/**
+ * Конфигурация клиентского роутера.
+ *
+ * Связывает маршруты, скелетоны страниц и post-render инициализацию.
+ */
 import { createRouter as createWorkspaceRouter, type AppRouter, type Route } from "@aris/router";
 import { initPostcardExpand } from "../components/postcard/postcard";
 import { initAuthForm } from "../components/auth-form/auth-form-controller";
@@ -6,6 +11,9 @@ import { initEyeToggle } from "../components/eye-toggle/eye-toggle-controller";
 import { initInputMasks } from "../components/input/input-mask-controller";
 import { renderFeedSkeleton } from "../pages/feed/skeleton";
 import { renderChatsSkeleton } from "../pages/chats/skeleton";
+import { renderFriendsSkeleton } from "../pages/friends/skeleton";
+import { renderProfileSkeleton } from "../pages/profile/skeleton";
+import { initAvatarFallback } from "../utils/avatar-fallback";
 
 export { type RouteParams } from "@aris/router";
 
@@ -13,15 +21,55 @@ function normalisePath(p: string): string {
   return (p || "/").replace(/\/+$/, "") || "/";
 }
 
+function stripChatIdFromNonChatsUrl(): void {
+  const pathname = normalisePath(window.location.pathname);
+  if (pathname === "/chats") {
+    return;
+  }
+
+  const nextUrl = new URL(window.location.href);
+  if (!nextUrl.searchParams.has("chatId")) {
+    return;
+  }
+
+  nextUrl.searchParams.delete("chatId");
+  const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (nextPath !== currentPath) {
+    window.history.replaceState({}, "", nextPath);
+  }
+}
+
+/**
+ * Создаёт основной роутер приложения.
+ *
+ * Помимо маршрутизации, роутер отвечает за:
+ * - показ скелетонов во время переключения страниц
+ * - подключение поведенческих инициализаторов после рендера
+ * - ленивую загрузку тяжёлых страниц
+ *
+ * @param {HTMLElement} root Корневой контейнер приложения.
+ * @param {Route[]} routes Список маршрутов.
+ * @returns {AppRouter} Настроенный экземпляр роутера.
+ *
+ * @example
+ * const router = createRouter(root, routes);
+ */
 export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
   return createWorkspaceRouter(root, routes, {
     getSkeleton(path: string): string | null {
       const p = normalisePath(path);
       if (p === "/" || p === "/feed") return renderFeedSkeleton();
       if (p.startsWith("/chats")) return renderChatsSkeleton();
+      if (p === "/friends") return renderFriendsSkeleton();
+      if (p.startsWith("/profile") || p.startsWith("/id")) return renderProfileSkeleton();
       return null;
     },
     afterRender: async (nextRoot) => {
+      // Очищаем `chatId` вне страницы чатов, чтобы состояние URL не протекало между разделами.
+      stripChatIdFromNonChatsUrl();
+      initAvatarFallback(nextRoot);
       initAuthForm(document);
       initPostcardExpand(nextRoot);
       initAuthModal(document);

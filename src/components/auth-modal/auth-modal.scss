@@ -38,11 +38,7 @@
     top: var(--auth-modal-close-offset, 16px);
     right: var(--auth-modal-close-offset, 16px);
     z-index: 2;
-    width: var(--auth-modal-close-size, 45px);
-    min-width: var(--auth-modal-close-size, 45px);
-    height: var(--auth-modal-close-size, 45px);
-    padding: 0;
-    font-size: var(--auth-modal-close-font-size, 28px);
-    line-height: 1;
+    --modal-close-size: var(--auth-modal-close-size, 45px);
+    --modal-close-font-size: var(--auth-modal-close-font-size, 28px);
   }
 }

@@ -479,15 +479,6 @@
     position: absolute;
     top: 12px;
     right: 12px;
-    width: 30px;
-    height: 30px;
-    border: none;
-    border-radius: 50%;
-    background: rgb(107 114 128 / 12%);
-    color: var(--color-text-main);
-    font-size: 22px;
-    line-height: 1;
-    cursor: pointer;
   }
 
   .sw-ticket-modal__body {
@@ -501,7 +492,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
-    padding-right: 36px;
+    padding-right: 56px;
   }
 
   .sw-ticket-modal__title {

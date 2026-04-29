@@ -1,3 +1,6 @@
+/**
+ * Рендер формы редактирования профиля.
+ */
 import type { DisplayProfile, EditableProfileFields, ProfileFieldErrorMap } from "./types";
 import { escapeHtml } from "./helpers";
 
@@ -134,7 +137,7 @@ export function renderProfileEditor(profile: DisplayProfile): string {
   }
 
   return `
-    <section class="profile-editor" data-profile-editor hidden>
+    <section class="profile-editor content-card" data-profile-editor hidden>
       <form class="profile-editor__form" data-profile-edit-form novalidate>
         <div class="profile-editor__intro">
           <h2>Редактирование профиля</h2>

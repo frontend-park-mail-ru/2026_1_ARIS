@@ -1,0 +1,14 @@
+@layer components {
+  .modal-close-button {
+    --modal-close-size: 45px;
+    --modal-close-font-size: 28px;
+
+    flex: 0 0 auto;
+    width: var(--modal-close-size);
+    min-width: var(--modal-close-size);
+    height: var(--modal-close-size);
+    padding: 0;
+    font-size: var(--modal-close-font-size);
+    line-height: 1;
+  }
+}

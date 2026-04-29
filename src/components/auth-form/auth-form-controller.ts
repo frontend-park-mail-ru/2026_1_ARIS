@@ -1,4 +1,8 @@
+/**
+ * Контроллер формы авторизации и регистрации.
+ */
 import { ApiError, loginUser, registerUser, validateRegisterStepOne } from "../../api/auth";
+import { getMyProfile } from "../../api/profile";
 import { setSessionUser } from "../../state/session";
 import { closeAuthModal } from "../auth-modal/auth-modal-controller";
 import { renderAuthForm } from "./auth-form";
@@ -32,6 +36,23 @@ type ValidationErrors = Record<FieldName, string>;
 type ServerFieldErrors = Partial<Record<"login" | "password1" | "password2", string>>;
 
 type FieldName = (typeof FIELD_ORDER)[number];
+
+function extractAvatarLink(payload: unknown): string {
+  if (!payload || typeof payload !== "object") {
+    return "";
+  }
+
+  const candidate =
+    "imageLink" in payload && typeof payload.imageLink === "string"
+      ? payload.imageLink
+      : "avatarLink" in payload && typeof payload.avatarLink === "string"
+        ? payload.avatarLink
+        : "avatar" in payload && typeof payload.avatar === "string"
+          ? payload.avatar
+          : "";
+
+  return candidate.trim();
+}
 
 const REGISTER_STEP_FIELDS: Record<RegisterStep, readonly FieldName[]> = {
   1: ["login", "password", "repeatPassword"],
@@ -873,12 +894,23 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
         password: values.password || "",
       });
 
+      let avatarLink = user.avatarLink || "";
+
+      if (!avatarLink) {
+        try {
+          const profile = await getMyProfile();
+          avatarLink = extractAvatarLink(profile);
+        } catch {
+          // Если профиль не подтянулся сразу после логина, не блокируем вход.
+        }
+      }
+
       setSessionUser({
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         login: values.login || "",
-        avatarLink: user.avatarLink || "",
+        avatarLink,
       });
 
       closeAuthModal();

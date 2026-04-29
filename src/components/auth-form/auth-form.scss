@@ -12,9 +12,10 @@
     --auth-form-field-error-min-height: 31px;
     --auth-form-error-min-height: 34px;
     --auth-form-actions-top-gap: -10px;
-    --auth-form-logo-width: 110px;
-    --auth-form-logo-offset-top: -50px;
-    --auth-form-logo-offset-left: -70px;
+    --auth-form-logo-width: 138px;
+    --auth-form-logo-height: 52px;
+    --auth-form-logo-offset-top: -62px;
+    --auth-form-logo-offset-left: -72px;
     --auth-form-register-header-min-height: 60px;
     --auth-form-title-size: 24px;
     --auth-form-subtitle-size: 15px;
@@ -108,6 +109,8 @@
       display: block;
       width: var(--auth-form-logo-width);
       height: auto;
+      max-height: var(--auth-form-logo-height);
+      flex-shrink: 0;
     }
 
     &__header-text {

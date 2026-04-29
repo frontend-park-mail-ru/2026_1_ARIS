@@ -197,9 +197,21 @@ export function isOwnMessage(authorId?: string, authorName?: string): boolean {
   return false;
 }
 
+function normalisePathname(pathname: string): string {
+  return pathname.replace(/\/+$/g, "") || "/";
+}
+
+function isChatsPath(pathname: string): boolean {
+  return normalisePathname(pathname) === "/chats";
+}
+
 /** Обновляет параметр `chatId` в URL страницы чатов без перезагрузки. */
 export function syncSelectedChatToUrl(chatId: string, options: { replace?: boolean } = {}): void {
   const nextUrl = new URL(window.location.href);
+  if (!isChatsPath(nextUrl.pathname)) {
+    return;
+  }
+
   if (chatId) {
     nextUrl.searchParams.set("chatId", chatId);
   } else {
@@ -214,5 +226,20 @@ export function syncSelectedChatToUrl(chatId: string, options: { replace?: boole
     window.history.replaceState({}, "", nextPath);
   } else {
     window.history.pushState({}, "", nextPath);
+  }
+}
+
+/** Удаляет случайно прилипший `chatId` на не-чатовых маршрутах. */
+export function stripChatIdFromNonChatsUrl(): void {
+  const nextUrl = new URL(window.location.href);
+  if (isChatsPath(nextUrl.pathname) || !nextUrl.searchParams.has("chatId")) {
+    return;
+  }
+
+  nextUrl.searchParams.delete("chatId");
+  const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextPath !== currentPath) {
+    window.history.replaceState({}, "", nextPath);
   }
 }

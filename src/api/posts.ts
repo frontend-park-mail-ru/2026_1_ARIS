@@ -1,6 +1,6 @@
-import { ApiError, parseJson, createApiError, apiRequest } from "./core/client";
+import { ApiError, apiRequest } from "./core/client";
 import type { UploadedMedia } from "./profile";
-import { isNetworkUnavailableError, trackedFetch } from "../state/network-status";
+import { isNetworkUnavailableError } from "../state/network-status";
 import { clearFeedCache } from "../pages/feed/cache";
 import { enqueueRequest, OutboxQueuedError, registerOutboxSync } from "../utils/outbox-idb";
 
@@ -84,23 +84,22 @@ async function mutatePost(
   method: "POST" | "PATCH" | "DELETE",
   payload?: PostPayload,
 ): Promise<PostResponse | void> {
-  const requestInit: RequestInit = { method, credentials: "include" };
-  let body: string | undefined;
-
-  if (payload && method !== "DELETE") {
-    requestInit.headers = { "Content-Type": "application/json" };
-    body = JSON.stringify(payload);
-    requestInit.body = body;
-  }
-
-  let response: Response;
   try {
-    response = await trackedFetch(path, requestInit);
+    const data = await apiRequest<PostResponse | null>(
+      path,
+      {
+        method,
+        ...(payload && method !== "DELETE" ? { body: payload } : {}),
+      },
+      null,
+    );
+    return data ?? undefined;
   } catch (error) {
     if (!isNetworkUnavailableError(error)) {
       throw error;
     }
 
+    const body = payload && method !== "DELETE" ? JSON.stringify(payload) : undefined;
     await enqueueRequest({
       url: path,
       method,
@@ -117,17 +116,6 @@ async function mutatePost(
     clearFeedCache();
     throw new OutboxQueuedError();
   }
-
-  const data =
-    response.status === 204 || method === "DELETE"
-      ? null
-      : await parseJson<PostResponse | { error?: string }>(response, {});
-
-  if (!response.ok) {
-    throw createApiError("failed to mutate post", response.status, data);
-  }
-
-  return data as PostResponse | void;
 }
 
 export async function getMyPosts(signal?: AbortSignal): Promise<PostResponse[]> {
@@ -193,17 +181,11 @@ export async function uploadPostImages(files: File[]): Promise<UploadedMedia[]> 
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));
 
-  const response = await trackedFetch("/api/media/upload?for=post", {
-    method: "POST",
-    credentials: "include",
-    body: formData,
-  });
-
-  const data = await parseJson<UploadMediaResponse | { error?: string }>(response, {});
-
-  if (!response.ok) {
-    throw createApiError("failed to upload post images", response.status, data);
-  }
+  const data = await apiRequest<UploadMediaResponse>(
+    "/api/media/upload?for=post",
+    { method: "POST", body: formData },
+    {},
+  );
 
   return Array.isArray((data as UploadMediaResponse).media)
     ? (data as UploadMediaResponse).media

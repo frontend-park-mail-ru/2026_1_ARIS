@@ -34,6 +34,7 @@ export const sessionStore = new StateManager<SessionState>({
 });
 
 const SESSION_USER_STORAGE_KEY = "arisfront:session-user";
+const PUBLIC_GUEST_SESSION_PATHS = new Set(["/", "/feed", "/login", "/register", "/support"]);
 
 function getAvatarLinkFromPayload(payload: unknown): string {
   if (!payload || typeof payload !== "object") {
@@ -107,6 +108,23 @@ function persistSessionUser(user: User | null): void {
   } catch {
     // Игнорируем ошибки хранилища, чтобы состояние во время выполнения оставалось рабочим.
   }
+}
+
+function normalizePathname(pathname: string): string {
+  const normalized = pathname.replace(/\/+$/g, "");
+  return normalized || "/";
+}
+
+function shouldProbeBackendSession(savedUser: User | null): boolean {
+  if (savedUser) {
+    return true;
+  }
+
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  return !PUBLIC_GUEST_SESSION_PATHS.has(normalizePathname(window.location.pathname));
 }
 
 /**
@@ -193,24 +211,35 @@ export function setFeedMode(mode: FeedMode): void {
  */
 export async function initSession(): Promise<void> {
   const savedMode = localStorage.getItem("feedMode");
+  const savedUser = readPersistedSessionUser();
   sessionStore.patch({
     feedMode: savedMode && isFeedMode(savedMode) ? savedMode : "by-time",
-    user: readPersistedSessionUser(),
+    user: savedUser,
   });
 
-  try {
-    const [user, profileResult] = await Promise.allSettled([getCurrentUser(), getMyProfile()]);
+  if (!shouldProbeBackendSession(savedUser)) {
+    emitSessionChange("init");
+    return;
+  }
 
-    if (user.status === "rejected" || !user.value) {
+  try {
+    const user = await getCurrentUser();
+
+    if (!user) {
       sessionStore.patch({ user: null });
       persistSessionUser(null);
     } else {
-      let nextUser = user.value;
+      let nextUser = user;
 
-      if (profileResult.status === "fulfilled") {
-        const avatarLink = getAvatarLinkFromPayload(profileResult.value);
+      try {
+        const profile = await getMyProfile();
+        const avatarLink = getAvatarLinkFromPayload(profile);
         if (avatarLink) {
           nextUser = { ...nextUser, avatarLink };
+        }
+      } catch (error) {
+        if (isNetworkUnavailableError(error)) {
+          // Оставляем пользователя из /api/auth/me, даже если профиль временно недоступен.
         }
       }
 

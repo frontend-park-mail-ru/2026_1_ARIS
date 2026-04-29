@@ -1,5 +1,4 @@
 import { getSuggestedUsers, getPublicPopularUsers, getLatestEvents } from "../../api/users";
-import { getPopularPosts, getPublicPopularPosts } from "../../api/feed";
 import {
   getFriends,
   getIncomingFriendRequests,
@@ -20,10 +19,6 @@ type WidgetbarUser = {
 
 type WidgetbarEventUser = WidgetbarUser & {
   type: number;
-};
-
-type WidgetbarPost = {
-  title: string;
 };
 
 type RenderWidgetbarOptions = {
@@ -194,25 +189,6 @@ async function loadExcludedFriendIds(
   }
 }
 
-async function loadWidgetbarPosts(
-  scope: string,
-  loader: () => Promise<{ items?: WidgetbarPost[] }>,
-): Promise<WidgetbarLoadResult<WidgetbarPost>> {
-  try {
-    const response = await loader();
-    return {
-      items: Array.isArray(response.items) ? [...response.items] : [],
-      failed: false,
-    };
-  } catch (error) {
-    console.warn(`[widgetbar] source=api scope=${scope} failed`, error);
-    return {
-      items: [],
-      failed: true,
-    };
-  }
-}
-
 /**
  * Рендерит виджет популярных пользователей для гостей.
  *
@@ -370,104 +346,6 @@ async function renderEventsWidget(): Promise<string> {
       <h3 class="widgetbar-card__title">Последние события</h3>
 
       ${content}
-    </section>
-  `;
-}
-
-/**
- * Рендерит виджет популярных постов для гостей.
- *
- * @returns {Promise<string>}
- */
-async function renderGuestPopularPostsWidget(): Promise<string> {
-  const { items, failed } = await loadWidgetbarPosts("popular-posts-guest", () =>
-    getPublicPopularPosts(),
-  );
-  const content = items.length
-    ? items
-        .map(
-          (post) => `
-            <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
-              ${post.title}
-            </a>
-          `,
-        )
-        .join("")
-    : renderWidgetbarEmptyState(
-        failed ? "Не удалось загрузить популярные посты." : "Пока популярных постов нет.",
-      );
-
-  return `
-    <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Популярные посты</h3>
-
-      ${content}
-    </section>
-  `;
-}
-
-/**
- * Рендерит виджет популярных постов для авторизованного пользователя.
- *
- * @returns {Promise<string>}
- */
-async function renderAuthorisedPopularPostsWidget(): Promise<string> {
-  const { items, failed } = await loadWidgetbarPosts("popular-posts-authorised", () =>
-    getPopularPosts(),
-  );
-  const content = items.length
-    ? items
-        .map(
-          (post) => `
-            ${renderStubButton(post.title, "widgetbar-card__post-link")}
-          `,
-        )
-        .join("")
-    : renderWidgetbarEmptyState(
-        failed ? "Не удалось загрузить популярные посты." : "Пока популярных постов нет.",
-      );
-
-  return `
-    <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Популярные посты</h3>
-
-      ${content}
-    </section>
-  `;
-}
-
-/**
- * Рендерит погодный виджет.
- *
- * @returns {string}
- */
-function renderWeatherWidget(): string {
-  return `
-    <section class="widgetbar-card widgetbar-card--weather">
-      <h3 class="widgetbar-card__title">Сегодня — Москва</h3>
-
-      <p class="widgetbar-card__text">Днем: -7°C, ночью -17°C</p>
-
-      <div class="widgetbar-weather-row">
-        <span class="widgetbar-weather-row__icon">
-          <img src="/assets/img/icons/weather-cloud.svg" alt="">
-        </span>
-        <span class="widgetbar-card__text">Пасмурно</span>
-      </div>
-
-      <div class="widgetbar-weather-row">
-        <span class="widgetbar-weather-row__icon">
-          <img src="/assets/img/icons/sunrise.svg" alt="">
-        </span>
-        <span class="widgetbar-card__text">Восход: 07:19</span>
-      </div>
-
-      <div class="widgetbar-weather-row">
-        <span class="widgetbar-weather-row__icon">
-          <img src="/assets/img/icons/sunset.svg" alt="">
-        </span>
-        <span class="widgetbar-card__text">Заход: 18:13</span>
-      </div>
     </section>
   `;
 }

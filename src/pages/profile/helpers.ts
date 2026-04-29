@@ -1,5 +1,5 @@
 import type { DisplayProfile } from "./types";
-import { renderAvatarMarkup } from "../../utils/avatar";
+import { renderAvatarMarkup, type AvatarOptions } from "../../utils/avatar";
 
 export function escapeHtml(value: string): string {
   return value
@@ -40,10 +40,14 @@ export function hasVisibleValue(value?: string): boolean {
   return trimmed !== "" && trimmed !== "Не указано";
 }
 
-export function renderAvatar(profile: DisplayProfile, className: string): string {
+export function renderAvatar(
+  profile: DisplayProfile,
+  className: string,
+  options: AvatarOptions = {},
+): string {
   const label = profile.isMissingProfile
     ? "Профиль"
     : `${profile.firstName} ${profile.lastName}`.trim() || "Пользователь";
 
-  return renderAvatarMarkup(className, label, profile.avatarLink);
+  return renderAvatarMarkup(className, label, profile.avatarLink, options);
 }

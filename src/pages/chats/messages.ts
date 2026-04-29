@@ -7,7 +7,6 @@ import {
   sortMessagesByCreatedAt,
   isOfflineNetworkError,
   getCurrentUserProfilePath,
-  getCurrentUserFullName,
   isOwnMessage,
   resolvePersonPath,
 } from "./helpers";

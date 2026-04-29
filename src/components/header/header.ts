@@ -14,7 +14,11 @@ type SessionUser = {
 } | null;
 
 function renderHeaderAvatar(className: string, label: string, avatarLink?: string): string {
-  return renderAvatarMarkup(className, label, avatarLink, { loading: "eager" });
+  return renderAvatarMarkup(className, label, avatarLink, {
+    width: 56,
+    height: 56,
+    loading: "eager",
+  });
 }
 
 /**
@@ -26,7 +30,7 @@ function renderGuestHeader(): string {
   return `
     <div class="header__inner header__inner--guest">
       <a href="/feed" data-link class="header__logo-link">
-        <img class="header__logo" src="/assets/img/logo.png" alt="ARIS">
+        <img class="header__logo" src="/assets/img/logo-v3.png" width="300" height="114" alt="ARIS">
       </a>
 
       <div class="header__guest-actions">
@@ -70,7 +74,7 @@ function renderAuthorisedHeader(): string {
   return `
     <div class="header__inner header__inner--authorised">
       <a href="/feed" data-link class="header__logo-link">
-        <img class="header__logo" src="/assets/img/logo.png" alt="ARIS">
+        <img class="header__logo" src="/assets/img/logo-v3.png" width="300" height="114" alt="ARIS">
       </a>
 
       <label class="header__search-box search-field" aria-label="Поиск">

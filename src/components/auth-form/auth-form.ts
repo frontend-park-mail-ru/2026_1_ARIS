@@ -324,7 +324,7 @@ export function renderAuthForm({
       ${mode === "register" ? `data-register-step="${registerStep}"` : ""}
     >
       <div class="auth-form__header">
-        <img class="auth-form__logo" src="/assets/img/logo.png" alt="ARIS">
+        <img class="auth-form__logo" src="/assets/img/logo-v3.png" width="300" height="114" alt="ARIS">
 
         <div class="auth-form__header-text">
           <h1 class="auth-form__title">

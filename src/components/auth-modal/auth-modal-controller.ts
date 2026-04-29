@@ -22,12 +22,25 @@ function getActiveDialog(): HTMLDialogElement | null {
 }
 
 function attachDialogListeners(dialog: HTMLDialogElement): void {
+  let backdropPressStarted = false;
+
+  // Track where the pointer press started so text selection inside the form
+  // does not close the dialog when the pointer is released on the backdrop.
+  dialog.addEventListener("pointerdown", (e) => {
+    backdropPressStarted = e.target === dialog;
+  });
+
   // Backdrop click: <dialog> fires click on itself when clicking ::backdrop
   dialog.addEventListener("click", (e) => {
-    if (e.target === dialog) dialog.close();
+    if (backdropPressStarted && e.target === dialog) {
+      dialog.close();
+    }
+
+    backdropPressStarted = false;
   });
 
   dialog.addEventListener("close", () => {
+    backdropPressStarted = false;
     document.body.classList.remove("modal-open");
     getModalRoot().innerHTML = "";
   });

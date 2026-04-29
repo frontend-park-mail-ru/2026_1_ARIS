@@ -16,6 +16,26 @@ function normalisePath(p: string): string {
   return (p || "/").replace(/\/+$/, "") || "/";
 }
 
+function stripChatIdFromNonChatsUrl(): void {
+  const pathname = normalisePath(window.location.pathname);
+  if (pathname === "/chats") {
+    return;
+  }
+
+  const nextUrl = new URL(window.location.href);
+  if (!nextUrl.searchParams.has("chatId")) {
+    return;
+  }
+
+  nextUrl.searchParams.delete("chatId");
+  const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (nextPath !== currentPath) {
+    window.history.replaceState({}, "", nextPath);
+  }
+}
+
 export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
   return createWorkspaceRouter(root, routes, {
     getSkeleton(path: string): string | null {
@@ -27,6 +47,7 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
       return null;
     },
     afterRender: async (nextRoot) => {
+      stripChatIdFromNonChatsUrl();
       initAvatarFallback(nextRoot);
       initAuthForm(document);
       initPostcardExpand(nextRoot);

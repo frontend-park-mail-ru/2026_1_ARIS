@@ -1,5 +1,6 @@
 import { postComposerState } from "./state";
 import { escapeHtml } from "./helpers";
+import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 
 export function renderPostComposerModal(): string {
   return `
@@ -12,14 +13,10 @@ export function renderPostComposerModal(): string {
       >
         <header class="profile-post-modal__header">
           <h2 class="profile-post-modal__title" data-profile-post-title>Новая публикация</h2>
-          <button
-            type="button"
-            class="profile-post-modal__close"
-            data-profile-post-close
-            aria-label="Закрыть"
-          >
-            ×
-          </button>
+          ${renderModalCloseButton({
+            className: "profile-post-modal__close",
+            attributes: "data-profile-post-close",
+          })}
         </header>
 
         <textarea
@@ -84,14 +81,10 @@ export function renderPostDeleteModal(): string {
       >
         <header class="profile-post-delete-modal__header">
           <h2 class="profile-post-delete-modal__title">Удалить публикацию</h2>
-          <button
-            type="button"
-            class="profile-post-delete-modal__close"
-            data-profile-post-delete-close
-            aria-label="Закрыть"
-          >
-            ×
-          </button>
+          ${renderModalCloseButton({
+            className: "profile-post-delete-modal__close",
+            attributes: "data-profile-post-delete-close",
+          })}
         </header>
 
         <p class="profile-post-delete-modal__text">

@@ -73,7 +73,8 @@
     &__logo {
       display: block;
       width: var(--header-logo-width);
-      height: var(--header-logo-height);
+      height: auto;
+      max-height: var(--header-logo-height);
       flex-shrink: 0;
     }
 

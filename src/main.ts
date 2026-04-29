@@ -6,6 +6,7 @@ import "./components/button/button.scss";
 import "./components/header/header.scss";
 import "./components/input/input.scss";
 import "./components/logo/logo.scss";
+import "./components/modal-close/modal-close.scss";
 import "./components/sidebar/sidebar.scss";
 import "./components/widgetbar/widgetbar.scss";
 import "./components/postcard/postcard.scss";

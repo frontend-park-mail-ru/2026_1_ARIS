@@ -108,7 +108,9 @@
     &__logo {
       display: block;
       width: var(--auth-form-logo-width);
-      height: var(--auth-form-logo-height);
+      height: auto;
+      max-height: var(--auth-form-logo-height);
+      flex-shrink: 0;
     }
 
     &__header-text {

@@ -1,7 +1,8 @@
-type AvatarOptions = {
+export type AvatarOptions = {
   width?: number;
   height?: number;
   loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
 };
 
 const EMPTY_AVATAR_VALUES = new Set(["", "null", "undefined", "none"]);
@@ -138,6 +139,7 @@ export function renderAvatarMarkup(
   const sizeAttrs = [
     options.width ? `width="${options.width}"` : "",
     options.height ? `height="${options.height}"` : "",
+    options.fetchPriority ? `fetchpriority="${options.fetchPriority}"` : "",
   ]
     .filter(Boolean)
     .join(" ");

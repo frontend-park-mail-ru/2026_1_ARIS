@@ -1,6 +1,10 @@
 import { renderPostcard } from "../../components/postcard/postcard";
 import type { PostcardModel } from "../../api/feed";
 
+type RenderFeedCardsOptions = {
+  prioritizeFirstCardMedia?: boolean;
+};
+
 /** Рендерит блок пустого состояния, когда у пользователя нет постов друзей. */
 export function renderEmptyFriendsFeed(): string {
   return `
@@ -55,8 +59,17 @@ export function renderFeedStatus(hasMore: boolean, isLoading: boolean): string {
 }
 
 /** Рендерит набор HTML-строк карточек постов. */
-export function renderFeedCards(items: PostcardModel[]): string {
-  return items.map(renderPostcard).join("");
+export function renderFeedCards(
+  items: PostcardModel[],
+  options: RenderFeedCardsOptions = {},
+): string {
+  return items
+    .map((item, index) =>
+      renderPostcard(item, {
+        prioritizeMedia: Boolean(options.prioritizeFirstCardMedia) && index === 0,
+      }),
+    )
+    .join("");
 }
 
 /** Рендерит центральную колонку ленты с первоначально видимой порцией карточек. */
@@ -66,7 +79,7 @@ export function renderIncrementalFeedCenter(items: PostcardModel[], renderedCoun
   return `
     <section class="app-layout__center" data-feed-center>
       <div class="feed-stream" data-feed-list>
-        ${renderFeedCards(visibleItems)}
+        ${renderFeedCards(visibleItems, { prioritizeFirstCardMedia: true })}
       </div>
       ${renderFeedStatus(renderedCount < items.length, false)}
     </section>

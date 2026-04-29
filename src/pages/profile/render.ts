@@ -1,5 +1,6 @@
 import type { DisplayProfile, ProfilePost } from "./types";
 import { escapeHtml, getAvatarImageSrc, hasVisibleValue, renderAvatar } from "./helpers";
+import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderAvatarMarkup } from "../../utils/avatar";
 
 export {
@@ -169,14 +170,10 @@ export function renderDeleteFriendModal(profile: DisplayProfile): string {
       >
         <header class="profile-delete-modal__header">
           <h2 class="profile-delete-modal__title">Удалить из друзей</h2>
-          <button
-            type="button"
-            class="profile-delete-modal__close"
-            data-profile-delete-modal-close
-            aria-label="Закрыть"
-          >
-            ×
-          </button>
+          ${renderModalCloseButton({
+            className: "profile-delete-modal__close",
+            attributes: "data-profile-delete-modal-close",
+          })}
         </header>
 
         <div class="profile-delete-modal__identity">

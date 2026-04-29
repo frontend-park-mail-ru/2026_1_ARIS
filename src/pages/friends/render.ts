@@ -1,6 +1,7 @@
 import { friendsState, getVisibleFriends } from "./state";
 import type { DisplayFriend, FriendsTab } from "./types";
 import { TAB_TITLES } from "./types";
+import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderAvatarMarkup } from "../../utils/avatar";
 
 function escapeHtml(value: string): string {
@@ -136,7 +137,10 @@ export function renderDeleteModal(): string {
       <section class="friends-modal__dialog" role="dialog" aria-modal="true" aria-label="Удалить из друзей">
         <header class="friends-modal__header">
           <h2 class="friends-modal__title">Удалить из друзей</h2>
-          <button type="button" class="friends-modal__close" data-friends-modal-close aria-label="Закрыть">×</button>
+          ${renderModalCloseButton({
+            className: "friends-modal__close",
+            attributes: "data-friends-modal-close",
+          })}
         </header>
         <div class="friends-modal__identity">
           ${renderFriendAvatar(friend, "friends-modal__avatar")}

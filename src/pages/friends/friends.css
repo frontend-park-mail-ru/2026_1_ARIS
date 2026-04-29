@@ -215,37 +215,6 @@
     color: var(--color-text-main);
   }
 
-  .friends-modal__close {
-    display: inline-flex;
-    width: 45px;
-    min-width: 45px;
-    height: 45px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-input);
-    background: var(--color-surface-card);
-    color: var(--color-interactive-primary);
-    font: inherit;
-    font-size: var(--text-size-heading-md);
-    line-height: var(--line-height-solid);
-    cursor: pointer;
-    transition:
-      background-color var(--transition-control),
-      color var(--transition-control),
-      transform var(--transition-control);
-  }
-
-  .friends-modal__close:hover {
-    background: var(--color-interactive-secondary-hover);
-  }
-
-  .friends-modal__close:focus-visible {
-    outline: var(--control-focus-outline);
-    outline-offset: 2px;
-  }
-
   .friends-modal__text,
   .friends-modal__hint {
     margin: 18px 0 0;

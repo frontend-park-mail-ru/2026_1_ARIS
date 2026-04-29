@@ -1,5 +1,4 @@
-import { trackedFetch } from "../state/network-status";
-import { ApiError, parseJson, apiRequest } from "./core/client";
+import { ApiError, apiRequest } from "./core/client";
 
 // Повторно экспортируем ApiError, чтобы не сломать существующие импорты (chat, profile, posts, friends).
 export { ApiError };
@@ -148,17 +147,15 @@ export async function logoutUser(): Promise<unknown> {
  * Запрашивает текущего авторизованного пользователя из backend.
  */
 export async function getCurrentUser(): Promise<User | null> {
-  const response = await trackedFetch("/api/auth/me", {
-    method: "GET",
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    return null;
+  try {
+    const user = await apiRequest<RawUser>("/api/auth/me", {}, {});
+    return mapUser(user);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return null;
+    }
+    throw error;
   }
-
-  const user = await parseJson<RawUser>(response, {});
-  return mapUser(user);
 }
 
 /**

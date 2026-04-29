@@ -1,5 +1,4 @@
-import { ApiError, parseJson, createApiError, apiRequest } from "./core/client";
-import { trackedFetch } from "../state/network-status";
+import { ApiError, apiRequest } from "./core/client";
 
 // Повторно экспортируем ApiError для кода, который импортирует его из этого модуля.
 export { ApiError };
@@ -120,43 +119,25 @@ export async function getProfileById(
 }
 
 export async function updateMyProfile(payload: UpdateProfilePayload): Promise<void> {
-  const response = await trackedFetch("/api/profile/me/edit", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-
-  const data =
-    response.status === 204 ? null : await parseJson<{ error?: string } | unknown>(response, {});
-
-  if (!response.ok) {
-    throw createApiError("failed to update profile", response.status, data);
-  }
+  await apiRequest<unknown>("/api/profile/me/edit", { method: "PATCH", body: payload }, null);
 }
 
 export async function uploadProfileAvatar(file: File): Promise<UploadedMedia> {
   const formData = new FormData();
   formData.append("files", file);
 
-  const response = await trackedFetch("/api/media/upload?for=avatar", {
-    method: "POST",
-    credentials: "include",
-    body: formData,
-  });
-
-  const data = await parseJson<UploadMediaResponse | { error?: string }>(response, {});
-
-  if (!response.ok) {
-    throw createApiError("failed to upload avatar", response.status, data);
-  }
+  const data = await apiRequest<UploadMediaResponse>(
+    "/api/media/upload?for=avatar",
+    { method: "POST", body: formData },
+    {},
+  );
 
   const uploadedFile = Array.isArray((data as UploadMediaResponse).media)
     ? mapUploadedMedia((data as UploadMediaResponse).media?.[0])
     : null;
 
   if (!uploadedFile) {
-    throw new ApiError("failed to upload avatar", response.status, data);
+    throw new ApiError("failed to upload avatar", 200, data);
   }
 
   return uploadedFile;

@@ -1,6 +1,5 @@
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
-import { mapFeedResponse } from "../../api/feed";
 import {
   getMyPosts,
   getPostsByProfileId,
@@ -59,7 +58,8 @@ import {
   renderPersonal,
 } from "./render";
 import { prepareAvatarLinks } from "../../utils/avatar";
-import { applyProfilePostFilters, bindProfileEvents, initProfilePostListLayout } from "./events";
+import { bindProfileEvents } from "./events";
+import { applyProfilePostFilters, initProfilePostListLayout } from "./post-list";
 
 type ProfileRoot = (Document | HTMLElement) & {
   __profileInteractionsBound?: boolean;
@@ -372,10 +372,20 @@ export async function renderProfile(
                           data-profile-avatar-open
                           aria-label="Изменить аватар"
                         >
-                          ${renderAvatar(profile, "profile-card__avatar")}
+                          ${renderAvatar(profile, "profile-card__avatar", {
+                            width: 96,
+                            height: 96,
+                            loading: "eager",
+                            fetchPriority: "high",
+                          })}
                         </button>
                       `
-                      : renderAvatar(profile, "profile-card__avatar")
+                      : renderAvatar(profile, "profile-card__avatar", {
+                          width: 96,
+                          height: 96,
+                          loading: "eager",
+                          fetchPriority: "high",
+                        })
                   }
                 </div>
 

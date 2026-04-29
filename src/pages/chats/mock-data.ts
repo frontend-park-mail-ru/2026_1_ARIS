@@ -1,5 +1,5 @@
 import { getSessionUser } from "../../state/session";
-import { PROFILE_RECORDS, resolveProfilePath } from "../profile/profile-data";
+import { PROFILE_RECORDS } from "../profile/profile-data";
 import { resolvePersonPath, getCurrentUserProfilePath } from "./helpers";
 import type { ChatViewThread } from "./types";
 

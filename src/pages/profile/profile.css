@@ -903,40 +903,6 @@
     font-weight: 600;
   }
 
-  .profile-post-modal__close,
-  .profile-post-delete-modal__close {
-    display: inline-flex;
-    width: 45px;
-    min-width: 45px;
-    height: 45px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-input);
-    background: var(--color-surface-card);
-    color: var(--color-interactive-primary);
-    cursor: pointer;
-    font: inherit;
-    font-size: var(--font-size-2xl);
-    line-height: var(--line-height-solid);
-    transition:
-      background-color var(--transition-control),
-      color var(--transition-control),
-      transform var(--transition-control);
-  }
-
-  .profile-post-modal__close:hover,
-  .profile-post-delete-modal__close:hover {
-    background: var(--color-interactive-secondary-hover);
-  }
-
-  .profile-post-modal__close:focus-visible,
-  .profile-post-delete-modal__close:focus-visible {
-    outline: 2px solid rgb(95 99 221 / 45%);
-    outline-offset: 2px;
-  }
-
   .profile-post-modal__textarea {
     width: 100%;
     min-height: 180px;
@@ -1578,37 +1544,6 @@
     line-height: var(--line-height-tight);
   }
 
-  .profile-avatar-modal__close {
-    display: inline-flex;
-    width: 45px;
-    min-width: 45px;
-    height: 45px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-input);
-    background: var(--color-surface-card);
-    color: var(--color-interactive-primary);
-    font: inherit;
-    font-size: var(--text-size-heading-md);
-    line-height: var(--line-height-solid);
-    cursor: pointer;
-    transition:
-      background-color var(--transition-control),
-      color var(--transition-control),
-      transform var(--transition-control);
-  }
-
-  .profile-avatar-modal__close:hover {
-    background: var(--color-interactive-secondary-hover);
-  }
-
-  .profile-avatar-modal__close:focus-visible {
-    outline: var(--control-focus-outline);
-    outline-offset: 2px;
-  }
-
   .profile-avatar-modal__text {
     width: 100%;
     margin: 20px 0 0;
@@ -1844,37 +1779,6 @@
     font-weight: 700;
   }
 
-  .profile-avatar-delete-modal__close {
-    display: inline-flex;
-    width: 45px;
-    min-width: 45px;
-    height: 45px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-input);
-    background: var(--color-surface-card);
-    color: var(--color-interactive-primary);
-    font: inherit;
-    font-size: var(--text-size-heading-md);
-    line-height: var(--line-height-solid);
-    cursor: pointer;
-    transition:
-      background-color var(--transition-control),
-      color var(--transition-control),
-      transform var(--transition-control);
-  }
-
-  .profile-avatar-delete-modal__close:hover {
-    background: var(--color-interactive-secondary-hover);
-  }
-
-  .profile-avatar-delete-modal__close:focus-visible {
-    outline: var(--control-focus-outline);
-    outline-offset: 2px;
-  }
-
   .profile-avatar-delete-modal__text {
     margin: 18px 0 0;
     color: var(--color-text-main);
@@ -1968,37 +1872,6 @@
     color: var(--color-text-main);
     font-size: var(--text-size-title);
     font-weight: var(--font-weight-bold);
-  }
-
-  .profile-delete-modal__close {
-    display: inline-flex;
-    width: 45px;
-    min-width: 45px;
-    height: 45px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-input);
-    background: var(--color-surface-card);
-    color: var(--color-interactive-primary);
-    font: inherit;
-    font-size: var(--text-size-heading-md);
-    line-height: var(--line-height-solid);
-    cursor: pointer;
-    transition:
-      background-color var(--transition-control),
-      color var(--transition-control),
-      transform var(--transition-control);
-  }
-
-  .profile-delete-modal__close:hover {
-    background: var(--color-interactive-secondary-hover);
-  }
-
-  .profile-delete-modal__close:focus-visible {
-    outline: var(--control-focus-outline);
-    outline-offset: 2px;
   }
 
   .profile-delete-modal__text,

@@ -62,6 +62,17 @@ type RequestOptions = {
 
 const inFlightRequests = new Map<string, Promise<unknown>>();
 
+function isBodyInit(value: unknown): value is BodyInit {
+  return (
+    typeof value === "string" ||
+    (typeof FormData !== "undefined" && value instanceof FormData) ||
+    (typeof URLSearchParams !== "undefined" && value instanceof URLSearchParams) ||
+    (typeof Blob !== "undefined" && value instanceof Blob) ||
+    (typeof ArrayBuffer !== "undefined" &&
+      (value instanceof ArrayBuffer || ArrayBuffer.isView(value)))
+  );
+}
+
 /**
  * Выполняет типизированный API-запрос с автоматическим разбором JSON и обработкой ошибок.
  * GET/HEAD запросы дедуплицируются: одновременные вызовы одного URL получают тот же Promise.
@@ -85,8 +96,15 @@ export async function apiRequest<T>(
   if (signal) requestInit.signal = signal;
 
   if (body !== undefined) {
-    requestInit.body = JSON.stringify(body);
-    requestInit.headers = { "Content-Type": "application/json", ...headers };
+    if (isBodyInit(body)) {
+      requestInit.body = body;
+      if (Object.keys(headers).length > 0) {
+        requestInit.headers = headers;
+      }
+    } else {
+      requestInit.body = JSON.stringify(body);
+      requestInit.headers = { "Content-Type": "application/json", ...headers };
+    }
   } else if (Object.keys(headers).length > 0) {
     requestInit.headers = headers;
   }

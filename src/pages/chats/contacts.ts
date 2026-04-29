@@ -4,13 +4,6 @@ import {
   getOutgoingFriendRequests,
   type Friend,
 } from "../../api/friends";
-import {
-  getLatestEvents,
-  getPublicPopularUsers,
-  getSuggestedUsers,
-  type LatestEventUser,
-  type SuggestedUser,
-} from "../../api/users";
 import { getNormalisedPersonName } from "./helpers";
 import type { KnownChatContact } from "./types";
 

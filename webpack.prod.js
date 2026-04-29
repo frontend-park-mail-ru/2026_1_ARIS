@@ -122,6 +122,10 @@ module.exports = {
           to: "sw.js",
         },
         {
+          from: path.resolve(__dirname, "public/robots.txt"),
+          to: "robots.txt",
+        },
+        {
           from: path.resolve(__dirname, "public/assets/img"),
           to: "assets/img",
           globOptions: { ignore: ["**/.DS_Store"] },

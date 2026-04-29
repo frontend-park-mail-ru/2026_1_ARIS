@@ -1,4 +1,5 @@
 import type { DisplayProfile } from "./types";
+import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import {
   avatarModalState,
   AVATAR_MIN_SIZE,
@@ -57,14 +58,10 @@ export function renderAvatarModal(profile: DisplayProfile): string {
       >
         <header class="profile-avatar-modal__header">
           <h2 class="profile-avatar-modal__title">Изменить аватар</h2>
-          <button
-            type="button"
-            class="profile-avatar-modal__close"
-            data-profile-avatar-close
-            aria-label="Закрыть"
-          >
-            ×
-          </button>
+          ${renderModalCloseButton({
+            className: "profile-avatar-modal__close",
+            attributes: "data-profile-avatar-close",
+          })}
         </header>
 
         <p class="profile-avatar-modal__text">
@@ -181,14 +178,10 @@ export function renderAvatarDeleteModal(): string {
       >
         <header class="profile-avatar-delete-modal__header">
           <h2 class="profile-avatar-delete-modal__title">Удалить аватар</h2>
-          <button
-            type="button"
-            class="profile-avatar-delete-modal__close"
-            data-profile-avatar-delete-close
-            aria-label="Закрыть"
-          >
-            ×
-          </button>
+          ${renderModalCloseButton({
+            className: "profile-avatar-delete-modal__close",
+            attributes: "data-profile-avatar-delete-close",
+          })}
         </header>
 
         <p class="profile-avatar-delete-modal__text">

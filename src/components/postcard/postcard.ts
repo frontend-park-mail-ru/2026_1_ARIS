@@ -25,6 +25,14 @@ type PostcardStatOptions = {
   action: string;
 };
 
+type PostcardMediaOptions = {
+  prioritizeFirstImage?: boolean;
+};
+
+type RenderPostcardOptions = {
+  prioritizeMedia?: boolean;
+};
+
 type PostcardRoot = (Document | HTMLElement) & {
   __postcardExpandBound?: boolean;
 };
@@ -39,6 +47,16 @@ function formatStatCount(count: number): string {
   }
 
   return String(count);
+}
+
+function getPostcardStatAccessibleName(action: string, count: number): string {
+  const nounByAction: Record<string, string> = {
+    like: "лайков",
+    repost: "репостов",
+    comment: "комментариев",
+  };
+
+  return `${formatStatCount(count)} ${nounByAction[action] ?? action}`.trim();
 }
 
 function renderPostcardAvatar(post: PostcardPost, authorName: string): string {
@@ -101,6 +119,7 @@ function shouldRenderExpandButtonInitially(text: string): boolean {
  */
 function renderPostcardStat({ icon, count, action }: PostcardStatOptions): string {
   const isAuthorised = getSessionUser() !== null;
+  const accessibleName = getPostcardStatAccessibleName(action, count);
 
   if (isAuthorised) {
     return `
@@ -108,7 +127,7 @@ function renderPostcardStat({ icon, count, action }: PostcardStatOptions): strin
         type="button"
         class="postcard__stat postcard__stat-button"
         data-action="${action}"
-        aria-label="${action}"
+        aria-label="${accessibleName}"
       >
         <span class="postcard__stat-icon" aria-hidden="true">
           <img src="${icon}" alt="">
@@ -119,7 +138,7 @@ function renderPostcardStat({ icon, count, action }: PostcardStatOptions): strin
   }
 
   return `
-    <a href="/login" data-open-auth-modal="login" class="postcard__stat postcard__stat-link" aria-label="${action}">
+    <a href="/login" data-open-auth-modal="login" class="postcard__stat postcard__stat-link" aria-label="${accessibleName}">
       <span class="postcard__stat-icon" aria-hidden="true">
         <img src="${icon}" alt="">
       </span>
@@ -128,22 +147,28 @@ function renderPostcardStat({ icon, count, action }: PostcardStatOptions): strin
   `;
 }
 
+function renderPostcardMediaImage(src: string, prioritize = false): string {
+  return `<img class="postcard__media-item" loading="${prioritize ? "eager" : "lazy"}"${prioritize ? ' fetchpriority="high"' : ""} decoding="async" src="${resolveMediaSrc(src)}" alt="">`;
+}
+
 /**
  * Рендерит медиаблок карточки поста.
  *
  * @param {string[]} images
  * @returns {string}
  */
-function renderPostcardMedia(images: string[] = []): string {
+function renderPostcardMedia(images: string[] = [], options: PostcardMediaOptions = {}): string {
   if (images.length === 0) {
     return "";
   }
+
+  const prioritizeFirstImage = Boolean(options.prioritizeFirstImage);
 
   if (images.length === 1) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--single">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
         </div>
       </div>
     `;
@@ -153,8 +178,8 @@ function renderPostcardMedia(images: string[] = []): string {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--double">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
+          ${renderPostcardMediaImage(images[1] ?? "")}
         </div>
       </div>
     `;
@@ -164,9 +189,9 @@ function renderPostcardMedia(images: string[] = []): string {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--triple">
-          <img class="postcard__media-item postcard__media-item--featured" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage).replace('class="postcard__media-item"', 'class="postcard__media-item postcard__media-item--featured"')}
+          ${renderPostcardMediaImage(images[1] ?? "")}
+          ${renderPostcardMediaImage(images[2] ?? "")}
         </div>
       </div>
     `;
@@ -178,9 +203,8 @@ function renderPostcardMedia(images: string[] = []): string {
         <div class="postcard__media-grid postcard__media-grid--quad">
           ${images
             .slice(0, 4)
-            .map(
-              (image) =>
-                `<img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(image)}" alt="">`,
+            .map((image, index) =>
+              renderPostcardMediaImage(image, prioritizeFirstImage && index === 0),
             )
             .join("")}
         </div>
@@ -192,14 +216,14 @@ function renderPostcardMedia(images: string[] = []): string {
     return `
       <div class="postcard__media postcard__media--five">
         <div class="postcard__media-row postcard__media-row--top">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
+          ${renderPostcardMediaImage(images[1] ?? "")}
         </div>
 
         <div class="postcard__media-row postcard__media-row--bottom">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[3] ?? "")}" alt="">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[4] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[2] ?? "")}
+          ${renderPostcardMediaImage(images[3] ?? "")}
+          ${renderPostcardMediaImage(images[4] ?? "")}
         </div>
       </div>
     `;
@@ -208,16 +232,16 @@ function renderPostcardMedia(images: string[] = []): string {
   return `
     <div class="postcard__media postcard__media--five-plus">
       <div class="postcard__media-row postcard__media-row--top">
-        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[0] ?? "")}" alt="">
-        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[1] ?? "")}" alt="">
-        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[2] ?? "")}" alt="">
+        ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
+        ${renderPostcardMediaImage(images[1] ?? "")}
+        ${renderPostcardMediaImage(images[2] ?? "")}
       </div>
 
       <div class="postcard__media-row postcard__media-row--bottom">
-        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[3] ?? "")}" alt="">
-        <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[4] ?? "")}" alt="">
+        ${renderPostcardMediaImage(images[3] ?? "")}
+        ${renderPostcardMediaImage(images[4] ?? "")}
         <div class="postcard__media-overlay">
-          <img class="postcard__media-item" loading="lazy" decoding="async" src="${resolveMediaSrc(images[5] ?? "")}" alt="">
+          ${renderPostcardMediaImage(images[5] ?? "")}
           <span class="postcard__media-overlay-count">+${images.length - 5}</span>
         </div>
       </div>
@@ -229,7 +253,10 @@ function renderPostcardMedia(images: string[] = []): string {
  * Рендерит внутренний HTML карточки поста (используется внутри Shadow DOM и напрямую).
  * Экспортируется для использования в ArisPostcard Web Component.
  */
-export function renderPostcardInner(post: PostcardPost): string {
+export function renderPostcardInner(
+  post: PostcardPost,
+  options: RenderPostcardOptions = {},
+): string {
   const sessionUser = getSessionUser();
   const shouldShowExpandInitially = shouldRenderExpandButtonInitially(post.text);
   const statsMarkup = `
@@ -278,7 +305,9 @@ export function renderPostcardInner(post: PostcardPost): string {
         <button type="button" class="postcard__expand${shouldShowExpandInitially ? "" : " postcard__expand--hidden"}">читать полностью</button>
       </div>
 
-      ${renderPostcardMedia(post.images || [])}
+      ${renderPostcardMedia(post.images || [], {
+        prioritizeFirstImage: options.prioritizeMedia,
+      })}
 
       <footer class="postcard__footer">
         ${statsMarkup}
@@ -293,8 +322,8 @@ export function renderPostcardInner(post: PostcardPost): string {
  * Рендерит карточку поста как <aris-postcard> Web Component с Shadow DOM.
  * Данные передаются через атрибут data-post (JSON).
  */
-export function renderPostcard(post: PostcardPost): string {
-  return renderPostcardInner(post);
+export function renderPostcard(post: PostcardPost, options: RenderPostcardOptions = {}): string {
+  return renderPostcardInner(post, options);
 }
 
 /**

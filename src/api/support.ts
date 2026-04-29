@@ -1,7 +1,6 @@
-import { ApiError, apiRequest, createApiError, parseJson } from "./core/client";
+import { ApiError, apiRequest } from "./core/client";
 import type { UserRole } from "./auth";
 import { getSessionUser } from "../state/session";
-import { trackedFetch } from "../state/network-status";
 
 export type TicketCategory = "bug" | "feature_request" | "complaint" | "question" | "other";
 export type TicketStatus = "open" | "in_progress" | "waiting_user" | "closed";
@@ -429,28 +428,21 @@ export async function createTicket(data: {
 }): Promise<Ticket> {
   const media = data.screenshot ? [await uploadSupportScreenshot(data.screenshot)] : [];
 
-  const response = await fetch("/api/support/tickets", {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
+  const raw = await apiRequest<RawTicket>(
+    "/api/support/tickets",
+    {
+      method: "POST",
+      body: {
+        category: CATEGORY_TO_CODE[data.category],
+        login: data.login,
+        email: data.email,
+        title: data.title,
+        description: data.description,
+        ...(media.length ? { media } : {}),
+      },
     },
-    body: JSON.stringify({
-      category: CATEGORY_TO_CODE[data.category],
-      login: data.login,
-      email: data.email,
-      title: data.title,
-      description: data.description,
-      ...(media.length ? { media } : {}),
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`request to /api/support/tickets failed: ${response.status} ${text}`);
-  }
-
-  const raw = (await response.json()) as RawTicket;
+    {},
+  );
   return mapTicket(raw);
 }
 
@@ -458,24 +450,18 @@ export async function uploadSupportScreenshot(file: File): Promise<TicketMedia> 
   const formData = new FormData();
   formData.append("files", file);
 
-  const response = await trackedFetch("/api/media/upload?for=support", {
-    method: "POST",
-    credentials: "include",
-    body: formData,
-  });
-
-  const data = await parseJson<UploadMediaResponse | { error?: string }>(response, {});
-
-  if (!response.ok) {
-    throw createApiError("failed to upload support screenshot", response.status, data);
-  }
+  const data = await apiRequest<UploadMediaResponse>(
+    "/api/media/upload?for=support",
+    { method: "POST", body: formData },
+    {},
+  );
 
   const uploadedFile = Array.isArray((data as UploadMediaResponse).media)
     ? (data as UploadMediaResponse).media?.[0]
     : null;
 
   if (!uploadedFile) {
-    throw new ApiError("failed to upload support screenshot", response.status, data);
+    throw new ApiError("failed to upload support screenshot", 200, data);
   }
 
   return uploadedFile;

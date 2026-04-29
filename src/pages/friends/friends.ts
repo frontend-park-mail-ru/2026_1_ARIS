@@ -8,9 +8,10 @@ import {
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { clearWidgetbarCache, renderWidgetbar } from "../../components/widgetbar/widgetbar";
-import { createPrivateChat, getChats } from "../../api/chat";
+import { createOrResolvePrivateChatId } from "../../api/chat";
 import { getSessionUser } from "../../state/session";
 import { prepareAvatarLinks } from "../../utils/avatar";
+import { rememberChatContactHint } from "../chats/contact-hints";
 
 import {
   friendsState,
@@ -27,33 +28,15 @@ type FriendsRoot = (Document | HTMLElement) & {
   __friendsBound?: boolean;
 };
 
-function normaliseChatTitle(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
 function navigateToChat(chatId: string): void {
   window.history.pushState({}, "", `/chats?chatId=${encodeURIComponent(chatId)}`);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 async function resolveChatIdForFriend(friend: Friend): Promise<string> {
-  const createdChat = await createPrivateChat(friend.profileId);
-  if (createdChat.id) {
-    return createdChat.id;
-  }
-
-  const friendName = normaliseChatTitle(`${friend.firstName} ${friend.lastName}`);
-  const chats = await getChats();
-  const matchedChat = chats.find((chat) => {
-    const chatTitle = normaliseChatTitle(chat.title);
-    return chatTitle === friendName;
+  return createOrResolvePrivateChatId(friend.profileId, {
+    expectedTitle: `${friend.firstName} ${friend.lastName}`,
   });
-
-  if (matchedChat?.id) {
-    return matchedChat.id;
-  }
-
-  throw new Error("Не удалось определить созданный чат.");
 }
 
 /** Сбрасывает кэш данных друзей и очищает кэш виджетбара. */
@@ -186,6 +169,12 @@ export function initFriends(root: Document | HTMLElement = document): void {
       openChatButton.disabled = true;
       void resolveChatIdForFriend(friend)
         .then((chatId) => {
+          rememberChatContactHint({
+            chatId,
+            profileId: friend.profileId,
+            title: `${friend.firstName} ${friend.lastName}`.trim(),
+            avatarLink: friend.avatarLink,
+          });
           navigateToChat(chatId);
         })
         .catch((error: unknown) => {

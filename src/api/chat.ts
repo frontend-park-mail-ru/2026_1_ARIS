@@ -57,6 +57,12 @@ export type ChatMessageSocketHandlers = {
   onError?: ((event: Event) => void) | undefined;
 };
 
+type ResolvePrivateChatOptions = {
+  expectedTitle?: string;
+  retries?: number;
+  retryDelayMs?: number;
+};
+
 function mapChat(raw: RawChat): ChatSummary {
   return {
     id: String(raw.id ?? raw.ID ?? raw.uid ?? raw.Uid ?? ""),
@@ -80,6 +86,16 @@ function mapMessage(raw: RawMessage): ChatMessage {
   };
 }
 
+function normaliseChatTitle(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 export async function getChats(signal?: AbortSignal): Promise<ChatSummary[]> {
   const data = await apiRequest<RawChat[]>("/api/chats", { ...(signal ? { signal } : {}) }, []);
 
@@ -98,6 +114,45 @@ export async function createPrivateChat(otherUserId: string): Promise<ChatSummar
   );
 
   return mapChat(data);
+}
+
+export async function createOrResolvePrivateChatId(
+  otherUserId: string,
+  options: ResolvePrivateChatOptions = {},
+): Promise<string> {
+  const expectedTitle = normaliseChatTitle(options.expectedTitle ?? "");
+  const retries = options.retries ?? 5;
+  const retryDelayMs = options.retryDelayMs ?? 250;
+
+  const createdChat = await createPrivateChat(otherUserId);
+  const createdChatTitle = normaliseChatTitle(createdChat.title);
+  const isCreatedChatExpected =
+    Boolean(createdChat.id) && (!expectedTitle || createdChatTitle === expectedTitle);
+
+  if (isCreatedChatExpected) {
+    return createdChat.id;
+  }
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const chats = await getChats();
+    const matchedChat = chats.find((chat) => {
+      if (createdChat.id && chat.id === createdChat.id) {
+        return true;
+      }
+
+      return expectedTitle ? normaliseChatTitle(chat.title) === expectedTitle : false;
+    });
+
+    if (matchedChat?.id) {
+      return matchedChat.id;
+    }
+
+    if (attempt < retries) {
+      await sleep(retryDelayMs);
+    }
+  }
+
+  throw new Error("Не удалось определить созданный чат.");
 }
 
 export async function getChatMessages(

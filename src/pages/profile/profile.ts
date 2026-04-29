@@ -1,6 +1,6 @@
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
-import { getFeed, mapFeedResponse } from "../../api/feed";
+import { mapFeedResponse } from "../../api/feed";
 import {
   getMyPosts,
   getPostsByProfileId,
@@ -229,7 +229,7 @@ function mapApiPostToProfilePost(post: PostResponse, profile: DisplayProfile): P
     authorFirstName: post.firstName ?? profile.firstName,
     authorLastName: post.lastName ?? profile.lastName,
     authorUsername: profile.username,
-    authorAvatarLink: normaliseAvatarLink(post.avatarURL) ?? profile.avatarLink,
+    authorAvatarLink: normaliseAvatarLink(post.avatarURL) ?? profile.avatarLink ?? "",
     isOwnPost: profile.isOwnProfile,
     text: typeof post.text === "string" ? post.text : "",
     time: formatPostRelativeTime(post.createdAt),
@@ -246,28 +246,6 @@ function mapApiPostToProfilePost(post: PostResponse, profile: DisplayProfile): P
   }
 
   return nextPost;
-}
-
-function mapFeedPostToProfilePost(
-  item: ReturnType<typeof mapFeedResponse>["items"][number],
-): ProfilePost {
-  return {
-    id: item.id,
-    authorId: item.authorId,
-    authorFirstName: item.firstName,
-    authorLastName: item.lastName,
-    authorUsername: item.author,
-    authorAvatarLink: normaliseAvatarLink(item.avatar),
-    isOwnPost: false,
-    text: item.text,
-    time: item.time,
-    timeRaw: item.timeRaw,
-    likes: item.likes,
-    reposts: item.reposts,
-    comments: item.comments,
-    media: [],
-    images: item.images,
-  };
 }
 
 async function resolveProfilePosts(
@@ -296,31 +274,6 @@ async function resolveProfilePosts(
       }
     }
 
-    return [];
-  }
-}
-
-async function resolveAllPosts(signal?: AbortSignal): Promise<ProfilePost[]> {
-  try {
-    const [feedResult, friendsResult] = await Promise.all([
-      getFeed({ limit: 100, ...(signal ? { signal } : {}) }),
-      getFriends("accepted", signal),
-    ]);
-
-    const friends = friendsResult.status === "fulfilled" ? friendsResult.value : [];
-    const friendIds = new Set(friends.map((f) => String(f.profileId)));
-
-    if (feedResult.status === "rejected") {
-      throw feedResult.reason;
-    }
-
-    const mapped = mapFeedResponse(feedResult.value);
-    const filteredItems = mapped.items.filter((item) => friendIds.has(String(item.authorId)));
-
-    return filteredItems.map(mapFeedPostToProfilePost);
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") throw error;
-    console.error("[profile] source=api scope=all-posts failed", error);
     return [];
   }
 }
@@ -370,10 +323,8 @@ export async function renderProfile(
     `;
   }
 
-  const [posts, allPosts] = await Promise.all([
-    resolveProfilePosts(profile, signal),
-    profile.isOwnProfile ? resolveAllPosts(signal) : Promise.resolve([]),
-  ]);
+  const posts = await resolveProfilePosts(profile, signal);
+  const allPosts: ProfilePost[] = [];
   await prepareAvatarLinks([
     getSessionUser()?.avatarLink,
     profile.avatarLink,

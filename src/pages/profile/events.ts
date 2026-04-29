@@ -7,7 +7,7 @@ import {
   requestFriendship,
   revokeFriendRequest,
 } from "../../api/friends";
-import { uploadProfileAvatar, updateMyProfile } from "../../api/profile";
+import { uploadProfileAvatar, updateMyProfile, getMyProfile } from "../../api/profile";
 import { getSessionUser, setSessionUser } from "../../state/session";
 import { clearFeedCache } from "../feed/cache";
 import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
@@ -130,24 +130,30 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     }
 
     const postMenuToggle = target.closest("[data-profile-post-menu-toggle]");
+    console.log("[post menu click]", target, postMenuToggle);
     if (postMenuToggle instanceof HTMLButtonElement) {
       const postId = postMenuToggle.getAttribute("data-profile-post-menu-toggle");
       if (!postId) {
         return;
       }
 
-      const menu = root.querySelector<HTMLElement>(`[data-profile-post-menu="${postId}"]`);
+      const menu = document.querySelector<HTMLElement>(`[data-profile-post-menu="${postId}"]`);
       const isExpanded = postMenuToggle.getAttribute("aria-expanded") === "true";
       closeProfilePostMenus(root);
 
       if (menu && !isExpanded) {
+        const rect = postMenuToggle.getBoundingClientRect();
+        menu.style.top = `${rect.bottom + 8}px`;
+        menu.style.right = `${window.innerWidth - rect.right}px`;
+        menu.style.left = "auto";
+        document.body.appendChild(menu);
         menu.hidden = false;
         postMenuToggle.setAttribute("aria-expanded", "true");
       }
       return;
     }
 
-    if (!target.closest(".profile-post__actions")) {
+    if (!target.closest(".profile-post__actions") && !target.closest("[data-profile-post-menu]")) {
       closeProfilePostMenus(root);
     }
 
@@ -322,7 +328,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       avatarModalState.open = true;
       avatarModalState.errorMessage = "";
       syncAvatarModalUi(root);
-      ensureAvatarEditorSource(root);
+      //ensureAvatarEditorSource(root);
       return;
     }
 
@@ -409,8 +415,17 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       void buildAvatarFile(root)
         .then(async (file) => {
           const uploadedAvatar = await uploadProfileAvatar(file);
+
+          console.log("[avatar] uploaded", uploadedAvatar);
+
           await updateMyProfile({ avatarID: uploadedAvatar.mediaID });
-          const nextOverride = normaliseAvatarLink(uploadedAvatar.mediaURL);
+
+          const freshProfile = await getMyProfile();
+          const nextOverride = normaliseAvatarLink(freshProfile.imageLink);
+
+          console.log("[avatar] fresh profile", freshProfile);
+          console.log("[avatar] next override", nextOverride);
+
           setOwnAvatarOverride(nextOverride);
           updateSessionUserAvatarLink(nextOverride);
           updateOwnProfileCacheAvatar(nextOverride);
@@ -931,6 +946,26 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     if (!target.matches("[data-profile-post-search]")) return;
     applyProfilePostFilters(root);
   });
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      const openMenu = document.querySelector<HTMLElement>(
+        "[data-profile-post-menu]:not([hidden])",
+      );
+      if (!openMenu) return;
+      const postId = openMenu.getAttribute("data-profile-post-menu");
+      if (!postId) return;
+      const toggle = root.querySelector<HTMLButtonElement>(
+        `[data-profile-post-menu-toggle="${postId}"]`,
+      );
+      if (!toggle) return;
+      const rect = toggle.getBoundingClientRect();
+      openMenu.style.top = `${rect.bottom + 8}px`;
+      openMenu.style.right = `${window.innerWidth - rect.right}px`;
+    },
+    { passive: true },
+  );
 }
 
 function getActiveProfilePostFilter(root: Document | HTMLElement): "all" | "own" {
@@ -997,8 +1032,11 @@ function closeProfilePostSearch(root: Document | HTMLElement): void {
 }
 
 function closeProfilePostMenus(root: Document | HTMLElement): void {
-  root.querySelectorAll<HTMLElement>("[data-profile-post-menu]").forEach((menu) => {
+  document.querySelectorAll<HTMLElement>("[data-profile-post-menu]").forEach((menu) => {
     menu.hidden = true;
+    menu.style.top = "";
+    menu.style.right = "";
+    menu.style.left = "";
   });
 
   root.querySelectorAll<HTMLButtonElement>("[data-profile-post-menu-toggle]").forEach((button) => {
@@ -1012,7 +1050,7 @@ export function applyProfilePostFilters(root: Document | HTMLElement): void {
   const scope = getActiveProfilePostFilter(root);
   const cards = root.querySelectorAll<HTMLElement>("[data-profile-post-card]");
   let visibleCount = 0;
-  let firstVisibleCard: HTMLElement | null = null;
+  let firstVisibleCard: HTMLElement | undefined;
 
   cards.forEach((card) => {
     const cardScope = card.getAttribute("data-profile-post-scope") ?? "all";
@@ -1023,13 +1061,19 @@ export function applyProfilePostFilters(root: Document | HTMLElement): void {
 
     card.hidden = !isVisible;
     card.classList.remove("profile-post--first-visible");
+
     if (isVisible) {
       visibleCount += 1;
-      firstVisibleCard ??= card;
+
+      if (!firstVisibleCard) {
+        firstVisibleCard = card;
+      }
     }
   });
 
-  firstVisibleCard?.classList.add("profile-post--first-visible");
+  if (firstVisibleCard) {
+    firstVisibleCard.classList.add("profile-post--first-visible");
+  }
 
   const searchEmptyState = root.querySelector<HTMLElement>("[data-profile-post-search-empty]");
   if (searchEmptyState) {

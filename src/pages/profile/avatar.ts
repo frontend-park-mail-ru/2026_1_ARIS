@@ -29,20 +29,24 @@ export function renderAvatarModal(profile: DisplayProfile): string {
         </div>
       `
     : `
-        <div
-          class="profile-avatar-modal__current-image profile-avatar-modal__current-image--placeholder"
-          data-profile-avatar-current-image
-          aria-hidden="true"
-        >
+      <div
+        class="profile-avatar-modal__current-image profile-avatar-modal__current-image--placeholder"
+        data-profile-avatar-current-image
+        aria-hidden="true"
+      >
+        <span class="profile-avatar-modal__initials">
           ${escapeHtml(getInitials(profile.firstName, profile.lastName))}
-        </div>
-      `;
+        </span>
+      </div>
+    `;
 
   return `
     <div
       class="profile-avatar-modal"
       data-profile-avatar-modal
-      data-profile-current-avatar-src="${escapeHtml(getAvatarImageSrc(profile.avatarLink))}"
+      data-profile-current-avatar-src="${
+        profile.avatarLink ? escapeHtml(getAvatarImageSrc(profile.avatarLink)) : ""
+      }"
       hidden
     >
       <section
@@ -359,6 +363,7 @@ export async function loadAvatarFromUrl(
   try {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
       const previewImage = new Image();
+      previewImage.crossOrigin = "anonymous";
       previewImage.onload = () => resolve(previewImage);
       previewImage.onerror = () => reject(new Error("Не получилось загрузить текущее фото."));
       previewImage.src = src;
@@ -379,7 +384,11 @@ export function ensureAvatarEditorSource(root: ParentNode): void {
   }
 
   const currentAvatarSrc = readCurrentAvatarSrc(root);
-  if (!currentAvatarSrc || currentAvatarSrc === "/assets/img/default-avatar.png") {
+  if (
+    !currentAvatarSrc ||
+    currentAvatarSrc.includes("default-avatar") ||
+    currentAvatarSrc.startsWith("data:")
+  ) {
     return;
   }
 
@@ -449,6 +458,7 @@ export async function buildAvatarFile(root: ParentNode): Promise<File> {
 
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const previewImage = new Image();
+    previewImage.crossOrigin = "anonymous";
     previewImage.onload = () => resolve(previewImage);
     previewImage.onerror = () => reject(new Error("Не получилось подготовить изображение."));
     previewImage.src = avatarModalState.objectUrl!;

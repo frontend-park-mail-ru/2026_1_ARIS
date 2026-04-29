@@ -191,8 +191,6 @@
         transform var(--transition-control);
     }
 
-    &__avatar-wrap:hover &__user-menu,
-    &__avatar-wrap:focus-within &__user-menu,
     &__avatar-wrap.is-open &__user-menu {
       opacity: 1;
       pointer-events: auto;

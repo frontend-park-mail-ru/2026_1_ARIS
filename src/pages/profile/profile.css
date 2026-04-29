@@ -633,7 +633,6 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    contain: layout paint;
     overflow-anchor: none;
   }
 
@@ -1072,6 +1071,12 @@
     background: rgb(255 255 255 / 96%);
     box-shadow: none;
     overflow-anchor: none;
+    position: relative;
+    z-index: 0;
+  }
+
+  .profile-post:has(.profile-post__menu:not([hidden])) {
+    z-index: 200;
   }
 
   .profile-post--first-visible {
@@ -1128,8 +1133,10 @@
 
   .profile-post__actions {
     position: relative;
-    display: flex;
+    display: inline-flex;
+    z-index: 1000;
     align-items: center;
+    flex-shrink: 0;
   }
 
   .profile-post__menu-toggle {
@@ -1168,10 +1175,8 @@
   }
 
   .profile-post__menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    z-index: 4;
+    position: fixed;
+    z-index: 9000;
     display: flex;
     min-width: 188px;
     padding: 8px;
@@ -1188,17 +1193,20 @@
   }
 
   .profile-post__menu-action {
-    display: flex;
+    display: block;
     width: 100%;
-    min-height: 38px;
+    min-height: 44px;
     align-items: center;
-    padding: 0 12px;
+    justify-content: flex-start;
+    padding: 0 16px;
     border: none;
     border-radius: 12px;
     background: transparent;
     color: var(--color-text-main);
     font: inherit;
+    gap: 6px;
     font-size: var(--text-size-main);
+    line-height: 44px;
     text-align: left;
     cursor: pointer;
     transition:
@@ -1659,13 +1667,20 @@
   }
 
   .profile-avatar-modal__current-image--placeholder {
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(145deg, rgb(100 107 229), rgb(159 168 255) 62%, rgb(248 208 138));
-    color: var(--color-text-on-primary);
-    font-size: calc(var(--text-size-display) + 10px);
+    background: linear-gradient(135deg, rgb(54 71 203), rgb(125 135 247));
+    background-size: auto;
+    color: #fff;
+    font-size: var(--text-size-display);
     font-weight: 700;
+  }
+
+  .profile-avatar-modal__initials {
+    color: inherit;
+    font: inherit;
+    line-height: 1;
   }
 
   .profile-avatar-modal__crop-ring {

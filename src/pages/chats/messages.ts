@@ -3,6 +3,7 @@
  */
 import { getChatMessages, sendChatMessage } from "../../api/chat";
 import type { ChatMessage } from "../../api/chat";
+import { getProfileById } from "../../api/profile";
 import { getSessionUser } from "../../state/session";
 import { chatsState } from "./state";
 import { persistChatsData } from "./storage";
@@ -27,6 +28,8 @@ import {
 } from "./render";
 import { chatsRoot } from "./state";
 import type { ChatViewMessage, ChatViewThread } from "./types";
+
+const chatAuthorAvatarLinkByProfileId = new Map<string, string | undefined>();
 
 /** Удаляет дубликаты сообщений по id, сохраняя последнее вхождение. */
 export function dedupeMessagesById(messages: ChatViewMessage[]): ChatViewMessage[] {
@@ -107,13 +110,71 @@ export function getUnreadIncomingCount(chatId: string): number {
   return chatsState.unreadIncomingIdsByChatId.get(chatId)?.size ?? 0;
 }
 
+/**
+ * Возвращает свежие ссылки на аватары авторов сообщений по их profileId.
+ *
+ * Используем профиль как источник истины, потому что список чатов
+ * и сохранённые треды могут держать устаревший `avatarLink`
+ * после смены аватара собеседником.
+ */
+async function resolveAuthorAvatarLinks(
+  messages: ChatMessage[],
+  signal?: AbortSignal,
+): Promise<Map<string, string | undefined>> {
+  const profileIds = Array.from(
+    new Set(
+      messages
+        .filter((message) => !isOwnMessage(message.authorId, message.authorName))
+        .map((message) => String(message.authorId ?? "").trim())
+        .filter(Boolean),
+    ),
+  );
+
+  if (!profileIds.length) {
+    return new Map();
+  }
+
+  const avatarEntries = await Promise.all(
+    profileIds.map(async (profileId) => {
+      if (chatAuthorAvatarLinkByProfileId.has(profileId)) {
+        const cachedAvatarLink = chatAuthorAvatarLinkByProfileId.get(profileId);
+        return [profileId, cachedAvatarLink] as const;
+      }
+
+      try {
+        const profile = await getProfileById(profileId, signal);
+        const avatarLink = String(profile.imageLink ?? "").trim();
+        const nextAvatarLink = avatarLink || undefined;
+        chatAuthorAvatarLinkByProfileId.set(profileId, nextAvatarLink);
+        return [profileId, nextAvatarLink] as const;
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          throw error;
+        }
+      }
+
+      return [profileId, undefined] as const;
+    }),
+  );
+
+  return new Map(avatarEntries);
+}
+
 /** Преобразует сырое сообщение API в модель представления для текущего треда. */
 export function mapMessageToViewMessage(
   message: ChatMessage,
   thread: ChatViewThread,
+  authorAvatarLinks?: ReadonlyMap<string, string | undefined>,
 ): ChatViewMessage {
   const currentUser = getSessionUser();
   const own = isOwnMessage(message.authorId, message.authorName);
+  const authorProfileId = String(message.authorId ?? "").trim();
+  const authorAvatarLink =
+    !own && authorProfileId
+      ? authorAvatarLinks?.has(authorProfileId)
+        ? (authorAvatarLinks.get(authorProfileId) ?? undefined)
+        : thread.avatarLink
+      : currentUser?.avatarLink;
 
   return {
     id: message.id,
@@ -125,7 +186,7 @@ export function mapMessageToViewMessage(
         : thread.title),
     isOwn: own,
     createdAt: message.createdAt,
-    avatarLink: own ? currentUser?.avatarLink : thread.avatarLink,
+    avatarLink: authorAvatarLink,
     profilePath: own
       ? getCurrentUserProfilePath()
       : resolvePersonPath(message.authorName ?? thread.title, message.authorId || undefined),
@@ -230,9 +291,17 @@ export async function ensureMessagesLoaded(
   try {
     const previousMessages = thread.messages ?? [];
     const rawMessages = await getChatMessages(chatId, options.signal);
+    const authorAvatarLinks = await resolveAuthorAvatarLinks(rawMessages, options.signal);
+    const threadProfileId = String(thread.profileId ?? "").trim();
+    if (threadProfileId && authorAvatarLinks.has(threadProfileId)) {
+      thread.avatarLink = authorAvatarLinks.get(threadProfileId) ?? undefined;
+    }
+
     const nextMessages = mergeRetriableMessages(
       sortMessagesByCreatedAt(
-        dedupeMessagesById(rawMessages.map((m) => mapMessageToViewMessage(m, thread))),
+        dedupeMessagesById(
+          rawMessages.map((m) => mapMessageToViewMessage(m, thread, authorAvatarLinks)),
+        ),
       ),
       thread,
     );

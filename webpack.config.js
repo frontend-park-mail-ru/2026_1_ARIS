@@ -3,6 +3,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
+const wsBackendUrl = process.env.WS_BACKEND_URL || backendUrl;
 
 class AssetManifestPlugin {
   apply(compiler) {
@@ -113,7 +114,7 @@ module.exports = {
       },
       {
         context: ["/ws/"],
-        target: backendUrl,
+        target: wsBackendUrl,
         changeOrigin: true,
         ws: true,
       },

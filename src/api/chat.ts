@@ -54,9 +54,22 @@ export type SendMessagePayload = {
   text: string;
 };
 
+export type GetChatMessagesOptions = {
+  after?: string;
+  limit?: number;
+};
+
 export type ChatMessageSocketHandlers = {
   onMessage: (message: ChatMessage) => void;
   onError?: ((event: Event) => void) | undefined;
+  onOpen?: (() => void) | undefined;
+  onClose?: (() => void) | undefined;
+};
+
+export type ChatMessageSocketSubscription = {
+  send: (payload: SendMessagePayload) => boolean;
+  isOpen: () => boolean;
+  close: () => void;
 };
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -142,8 +155,21 @@ export async function createPrivateChat(otherUserId: string): Promise<ChatSummar
   return mapChat(data as RawChat);
 }
 
-export async function getChatMessages(chatId: string): Promise<ChatMessage[]> {
-  const response = await trackedFetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
+export async function getChatMessages(
+  chatId: string,
+  options: GetChatMessagesOptions = {},
+): Promise<ChatMessage[]> {
+  const url = new URL(`/api/chats/${encodeURIComponent(chatId)}/messages`, window.location.origin);
+
+  if (options.after) {
+    url.searchParams.set("after", options.after);
+  }
+
+  if (typeof options.limit === "number") {
+    url.searchParams.set("limit", String(options.limit));
+  }
+
+  const response = await trackedFetch(`${url.pathname}${url.search}`, {
     method: "GET",
     credentials: "include",
   });
@@ -192,8 +218,12 @@ function getChatSocketUrl(chatId: string): string {
 export function subscribeToChatMessages(
   chatId: string,
   handlers: ChatMessageSocketHandlers,
-): () => void {
+): ChatMessageSocketSubscription {
   const socket = new WebSocket(getChatSocketUrl(chatId));
+
+  socket.addEventListener("open", () => {
+    handlers.onOpen?.();
+  });
 
   socket.addEventListener("message", (event: MessageEvent<string>) => {
     try {
@@ -212,9 +242,24 @@ export function subscribeToChatMessages(
     socket.addEventListener("error", handlers.onError);
   }
 
-  return () => {
-    if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-      socket.close();
-    }
+  socket.addEventListener("close", () => {
+    handlers.onClose?.();
+  });
+
+  return {
+    send: (payload: SendMessagePayload): boolean => {
+      if (socket.readyState !== WebSocket.OPEN) {
+        return false;
+      }
+
+      socket.send(JSON.stringify(payload));
+      return true;
+    },
+    isOpen: (): boolean => socket.readyState === WebSocket.OPEN,
+    close: (): void => {
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+        socket.close();
+      }
+    },
   };
 }

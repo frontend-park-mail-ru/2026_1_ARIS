@@ -6,6 +6,7 @@ import {
   sendChatMessage,
   subscribeToChatMessages,
   type ChatMessage,
+  type ChatMessageSocketSubscription,
   type ChatSummary,
 } from "../../api/chat";
 import {
@@ -108,7 +109,7 @@ type ChatsState = {
   errorMessage: string;
   actionErrorMessage: string;
   loadedForUserId: string;
-  unsubscribeByChatId: Map<string, () => void>;
+  socketByChatId: Map<string, ChatMessageSocketSubscription>;
   unreadIncomingIdsByChatId: Map<string, Set<string>>;
   pendingOutgoingByChatId: Map<
     string,
@@ -130,23 +131,27 @@ const chatsState: ChatsState = {
   errorMessage: "",
   actionErrorMessage: "",
   loadedForUserId: "",
-  unsubscribeByChatId: new Map(),
+  socketByChatId: new Map(),
   unreadIncomingIdsByChatId: new Map(),
   pendingOutgoingByChatId: new Map(),
 };
 
 let chatsRoot: ParentNode = document;
 let chatsPollIntervalId: number | null = null;
+let isChatsBackgroundRefreshing = false;
+let lastChatsFullResyncAt = 0;
 let shouldScrollChatToBottom = false;
 let isSelectedChatPinnedToBottom = true;
 let hasHydratedPersistedChatsUiState = false;
+const CHAT_SELECTED_FALLBACK_POLL_INTERVAL_MS = 3000;
+const CHAT_FULL_RESYNC_INTERVAL_MS = 25000;
 const chatScrollStateById = new Map<string, PersistedChatScrollState>();
 const knownChatContactsByName = new Map<string, KnownChatContact>();
 const acceptedFriendProfileIds = new Set<string>();
 
 function resetChatsState(): void {
-  chatsState.unsubscribeByChatId.forEach((unsubscribe) => unsubscribe());
-  chatsState.unsubscribeByChatId.clear();
+  chatsState.socketByChatId.forEach((subscription) => subscription.close());
+  chatsState.socketByChatId.clear();
   chatsState.loaded = false;
   chatsState.loadingMessages = false;
   chatsState.source = "mock";
@@ -865,31 +870,41 @@ function queueOutgoingForRetry(chatId: string, message: ChatViewMessage): void {
   chatsState.pendingOutgoingByChatId.set(chatId, nextPending);
 }
 
-function reconcilePendingOutgoing(
+function findPendingOutgoingMatch(
   chatId: string,
   incomingMessage: ChatViewMessage,
-  thread: ChatViewThread,
-): boolean {
+): { localId: string; text: string; createdAt?: string | undefined } | null {
   const pending = chatsState.pendingOutgoingByChatId.get(chatId);
   if (!pending?.length) {
-    return false;
+    return null;
   }
 
   const incomingCreatedAt = incomingMessage.createdAt
     ? new Date(incomingMessage.createdAt).getTime()
     : 0;
-  const matchedPending = pending.find((item) => {
-    if (item.text !== incomingMessage.text) {
-      return false;
-    }
 
-    const pendingCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : 0;
-    if (!incomingCreatedAt || !pendingCreatedAt) {
-      return true;
-    }
+  return (
+    pending.find((item) => {
+      if (item.text !== incomingMessage.text) {
+        return false;
+      }
 
-    return Math.abs(incomingCreatedAt - pendingCreatedAt) <= 15000;
-  });
+      const pendingCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : 0;
+      if (!incomingCreatedAt || !pendingCreatedAt) {
+        return true;
+      }
+
+      return Math.abs(incomingCreatedAt - pendingCreatedAt) <= 15000;
+    }) ?? null
+  );
+}
+
+function reconcilePendingOutgoing(
+  chatId: string,
+  incomingMessage: ChatViewMessage,
+  thread: ChatViewThread,
+): boolean {
+  const matchedPending = findPendingOutgoingMatch(chatId, incomingMessage);
 
   if (!matchedPending) {
     return false;
@@ -921,6 +936,41 @@ function reconcilePendingOutgoing(
   return true;
 }
 
+function mergeIncomingMessages(
+  chatId: string,
+  previousMessages: ChatViewMessage[],
+  incomingMessages: ChatViewMessage[],
+): ChatViewMessage[] {
+  let nextMessages = [...previousMessages];
+
+  incomingMessages.forEach((incomingMessage) => {
+    const matchedPending = findPendingOutgoingMatch(chatId, incomingMessage);
+
+    if (matchedPending) {
+      nextMessages = nextMessages.map((message) =>
+        message.id === matchedPending.localId
+          ? {
+              ...message,
+              id: incomingMessage.id,
+              createdAt: incomingMessage.createdAt,
+              authorName: incomingMessage.authorName,
+              avatarLink: incomingMessage.avatarLink,
+              deliveryState: undefined,
+              isOwn: true,
+              profilePath: getCurrentUserProfilePath(),
+            }
+          : message,
+      );
+      removePendingOutgoing(chatId, matchedPending.localId);
+      return;
+    }
+
+    nextMessages.push(incomingMessage);
+  });
+
+  return sortMessagesByCreatedAt(dedupeMessagesById(nextMessages));
+}
+
 function updateThreadPreview(thread: ChatViewThread): void {
   const messages = thread.messages ?? [];
   const lastMessage = messages[messages.length - 1];
@@ -938,7 +988,9 @@ function updateThreadPreview(thread: ChatViewThread): void {
 function getRetriableMessages(thread: ChatViewThread): ChatViewMessage[] {
   return [...(thread.messages ?? [])].filter(
     (message) =>
-      message.isOwn && message.id.startsWith("local-") && message.deliveryState === "failed",
+      message.isOwn &&
+      message.id.startsWith("local-") &&
+      (message.deliveryState === "failed" || message.deliveryState === "sending"),
   );
 }
 
@@ -953,6 +1005,47 @@ function mergeRetriableMessages(
   }
 
   return sortMessagesByCreatedAt(dedupeMessagesById([...messages, ...retriableMessages]));
+}
+
+function getLastSyncedMessageId(thread: ChatViewThread): string {
+  const messages = thread.messages ?? [];
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const id = messages[index]?.id ?? "";
+
+    if (id && !id.startsWith("local-")) {
+      return id;
+    }
+  }
+
+  return "";
+}
+
+function sendChatMessageViaSocket(chatId: string, text: string): boolean {
+  ensureChatSocketSubscribed(chatId);
+
+  return chatsState.socketByChatId.get(chatId)?.send({ text }) ?? false;
+}
+
+function isChatSocketOpen(chatId: string): boolean {
+  return chatsState.socketByChatId.get(chatId)?.isOpen() ?? false;
+}
+
+function scheduleOutgoingReconciliation(chatId: string, localMessageId: string): void {
+  window.setTimeout(() => {
+    const thread = chatsState.threads.find((item) => item.id === chatId);
+    const message = thread?.messages?.find((item) => item.id === localMessageId);
+
+    if (!thread || message?.deliveryState !== "sending") {
+      return;
+    }
+
+    void ensureMessagesLoaded(chatId, {
+      background: true,
+      force: true,
+      incremental: true,
+    });
+  }, 5000);
 }
 
 async function retryChatMessage(chatId: string, localMessageId: string): Promise<void> {
@@ -988,6 +1081,15 @@ async function retryChatMessage(chatId: string, localMessageId: string): Promise
   refreshChatsPage(chatsRoot);
 
   try {
+    if (sendChatMessageViaSocket(chatId, message.text)) {
+      console.info("[chats] source=ws scope=retry", {
+        chatId,
+        localId: localMessageId,
+      });
+      scheduleOutgoingReconciliation(chatId, localMessageId);
+      return;
+    }
+
     const sentMessage = await sendChatMessage(chatId, { text: message.text });
     thread.messages = dedupeMessagesById(
       (thread.messages ?? []).map((item) =>
@@ -1339,18 +1441,25 @@ function appendIncomingMessage(chatId: string, message: ChatMessage): void {
 }
 
 function ensureChatSocketSubscribed(chatId: string): void {
-  if (chatsState.source !== "api" || chatsState.unsubscribeByChatId.has(chatId)) {
+  if (chatsState.source !== "api" || chatsState.socketByChatId.has(chatId)) {
     return;
   }
 
-  const unsubscribe = subscribeToChatMessages(chatId, {
+  const subscription = subscribeToChatMessages(chatId, {
     onMessage: (message) => appendIncomingMessage(chatId, message),
+    onOpen: () => {
+      console.info("[chats] source=ws scope=messages open", { chatId });
+    },
     onError: () => {
       console.info("[chats] source=ws scope=messages error", { chatId });
     },
+    onClose: () => {
+      chatsState.socketByChatId.delete(chatId);
+      console.info("[chats] source=ws scope=messages close", { chatId });
+    },
   });
 
-  chatsState.unsubscribeByChatId.set(chatId, unsubscribe);
+  chatsState.socketByChatId.set(chatId, subscription);
 }
 
 function getRequestedChatId(): string {
@@ -1383,7 +1492,7 @@ function syncSelectedChatToUrl(chatId: string, options: { replace?: boolean } = 
 
 async function ensureMessagesLoaded(
   chatId: string,
-  options: { background?: boolean; force?: boolean } = {},
+  options: { background?: boolean; force?: boolean; incremental?: boolean } = {},
 ): Promise<void> {
   const thread = chatsState.threads.find((item) => item.id === chatId);
   if (!thread || thread.source !== "api") {
@@ -1401,11 +1510,15 @@ async function ensureMessagesLoaded(
 
   try {
     const previousMessages = thread.messages ?? [];
-    const messages = await getChatMessages(chatId);
+    const after = options.incremental ? getLastSyncedMessageId(thread) : "";
+    const messages = await getChatMessages(chatId, after ? { after, limit: 50 } : {});
+    const mappedMessages = messages.map((message) => mapMessageToViewMessage(message, thread));
+    const mergedMessages =
+      options.incremental && previousMessages.length
+        ? mergeIncomingMessages(chatId, previousMessages, mappedMessages)
+        : mappedMessages;
     const nextMessages = mergeRetriableMessages(
-      sortMessagesByCreatedAt(
-        dedupeMessagesById(messages.map((message) => mapMessageToViewMessage(message, thread))),
-      ),
+      sortMessagesByCreatedAt(dedupeMessagesById(mergedMessages)),
       thread,
     );
     const previousFingerprint = getMessagesFingerprint(previousMessages);
@@ -1478,23 +1591,43 @@ function ensureChatsPollingStarted(): void {
     }
 
     void refreshChatsInBackground();
-  }, 3000);
+  }, CHAT_SELECTED_FALLBACK_POLL_INTERVAL_MS);
 }
 
 async function refreshChatsInBackground(): Promise<void> {
-  if (!chatsState.loaded || chatsState.source !== "api") {
+  if (!chatsState.loaded || chatsState.source !== "api" || isChatsBackgroundRefreshing) {
     return;
   }
 
+  isChatsBackgroundRefreshing = true;
+
   try {
-    await ensureKnownChatContactsLoaded();
-    const chats = await getChats();
-    const listChanged = mergeApiThreads(mapApiChatsToThreads(chats));
+    const now = Date.now();
+    const shouldRunFullResync = now - lastChatsFullResyncAt >= CHAT_FULL_RESYNC_INTERVAL_MS;
+    let listChanged = false;
+
+    if (shouldRunFullResync) {
+      lastChatsFullResyncAt = now;
+      await ensureKnownChatContactsLoaded();
+      const chats = await getChats();
+      listChanged = mergeApiThreads(mapApiChatsToThreads(chats));
+    }
+
+    chatsState.threads.forEach((thread) => ensureChatSocketSubscribed(thread.id));
+
+    const threadsToPoll = shouldRunFullResync
+      ? chatsState.threads
+      : chatsState.threads.filter(
+          (thread) => thread.id === chatsState.selectedChatId && !isChatSocketOpen(thread.id),
+        );
 
     await Promise.all(
-      chatsState.threads.map(async (thread) => {
-        ensureChatSocketSubscribed(thread.id);
-        await ensureMessagesLoaded(thread.id, { background: true, force: true });
+      threadsToPoll.map(async (thread) => {
+        await ensureMessagesLoaded(thread.id, {
+          background: true,
+          force: true,
+          incremental: true,
+        });
       }),
     );
 
@@ -1508,6 +1641,8 @@ async function refreshChatsInBackground(): Promise<void> {
     console.info("[chats] source=api scope=list background error", {
       error: error instanceof Error ? error.message : "Не получилось обновить список чатов.",
     });
+  } finally {
+    isChatsBackgroundRefreshing = false;
   }
 }
 
@@ -2174,6 +2309,15 @@ export function initChats(root: Document | HTMLElement = document): void {
     });
 
     if (selectedThread.source === "api") {
+      if (sendChatMessageViaSocket(selectedThread.id, text)) {
+        console.info("[chats] source=ws scope=send", {
+          chatId: selectedThread.id,
+          localId: optimisticMessage.id,
+        });
+        scheduleOutgoingReconciliation(selectedThread.id, optimisticMessage.id);
+        return;
+      }
+
       void sendChatMessage(selectedThread.id, { text })
         .then((message) => {
           console.info("[chats] source=api scope=send", {

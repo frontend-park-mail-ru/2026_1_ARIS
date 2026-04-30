@@ -54,6 +54,16 @@ Production-сборка:
 npm run build
 ```
 
+Для включения Sentry на клиенте используйте переменные окружения:
+
+- `SENTRY_DSN` — DSN проекта;
+- `SENTRY_ENVIRONMENT` — имя окружения, например `development`, `staging`, `production`;
+- `SENTRY_RELEASE` — идентификатор релиза;
+- `SENTRY_DEBUG=true` — опциональный debug-режим SDK;
+- `SENTRY_TRACES_SAMPLE_RATE` — sample rate для tracing;
+- `SENTRY_REPLAYS_SESSION_SAMPLE_RATE` — sample rate для обычных session replay;
+- `SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE` — sample rate для replay на ошибках.
+
 ### Архитектура
 
 Приложение построено по слоистой схеме:
@@ -127,6 +137,12 @@ npm run lint
 npm ci
 npm run build
 HOST=127.0.0.1 PORT=3001 npm start
+```
+
+Если нужен Sentry в production, собирайте frontend с нужными переменными окружения:
+
+```bash
+SENTRY_DSN=... SENTRY_ENVIRONMENT=production SENTRY_RELEASE=arisfront@1.0.0 npm run build
 ```
 
 Для постоянного запуска используйте systemd/pm2 или другой process manager. В production

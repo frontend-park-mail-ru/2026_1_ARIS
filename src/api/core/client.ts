@@ -4,6 +4,7 @@
  * Содержит клиентские запросы и нормализацию данных для интерфейса.
  */
 import { trackedFetch } from "../../state/network-status";
+import { captureAppException } from "../../utils/sentry";
 
 /**
  * Универсальная ошибка API со статусом HTTP и сырыми данными ответа.
@@ -118,7 +119,21 @@ export async function apiRequest<T>(
     .then((response) =>
       parseJson<T>(response, emptyFallback).then((data) => {
         if (!response.ok) {
-          throw createApiError(`Ошибка запроса к ${url}`, response.status, data);
+          const apiError = createApiError(`Ошибка запроса к ${url}`, response.status, data);
+
+          if (response.status >= 500) {
+            captureAppException(apiError, {
+              area: "api",
+              action: "request",
+              extras: {
+                method,
+                status: response.status,
+                url,
+              },
+            });
+          }
+
+          throw apiError;
         }
         return data;
       }),

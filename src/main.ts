@@ -38,6 +38,7 @@ import { initAvatarFallback } from "./utils/avatar-fallback";
 import { initOfflineIndicator } from "./utils/offline-indicator";
 import { registerServiceWorker } from "./utils/register-service-worker";
 import { onCacheInvalidation } from "./utils/cache-channel";
+import { captureAppException, initSentry, syncSentryUser } from "./utils/sentry";
 import { initSupportIframe } from "./utils/support-widget";
 
 const SITE_ORIGIN = "https://arisnet.ru";
@@ -241,6 +242,7 @@ const routes: Route[] = [
 document.title = getBootstrapDocumentTitle(window.location.pathname, routes);
 syncSeoMetadata(window.location.pathname);
 
+initSentry();
 registerServiceWorker();
 
 const router = createRouter(root, routes);
@@ -290,7 +292,12 @@ document.addEventListener(
 void (async () => {
   try {
     await initSession();
+    syncSentryUser(getSessionUser());
   } catch (error) {
+    captureAppException(error, {
+      area: "session",
+      action: "init",
+    });
     console.error("[session] init failed", error);
   }
 
@@ -312,9 +319,17 @@ void (async () => {
 
 onCacheInvalidation(async (key) => {
   if (key === "feed") {
-    const { clearFeedCacheLocal, refreshFeedCenter } = await loadFeed();
-    clearFeedCacheLocal();
-    await refreshFeedCenter();
+    try {
+      const { clearFeedCacheLocal, refreshFeedCenter } = await loadFeed();
+      clearFeedCacheLocal();
+      await refreshFeedCenter();
+    } catch (error) {
+      captureAppException(error, {
+        area: "feed",
+        action: "cache-invalidation-refresh",
+      });
+      console.error("[feed] cache invalidation refresh failed", error);
+    }
   }
 });
 
@@ -343,6 +358,7 @@ window.addEventListener("sessionchange", async (event: Event) => {
     }
 
     if (detail?.key === "user") {
+      syncSentryUser(getSessionUser());
       await router.render();
       initHeader();
       initSidebar();
@@ -356,6 +372,10 @@ window.addEventListener("sessionchange", async (event: Event) => {
       await (await loadFeed()).refreshFeedCenter();
     }
   } catch (error) {
+    captureAppException(error, {
+      area: "session",
+      action: "sessionchange",
+    });
     console.error(error);
   }
 });

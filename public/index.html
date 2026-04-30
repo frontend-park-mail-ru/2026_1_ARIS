@@ -33,6 +33,9 @@
 
     <link rel="icon" type="image/png" href="/assets/img/icons8-a-stickers-32.png" />
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" />
+    <script>
+      window.__ARIS_RUNTIME_CONFIG__ = <%= JSON.stringify(htmlWebpackPlugin.options.runtimeConfig || {}) %>;
+    </script>
   </head>
 
   <body>

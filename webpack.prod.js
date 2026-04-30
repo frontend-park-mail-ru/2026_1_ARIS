@@ -4,8 +4,19 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
+const packageJson = require("./package.json");
 
 const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
+const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || "production";
+const sentryRelease = process.env.SENTRY_RELEASE || `arisfront@${packageJson.version}`;
+const sentryDebug = process.env.SENTRY_DEBUG === "true";
+const sentryTracesSampleRate = Number(process.env.SENTRY_TRACES_SAMPLE_RATE || "0.1");
+const sentryReplaysSessionSampleRate = Number(
+  process.env.SENTRY_REPLAYS_SESSION_SAMPLE_RATE || "0.05",
+);
+const sentryReplaysOnErrorSampleRate = Number(
+  process.env.SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE || "1",
+);
 
 class AssetManifestPlugin {
   apply(compiler) {
@@ -113,6 +124,15 @@ module.exports = {
     }),
     new HtmlWebpackPlugin({
       template: "./public/index.html",
+      runtimeConfig: {
+        sentryDsn: process.env.SENTRY_DSN || "",
+        sentryEnvironment,
+        sentryRelease,
+        sentryDebug,
+        sentryTracesSampleRate,
+        sentryReplaysSessionSampleRate,
+        sentryReplaysOnErrorSampleRate,
+      },
     }),
     new AssetManifestPlugin(),
     new CopyWebpackPlugin({

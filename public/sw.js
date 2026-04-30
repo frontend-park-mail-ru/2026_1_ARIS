@@ -1,10 +1,22 @@
-const CACHE_VERSION = "aris-v3";
+const CACHE_VERSION = "aris-v4";
 const STATIC_CACHE = `${CACHE_VERSION}:static`;
 const API_CACHE = `${CACHE_VERSION}:api`;
 const OUTBOX_DB_NAME = "aris-outbox";
 const OUTBOX_DB_VERSION = 1;
 const OUTBOX_STORE = "requests";
 const OUTBOX_SYNC_TAG = "aris-outbox";
+const STATIC_FALLBACK_URLS = [
+  "/",
+  "/index.html",
+  "/offline.html",
+  "/manifest.webmanifest",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/assets/img/logo-v3.png",
+  "/assets/img/apple-touch-icon.png",
+  "/assets/img/pwa-192.png",
+  "/assets/img/pwa-512.png",
+];
 
 function withSourceHeader(response, source) {
   const headers = new Headers(response.headers);
@@ -32,11 +44,15 @@ async function readPrecacheUrls() {
   }
 }
 
+function getPrecacheUrls(urls) {
+  return Array.from(new Set([...(Array.isArray(urls) ? urls : []), ...STATIC_FALLBACK_URLS]));
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(STATIC_CACHE);
-      const urls = await readPrecacheUrls();
+      const urls = getPrecacheUrls(await readPrecacheUrls());
       await cache.addAll(urls);
       await self.skipWaiting();
     })(),
@@ -219,7 +235,7 @@ async function drainOutbox() {
   }
 }
 
-async function networkFirst(request, cacheName, fallbackUrl) {
+async function networkFirst(request, cacheName, fallbackUrls) {
   const cache = await caches.open(cacheName);
   const url = new URL(request.url);
   const ttl = getApiTtl(url.pathname);
@@ -253,9 +269,14 @@ async function networkFirst(request, cacheName, fallbackUrl) {
       }
     }
 
-    if (fallbackUrl) {
-      const fallbackResponse = await caches.match(fallbackUrl);
+    const fallbacks = Array.isArray(fallbackUrls)
+      ? fallbackUrls
+      : fallbackUrls
+        ? [fallbackUrls]
+        : [];
 
+    for (const fallbackUrl of fallbacks) {
+      const fallbackResponse = await caches.match(fallbackUrl);
       if (fallbackResponse) {
         return withSourceHeader(fallbackResponse, "cache");
       }
@@ -275,7 +296,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (request.mode === "navigate") {
-    event.respondWith(networkFirst(request, STATIC_CACHE, "/index.html"));
+    event.respondWith(networkFirst(request, STATIC_CACHE, ["/index.html", "/offline.html"]));
     return;
   }
 

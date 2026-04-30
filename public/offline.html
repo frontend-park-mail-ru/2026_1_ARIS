@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4c6fff" />
+    <title>ARISNET — offline</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7fb;
+        --surface: rgb(255 255 255 / 92%);
+        --text: #18233d;
+        --muted: #5d6b8a;
+        --accent: #4c6fff;
+        --border: rgb(76 111 255 / 14%);
+        --shadow: 0 24px 80px rgb(20 32 70 / 12%);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family:
+          "Segoe UI",
+          -apple-system,
+          BlinkMacSystemFont,
+          "SF Pro Text",
+          sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top, rgb(76 111 255 / 14%), transparent 38%),
+          linear-gradient(180deg, #fcfdff 0%, var(--bg) 100%);
+      }
+
+      .offline-shell {
+        width: min(100%, 480px);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+        padding: 32px 28px;
+        text-align: center;
+        backdrop-filter: blur(12px);
+      }
+
+      .offline-shell img {
+        width: 132px;
+        height: auto;
+        margin-bottom: 18px;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(28px, 6vw, 38px);
+        line-height: 1.05;
+      }
+
+      p {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .offline-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: 24px;
+      }
+
+      .offline-actions a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 180px;
+        min-height: 48px;
+        padding: 0 20px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="offline-shell">
+      <img src="/assets/img/logo-v3.png" alt="ARISNET" />
+      <h1>Сеть временно недоступна</h1>
+      <p>
+        Проверь подключение к интернету и попробуй открыть страницу снова. Когда связь
+        восстановится, ARISNET вернется в привычный ритм.
+      </p>
+      <div class="offline-actions">
+        <a href="/">Попробовать снова</a>
+      </div>
+    </main>
+  </body>
+</html>

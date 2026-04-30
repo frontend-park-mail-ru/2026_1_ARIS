@@ -103,6 +103,14 @@ module.exports = {
           to: "sitemap.xml",
         },
         {
+          from: path.resolve(__dirname, "public/manifest.webmanifest"),
+          to: "manifest.webmanifest",
+        },
+        {
+          from: path.resolve(__dirname, "public/offline.html"),
+          to: "offline.html",
+        },
+        {
           from: path.resolve(__dirname, "public/assets/img"),
           to: "assets/img",
           globOptions: { ignore: ["**/.DS_Store"] },

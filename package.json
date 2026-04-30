@@ -15,12 +15,13 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "test": "npm run typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"src/**/*.css\" --fix",
-    "check": "npm run format:check && npm run lint && npm run lint:css && npm run test && npm run build",
+    "check": "npm run format:check && npm run lint && npm run lint:css && npm run typecheck && npm run test && npm run build",
     "ci": "npm run check",
     "prepare": "husky"
   },
@@ -98,6 +99,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.2",
+    "vitest": "^4.1.5",
     "webpack": "^5.105.4",
     "webpack-cli": "^7.0.2",
     "webpack-dev-server": "^5.2.3"

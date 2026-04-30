@@ -40,6 +40,20 @@ import { registerServiceWorker } from "./utils/register-service-worker";
 import { onCacheInvalidation } from "./utils/cache-channel";
 import { initSupportIframe } from "./utils/support-widget";
 
+const SITE_ORIGIN = "https://arisnet.ru";
+const CANONICAL_ROUTE_ALIASES: Record<string, string> = {
+  "/feed": "/",
+};
+const NOINDEX_EXACT_PATHS = new Set(["/login", "/register"]);
+const NOINDEX_PATH_PREFIXES = [
+  "/chats",
+  "/friends",
+  "/profile",
+  "/id",
+  "/support/admin",
+  "/support/stats",
+];
+
 // ---------------------------------------------------------------------------
 // Ленивые фабрики модулей страниц — webpack выносит их в отдельные чанки.
 // ---------------------------------------------------------------------------
@@ -59,6 +73,69 @@ const loadSupportStats = () =>
 
 function normalisePathname(pathname: string): string {
   return pathname.replace(/\/+$/g, "") || "/";
+}
+
+function getCanonicalPath(pathname: string): string {
+  const normalisedPathname = normalisePathname(pathname);
+  return CANONICAL_ROUTE_ALIASES[normalisedPathname] ?? normalisedPathname;
+}
+
+function shouldIndexPath(pathname: string): boolean {
+  const normalisedPathname = normalisePathname(pathname);
+
+  if (NOINDEX_EXACT_PATHS.has(normalisedPathname)) {
+    return false;
+  }
+
+  return !NOINDEX_PATH_PREFIXES.some((prefix) => normalisedPathname.startsWith(prefix));
+}
+
+function upsertMetaByName(name: string, content: string): void {
+  let meta = document.head.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+
+  if (!(meta instanceof HTMLMetaElement)) {
+    meta = document.createElement("meta");
+    meta.setAttribute("name", name);
+    document.head.append(meta);
+  }
+
+  meta.setAttribute("content", content);
+}
+
+function upsertMetaByProperty(property: string, content: string): void {
+  let meta = document.head.querySelector<HTMLMetaElement>(`meta[property="${property}"]`);
+
+  if (!(meta instanceof HTMLMetaElement)) {
+    meta = document.createElement("meta");
+    meta.setAttribute("property", property);
+    document.head.append(meta);
+  }
+
+  meta.setAttribute("content", content);
+}
+
+function upsertCanonicalLink(href: string): void {
+  let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+
+  if (!(link instanceof HTMLLinkElement)) {
+    link = document.createElement("link");
+    link.setAttribute("rel", "canonical");
+    document.head.append(link);
+  }
+
+  link.setAttribute("href", href);
+}
+
+function syncSeoMetadata(pathname: string): void {
+  const canonicalUrl = new URL(getCanonicalPath(pathname), SITE_ORIGIN).toString();
+  const robotsContent = shouldIndexPath(pathname) ? "index, follow" : "noindex, nofollow";
+
+  upsertCanonicalLink(canonicalUrl);
+  upsertMetaByName("robots", robotsContent);
+  upsertMetaByName("googlebot", robotsContent);
+  upsertMetaByProperty("og:url", canonicalUrl);
+  upsertMetaByProperty("og:title", document.title);
+  upsertMetaByName("twitter:title", document.title);
 }
 
 function matchesRoutePath(pathname: string, routePath: string): boolean {
@@ -162,6 +239,7 @@ const routes: Route[] = [
 ];
 
 document.title = getBootstrapDocumentTitle(window.location.pathname, routes);
+syncSeoMetadata(window.location.pathname);
 
 registerServiceWorker();
 
@@ -280,4 +358,8 @@ window.addEventListener("sessionchange", async (event: Event) => {
   } catch (error) {
     console.error(error);
   }
+});
+
+window.addEventListener("apprender", () => {
+  syncSeoMetadata(window.location.pathname);
 });

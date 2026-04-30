@@ -126,6 +126,10 @@ module.exports = {
           to: "robots.txt",
         },
         {
+          from: path.resolve(__dirname, "public/sitemap.xml"),
+          to: "sitemap.xml",
+        },
+        {
           from: path.resolve(__dirname, "public/assets/img"),
           to: "assets/img",
           globOptions: { ignore: ["**/.DS_Store"] },

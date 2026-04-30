@@ -58,6 +58,7 @@
   "dependencies": {
     "@aris/offline": "file:packages/offline",
     "@aris/router": "file:packages/router",
+    "@sentry/browser": "^10.51.0",
     "express": "^5.2.1",
     "morgan": "^1.10.1"
   },

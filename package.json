@@ -12,13 +12,16 @@
     "build": "webpack --config webpack.prod.js",
     "build:prod": "webpack --config webpack.prod.js",
     "deploy": "bash ./scripts/deploy.sh",
+    "typecheck": "tsc --noEmit",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"src/**/*.css\" --fix",
+    "check": "npm run format:check && npm run lint && npm run lint:css && npm run test && npm run build",
+    "ci": "npm run check",
     "prepare": "husky"
   },
   "lint-staged": {

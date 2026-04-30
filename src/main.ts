@@ -28,7 +28,7 @@ import "./pages/support-admin/support-admin.scss";
 import "./pages/support-stats/support-stats.scss";
 
 import "./components/postcard/postcard-element";
-import { createRouter } from "./router/router";
+import { createRouter, type Route } from "./router/router";
 import { registerPrefetch, prefetchRoute } from "./prefetch/prefetch";
 import { initSession, getSessionUser } from "./state/session";
 import { initHeader } from "./components/header/header";
@@ -98,7 +98,7 @@ if (!(root instanceof HTMLElement)) {
   throw new Error('Root element "#app" not found');
 }
 
-const routes = [
+const routes: Route[] = [
   {
     path: "/",
     title: "ARISNET — Feed",

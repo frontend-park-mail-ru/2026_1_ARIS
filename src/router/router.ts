@@ -15,7 +15,7 @@ import { renderFriendsSkeleton } from "../pages/friends/skeleton";
 import { renderProfileSkeleton } from "../pages/profile/skeleton";
 import { initAvatarFallback } from "../utils/avatar-fallback";
 
-export { type RouteParams } from "@aris/router";
+export { type Route, type RouteParams } from "@aris/router";
 
 function normalisePath(p: string): string {
   return (p || "/").replace(/\/+$/, "") || "/";

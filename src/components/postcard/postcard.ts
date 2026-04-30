@@ -360,9 +360,10 @@ export function renderPostcardInner(
         <button type="button" class="postcard__expand${shouldShowExpandInitially ? "" : " postcard__expand--hidden"}">читать полностью</button>
       </div>
 
-      ${renderPostcardMedia(post.images || [], {
-        prioritizeFirstImage: options.prioritizeMedia,
-      })}
+      ${renderPostcardMedia(
+        post.images || [],
+        options.prioritizeMedia ? { prioritizeFirstImage: true } : {},
+      )}
 
       <footer class="postcard__footer">
         ${statsMarkup}

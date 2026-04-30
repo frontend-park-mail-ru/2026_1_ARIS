@@ -70,24 +70,23 @@ type ProfilePostsResponse = {
 
 type PostsApiResponse = ProfilePostsResponse | PostResponse[];
 
+type UploadedMediaPayload =
+  | UploadedMedia
+  | {
+      mediaID?: number | string;
+      mediaId?: number | string;
+      media_id?: number | string;
+      mediaURL?: string;
+      mediaUrl?: string;
+      media_url?: string;
+      url?: string;
+    };
+
 type UploadMediaResponse = {
-  media?: Array<
-    | UploadedMedia
-    | {
-        mediaID?: number | string;
-        mediaId?: number | string;
-        media_id?: number | string;
-        mediaURL?: string;
-        mediaUrl?: string;
-        media_url?: string;
-        url?: string;
-      }
-  >;
+  media?: UploadedMediaPayload[];
 };
 
-function mapUploadedMedia(
-  raw: UploadMediaResponse["media"] extends Array<infer T> ? T : never,
-): UploadedMedia | null {
+function mapUploadedMedia(raw: UploadedMediaPayload | null | undefined): UploadedMedia | null {
   if (!raw || typeof raw !== "object") {
     return null;
   }
@@ -277,10 +276,9 @@ export async function uploadPostImages(files: File[]): Promise<UploadedMedia[]> 
     { method: "POST", body: formData },
     {},
   );
+  const uploadedMedia = Array.isArray(data.media) ? data.media : [];
 
-  return Array.isArray((data as UploadMediaResponse).media)
-    ? (data as UploadMediaResponse).media
-        .map((item) => mapUploadedMedia(item))
-        .filter((item): item is UploadedMedia => Boolean(item))
-    : [];
+  return uploadedMedia
+    .map((item) => mapUploadedMedia(item))
+    .filter((item): item is UploadedMedia => Boolean(item));
 }

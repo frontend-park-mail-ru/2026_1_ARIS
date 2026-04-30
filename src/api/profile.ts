@@ -119,24 +119,23 @@ export type UploadedMedia = {
   mediaURL: string;
 };
 
+type UploadedMediaPayload =
+  | UploadedMedia
+  | {
+      mediaID?: number | string;
+      mediaId?: number | string;
+      media_id?: number | string;
+      mediaURL?: string;
+      mediaUrl?: string;
+      media_url?: string;
+      url?: string;
+    };
+
 type UploadMediaResponse = {
-  media?: Array<
-    | UploadedMedia
-    | {
-        mediaID?: number | string;
-        mediaId?: number | string;
-        media_id?: number | string;
-        mediaURL?: string;
-        mediaUrl?: string;
-        media_url?: string;
-        url?: string;
-      }
-  >;
+  media?: UploadedMediaPayload[];
 };
 
-function mapUploadedMedia(
-  raw: UploadMediaResponse["media"] extends Array<infer T> ? T : never,
-): UploadedMedia | null {
+function mapUploadedMedia(raw: UploadedMediaPayload | null | undefined): UploadedMedia | null {
   if (!raw || typeof raw !== "object") {
     return null;
   }
@@ -237,10 +236,9 @@ export async function uploadProfileAvatar(file: File): Promise<UploadedMedia> {
     { method: "POST", body: formData },
     {},
   );
+  const uploadedMedia = Array.isArray(data.media) ? data.media : [];
 
-  const uploadedFile = Array.isArray((data as UploadMediaResponse).media)
-    ? mapUploadedMedia((data as UploadMediaResponse).media?.[0])
-    : null;
+  const uploadedFile = mapUploadedMedia(uploadedMedia[0]);
 
   if (!uploadedFile) {
     throw new ApiError("Не удалось загрузить аватар.", 200, data);

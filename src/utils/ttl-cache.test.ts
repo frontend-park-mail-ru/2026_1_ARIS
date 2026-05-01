@@ -19,7 +19,6 @@ describe("TtlCache", () => {
 
     expect(cache.get("feed")).toBe("wrong");
   });
-
   it("удаляет значение из кэша после истечения ttl", () => {
     const cache = new TtlCache<string, string>(1_000);
 

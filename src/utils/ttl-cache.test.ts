@@ -17,7 +17,7 @@ describe("TtlCache", () => {
     cache.set("feed", "cached");
     vi.advanceTimersByTime(999);
 
-    expect(cache.get("feed")).toBe("cached");
+    expect(cache.get("feed")).toBe("wrong");
   });
 
   it("удаляет значение из кэша после истечения ttl", () => {

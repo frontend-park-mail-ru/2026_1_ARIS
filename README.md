@@ -64,6 +64,11 @@ npm run build
 - `SENTRY_REPLAYS_SESSION_SAMPLE_RATE` — sample rate для обычных session replay;
 - `SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE` — sample rate для replay на ошибках.
 
+Для включения Telegram-оповещений из CI добавьте GitHub repository secrets:
+
+- `TELEGRAM_BOT_TOKEN` — токен Telegram-бота;
+- `TELEGRAM_CHAT_ID` — идентификатор чата, куда отправлять оповещения.
+
 ### Архитектура
 
 Приложение построено по слоистой схеме:

@@ -32,3 +32,44 @@ jobs:
 
       - name: Run frontend checks
         run: npm run ci
+
+  notify-telegram:
+    runs-on: ubuntu-latest
+    needs: frontend-checks
+    if: >
+      always() &&
+      github.event_name == 'push' &&
+      needs.frontend-checks.result != 'success'
+
+    steps:
+      - name: Send CI failure alert to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CI_RESULT: ${{ needs.frontend-checks.result }}
+          REPOSITORY: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "${TELEGRAM_BOT_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_ID}" ]; then
+            echo "Telegram secrets are not configured. Skipping notification."
+            exit 0
+          fi
+
+          BOT_INFO="$(curl --fail --silent --show-error \
+            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe")"
+          BOT_NAME="$(printf '%s' "${BOT_INFO}" | sed -n 's/.*"first_name":"\([^"]*\)".*/\1/p')"
+          BOT_USERNAME="$(printf '%s' "${BOT_INFO}" | sed -n 's/.*"username":"\([^"]*\)".*/\1/p')"
+
+          echo "Sending Telegram alert via bot: ${BOT_NAME} (@${BOT_USERNAME})"
+          echo "Target chat id: ${TELEGRAM_CHAT_ID}"
+
+          MESSAGE="ARIS frontend CI alert%0A%0AStatus: ${CI_RESULT}%0ARepository: ${REPOSITORY}%0ABranch: ${BRANCH}%0AActor: ${ACTOR}%0ACommit: ${COMMIT_SHA}%0ARun: ${RUN_URL}"
+
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data chat_id="${TELEGRAM_CHAT_ID}" \
+            --data text="${MESSAGE}"

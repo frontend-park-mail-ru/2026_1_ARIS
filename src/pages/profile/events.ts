@@ -24,7 +24,12 @@ import type { ComposerMediaItem } from "./types";
 import {
   postComposerState,
   avatarModalState,
+  currentProfile,
+  currentProfilePosts,
+  setCurrentProfilePosts,
+  pendingProfilePostState,
   resetPostComposerState,
+  resetPendingProfilePostState,
   resetAvatarModalState,
   openCreatePostComposer,
   openEditPostComposer,
@@ -36,6 +41,7 @@ import {
   normaliseAvatarLink,
   clampAvatarOffsets,
   OWN_PROFILE_CACHE_KEY,
+  OWN_PROFILE_POSTS_CACHE_KEY,
   readJsonStorage,
   writeJsonStorage,
 } from "./state";
@@ -53,6 +59,7 @@ import {
   clearProfileFieldErrors,
   focusFirstProfileErrorField,
   renderProfileFriendActions,
+  renderProfilePosts,
 } from "./render";
 import {
   uploadPendingComposerImages,
@@ -68,6 +75,7 @@ import {
   applyProfilePostFilters,
   closeProfilePostMenus,
   closeProfilePostSearch,
+  initProfilePostListLayout,
   openProfilePostSearch,
   switchProfilePostFilter,
 } from "./post-list";
@@ -82,6 +90,40 @@ function updateOwnProfileCacheAvatar(avatarLink?: string): void {
   writeJsonStorage(OWN_PROFILE_CACHE_KEY, {
     ...cachedProfile,
     avatarLink,
+  });
+}
+
+function rerenderProfilePostsSection(root: Document | HTMLElement): void {
+  if (!currentProfile) {
+    return;
+  }
+
+  const section = root.querySelector<HTMLElement>("#profile-posts");
+  if (!section) {
+    return;
+  }
+
+  const template = document.createElement("template");
+  template.innerHTML = renderProfilePosts(currentProfile, currentProfilePosts, []).trim();
+  const next = template.content.firstElementChild;
+  if (!(next instanceof HTMLElement)) {
+    return;
+  }
+
+  section.replaceWith(next);
+  applyProfilePostFilters(root);
+  initProfilePostListLayout(root);
+}
+
+async function waitForNextPaint(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
+async function waitMinimumSkeletonTime(ms = 520): Promise<void> {
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
   });
 }
 
@@ -153,6 +195,20 @@ function bindFloatingPostMenuActions(
 // ---------------------------------------------------------------------------
 
 export function bindProfileEvents(root: Document | HTMLElement): void {
+  let avatarBackdropPressStarted = false;
+  let avatarDeleteBackdropPressStarted = false;
+
+  root.addEventListener("pointerdown", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const avatarModalBackdrop = target.closest("[data-profile-avatar-modal]");
+    avatarBackdropPressStarted = avatarModalBackdrop === target;
+
+    const avatarDeleteModalBackdrop = target.closest("[data-profile-avatar-delete-modal]");
+    avatarDeleteBackdropPressStarted = avatarDeleteModalBackdrop === target;
+  });
+
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -286,9 +342,20 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         return;
       }
 
+      const composerSnapshot = {
+        mode: postComposerState.mode,
+        editingPostId: postComposerState.editingPostId,
+        text: postComposerState.text,
+        mediaItems: [...postComposerState.mediaItems],
+      };
+      pendingProfilePostState.mode = postComposerState.mode === "edit" ? "edit" : "create";
+      pendingProfilePostState.postId = postComposerState.editingPostId;
       postComposerState.isSaving = true;
       postComposerState.errorMessage = "";
+      postComposerState.open = false;
       syncPostComposerUi(root);
+      rerenderProfilePostsSection(root);
+      void waitForNextPaint();
 
       const savePromise =
         postComposerState.mode === "edit" && postComposerState.editingPostId
@@ -352,15 +419,54 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
             })();
 
       void savePromise
-        .then(async () => {
+        .then(async (savedPost) => {
+          await waitMinimumSkeletonTime();
           clearFeedCache();
           clearWidgetbarCache();
+          if (currentProfile) {
+            const nextPost = {
+              id: String(savedPost.id),
+              authorId: String(savedPost.profileID ?? currentProfile.id),
+              authorFirstName: savedPost.firstName ?? currentProfile.firstName,
+              authorLastName: savedPost.lastName ?? currentProfile.lastName,
+              authorUsername: currentProfile.username,
+              authorAvatarLink:
+                normaliseAvatarLink(savedPost.avatarURL) ?? currentProfile.avatarLink ?? "",
+              isOwnPost: true,
+              text: typeof savedPost.text === "string" ? savedPost.text : "",
+              time: "только что",
+              timeRaw: savedPost.createdAt ?? "",
+              ...(savedPost.updatedAt ? { updatedAtRaw: savedPost.updatedAt } : {}),
+              likes: savedPost.likes ?? 0,
+              reposts: 0,
+              comments: 0,
+              media: Array.isArray(savedPost.media) ? savedPost.media : [],
+              images: Array.isArray(savedPost.mediaURL)
+                ? savedPost.mediaURL.filter(Boolean)
+                : Array.isArray(savedPost.media)
+                  ? savedPost.media.map((item) => item.mediaURL)
+                  : [],
+            };
+            const nextPosts = [
+              nextPost,
+              ...currentProfilePosts.filter((post) => post.id !== nextPost.id),
+            ];
+            setCurrentProfilePosts(nextPosts);
+            writeJsonStorage(OWN_PROFILE_POSTS_CACHE_KEY, nextPosts);
+          }
+          resetPendingProfilePostState();
           resetPostComposerState();
           syncPostComposerUi(root);
-          await rerenderCurrentRoute();
+          rerenderProfilePostsSection(root);
         })
         .catch((error: unknown) => {
+          resetPendingProfilePostState();
           postComposerState.isSaving = false;
+          postComposerState.open = true;
+          postComposerState.mode = composerSnapshot.mode;
+          postComposerState.editingPostId = composerSnapshot.editingPostId;
+          postComposerState.text = composerSnapshot.text;
+          postComposerState.mediaItems = composerSnapshot.mediaItems;
           postComposerState.errorMessage = isOutboxQueuedError(error)
             ? "Публикация сохранена и отправится при восстановлении сети."
             : isOfflineNetworkError(error)
@@ -403,11 +509,16 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
     const closeAvatarDeleteButton = target.closest("[data-profile-avatar-delete-close]");
     const avatarDeleteBackdrop = target.closest("[data-profile-avatar-delete-modal]");
-    if (closeAvatarDeleteButton instanceof HTMLButtonElement || avatarDeleteBackdrop === target) {
+    if (
+      closeAvatarDeleteButton instanceof HTMLButtonElement ||
+      (avatarDeleteBackdropPressStarted && avatarDeleteBackdrop === target)
+    ) {
+      avatarDeleteBackdropPressStarted = false;
       avatarModalState.deleteConfirmOpen = false;
       syncAvatarModalUi(root);
       return;
     }
+    avatarDeleteBackdropPressStarted = false;
 
     const confirmAvatarDeleteButton = target.closest("[data-profile-avatar-delete-confirm]");
     if (confirmAvatarDeleteButton instanceof HTMLButtonElement) {
@@ -440,11 +551,16 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
     const closeAvatarButton = target.closest("[data-profile-avatar-close]");
     const avatarModalBackdrop = target.closest("[data-profile-avatar-modal]");
-    if (closeAvatarButton instanceof HTMLButtonElement || avatarModalBackdrop === target) {
+    if (
+      closeAvatarButton instanceof HTMLButtonElement ||
+      (avatarBackdropPressStarted && avatarModalBackdrop === target)
+    ) {
+      avatarBackdropPressStarted = false;
       resetAvatarModalState();
       syncAvatarModalUi(root);
       return;
     }
+    avatarBackdropPressStarted = false;
 
     const pickAvatarButton = target.closest("[data-profile-avatar-pick]");
     if (pickAvatarButton instanceof HTMLButtonElement) {
@@ -646,20 +762,32 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         return;
       }
 
+      pendingProfilePostState.mode = "delete";
+      pendingProfilePostState.postId = postId;
       postComposerState.isSaving = true;
       postComposerState.errorMessage = "";
+      postComposerState.deleteConfirmPostId = null;
       syncPostComposerUi(root);
+      rerenderProfilePostsSection(root);
+      void waitForNextPaint();
 
       void deletePost(postId)
         .then(async () => {
+          await waitMinimumSkeletonTime();
           clearFeedCache();
           clearWidgetbarCache();
+          const nextPosts = currentProfilePosts.filter((post) => post.id !== postId);
+          setCurrentProfilePosts(nextPosts);
+          writeJsonStorage(OWN_PROFILE_POSTS_CACHE_KEY, nextPosts);
+          resetPendingProfilePostState();
           resetPostComposerState();
           syncPostComposerUi(root);
-          await rerenderCurrentRoute();
+          rerenderProfilePostsSection(root);
         })
         .catch((error: unknown) => {
+          resetPendingProfilePostState();
           postComposerState.isSaving = false;
+          postComposerState.deleteConfirmPostId = postId;
           postComposerState.errorMessage = isOutboxQueuedError(error)
             ? "Удаление сохранено и выполнится при восстановлении сети."
             : isOfflineNetworkError(error)
@@ -668,6 +796,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
                 ? error.message
                 : "Не получилось удалить публикацию.";
           syncPostComposerUi(root);
+          rerenderProfilePostsSection(root);
         });
 
       return;

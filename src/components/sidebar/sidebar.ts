@@ -92,6 +92,8 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
     currentPath.startsWith("/profile/") ||
     /^\/id[^/]+$/.test(currentPath);
   const isFriendsRoute = currentPath === "/friends";
+  const isCommunitiesListRoute = currentPath === "/communities";
+  const isCommunitiesRoute = isCommunitiesListRoute || currentPath.startsWith("/communities/");
   const isChatsRoute = currentPath === "/chats";
   const isForYouActive = getFeedMode() === "for-you";
   const isByTimeActive = getFeedMode() === "by-time";
@@ -124,6 +126,15 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           isActive: isFriendsRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
           preventWhenActive: true,
+        })}
+
+        ${renderSidebarItem({
+          href: "/communities",
+          label: "Сообщества",
+          icon: "/assets/img/icons/communities.svg",
+          isActive: isCommunitiesRoute,
+          attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+          preventWhenActive: isCommunitiesListRoute,
         })}
 
         ${renderSidebarItem({

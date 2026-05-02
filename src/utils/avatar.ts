@@ -7,6 +7,8 @@
  * - fallback на инициалы
  * - мягкую предзагрузку изображений
  */
+import { resolveMediaUrl } from "./media";
+
 export type AvatarOptions = {
   /** Ширина изображения в пикселях. */
   width?: number;
@@ -78,11 +80,7 @@ function normaliseAvatarSrc(avatarLink?: string | null): string {
     return link;
   }
 
-  if (link.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(link)) {
-    return link;
-  }
-
-  return `/image-proxy?url=${encodeURIComponent(link)}`;
+  return resolveMediaUrl(link);
 }
 
 /**

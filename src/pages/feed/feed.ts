@@ -15,6 +15,7 @@ import { getFeed, getPublicFeed, mapFeedResponse, type PostcardModel } from "../
 import { getFriends, type Friend } from "../../api/friends";
 import { getFeedMode, getSessionUser } from "../../state/session";
 import { prepareAvatarLinks } from "../../utils/avatar";
+import { hydrateFriendAvatarLinks } from "../friends/state";
 
 import type { FeedMode, FeedAuthKey, FeedCenterResult, ActiveFeedState } from "./types";
 import {
@@ -126,7 +127,10 @@ async function buildAuthorisedFeedItems(signal?: AbortSignal): Promise<PostcardM
     throw friendsResult.reason;
   }
 
-  const friends = friendsResult.status === "fulfilled" ? friendsResult.value : [];
+  const friends =
+    friendsResult.status === "fulfilled"
+      ? await hydrateFriendAvatarLinks(friendsResult.value, signal)
+      : [];
 
   if (feedResult.status === "rejected") {
     if (isOfflineNetworkError(feedResult.reason)) throw feedResult.reason;

@@ -14,7 +14,7 @@ import {
   applyAvatarEditorSource,
   readCurrentAvatarSrc,
 } from "./state";
-import { escapeHtml, getInitials, getAvatarImageSrc } from "./helpers";
+import { escapeHtml, getInitials, getAvatarEditorSrc, getAvatarImageSrc } from "./helpers";
 
 export function renderAvatarModal(profile: DisplayProfile): string {
   if (!profile.isOwnProfile) {
@@ -49,7 +49,7 @@ export function renderAvatarModal(profile: DisplayProfile): string {
       class="profile-avatar-modal"
       data-profile-avatar-modal
       data-profile-current-avatar-src="${
-        profile.avatarLink ? escapeHtml(getAvatarImageSrc(profile.avatarLink)) : ""
+        profile.avatarLink ? escapeHtml(getAvatarEditorSrc(profile.avatarLink)) : ""
       }"
       hidden
     >

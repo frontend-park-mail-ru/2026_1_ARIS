@@ -30,6 +30,7 @@ import {
   setOwnAvatarOverride,
   currentProfilePosts,
   setCurrentProfilePosts,
+  setCurrentProfile,
   readJsonStorage,
   writeJsonStorage,
   resolveOwnAvatarLink,
@@ -330,6 +331,7 @@ export async function renderProfile(
 ): Promise<string> {
   resetPostComposerState();
   resetAvatarModalState();
+  setCurrentProfile(null);
   setCurrentProfilePosts([]);
 
   const isAuthorised = getSessionUser() !== null;
@@ -378,6 +380,7 @@ export async function renderProfile(
     ...posts.map((post) => post.authorAvatarLink),
     ...allPosts.map((post) => post.authorAvatarLink),
   ]);
+  setCurrentProfile(profile);
   setCurrentProfilePosts(posts);
 
   const educationSection = renderSection("Образование", renderEducation(profile));

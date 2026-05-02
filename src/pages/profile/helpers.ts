@@ -3,6 +3,7 @@
  *
  * Содержит локальные утилиты, используемые модулями страницы.
  */
+import { API_BASE_URL } from "../../api/config";
 import type { DisplayProfile } from "./types";
 import { renderAvatarMarkup, type AvatarOptions } from "../../utils/avatar";
 
@@ -34,6 +35,37 @@ export function getAvatarImageSrc(avatarLink?: string): string {
   }
 
   return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
+}
+
+export function getAvatarEditorSrc(avatarLink?: string): string {
+  const imageSrc = getAvatarImageSrc(avatarLink);
+
+  if (
+    !imageSrc ||
+    imageSrc.startsWith("data:") ||
+    imageSrc.startsWith("blob:") ||
+    imageSrc.startsWith("/image-proxy?url=")
+  ) {
+    return imageSrc;
+  }
+
+  try {
+    const parsed = new URL(imageSrc, window.location.origin);
+    const apiBase = API_BASE_URL ? new URL(API_BASE_URL, window.location.origin) : null;
+    const isBackendMedia =
+      parsed.pathname.startsWith("/media/") &&
+      (!!apiBase
+        ? parsed.origin === apiBase.origin || imageSrc.startsWith(`${API_BASE_URL}/media/`)
+        : parsed.origin === window.location.origin);
+
+    if (isBackendMedia) {
+      return `${parsed.pathname}${parsed.search}`;
+    }
+  } catch {
+    // Ниже останется безопасный fallback.
+  }
+
+  return `/image-proxy?url=${encodeURIComponent(imageSrc)}`;
 }
 
 export function hasVisibleValue(value?: string): boolean {

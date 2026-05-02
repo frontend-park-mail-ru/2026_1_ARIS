@@ -54,21 +54,6 @@ Production-сборка:
 npm run build
 ```
 
-Для включения Sentry на клиенте используйте переменные окружения:
-
-- `SENTRY_DSN` — DSN проекта;
-- `SENTRY_ENVIRONMENT` — имя окружения, например `development`, `staging`, `production`;
-- `SENTRY_RELEASE` — идентификатор релиза;
-- `SENTRY_DEBUG=true` — опциональный debug-режим SDK;
-- `SENTRY_TRACES_SAMPLE_RATE` — sample rate для tracing;
-- `SENTRY_REPLAYS_SESSION_SAMPLE_RATE` — sample rate для обычных session replay;
-- `SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE` — sample rate для replay на ошибках.
-
-Для включения Telegram-оповещений из CI добавьте GitHub repository secrets:
-
-- `TELEGRAM_BOT_TOKEN` — токен Telegram-бота;
-- `TELEGRAM_CHAT_ID` — идентификатор чата, куда отправлять оповещения.
-
 ### Архитектура
 
 Приложение построено по слоистой схеме:
@@ -134,28 +119,12 @@ npm run lint
 
 ### Деплой
 
-На сервере для `https://arisnet.ru` frontend запускается без контейнера как Node-процесс
-на `127.0.0.1:3001`, а внешний HTTPS-трафик проксируется host nginx из
-`arisback/config/nginx.server.conf`.
+Сборка публикуется на self-hosted nginx-сервер командным скриптом:
 
 ```bash
-npm ci
-npm run build
-HOST=127.0.0.1 PORT=3001 npm start
+npm run deploy          # запускает scripts/deploy.sh
+# или напрямую:
+APP_ROOT=/var/www/aris bash scripts/deploy.sh
 ```
 
-Если нужен Sentry в production, собирайте frontend с нужными переменными окружения:
-
-```bash
-SENTRY_DSN=... SENTRY_ENVIRONMENT=production SENTRY_RELEASE=arisfront@1.0.0 npm run build
-```
-
-Для постоянного запуска используйте systemd/pm2 или другой process manager. В production
-не запускайте `npm run dev`: это webpack-dev-server для локальной разработки.
-
-`npm run deploy` по умолчанию только ставит зависимости и собирает `dist/`. Если нужен
-старый режим копирования статики в `/var/www/aris`, запустите:
-
-```bash
-INSTALL_STATIC=true APP_ROOT=/var/www/aris npm run deploy
-```
+Этот сценарий рассчитан на инфраструктуру команды и локальное окружение деплоя. Для стороннего развёртывания обычно достаточно production-сборки из `dist/`.

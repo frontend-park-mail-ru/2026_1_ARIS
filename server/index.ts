@@ -10,7 +10,15 @@ const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 3001);
 
 app.disable("x-powered-by");
-app.use(morgan("dev"));
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
 
 app.use(
   express.static(distDir, {
@@ -29,7 +37,13 @@ app.use(
 app.use(express.static(publicDir));
 
 app.get("/health", (_req: Request, res: Response) => {
-  res.status(200).send("ok\n");
+  res.status(200).json({
+    status: "ok",
+    uptime: Math.floor(process.uptime()),
+    commit: process.env.BUILD_COMMIT || "unknown",
+    version: process.env.npm_package_version || "unknown",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.get("/image-proxy", async (req: Request, res: Response) => {

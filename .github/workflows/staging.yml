@@ -23,14 +23,15 @@ jobs:
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             git fetch --all
             git reset --hard origin/dev
-            INSTALL_STATIC=true \
-              SYSTEMD_SERVICE=arisfront \
-              BASE_URL=${{ secrets.STAGING_DEPLOY_BASE_URL }} \
-              BUILD_COMMIT=${{ github.sha }} \
+            NODE_ENV=development npm ci
+            BUILD_COMMIT=${{ github.sha }} \
               BUILD_VERSION=$(node -p "require('./package.json').version") \
               SENTRY_ENVIRONMENT=staging \
               NODE_ENV=production \
-              bash scripts/deploy.sh
+              npm run build
+            sudo systemctl restart arisfront
+            sleep 5
+            BASE_URL=${{ secrets.STAGING_DEPLOY_BASE_URL }} bash scripts/smoke.sh
 
   notify-telegram:
     runs-on: ubuntu-latest

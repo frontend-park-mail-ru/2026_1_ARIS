@@ -4,6 +4,7 @@
  * Содержит функции генерации HTML и обновления DOM для страницы.
  */
 import type { DisplayProfile, ProfilePost } from "./types";
+import { pendingProfilePostState } from "./state";
 import { escapeHtml, getAvatarImageSrc, hasVisibleValue, renderAvatar } from "./helpers";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderAvatarMarkup } from "../../utils/avatar";
@@ -501,6 +502,36 @@ export function renderProfilePosts(
           .map((post) => ({ ...post, isOwnPost: true })),
       ]
     : posts;
+  const pending = pendingProfilePostState;
+  const isSavingCreate = pending.mode === "create";
+  const isSavingEdit = pending.mode === "edit" && !!pending.postId;
+  const isSavingDelete = pending.mode === "delete" && !!pending.postId;
+  const renderedPosts = [...mergedPosts];
+
+  const skeletonPost: ProfilePost = {
+    id: "",
+    authorId: "",
+    authorFirstName: "",
+    authorLastName: "",
+    authorUsername: "",
+    authorAvatarLink: "",
+    isOwnPost: false,
+    text: "__PROFILE_SKELETON__",
+    time: "",
+    timeRaw: "",
+    likes: 0,
+    reposts: 0,
+    comments: 0,
+    media: [],
+    images: [],
+  };
+
+  if ((isSavingEdit || isSavingDelete) && pending.postId) {
+    const index = renderedPosts.findIndex((post) => post.id === pending.postId);
+    if (index >= 0) {
+      renderedPosts.splice(index, 1, { ...skeletonPost, id: `profile-skeleton-${pending.postId}` });
+    }
+  }
   const renderAuthorPath = (post: ProfilePost) =>
     post.authorId === profile.id || !post.authorId
       ? authorProfilePath
@@ -582,10 +613,14 @@ export function renderProfilePosts(
 
       <div class="profile-posts__list" data-profile-post-list>
         ${
-          mergedPosts.length
-            ? mergedPosts
-                .map(
-                  (post, index) => `
+          renderedPosts.length || isSavingCreate
+            ? `
+              ${isSavingCreate ? renderProfilePostSkeleton() : ""}
+              ${renderedPosts
+                .map((post, index) =>
+                  post.text === "__PROFILE_SKELETON__"
+                    ? renderProfilePostSkeleton()
+                    : `
                     <article
                       class="profile-post content-card${index === 0 ? " profile-post--first-visible" : ""}"
                       data-profile-post-card
@@ -684,7 +719,8 @@ export function renderProfilePosts(
                     </article>
                   `,
                 )
-                .join("")
+                .join("")}
+            `
             : `
                 <div class="profile-posts__empty content-card">
                   <p class="profile-empty-copy">Публикаций пока нет</p>
@@ -697,6 +733,24 @@ export function renderProfilePosts(
         </div>
       </div>
     </section>
+  `;
+}
+
+function renderProfilePostSkeleton(): string {
+  return `
+    <article class="profile-post content-card">
+      <div class="profile-post__header">
+        <div class="profile-post__author">
+          <span class="avatar-skeleton" style="width:44px;height:44px"></span>
+          <div class="profile-post__meta" style="width:100%">
+            <span class="skeleton" style="display:block;width:144px;height:16px"></span>
+            <span class="skeleton" style="display:block;width:96px;height:13px;margin-top:8px"></span>
+          </div>
+        </div>
+      </div>
+      <span class="skeleton" style="display:block;width:62%;height:16px;margin-top:12px"></span>
+      <span class="skeleton" style="display:block;width:100%;height:72px;border-radius:16px;margin-top:12px"></span>
+    </article>
   `;
 }
 

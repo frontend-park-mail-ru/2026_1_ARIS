@@ -28,6 +28,7 @@ import {
   restoreFriendsActiveTab,
   persistFriendsActiveTab,
   ensureFriendsLoaded,
+  hydrateDisplayFriendAvatarLinks,
   findFriendById,
   getFriendsErrorMessage,
 } from "./state";
@@ -119,6 +120,17 @@ export async function renderFriends(
   }
 
   await ensureFriendsLoaded(false, signal);
+  const hydratedLists = await hydrateDisplayFriendAvatarLinks(
+    {
+      friends: friendsState.friends,
+      incoming: friendsState.incoming,
+      outgoing: friendsState.outgoing,
+    },
+    signal,
+  );
+  friendsState.friends = hydratedLists.friends;
+  friendsState.incoming = hydratedLists.incoming;
+  friendsState.outgoing = hydratedLists.outgoing;
   await prepareAvatarLinks([
     currentUser.avatarLink,
     ...friendsState.friends.map((friend) => friend.avatarLink),

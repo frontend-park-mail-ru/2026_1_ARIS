@@ -12,12 +12,14 @@ import {
 import { getProfileById } from "../../api/profile";
 import { isNetworkUnavailableError } from "../../state/network-status";
 import { StateManager } from "../../state/StateManager";
+import { normaliseAvatarLink } from "../profile/state";
 import type { DisplayFriend, FriendsData, FriendsState, FriendsTab } from "./types";
 
 const FRIENDS_ACTIVE_TAB_STORAGE_KEY = "friends.activeTab";
 
 /** Кэш уже определённых учебных подписей по profileId, чтобы не делать лишние API-запросы. */
 export const friendEducationCache = new Map<string, string>();
+export const friendAvatarCache = new Map<string, string>();
 
 /**
  * Реактивное хранилище данных страницы друзей.
@@ -117,6 +119,64 @@ export function persistFriendsActiveTab(userId: string): void {
   }
 }
 
+function getProfileAvatarLink(payload: unknown): string {
+  if (!payload || typeof payload !== "object") {
+    return "";
+  }
+
+  return (
+    normaliseAvatarLink(
+      ("imageLink" in payload && typeof payload.imageLink === "string"
+        ? payload.imageLink
+        : "avatarLink" in payload && typeof payload.avatarLink === "string"
+          ? payload.avatarLink
+          : "avatarUrl" in payload && typeof payload.avatarUrl === "string"
+            ? payload.avatarUrl
+            : "avatar" in payload && typeof payload.avatar === "string"
+              ? payload.avatar
+              : "") || undefined,
+    ) ?? ""
+  );
+}
+
+export async function hydrateFriendAvatarLinks<T extends Friend>(
+  friends: T[],
+  signal?: AbortSignal,
+): Promise<T[]> {
+  return Promise.all(
+    friends.map(async (friend) => {
+      const cachedAvatarLink =
+        friend.avatarLink?.trim() || friendAvatarCache.get(friend.profileId) || "";
+      if (cachedAvatarLink) {
+        if (!friendAvatarCache.has(friend.profileId)) {
+          friendAvatarCache.set(friend.profileId, cachedAvatarLink);
+        }
+        return cachedAvatarLink === friend.avatarLink
+          ? friend
+          : { ...friend, avatarLink: cachedAvatarLink };
+      }
+
+      try {
+        const profile = await getProfileById(friend.profileId, signal);
+        const avatarLink = getProfileAvatarLink(profile);
+
+        if (!avatarLink) {
+          return friend;
+        }
+
+        friendAvatarCache.set(friend.profileId, avatarLink);
+        return { ...friend, avatarLink };
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          throw error;
+        }
+
+        return friend;
+      }
+    }),
+  );
+}
+
 async function resolveFriendEducationLabel(friend: Friend): Promise<string> {
   const cached = friendEducationCache.get(friend.profileId);
   if (cached) return cached;
@@ -145,6 +205,23 @@ async function mapFriendToDisplay(friend: Friend): Promise<DisplayFriend> {
 }
 
 /**
+ * Обогащает карточки друзей отсутствующими ссылками на аватары, даже если сами списки
+ * уже были загружены и находятся в памяти.
+ */
+export async function hydrateDisplayFriendAvatarLinks(
+  lists: Pick<FriendsData, "friends" | "incoming" | "outgoing">,
+  signal?: AbortSignal,
+): Promise<FriendsData> {
+  const [friends, incoming, outgoing] = await Promise.all([
+    hydrateFriendAvatarLinks(lists.friends, signal),
+    hydrateFriendAvatarLinks(lists.incoming, signal),
+    hydrateFriendAvatarLinks(lists.outgoing, signal),
+  ]);
+
+  return { friends, incoming, outgoing };
+}
+
+/**
  * Параллельно загружает друзей и заявки с сервера.
  *
  * @param {AbortSignal} [signal] Сигнал отмены запроса.
@@ -157,10 +234,16 @@ export async function loadFriendsFromBackend(signal?: AbortSignal): Promise<Frie
     getOutgoingFriendRequests("pending", signal),
   ]);
 
+  const [hydratedFriends, hydratedIncoming, hydratedOutgoing] = await Promise.all([
+    hydrateFriendAvatarLinks(friends, signal),
+    hydrateFriendAvatarLinks(incoming, signal),
+    hydrateFriendAvatarLinks(outgoing, signal),
+  ]);
+
   const [mappedFriends, mappedIncoming, mappedOutgoing] = await Promise.all([
-    Promise.all(friends.map(mapFriendToDisplay)),
-    Promise.all(incoming.map(mapFriendToDisplay)),
-    Promise.all(outgoing.map(mapFriendToDisplay)),
+    Promise.all(hydratedFriends.map(mapFriendToDisplay)),
+    Promise.all(hydratedIncoming.map(mapFriendToDisplay)),
+    Promise.all(hydratedOutgoing.map(mapFriendToDisplay)),
   ]);
 
   return { friends: mappedFriends, incoming: mappedIncoming, outgoing: mappedOutgoing };

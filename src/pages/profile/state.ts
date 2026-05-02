@@ -17,7 +17,9 @@ import type {
   ProfileFieldErrorMap,
   ProfilePost,
   PostComposerState,
+  ProfilePendingPostState,
   AvatarModalState,
+  DisplayProfile,
 } from "./types";
 
 export const AVATAR_MIN_SIZE = 400;
@@ -28,7 +30,9 @@ export const OWN_PROFILE_POSTS_CACHE_KEY = "arisfront:profile:me:posts";
 
 type ProfileRuntimeState = {
   ownAvatarOverride: string | null | undefined;
+  currentProfile: DisplayProfile | null;
   currentProfilePosts: ProfilePost[];
+  pendingPost: ProfilePendingPostState;
   postComposer: PostComposerState;
   avatarModal: AvatarModalState;
 };
@@ -43,6 +47,19 @@ export let currentProfilePosts: ProfilePost[] = [];
 export function setCurrentProfilePosts(posts: ProfilePost[]): void {
   currentProfilePosts = posts;
   profileStore.patch({ currentProfilePosts: posts });
+}
+
+export let currentProfile: DisplayProfile | null = null;
+export function setCurrentProfile(profile: DisplayProfile | null): void {
+  currentProfile = profile;
+  profileStore.patch({ currentProfile: profile });
+}
+
+function createInitialPendingPostState(): ProfilePendingPostState {
+  return {
+    mode: "idle",
+    postId: null,
+  };
 }
 
 function createInitialPostComposerState(): PostComposerState {
@@ -83,18 +100,21 @@ function createInitialAvatarModalState(): AvatarModalState {
 
 const mutablePostComposerState = createInitialPostComposerState();
 const mutableAvatarModalState = createInitialAvatarModalState();
+const mutablePendingPostState = createInitialPendingPostState();
 
 /** Реактивное состояние страницы профиля. */
 export const profileStore = new StateManager<ProfileRuntimeState>({
   ownAvatarOverride,
+  currentProfile,
   currentProfilePosts,
+  pendingPost: mutablePendingPostState,
   postComposer: mutablePostComposerState,
   avatarModal: mutableAvatarModalState,
 });
 
 function createProfileStateProxy<T extends object>(
   target: T,
-  key: "postComposer" | "avatarModal",
+  key: "postComposer" | "avatarModal" | "pendingPost",
 ): T {
   return new Proxy(target, {
     set(obj, prop: string | symbol, value: unknown) {
@@ -110,6 +130,10 @@ function publishPostComposerState(): void {
 }
 
 export const postComposerState = createProfileStateProxy(mutablePostComposerState, "postComposer");
+export const pendingProfilePostState = createProfileStateProxy(
+  mutablePendingPostState,
+  "pendingPost",
+);
 
 export const avatarModalState = createProfileStateProxy(mutableAvatarModalState, "avatarModal");
 
@@ -174,6 +198,11 @@ export function resetPostComposerState(): void {
   postComposerState.errorMessage = "";
   postComposerState.text = "";
   postComposerState.mediaItems = [];
+}
+
+export function resetPendingProfilePostState(): void {
+  pendingProfilePostState.mode = "idle";
+  pendingProfilePostState.postId = null;
 }
 
 export function openCreatePostComposer(): void {

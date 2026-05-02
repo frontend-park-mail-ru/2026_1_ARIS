@@ -22,6 +22,7 @@ import "./components/eye-toggle/eye-toggle.scss";
 import "./pages/auth/auth-page.scss";
 import "./pages/chats/chats.css";
 import "./pages/friends/friends.css";
+import "./pages/communities/communities.css";
 import "./pages/profile/profile.css";
 import "./pages/support/support.scss";
 import "./pages/support-admin/support-admin.scss";
@@ -49,6 +50,7 @@ const NOINDEX_EXACT_PATHS = new Set(["/login", "/register"]);
 const NOINDEX_PATH_PREFIXES = [
   "/chats",
   "/friends",
+  "/communities",
   "/profile",
   "/id",
   "/support/admin",
@@ -62,6 +64,8 @@ const NOINDEX_PATH_PREFIXES = [
 const loadFeed = () => import(/* webpackChunkName: "page-feed" */ "./pages/feed/feed");
 const loadChats = () => import(/* webpackChunkName: "page-chats" */ "./pages/chats/chats");
 const loadFriends = () => import(/* webpackChunkName: "page-friends" */ "./pages/friends/friends");
+const loadCommunities = () =>
+  import(/* webpackChunkName: "page-communities" */ "./pages/communities/communities");
 const loadProfile = () => import(/* webpackChunkName: "page-profile" */ "./pages/profile/profile");
 const loadLogin = () => import(/* webpackChunkName: "page-login" */ "./pages/login/login");
 const loadRegister = () =>
@@ -155,6 +159,10 @@ function matchesRoutePath(pathname: string, routePath: string): boolean {
     return /^\/id[^/]+$/i.test(normalisedPathname);
   }
 
+  if (normalisedRoutePath === "/communities/:id") {
+    return /^\/communities\/[^/]+$/i.test(normalisedPathname);
+  }
+
   return false;
 }
 
@@ -201,6 +209,16 @@ const routes: Route[] = [
     path: "/friends",
     title: "ARISNET — Friends",
     render: async (p, s) => (await loadFriends()).renderFriends(p, s),
+  },
+  {
+    path: "/communities",
+    title: "ARISNET — Communities",
+    render: async (p, s) => (await loadCommunities()).renderCommunities(p, s),
+  },
+  {
+    path: "/communities/:id",
+    title: "ARISNET — Community",
+    render: async (p, s) => (await loadCommunities()).renderCommunities(p, s),
   },
   {
     path: "/chats",
@@ -254,6 +272,7 @@ const router = createRouter(root, routes);
 registerPrefetch("/", async () => (await loadFeed()).prefetchFeed());
 registerPrefetch("/feed", async () => (await loadFeed()).prefetchFeed());
 registerPrefetch("/chats", async () => (await loadChats()).prefetchChats());
+registerPrefetch("/communities", async () => (await loadCommunities()).prefetchCommunities());
 
 // Карта путей для предзагрузки JS-чанков.
 const chunkMap: Record<string, () => Promise<unknown>> = {
@@ -261,6 +280,7 @@ const chunkMap: Record<string, () => Promise<unknown>> = {
   "/feed": loadFeed,
   "/chats": loadChats,
   "/friends": loadFriends,
+  "/communities": loadCommunities,
   "/profile": loadProfile,
   "/login": loadLogin,
   "/register": loadRegister,

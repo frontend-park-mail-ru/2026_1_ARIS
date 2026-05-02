@@ -972,10 +972,16 @@
   }
 
   .profile-post-modal__error {
+    min-height: 20px;
     margin: 14px 0 0;
     color: rgb(211 55 87);
     font-size: var(--text-size-main);
     line-height: var(--line-height-base);
+    overflow: hidden;
+  }
+
+  .profile-post-modal__error--hidden {
+    visibility: hidden;
   }
 
   .profile-post-delete-modal__text {

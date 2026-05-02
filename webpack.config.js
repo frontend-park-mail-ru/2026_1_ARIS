@@ -154,7 +154,7 @@ module.exports = {
     open: process.env.WEBPACK_OPEN === "true",
     proxy: [
       {
-        context: ["/api", "/image-proxy"],
+        context: ["/api", "/image-proxy", "/media"],
         target: backendUrl,
         changeOrigin: true,
       },

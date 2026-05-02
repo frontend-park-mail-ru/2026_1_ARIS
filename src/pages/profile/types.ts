@@ -208,6 +208,11 @@ export type PostComposerState = {
   mediaItems: ComposerMediaItem[];
 };
 
+export type ProfilePendingPostState = {
+  mode: "idle" | "create" | "edit" | "delete";
+  postId: string | null;
+};
+
 /**
  * Состояние модального окна редактирования аватара.
  */

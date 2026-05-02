@@ -21,6 +21,10 @@ export { ApiError };
  */
 type RawFriend = {
   avatarID?: number | null;
+  avatarLink?: string | null;
+  avatarUrl?: string | null;
+  imageLink?: string | null;
+  avatar?: string | null;
   id?: number | string;
   profileID?: number | string;
   firstName?: string;
@@ -66,6 +70,9 @@ export type Friend = {
 
 function mapFriend(raw: RawFriend): Friend {
   const status = raw.status === "accepted" ? "accepted" : "pending";
+  const avatarLink = String(
+    raw.avatarLink ?? raw.link ?? raw.avatarUrl ?? raw.imageLink ?? raw.avatar ?? "",
+  ).trim();
 
   return {
     profileId: String(raw.id ?? raw.profileID ?? ""),
@@ -73,7 +80,7 @@ function mapFriend(raw: RawFriend): Friend {
     lastName: String(raw.lastName ?? ""),
     username: String(raw.username ?? raw.login ?? ""),
     status,
-    avatarLink: raw.link ?? undefined,
+    avatarLink: avatarLink || undefined,
     createdAt: raw.createdAt ?? undefined,
   };
 }

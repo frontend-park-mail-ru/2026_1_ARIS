@@ -13,6 +13,7 @@ import { renderFeedSkeleton } from "../pages/feed/skeleton";
 import { renderChatsSkeleton } from "../pages/chats/skeleton";
 import { renderFriendsSkeleton } from "../pages/friends/skeleton";
 import { renderProfileSkeleton } from "../pages/profile/skeleton";
+import { renderCommunitiesSkeleton } from "../pages/communities/skeleton";
 import { initAvatarFallback } from "../utils/avatar-fallback";
 
 export { type Route, type RouteParams } from "@aris/router";
@@ -63,6 +64,7 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
       if (p === "/" || p === "/feed") return renderFeedSkeleton();
       if (p.startsWith("/chats")) return renderChatsSkeleton();
       if (p === "/friends") return renderFriendsSkeleton();
+      if (p.startsWith("/communities")) return renderCommunitiesSkeleton(p);
       if (p.startsWith("/profile") || p.startsWith("/id")) return renderProfileSkeleton();
       return null;
     },
@@ -87,6 +89,12 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
           /* webpackChunkName: "page-friends" */ "../pages/friends/friends"
         );
         initFriends(nextRoot);
+      }
+      if (nextRoot.querySelector("[data-communities-page]")) {
+        const { initCommunities } = await import(
+          /* webpackChunkName: "page-communities" */ "../pages/communities/communities"
+        );
+        initCommunities(nextRoot);
       }
       if (nextRoot.querySelector(".profile-page")) {
         const { initProfileToggle } = await import(

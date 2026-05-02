@@ -24,6 +24,8 @@ export type PostPayload = {
   text?: string;
   /** Загруженные медиафайлы, привязываемые к посту. */
   media?: UploadedMedia[];
+  /** Идентификатор профиля, от имени которого создаётся публикация. */
+  authorProfileId?: number;
 };
 
 /**
@@ -62,6 +64,10 @@ export type PostResponse = {
   createdAt?: string;
   /** Дата обновления в формате ISO. */
   updatedAt?: string;
+  /** Количество лайков. */
+  likes?: number;
+  /** Признак лайка текущего пользователя. */
+  isLiked?: boolean;
 };
 
 type ProfilePostsResponse = {

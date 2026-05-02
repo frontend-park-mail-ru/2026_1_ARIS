@@ -35,6 +35,10 @@ export type ProfileWork = {
  * Профиль в ответе API.
  */
 export type ProfileResponse = {
+  /** Идентификатор профиля текущего пользователя. */
+  profileId?: number;
+  /** Идентификатор аккаунта текущего пользователя. */
+  userAccountId?: number;
   /** Имя пользователя. */
   firstName: string;
   /** Фамилия пользователя. */

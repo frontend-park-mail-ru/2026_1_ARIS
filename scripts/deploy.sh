@@ -76,7 +76,7 @@ fi
 
 # ── сборка ───────────────────────────────────────────────────────────────────
 log "установка зависимостей"
-npm ci
+NODE_ENV=development npm ci
 
 log "сборка фронтенда"
 BUILD_COMMIT="${BUILD_COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")}"

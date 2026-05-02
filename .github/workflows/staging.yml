@@ -23,11 +23,15 @@ jobs:
             git fetch --all
             git reset --hard origin/dev
             NODE_ENV=development npm ci
-            BUILD_COMMIT=${{ github.sha }} \
-              BUILD_VERSION=$(node -p "require('./package.json').version") \
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_VERSION=$(node -p "require('./package.json').version")
+            BUILD_COMMIT="$BUILD_COMMIT" \
+              BUILD_VERSION="$BUILD_VERSION" \
               SENTRY_ENVIRONMENT=staging \
               NODE_ENV=production \
               npm run build
+            printf 'BUILD_COMMIT=%s\nBUILD_VERSION=%s\n' "$BUILD_COMMIT" "$BUILD_VERSION" > .env.build
+            sudo systemctl set-environment BUILD_COMMIT="$BUILD_COMMIT" BUILD_VERSION="$BUILD_VERSION"
             sudo systemctl restart arisfront
             sleep 5
             BASE_URL=${{ secrets.STAGING_DEPLOY_BASE_URL }} bash scripts/smoke.sh

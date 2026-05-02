@@ -203,12 +203,15 @@ nginx не проксирует на `127.0.0.1:3001`. Проверить upstre
 
 ## CI / CD
 
-| Воркфлоу                       | Триггер       | Что делает                                              |
-| ------------------------------ | ------------- | ------------------------------------------------------- |
-| `.github/workflows/ci.yml`     | push / PR     | линтинг, typecheck, тесты, сборка                       |
-| `.github/workflows/deploy.yml` | push в `main` | деплой по SSH + smoke-проверка + уведомление в Telegram |
+| Воркфлоу                        | Триггер          | Что делает                                              |
+| ------------------------------- | ---------------- | ------------------------------------------------------- |
+| `.github/workflows/ci.yml`      | push / PR        | линтинг, typecheck, тесты, сборка                       |
+| `.github/workflows/deploy.yml`  | push в `main`    | деплой по SSH + smoke-проверка + уведомление в Telegram |
+| `.github/workflows/staging.yml` | push в `staging` | деплой на staging + smoke-проверка + уведомление        |
 
-Необходимые секреты GitHub для деплоя:
+Секреты задаются в GitHub → Settings → Secrets and variables → Actions.
+
+Production-секреты:
 
 | Секрет               | Описание                                   |
 | -------------------- | ------------------------------------------ |
@@ -219,3 +222,51 @@ nginx не проксирует на `127.0.0.1:3001`. Проверить upstre
 | `DEPLOY_BASE_URL`    | Публичный URL для smoke-проверок           |
 | `TELEGRAM_BOT_TOKEN` | (опционально) токен Telegram-бота          |
 | `TELEGRAM_CHAT_ID`   | (опционально) ID чата Telegram             |
+
+Staging-секреты (те же данные, другой сервер):
+
+| Секрет                    | Описание                                   |
+| ------------------------- | ------------------------------------------ |
+| `STAGING_DEPLOY_HOST`     | IP или домен staging-сервера               |
+| `STAGING_DEPLOY_USER`     | SSH-пользователь                           |
+| `STAGING_DEPLOY_SSH_KEY`  | SSH приватный ключ (рекомендуется ed25519) |
+| `STAGING_DEPLOY_PATH`     | Абсолютный путь к репозиторию на сервере   |
+| `STAGING_DEPLOY_BASE_URL` | Публичный URL staging для smoke-проверок   |
+
+---
+
+## Staging-контур
+
+Staging — отдельный сервер (или путь) для проверки фич до попадания в `main`.
+
+### Деплой на staging вручную
+
+```bash
+# На staging-сервере, из корня репозитория:
+git fetch --all
+git reset --hard origin/staging
+
+INSTALL_STATIC=true \
+  BASE_URL=https://staging.aris.example.com \
+  BUILD_COMMIT=$(git rev-parse --short HEAD) \
+  SENTRY_ENVIRONMENT=staging \
+  NODE_ENV=production \
+  bash scripts/deploy.sh
+```
+
+### Процесс работы
+
+```
+feature-branch → PR → staging → проверка → PR → main → production
+```
+
+1. Смержить фичу в `staging` (или запушить напрямую)
+2. GitHub Actions автоматически задеплоит на staging-сервер
+3. Проверить фичу на `https://staging.aris.example.com`
+4. При подтверждении — PR в `main`
+
+### Откат на staging
+
+```bash
+BASE_URL=https://staging.aris.example.com bash scripts/deploy.sh --rollback
+```

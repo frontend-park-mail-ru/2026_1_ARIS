@@ -58,8 +58,14 @@ function getCommunityRolePriority(role: string): number {
 export function canManageCommunityMemberRole(
   bundle: CommunityBundle,
   member: CommunityMember,
+  viewerProfileId?: number | null,
 ): boolean {
-  if (!bundle.permissions.canChangeRoles || member.isSelf || member.role === "owner") {
+  if (
+    !bundle.permissions.canChangeRoles ||
+    member.isSelf ||
+    member.profileId === viewerProfileId ||
+    member.role === "owner"
+  ) {
     return false;
   }
 
@@ -74,8 +80,14 @@ export function canManageCommunityMemberRole(
 export function canRemoveCommunityMember(
   bundle: CommunityBundle,
   member: CommunityMember,
+  viewerProfileId?: number | null,
 ): boolean {
-  if (!bundle.permissions.canManageMembers || member.isSelf || member.role === "owner") {
+  if (
+    !bundle.permissions.canManageMembers ||
+    member.isSelf ||
+    member.profileId === viewerProfileId ||
+    member.role === "owner"
+  ) {
     return false;
   }
 

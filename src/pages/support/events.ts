@@ -159,7 +159,7 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
     activeTicketMessageIds = new Set(messages.map((message) => message.id));
     messagesEl.innerHTML = messages.length
       ? messages.map((message) => renderChatMessage(message, user.id)).join("")
-      : `<p class="sw-empty sw-empty--compact" data-sw-chat-empty>Сообщений пока нет.</p>`;
+      : `<p class="sw-empty sw-empty--compact" data-sw-chat-empty>Список пуст.</p>`;
     messagesEl.scrollTop = messagesEl.scrollHeight;
   };
 

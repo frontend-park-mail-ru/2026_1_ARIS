@@ -41,7 +41,7 @@ export function renderFeedSkeleton(): string {
         <section class="app-layout__center">
           <div class="feed-stream">${cards}</div>
         </section>
-        <aside class="app-layout__right">
+        <aside class="app-layout__right app-layout__right--optional">
           ${renderWidgetbarSkeleton()}
         </aside>
       </main>

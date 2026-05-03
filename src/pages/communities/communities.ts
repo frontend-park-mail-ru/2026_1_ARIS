@@ -682,23 +682,9 @@ function bindFloatingCommunityMenuActions(
   const membersButton = menu.querySelector<HTMLButtonElement>(
     `[data-community-members-open="${communityId}"]`,
   );
-  if (membersButton) {
+  if (membersButton && bundle) {
     membersButton.onclick = () => {
-      closeCommunityMenus(root);
-      communitiesState.membersManager.open = true;
-      communitiesState.membersManager.errorMessage = "";
-      communitiesState.membersManager.query = "";
-      communitiesState.membersLoading = true;
-      refreshCommunitiesPage(root);
-      void loadCommunityMembers(Number(communityId), communitiesState.membersManager.includeBlocked)
-        .then(() => {
-          refreshCommunitiesPage(root);
-        })
-        .catch((error: unknown) => {
-          communitiesState.membersManager.errorMessage =
-            error instanceof Error ? error.message : "Не удалось загрузить участников.";
-          refreshCommunitiesPage(root);
-        });
+      openCommunityMembersManager(root, bundle);
     };
   }
 
@@ -712,6 +698,25 @@ function bindFloatingCommunityMenuActions(
       refreshCommunitiesPage(root);
     };
   }
+}
+
+function openCommunityMembersManager(root: Document | HTMLElement, bundle: CommunityBundle): void {
+  closeCommunityMenus(root);
+  setActiveCommunity(bundle);
+  communitiesState.membersManager.open = true;
+  communitiesState.membersManager.errorMessage = "";
+  communitiesState.membersManager.query = "";
+  communitiesState.membersLoading = true;
+  refreshCommunitiesPage(root);
+  void loadCommunityMembers(bundle.community.id, communitiesState.membersManager.includeBlocked)
+    .then(() => {
+      refreshCommunitiesPage(root);
+    })
+    .catch((error: unknown) => {
+      communitiesState.membersManager.errorMessage =
+        error instanceof Error ? error.message : "Не удалось загрузить участников.";
+      refreshCommunitiesPage(root);
+    });
 }
 
 function positionCommunityPostMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
@@ -796,7 +801,7 @@ export async function renderCommunities(
           <section class="app-layout__center">
             ${renderCommunityDetailContent()}
           </section>
-          <aside class="app-layout__right">
+          <aside class="app-layout__right app-layout__right--rail">
             ${renderCommunityRightRail()}
           </aside>
         </main>
@@ -824,7 +829,7 @@ export async function renderCommunities(
         <section class="app-layout__center">
           ${renderCommunitiesListContent()}
         </section>
-        <aside class="app-layout__right">
+        <aside class="app-layout__right app-layout__right--optional">
           <div class="profile-right-rail"></div>
         </aside>
       </main>
@@ -914,8 +919,26 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     }
 
     if (target instanceof HTMLInputElement && target.matches("[data-community-members-search]")) {
+      const cursorStart = target.selectionStart ?? target.value.length;
+      const cursorEnd = target.selectionEnd ?? cursorStart;
       communitiesState.membersManager.query = target.value;
       refreshCommunitiesPage(root);
+      const nextInput = root.querySelector<HTMLInputElement>("[data-community-members-search]");
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.setSelectionRange(cursorStart, cursorEnd);
+      }
+      return;
+    }
+
+    if (target instanceof HTMLInputElement && target.matches("[data-community-post-search]")) {
+      communitiesState.postSearchQuery = target.value;
+      refreshCommunitiesPage(root);
+      const nextInput = root.querySelector<HTMLInputElement>("[data-community-post-search]");
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+      }
       return;
     }
 
@@ -996,35 +1019,6 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         });
       return;
     }
-
-    if (target instanceof HTMLSelectElement && target.matches("[data-community-member-role]")) {
-      const bundle = communitiesState.activeCommunity;
-      const profileId = Number(target.getAttribute("data-community-member-role"));
-      const nextRole = target.value;
-      if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
-      if (
-        nextRole !== "owner" &&
-        nextRole !== "admin" &&
-        nextRole !== "moderator" &&
-        nextRole !== "member" &&
-        nextRole !== "blocked"
-      ) {
-        return;
-      }
-
-      const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
-      if (!member || !canManageCommunityMemberRole(bundle, member)) {
-        refreshCommunitiesPage(root);
-        return;
-      }
-
-      communitiesState.membersManager.confirmAction = {
-        type: "role",
-        profileId,
-        newRole: nextRole,
-      };
-      refreshCommunitiesPage(root);
-    }
   });
 
   root.addEventListener("submit", (event: Event) => {
@@ -1046,6 +1040,12 @@ export function initCommunities(root: Document | HTMLElement = document): void {
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    if (target.closest("[data-member-confirm-modal] a[data-link]")) {
+      communitiesState.membersManager.confirmAction = null;
+      refreshCommunitiesPage(root);
+      return;
+    }
 
     const createButton = target.closest("[data-community-create-open]");
     if (createButton instanceof HTMLButtonElement) {
@@ -1299,22 +1299,56 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     const membersOpenButton = target.closest("[data-community-members-open]");
     if (membersOpenButton instanceof HTMLButtonElement) {
-      const bundle = communitiesState.activeCommunity;
+      const communityId = membersOpenButton.getAttribute("data-community-members-open");
+      const bundle = communityId
+        ? findCommunityById(communityId)
+        : communitiesState.activeCommunity;
       if (!bundle) return;
 
-      closeCommunityMenus(root);
-      communitiesState.membersManager.open = true;
-      communitiesState.membersManager.errorMessage = "";
-      communitiesState.membersLoading = true;
+      openCommunityMembersManager(root, bundle);
+      return;
+    }
+
+    const memberRoleButton = target.closest("[data-community-member-role]");
+    if (memberRoleButton instanceof HTMLButtonElement) {
+      const bundle = communitiesState.activeCommunity;
+      const profileId = Number(memberRoleButton.getAttribute("data-community-member-role"));
+      const nextRole = memberRoleButton.getAttribute("data-community-member-role-value");
+      if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
+      if (
+        nextRole !== "admin" &&
+        nextRole !== "moderator" &&
+        nextRole !== "member" &&
+        nextRole !== "blocked"
+      ) {
+        return;
+      }
+
+      const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
+      if (
+        !member ||
+        member.role === nextRole ||
+        !canManageCommunityMemberRole(bundle, member, communitiesState.viewerProfileId)
+      ) {
+        refreshCommunitiesPage(root);
+        return;
+      }
+
+      communitiesState.membersManager.confirmAction = {
+        type: "role",
+        profileId,
+        newRole: nextRole,
+      };
       refreshCommunitiesPage(root);
-      void loadCommunityMembers(bundle.community.id, communitiesState.membersManager.includeBlocked)
-        .then(() => {
-          refreshCommunitiesPage(root);
-        })
-        .catch((error: unknown) => {
-          communitiesState.membersManager.errorMessage =
-            error instanceof Error ? error.message : "Не удалось загрузить участников.";
-          refreshCommunitiesPage(root);
+      return;
+    }
+
+    const roleSelect = target.closest(".community-members-manager__role-select");
+    if (roleSelect instanceof HTMLDetailsElement) {
+      root
+        .querySelectorAll<HTMLDetailsElement>(".community-members-manager__role-select[open]")
+        .forEach((details) => {
+          if (details !== roleSelect) details.open = false;
         });
       return;
     }
@@ -1364,6 +1398,18 @@ export function initCommunities(root: Document | HTMLElement = document): void {
           refreshCommunitiesPage(root);
         }
       })();
+      return;
+    }
+
+    const leaveButton = target.closest("[data-community-leave]");
+    if (leaveButton instanceof HTMLButtonElement) {
+      const communityId = leaveButton.getAttribute("data-community-leave");
+      const bundle = communityId ? findCommunityById(communityId) : null;
+      if (!bundle) return;
+
+      closeCommunityMenus(root);
+      communitiesState.leaveConfirmId = bundle.community.id;
+      refreshCommunitiesPage(root);
       return;
     }
 
@@ -1440,13 +1486,31 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       return;
     }
 
+    const openPostSearchButton = target.closest("[data-community-post-search-open]");
+    if (openPostSearchButton instanceof HTMLButtonElement) {
+      communitiesState.postSearchOpen = true;
+      refreshCommunitiesPage(root);
+      requestAnimationFrame(() => {
+        root.querySelector<HTMLInputElement>("[data-community-post-search]")?.focus();
+      });
+      return;
+    }
+
+    const closePostSearchButton = target.closest("[data-community-post-search-close]");
+    if (closePostSearchButton instanceof HTMLButtonElement) {
+      communitiesState.postSearchOpen = false;
+      communitiesState.postSearchQuery = "";
+      refreshCommunitiesPage(root);
+      return;
+    }
+
     const removeMemberButton = target.closest("[data-community-member-remove]");
     if (removeMemberButton instanceof HTMLButtonElement) {
       const bundle = communitiesState.activeCommunity;
       const profileId = Number(removeMemberButton.getAttribute("data-community-member-remove"));
       if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
       const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
-      if (!member || !canRemoveCommunityMember(bundle, member)) {
+      if (!member || !canRemoveCommunityMember(bundle, member, communitiesState.viewerProfileId)) {
         refreshCommunitiesPage(root);
         return;
       }
@@ -1463,7 +1527,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const profileId = Number(unblockMemberButton.getAttribute("data-community-member-unblock"));
       if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
       const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
-      if (!member || !canRemoveCommunityMember(bundle, member)) {
+      if (!member || !canRemoveCommunityMember(bundle, member, communitiesState.viewerProfileId)) {
         refreshCommunitiesPage(root);
         return;
       }
@@ -1484,8 +1548,10 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       );
       if (
         !member ||
-        (action.type === "remove" && !canRemoveCommunityMember(bundle, member)) ||
-        (action.type === "role" && !canManageCommunityMemberRole(bundle, member))
+        (action.type === "remove" &&
+          !canRemoveCommunityMember(bundle, member, communitiesState.viewerProfileId)) ||
+        (action.type === "role" &&
+          !canManageCommunityMemberRole(bundle, member, communitiesState.viewerProfileId))
       ) {
         communitiesState.membersManager.confirmAction = null;
         communitiesState.membersManager.errorMessage = "";
@@ -1569,10 +1635,21 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     const openPostButton = target.closest("[data-community-post-open]");
     if (openPostButton instanceof HTMLButtonElement) {
+      const bundle = communitiesState.activeCommunity;
       closeCommunityPostMenus(root);
-      const authorMode = openPostButton.getAttribute("data-community-post-open");
-      openCommunityPostComposer(authorMode === "member" ? "member" : "community");
+      openCommunityPostComposer(bundle?.permissions.canPostAsCommunity ? "community" : "member");
       refreshCommunitiesPage(root);
+      return;
+    }
+
+    const postAuthorModeButton = target.closest("[data-community-post-author-mode]");
+    if (postAuthorModeButton instanceof HTMLButtonElement) {
+      const nextMode = postAuthorModeButton.getAttribute("data-community-post-author-mode");
+      if (nextMode === "community" || nextMode === "member") {
+        communitiesState.postComposer.authorMode = nextMode;
+        communitiesState.postComposer.errorMessage = "";
+        refreshCommunitiesPage(root);
+      }
       return;
     }
 

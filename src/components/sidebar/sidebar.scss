@@ -1,6 +1,10 @@
 @use "../../styles/controls" as *;
 
 @layer components {
+  .mobile-nav {
+    display: none;
+  }
+
   .sidebar {
     --sidebar-width: 240px;
     --sidebar-padding-right: 10px;
@@ -113,6 +117,115 @@
         font-size: var(--text-size-main);
         font-weight: var(--font-weight-medium);
       }
+    }
+  }
+
+  @media (width <= 1199px) {
+    .sidebar {
+      --sidebar-width: 76px;
+      --sidebar-padding-right: 0;
+      --sidebar-card-width: 76px;
+      --sidebar-card-padding: 10px;
+      --sidebar-item-padding-x: 0;
+      --sidebar-sticky-top: 92px;
+
+      align-items: center;
+
+      &-card {
+        align-items: center;
+      }
+
+      &-card__title,
+      &-item__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      &-item {
+        justify-content: center;
+        min-height: 44px;
+      }
+    }
+  }
+
+  @media (width <= 768px) {
+    .sidebar {
+      display: none;
+    }
+
+    .mobile-nav {
+      position: fixed;
+      right: max(10px, env(safe-area-inset-right));
+      bottom: max(10px, env(safe-area-inset-bottom));
+      left: max(10px, env(safe-area-inset-left));
+      z-index: 900;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      align-items: stretch;
+      gap: 4px;
+      min-height: 64px;
+      padding: 6px;
+      border: 1px solid rgb(255 255 255 / 62%);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgb(255 255 255 / 96%), rgb(239 242 255 / 94%));
+      box-shadow:
+        0 18px 42px rgb(31 42 95 / 22%),
+        0 0 0 1px rgb(108 118 214 / 8%);
+      backdrop-filter: blur(16px);
+    }
+
+    .mobile-nav__item {
+      display: flex;
+      min-width: 0;
+      min-height: 52px;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 3px;
+      border-radius: 18px;
+      color: rgb(55 65 81 / 86%);
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-nav__item--active {
+      background: rgb(74 81 208 / 12%);
+      color: var(--color-interactive-primary);
+    }
+
+    .mobile-nav__item:focus-visible {
+      outline: none;
+      box-shadow: var(--control-focus-ring);
+    }
+
+    .mobile-nav__icon {
+      display: inline-flex;
+      width: 22px;
+      height: 22px;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .mobile-nav__icon img {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .mobile-nav__label {
+      max-width: 100%;
+      overflow: hidden;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 }

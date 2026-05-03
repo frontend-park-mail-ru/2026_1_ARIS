@@ -382,7 +382,7 @@ export async function renderProfile(
             </section>
           </section>
 
-          <aside class="app-layout__right">
+          <aside class="app-layout__right app-layout__right--rail">
             <div class="profile-right-rail"></div>
           </aside>
         </main>
@@ -492,7 +492,7 @@ export async function renderProfile(
           </section>
         </section>
 
-        <aside class="app-layout__right">
+        <aside class="app-layout__right app-layout__right--rail">
           <div class="profile-right-rail">
             ${renderFriends(profile)}
           </div>

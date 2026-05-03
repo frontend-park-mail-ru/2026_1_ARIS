@@ -77,7 +77,6 @@ import {
   closeProfilePostSearch,
   initProfilePostListLayout,
   openProfilePostSearch,
-  switchProfilePostFilter,
 } from "./post-list";
 import type { DisplayProfile } from "./types";
 
@@ -240,16 +239,6 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     const postSearchCloseButton = target.closest("[data-profile-post-search-close]");
     if (postSearchCloseButton instanceof HTMLButtonElement) {
       closeProfilePostSearch(root);
-      return;
-    }
-
-    const postFilterButton = target.closest("[data-profile-post-filter]");
-    if (postFilterButton instanceof HTMLButtonElement) {
-      event.preventDefault();
-      const nextFilter = postFilterButton.getAttribute("data-profile-post-filter");
-      if (nextFilter === "all" || nextFilter === "own") {
-        switchProfilePostFilter(root, nextFilter);
-      }
       return;
     }
 

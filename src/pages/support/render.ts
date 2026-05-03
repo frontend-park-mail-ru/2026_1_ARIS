@@ -40,7 +40,7 @@ function renderTicketCard(ticket: Ticket): string {
  */
 export function renderTicketsList(tickets: Ticket[]): string {
   if (!tickets.length) {
-    return `<p class="sw-empty">У вас пока нет обращений.</p>`;
+    return `<p class="sw-empty">Список пуст.</p>`;
   }
 
   return tickets.map(renderTicketCard).join("");

@@ -4,12 +4,36 @@
  * Содержит функции генерации HTML и обновления DOM для страницы.
  */
 import { renderPostcard } from "../../components/postcard/postcard";
+import { getFeedMode } from "../../state/session";
 import type { PostcardModel } from "../../api/feed";
 
 type RenderFeedCardsOptions = {
   /** Нужно ли дать первой карточке приоритетную загрузку медиа. */
   prioritizeFirstCardMedia?: boolean;
 };
+
+function renderFeedModeMobileSwitcher(): string {
+  const activeMode = getFeedMode();
+
+  return `
+    <section class="feed-mode-mobile content-card" aria-label="Тип ленты">
+      <button
+        type="button"
+        class="feed-mode-mobile__button${activeMode === "for-you" ? " feed-mode-mobile__button--active" : ""}"
+        data-feed-mode="for-you"
+      >
+        Для вас
+      </button>
+      <button
+        type="button"
+        class="feed-mode-mobile__button${activeMode !== "for-you" ? " feed-mode-mobile__button--active" : ""}"
+        data-feed-mode="by-time"
+      >
+        По времени
+      </button>
+    </section>
+  `;
+}
 
 /**
  * Рендерит пустое состояние, когда у пользователя нет постов друзей.
@@ -19,8 +43,9 @@ type RenderFeedCardsOptions = {
 export function renderEmptyFriendsFeed(): string {
   return `
     <section class="app-layout__center">
+      ${renderFeedModeMobileSwitcher()}
       <section class="feed-empty-state content-card">
-        <h2 class="feed-empty-state__title">Постов друзей пока нет</h2>
+        <h2 class="feed-empty-state__title">Список пуст.</h2>
         <p class="feed-empty-state__text">
           Как только друзья начнут публиковать новые записи, они появятся здесь.
         </p>
@@ -37,8 +62,9 @@ export function renderEmptyFriendsFeed(): string {
 export function renderEmptyPublicFeed(): string {
   return `
     <section class="app-layout__center">
+      ${renderFeedModeMobileSwitcher()}
       <section class="feed-empty-state content-card">
-        <h2 class="feed-empty-state__title">Публикаций пока нет</h2>
+        <h2 class="feed-empty-state__title">Список пуст.</h2>
         <p class="feed-empty-state__text">
           Как только в сети появятся новые посты, они сразу отобразятся здесь.
         </p>
@@ -56,6 +82,7 @@ export function renderEmptyPublicFeed(): string {
 export function renderOfflineFeedFallback(isAuthorised: boolean): string {
   return `
     <section class="app-layout__center">
+      ${renderFeedModeMobileSwitcher()}
       <section class="feed-empty-state content-card">
         <h2 class="feed-empty-state__title">Лента временно недоступна</h2>
         <p class="feed-empty-state__text">
@@ -115,6 +142,7 @@ export function renderIncrementalFeedCenter(items: PostcardModel[], renderedCoun
 
   return `
     <section class="app-layout__center" data-feed-center>
+      ${renderFeedModeMobileSwitcher()}
       <div class="feed-stream" data-feed-list>
         ${renderFeedCards(visibleItems, { prioritizeFirstCardMedia: true })}
       </div>

@@ -103,7 +103,7 @@ export async function initSupportAdmin(root: HTMLElement): Promise<void> {
     messageIds = new Set(messages.map((message) => message.id));
     messagesEl.innerHTML = messages.length
       ? messages.map((message) => renderChatMessage(message, user.id)).join("")
-      : `<p class="sa-empty" data-sa-chat-empty>Сообщений пока нет.</p>`;
+      : `<p class="sa-empty" data-sa-chat-empty>Список пуст.</p>`;
     messagesEl.scrollTop = messagesEl.scrollHeight;
   };
 

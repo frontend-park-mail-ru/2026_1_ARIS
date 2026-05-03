@@ -92,6 +92,8 @@ function createInitialState(): CommunitiesState {
     viewerProfileId: null,
     activePosts: [],
     postFeedMode: "all" as CommunityPostFeedMode,
+    postSearchOpen: false,
+    postSearchQuery: "",
     pendingPost: {
       mode: "idle",
       postId: null,

@@ -66,25 +66,29 @@ function renderSearchResults(query: string, results: SearchResponse | null, erro
 
   if (!results) return "";
 
-  const usersHtml = results.users.length
-    ? results.users.map(renderUserCard).join("")
-    : `<p class="search-page__empty">Пользователи не найдены.</p>`;
+  if (!results.users.length && !results.communities.length) {
+    return `<p class="search-page__empty">Ничего не найдено.</p>`;
+  }
 
-  const communitiesHtml = results.communities.length
-    ? results.communities.map(renderCommunityCard).join("")
-    : `<p class="search-page__empty">Сообщества не найдены.</p>`;
+  const usersSection = results.users.length
+    ? `
+      <section class="search-section">
+        <h2 class="search-section__heading">Люди</h2>
+        <div class="search-results-list">${results.users.map(renderUserCard).join("")}</div>
+      </section>
+    `
+    : "";
 
-  return `
-    <section class="search-section">
-      <h2 class="search-section__heading">Люди</h2>
-      <div class="search-results-list">${usersHtml}</div>
-    </section>
+  const communitiesSection = results.communities.length
+    ? `
+      <section class="search-section">
+        <h2 class="search-section__heading">Сообщества</h2>
+        <div class="search-results-list">${results.communities.map(renderCommunityCard).join("")}</div>
+      </section>
+    `
+    : "";
 
-    <section class="search-section">
-      <h2 class="search-section__heading">Сообщества</h2>
-      <div class="search-results-list">${communitiesHtml}</div>
-    </section>
-  `;
+  return `${usersSection}${communitiesSection}`;
 }
 
 export async function renderSearch(
@@ -131,7 +135,7 @@ export async function renderSearch(
             </section>
           </section>
         </section>
-        <aside class="app-layout__right">
+        <aside class="app-layout__right app-layout__right--optional">
           ${await renderWidgetbar({ isAuthorised: true })}
         </aside>
       </main>

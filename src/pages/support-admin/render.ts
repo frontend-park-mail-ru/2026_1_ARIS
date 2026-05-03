@@ -39,7 +39,7 @@ function renderLineOptions(defaultLine?: TicketLine): string {
 
 export function renderTicketList(tickets: Ticket[], activeId = ""): string {
   if (!tickets.length) {
-    return `<p class="sa-empty">Тикетов в очереди нет.</p>`;
+    return `<p class="sa-empty">Список пуст.</p>`;
   }
 
   return tickets
@@ -175,7 +175,7 @@ export async function renderSupportAdmin(): Promise<string> {
               <div class="sa-access"><p>Нет доступа к панели обращений.</p></div>
             </div>
           </section>
-          <aside class="app-layout__right"></aside>
+          <aside class="app-layout__right app-layout__right--optional"></aside>
         </main>
       </div>
     `;
@@ -211,7 +211,7 @@ export async function renderSupportAdmin(): Promise<string> {
             </div>
           </div>
         </section>
-        <aside class="app-layout__right"></aside>
+        <aside class="app-layout__right app-layout__right--optional"></aside>
       </main>
     </div>
   `;

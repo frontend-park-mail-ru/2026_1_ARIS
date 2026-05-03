@@ -131,6 +131,9 @@ function renderAuthorisedHeader(): string {
           </button>
 
           <div class="header__user-menu" role="menu">
+            <button type="button" class="header__user-menu-item" data-support-open role="menuitem">
+              Помощь
+            </button>
             <button type="button" class="header__user-menu-item" data-logout role="menuitem">
               Выйти
             </button>
@@ -203,6 +206,18 @@ export function initHeader(root: Document | HTMLElement = document): void {
         menuRoot.classList.toggle("is-open", shouldOpen);
         menuToggle.setAttribute("aria-expanded", String(shouldOpen));
       }
+      return;
+    }
+
+    const supportButton = target.closest("[data-support-open]");
+    if (supportButton instanceof HTMLButtonElement) {
+      root.querySelectorAll<HTMLElement>("[data-header-user-menu].is-open").forEach((node) => {
+        node.classList.remove("is-open");
+        node
+          .querySelector<HTMLButtonElement>("[data-header-user-menu-toggle]")
+          ?.setAttribute("aria-expanded", "false");
+      });
+      window.dispatchEvent(new CustomEvent("support-widget-open"));
       return;
     }
 

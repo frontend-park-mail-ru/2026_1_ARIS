@@ -60,7 +60,7 @@ export function renderFriendsSkeleton(): string {
         <section class="app-layout__center">
           ${renderFriendsPanelSkeleton()}
         </section>
-        <aside class="app-layout__right">
+        <aside class="app-layout__right app-layout__right--optional">
           ${renderWidgetbarSkeleton()}
         </aside>
       </main>

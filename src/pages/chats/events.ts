@@ -67,12 +67,29 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
       return;
     }
 
+    const mobileBackButton = target.closest("[data-chat-mobile-back]");
+    if (mobileBackButton instanceof HTMLButtonElement) {
+      chatsState.mobileView = "list";
+      syncSelectedChatToUrl("");
+      rememberSelectedChatScroll(root);
+      refreshChatsPage(root);
+      return;
+    }
+
     const chatButton = target.closest("[data-chat-select]");
     if (chatButton instanceof HTMLButtonElement) {
       const chatId = chatButton.getAttribute("data-chat-select");
-      if (!chatId || chatId === chatsState.selectedChatId) return;
+      if (!chatId) return;
+
+      if (chatId === chatsState.selectedChatId) {
+        chatsState.mobileView = "dialog";
+        syncSelectedChatToUrl(chatId);
+        refreshChatsPage(root);
+        return;
+      }
 
       chatsState.selectedChatId = chatId;
+      chatsState.mobileView = "dialog";
       clearUnreadIncoming(chatId);
       keepSelectedChatPinnedToBottom();
       persistChatsData(chatsState.threads);

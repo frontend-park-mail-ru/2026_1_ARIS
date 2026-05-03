@@ -36,15 +36,12 @@ function renderCommunityAvatar(bundle: CommunityBundle, className: string): stri
 
 function renderCommunityMenu(bundle: CommunityBundle): string {
   const { community, permissions } = bundle;
-  const canLeaveCommunity =
-    bundle.membership.isMember && !bundle.membership.blocked && bundle.membership.role !== "owner";
 
   if (
     !permissions.canEditCommunity &&
     !permissions.canDeleteCommunity &&
     !permissions.canManageMembers &&
-    !permissions.canChangeRoles &&
-    !canLeaveCommunity
+    !permissions.canChangeRoles
   ) {
     return "";
   }
@@ -75,15 +72,6 @@ function renderCommunityMenu(bundle: CommunityBundle): string {
             ? `
               <button type="button" class="community-actions__item" data-community-members-open="${community.id}">
                 Участники сообщества
-              </button>
-            `
-            : ""
-        }
-        ${
-          canLeaveCommunity
-            ? `
-              <button type="button" class="community-actions__item" data-community-leave="${community.id}">
-                Покинуть сообщество
               </button>
             `
             : ""
@@ -147,7 +135,7 @@ function renderCommunitiesList(): string {
   if (!visible.length) {
     return `
       <p class="communities-page__empty">
-        ${communitiesState.query.trim() ? "Ничего не найдено." : "Сообществ пока нет."}
+        ${communitiesState.query.trim() ? "Ничего не найдено." : "Список пуст."}
       </p>
     `;
   }
@@ -185,6 +173,8 @@ export function renderCommunitiesListContent(): string {
       </section>
 
       ${renderCommunityFormModal()}
+      ${communitiesState.activeCommunity ? renderCommunityMembersManagerModal(communitiesState.activeCommunity) : ""}
+      ${renderMemberConfirmModal()}
       ${renderCommunityLeaveModal()}
       ${renderCommunityDeleteModal()}
     </section>
@@ -255,6 +245,14 @@ function renderCommunityPrimaryAction(bundle: CommunityBundle): string {
     `;
   }
 
+  if (bundle.membership.role !== "owner") {
+    return `
+      <button type="button" class="community-hero__cta community-hero__cta--muted" data-community-leave="${bundle.community.id}">
+        Покинуть сообщество
+      </button>
+    `;
+  }
+
   return "";
 }
 
@@ -319,7 +317,7 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
                 .join("")}
             </div>
           `
-            : '<p class="community-members-card__empty">Участников пока нет.</p>'
+            : '<p class="community-members-card__empty">Список пуст.</p>'
       }
       ${
         bundle.permissions.canManageMembers || bundle.permissions.canChangeRoles
@@ -503,16 +501,12 @@ function renderCommunityPosts(bundle: CommunityBundle, posts: ProfilePost[]): st
   const isSavingCreate = pending.mode === "create";
   const isSavingEdit = pending.mode === "edit" && !!pending.postId;
   const isSavingDelete = pending.mode === "delete" && !!pending.postId;
+  const searchQuery = communitiesState.postSearchQuery.trim().toLowerCase();
 
   if (isSavingDelete) {
     return `
       <section class="community-posts">
-        <header class="profile-posts__header content-card">
-          <h2>Публикации</h2>
-        </header>
-
-        ${renderCommunityComposerActions(bundle)}
-        ${renderCommunityPostFeedSwitcher()}
+        ${renderCommunityPostsControls(bundle)}
 
         <div class="profile-posts__list">
           ${renderCommunityPostsDeleteSkeleton(Math.min(Math.max(posts.length, 1), 3))}
@@ -521,7 +515,9 @@ function renderCommunityPosts(bundle: CommunityBundle, posts: ProfilePost[]): st
     `;
   }
 
-  const renderedPosts = [...posts];
+  const renderedPosts = searchQuery
+    ? posts.filter((post) => getCommunityPostSearchableText(post).includes(searchQuery))
+    : [...posts];
 
   if (isSavingEdit && pending.postId) {
     const index = renderedPosts.findIndex((post) => post.id === pending.postId);
@@ -549,12 +545,7 @@ function renderCommunityPosts(bundle: CommunityBundle, posts: ProfilePost[]): st
 
   return `
     <section class="community-posts">
-      <header class="profile-posts__header content-card">
-        <h2>Публикации</h2>
-      </header>
-
-      ${renderCommunityComposerActions(bundle)}
-      ${renderCommunityPostFeedSwitcher()}
+      ${renderCommunityPostsControls(bundle)}
 
       <div class="profile-posts__list">
         ${
@@ -571,12 +562,74 @@ function renderCommunityPosts(bundle: CommunityBundle, posts: ProfilePost[]): st
             `
             : `
               <div class="profile-posts__empty content-card">
-                <p class="profile-empty-copy">Публикаций пока нет</p>
+                <p class="profile-empty-copy">${
+                  searchQuery ? "Ничего не найдено." : "Список пуст."
+                }</p>
               </div>
             `
         }
       </div>
     </section>
+  `;
+}
+
+function getCommunityPostSearchableText(post: ProfilePost): string {
+  return [
+    post.text,
+    post.authorFirstName,
+    post.authorLastName,
+    post.authorUsername,
+    post.time,
+    post.timeRaw,
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+function renderCommunityPostsControls(bundle: CommunityBundle): string {
+  return `
+    <div class="community-posts__controls content-card">
+      ${
+        communitiesState.postSearchOpen
+          ? `
+            <label class="community-posts__search search-field" aria-label="Поиск по публикациям сообщества">
+              <span class="community-posts__search-icon search-field__icon" aria-hidden="true">
+                <img src="/assets/img/icons/search.svg" alt="">
+              </span>
+              <input
+                type="search"
+                class="community-posts__search-input search-field__input"
+                placeholder="Поиск"
+                value="${escapeHtml(communitiesState.postSearchQuery)}"
+                data-community-post-search
+              >
+              <button
+                type="button"
+                class="community-posts__search-close"
+                data-community-post-search-close
+                aria-label="Закрыть поиск по публикациям"
+              >
+                ×
+              </button>
+            </label>
+          `
+          : `
+            <header class="community-posts__header">
+              ${renderCommunityComposerActions(bundle)}
+              <button
+                type="button"
+                class="community-posts__search-toggle"
+                data-community-post-search-open
+                aria-label="Открыть поиск по публикациям"
+              >
+                <img src="/assets/img/icons/search.svg" alt="">
+              </button>
+            </header>
+          `
+      }
+
+      ${renderCommunityPostFeedSwitcher()}
+    </div>
   `;
 }
 
@@ -590,33 +643,17 @@ function renderCommunityComposerActions(bundle: CommunityBundle): string {
 
   return `
     <div class="community-posts__composer-row">
-      ${
-        canPostAsCommunity
-          ? `
-            <button type="button" class="profile-composer content-card" data-community-post-open="community">
-              <span class="profile-composer__icon" aria-hidden="true">+</span>
-              <span class="profile-composer__label">Новый пост от имени сообщества</span>
-            </button>
-          `
-          : ""
-      }
-      ${
-        canPostAsMember
-          ? `
-            <button type="button" class="profile-composer content-card" data-community-post-open="member">
-              <span class="profile-composer__icon" aria-hidden="true">+</span>
-              <span class="profile-composer__label">Новый пост от своего имени</span>
-            </button>
-          `
-          : ""
-      }
+      <button type="button" class="profile-composer" data-community-post-open>
+        <span class="profile-composer__icon" aria-hidden="true">+</span>
+        <span class="profile-composer__label">Написать пост</span>
+      </button>
     </div>
   `;
 }
 
 function renderCommunityPostFeedSwitcher(): string {
   return `
-    <div class="community-posts__feed-switcher content-card">
+    <div class="community-posts__feed-switcher">
       <button
         type="button"
         class="community-posts__feed-button${communitiesState.postFeedMode === "all" ? " community-posts__feed-button--active" : ""}"
@@ -629,7 +666,7 @@ function renderCommunityPostFeedSwitcher(): string {
         class="community-posts__feed-button${communitiesState.postFeedMode === "official" ? " community-posts__feed-button--active" : ""}"
         data-community-post-feed="official"
       >
-        Только от сообщества
+        Посты сообщества
       </button>
     </div>
   `;
@@ -983,12 +1020,19 @@ function renderCommunityMediaEditor(kind: "avatar" | "cover"): string {
 
 export function renderCommunityPostModal(): string {
   const composer = communitiesState.postComposer;
+  const bundle = communitiesState.activeCommunity;
   const title = composer.mode === "edit" ? "Редактировать публикацию" : "Новая публикация";
   const submitLabel = composer.mode === "edit" ? "Сохранить" : "Опубликовать";
+  const canPostAsCommunity = Boolean(
+    bundle?.permissions.canPost && bundle.permissions.canPostAsCommunity,
+  );
+  const canPostAsMember = Boolean(
+    bundle?.permissions.canPost && bundle.permissions.canPostAsMember,
+  );
   const authorLabel =
     composer.authorMode === "community"
-      ? communitiesState.activeCommunity
-        ? getCommunityName(communitiesState.activeCommunity.community)
+      ? bundle
+        ? getCommunityName(bundle.community)
         : "Сообщество"
       : "Ваш профиль";
 
@@ -1002,10 +1046,49 @@ export function renderCommunityPostModal(): string {
             attributes: "data-community-post-close",
           })}
         </header>
-        <p class="profile-post-modal__scope">
-          ${composer.mode === "edit" ? "Вы редактируете публикацию от имени:" : "Публикация будет создана от имени:"}
-          <strong>${escapeHtml(authorLabel)}</strong>
-        </p>
+        ${
+          composer.mode === "create"
+            ? `
+              <div class="community-post-modal__author">
+                <div class="community-post-modal__author-options${canPostAsCommunity && canPostAsMember ? "" : " community-post-modal__author-options--single"}" role="group" aria-label="Выбор автора публикации">
+                  ${
+                    canPostAsCommunity
+                      ? `
+                        <button
+                          type="button"
+                          class="community-post-modal__author-button${composer.authorMode === "community" ? " community-post-modal__author-button--active" : ""}"
+                          data-community-post-author-mode="community"
+                          aria-pressed="${composer.authorMode === "community" ? "true" : "false"}"
+                        >
+                          От имени сообщества
+                        </button>
+                      `
+                      : ""
+                  }
+                  ${
+                    canPostAsMember
+                      ? `
+                        <button
+                          type="button"
+                          class="community-post-modal__author-button${composer.authorMode === "member" ? " community-post-modal__author-button--active" : ""}"
+                          data-community-post-author-mode="member"
+                          aria-pressed="${composer.authorMode === "member" ? "true" : "false"}"
+                        >
+                          От своего имени
+                        </button>
+                      `
+                      : ""
+                  }
+                </div>
+              </div>
+            `
+            : `
+              <p class="profile-post-modal__scope">
+                Вы редактируете публикацию от имени:
+                <strong>${escapeHtml(authorLabel)}</strong>
+              </p>
+            `
+        }
         <form data-community-post-form>
           <textarea
             id="community-post-text"
@@ -1114,23 +1197,35 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
               : members.length
                 ? members
                     .map((member) => {
-                      const canChange = canManageCommunityMemberRole(bundle, member);
-                      const canRemove = canRemoveCommunityMember(bundle, member);
+                      const canChange = canManageCommunityMemberRole(
+                        bundle,
+                        member,
+                        communitiesState.viewerProfileId,
+                      );
+                      const canRemove = canRemoveCommunityMember(
+                        bundle,
+                        member,
+                        communitiesState.viewerProfileId,
+                      );
                       const isProcessing =
                         manager.changingRoleProfileId === member.profileId ||
                         manager.removingProfileId === member.profileId;
+                      const profileHref = `/id${member.profileId}`;
+                      const roleOptions = ["admin", "moderator", "member", "blocked"];
 
                       return `
                         <article class="community-members-manager__item${isProcessing ? " community-members-manager__item--processing" : ""}">
                           <div class="community-members-manager__identity">
-                            ${renderAvatarMarkup(
-                              "community-members-manager__avatar",
-                              getMemberDisplayName(member),
-                              member.avatarUrl,
-                              { width: 48, height: 48 },
-                            )}
+                            <a class="community-members-manager__avatar-link" href="${profileHref}" data-link>
+                              ${renderAvatarMarkup(
+                                "community-members-manager__avatar",
+                                getMemberDisplayName(member),
+                                member.avatarUrl,
+                                { width: 48, height: 48 },
+                              )}
+                            </a>
                             <div class="community-members-manager__copy">
-                              <strong>${escapeHtml(getMemberDisplayName(member))}</strong>
+                              <a href="${profileHref}" data-link>${escapeHtml(getMemberDisplayName(member))}</a>
                               <span>@${escapeHtml(member.username)}</span>
                             </div>
                           </div>
@@ -1141,21 +1236,30 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
                                 ? `<span class="community-members-manager__role">${escapeHtml(getRoleLabel("blocked"))}</span>`
                                 : canChange
                                   ? `
-                                  <select
-                                    class="community-members-manager__select"
-                                    data-community-member-role="${member.profileId}"
-                                    ${isProcessing ? "disabled" : ""}
-                                  >
-                                    ${["admin", "moderator", "member", "blocked"]
-                                      .map(
-                                        (role) => `
-                                          <option value="${role}" ${member.role === role ? "selected" : ""}>
+                                  <details class="community-members-manager__role-select">
+                                    <summary class="community-members-manager__role-current">
+                                      <span>${escapeHtml(getRoleLabel(member.role))}</span>
+                                    </summary>
+                                    <div class="community-members-manager__role-menu" role="listbox" aria-label="Роль участника">
+                                      ${roleOptions
+                                        .map(
+                                          (role) => `
+                                          <button
+                                            type="button"
+                                            class="community-members-manager__role-option${member.role === role ? " community-members-manager__role-option--active" : ""}"
+                                            data-community-member-role="${member.profileId}"
+                                            data-community-member-role-value="${role}"
+                                            role="option"
+                                            aria-selected="${member.role === role ? "true" : "false"}"
+                                            ${isProcessing || member.role === role ? "disabled" : ""}
+                                          >
                                             ${escapeHtml(getRoleLabel(role))}
-                                          </option>
+                                          </button>
                                         `,
-                                      )
-                                      .join("")}
-                                  </select>
+                                        )
+                                        .join("")}
+                                    </div>
+                                  </details>
                                 `
                                   : `<span class="community-members-manager__role">${escapeHtml(getRoleLabel(member.role))}</span>`
                             }
@@ -1189,7 +1293,9 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
                       `;
                     })
                     .join("")
-                : '<p class="communities-page__empty">Список участников пуст.</p>'
+                : `<p class="communities-page__empty">${
+                    manager.query.trim() ? "Ничего не найдено." : "Список пуст."
+                  }</p>`
           }
         </div>
       </section>
@@ -1248,6 +1354,7 @@ export function renderMemberConfirmModal(): string {
 
   const displayName = getMemberDisplayName(member);
   const joinedDate = formatMemberJoinDate(member.joinedAt);
+  const profileHref = `/id${member.profileId}`;
 
   let title: string;
   let text: string;
@@ -1277,9 +1384,11 @@ export function renderMemberConfirmModal(): string {
         </header>
 
         <div class="community-modal__identity">
-          ${renderAvatarMarkup("community-modal__avatar", displayName, member.avatarUrl, { width: 72, height: 72 })}
+          <a class="community-modal__avatar-link" href="${profileHref}" data-link>
+            ${renderAvatarMarkup("community-modal__avatar", displayName, member.avatarUrl, { width: 72, height: 72 })}
+          </a>
           <div>
-            <p>${escapeHtml(displayName)}</p>
+            <a class="community-modal__identity-name" href="${profileHref}" data-link>${escapeHtml(displayName)}</a>
             ${joinedDate ? `<span class="community-modal__identity-meta">Участник с ${escapeHtml(joinedDate)}</span>` : ""}
           </div>
         </div>

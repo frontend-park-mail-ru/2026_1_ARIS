@@ -39,7 +39,7 @@ function getFriendsCountLabel(count: number): string {
   const mod100 = count % 100;
   const mod10 = count % 10;
   if (mod100 >= 11 && mod100 <= 14) return `${count} человек`;
-  if (mod10 === 1) return `${count} человека`;
+  if (mod10 === 1) return `${count} человек`;
   if (mod10 >= 2 && mod10 <= 4) return `${count} человека`;
   return `${count} человек`;
 }
@@ -105,7 +105,7 @@ export function renderFriendsList(): string {
   if (!visibleFriends.length) {
     return friendsState.query.trim()
       ? '<p class="friends-page__empty">Ничего не найдено.</p>'
-      : '<p class="friends-page__empty">Пока тут пусто.</p>';
+      : '<p class="friends-page__empty">Список пуст.</p>';
   }
 
   return visibleFriends
@@ -173,7 +173,7 @@ export function renderFriendsContent(): string {
       <section class="friends-panel content-card">
         <header class="friends-panel__header">
           <p class="friends-panel__summary">
-            ${totalCount === 0 ? "У вас пока нет друзей." : `У вас в друзьях ${getFriendsCountLabel(totalCount)}.`}
+            ${totalCount === 0 ? "Список пуст." : `У вас в друзьях ${getFriendsCountLabel(totalCount)}.`}
           </p>
           <button type="button" class="friends-panel__discover" disabled hidden>Найти друзей</button>
         </header>

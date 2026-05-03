@@ -2,8 +2,9 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#4c6fff" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="ARISNET" />
@@ -33,8 +34,20 @@
 
     <link rel="icon" type="image/png" href="/assets/img/icons8-a-stickers-32.png" />
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" />
+    <script id="aris-runtime-config" type="application/json">
+      <%= JSON.stringify(htmlWebpackPlugin.options.runtimeConfig || {}) %>
+    </script>
     <script>
-      window.__ARIS_RUNTIME_CONFIG__ = <%= JSON.stringify(htmlWebpackPlugin.options.runtimeConfig || {}) %>;
+      (() => {
+        const runtimeConfigNode = document.getElementById("aris-runtime-config");
+        try {
+          window.__ARIS_RUNTIME_CONFIG__ = runtimeConfigNode?.textContent
+            ? JSON.parse(runtimeConfigNode.textContent)
+            : {};
+        } catch {
+          window.__ARIS_RUNTIME_CONFIG__ = {};
+        }
+      })();
     </script>
   </head>
 

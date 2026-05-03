@@ -92,7 +92,7 @@ type FeedMedia = {
 };
 
 type FeedItem = {
-  id?: string;
+  id?: number | string;
   author?: FeedAuthor;
   text?: string;
   createdAt?: string;
@@ -152,15 +152,16 @@ function formatRelativeTime(iso?: string): string {
  * const card = mapFeedItemToPostcard(rawPost);
  */
 export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
+  const postId = item.id === undefined || item.id === null ? "" : String(item.id);
   const likes = parseNumericCount(item.likes) ?? 0;
   const rawIsLiked = parseBooleanFlag(item.isLiked ?? item.is_liked ?? item.liked);
-  const isLiked = resolvePostLikeState(item.id ?? "", rawIsLiked);
-  if (typeof rawIsLiked === "boolean" && item.id) {
-    rememberPostLikeState(item.id, rawIsLiked);
+  const isLiked = resolvePostLikeState(postId, rawIsLiked);
+  if (typeof rawIsLiked === "boolean" && postId) {
+    rememberPostLikeState(postId, rawIsLiked);
   }
 
   return {
-    id: item.id ?? "",
+    id: postId,
     authorId: item.author?.id ?? "",
     author: item.author?.username ?? "Пользователь",
     firstName: item.author?.firstName ?? "",

@@ -212,4 +212,43 @@
     --logo-width: 138px;
     --logo-height: 52px;
   }
+
+  @media (width <= 1199px) {
+    :root {
+      --layout-padding-x: 32px;
+      --layout-padding-top: 20px;
+      --layout-padding-bottom: 32px;
+      --layout-column-gap: 18px;
+      --layout-sidebar-width: 76px;
+      --layout-content-width: 760px;
+      --layout-widgets-width: 0px;
+      --layout-content-inner-padding-x: 0px;
+      --layout-widgets-inner-padding-left: 0px;
+      --layout-min-width: 0px;
+      --layout-content-gap: 20px;
+      --layout-widgets-gap: 16px;
+      --avatar-size-lg: 120px;
+      --button-width-large: 100%;
+      --button-width-small: 100%;
+    }
+  }
+
+  @media (width <= 768px) {
+    :root {
+      --layout-padding-x: max(12px, env(safe-area-inset-left));
+      --layout-padding-top: 14px;
+      --layout-padding-bottom: calc(88px + env(safe-area-inset-bottom));
+      --layout-column-gap: 0px;
+      --layout-sidebar-width: 0px;
+      --layout-content-width: 100%;
+      --layout-content-gap: 16px;
+      --font-size-md: 15px;
+      --font-size-lg: 16px;
+      --font-size-xl: 17px;
+      --font-size-2xl: 20px;
+      --font-size-3xl: 24px;
+      --control-height: 44px;
+      --control-padding-x: 16px;
+    }
+  }
 }

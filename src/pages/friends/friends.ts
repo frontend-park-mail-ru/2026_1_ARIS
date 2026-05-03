@@ -148,7 +148,7 @@ export async function renderFriends(
         <section class="app-layout__center">
           ${renderFriendsContent()}
         </section>
-        <aside class="app-layout__right">
+        <aside class="app-layout__right app-layout__right--optional">
           ${await renderWidgetbar({ isAuthorised: true })}
         </aside>
       </main>

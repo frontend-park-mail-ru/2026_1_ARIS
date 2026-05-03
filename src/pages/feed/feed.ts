@@ -12,6 +12,7 @@ import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { getFeed, getPublicFeed, mapFeedResponse, type PostcardModel } from "../../api/feed";
+import { ApiError } from "../../api/core/client";
 import { likePost, unlikePost } from "../../api/posts";
 import { getFriends, type Friend } from "../../api/friends";
 import { getFeedMode, getSessionUser } from "../../state/session";
@@ -42,7 +43,20 @@ const FEED_BATCH_SIZE = 10;
 let isFeedLikeBound = false;
 
 function isOfflineNetworkError(error: unknown): boolean {
-  return !navigator.onLine || error instanceof TypeError;
+  if (!navigator.onLine || error instanceof TypeError) {
+    return true;
+  }
+
+  if (error instanceof ApiError && [502, 503, 504].includes(error.status)) {
+    return true;
+  }
+
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return message.includes("proxy") || message.includes("failed to fetch");
+  }
+
+  return false;
 }
 
 function isFeedEmptyResponseError(error: unknown): boolean {
@@ -392,7 +406,7 @@ export async function renderFeed(
           ${renderSidebar({ isAuthorised })}
         </aside>
         ${centerMarkup}
-        <aside class="app-layout__right">
+        <aside class="app-layout__right app-layout__right--optional">
           ${await renderWidgetbar({ isAuthorised })}
         </aside>
       </main>

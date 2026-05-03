@@ -1,5 +1,5 @@
+import type { Community, CommunityBundle, CommunityMember } from "../../api/communities";
 import type { PostMedia, PostResponse } from "../../api/posts";
-import type { Community, CommunityBundle } from "../../api/communities";
 import type { ProfilePost } from "../profile/types";
 
 export function escapeHtml(value: string): string {
@@ -32,11 +32,21 @@ export function getRoleLabel(role: string): string {
   const labels: Record<string, string> = {
     owner: "Владелец",
     admin: "Администратор",
-    manager: "Менеджер",
     moderator: "Модератор",
     member: "Участник",
+    blocked: "Заблокирован",
   };
   return labels[role] ?? "";
+}
+
+export function getMemberDisplayName(member: CommunityMember): string {
+  return `${member.firstName} ${member.lastName}`.trim() || member.username || "Пользователь";
+}
+
+export function getPostAuthorDisplayName(post: ProfilePost): string {
+  return (
+    `${post.authorFirstName} ${post.authorLastName}`.trim() || post.authorUsername || "Пользователь"
+  );
 }
 
 export function slugifyCommunityTitle(value: string): string {
@@ -85,6 +95,19 @@ export function slugifyCommunityTitle(value: string): string {
   return slug || `community-${Date.now()}`;
 }
 
+export function formatMemberJoinDate(iso?: string): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+    .format(date)
+    .replace(" г.", " года");
+}
+
 export function formatPostRelativeTime(iso?: string): string {
   if (!iso) return "";
   const createdAt = new Date(iso);
@@ -122,7 +145,16 @@ export function formatPostExactTime(iso?: string): string {
   return `${datePart}\n${timePart}`;
 }
 
-export function mapPostToCommunityPost(post: PostResponse, bundle: CommunityBundle): ProfilePost {
+export function isOfficialCommunityPost(post: PostResponse, bundle: CommunityBundle): boolean {
+  const authorProfileId = post.author?.profileID ?? post.profileID;
+  return Number(authorProfileId) === bundle.community.profileId;
+}
+
+export function mapPostToCommunityPost(
+  post: PostResponse,
+  bundle: CommunityBundle,
+  viewerProfileId: number | null,
+): ProfilePost {
   const media = Array.isArray(post.media)
     ? post.media.filter(
         (item): item is PostMedia =>
@@ -136,15 +168,25 @@ export function mapPostToCommunityPost(post: PostResponse, bundle: CommunityBund
     ? post.mediaURL.filter(Boolean)
     : media.map((item) => item.mediaURL);
   const community = bundle.community;
+  const official = isOfficialCommunityPost(post, bundle);
+  const authorProfileId = post.author?.profileID ?? post.profileID ?? community.profileId;
+  const authorFirstName = official
+    ? getCommunityName(community)
+    : (post.author?.firstName ?? post.firstName ?? "");
+  const authorLastName = official ? "" : (post.author?.lastName ?? post.lastName ?? "");
+  const authorUsername = official ? community.username : (post.author?.username ?? "");
+  const authorAvatarLink = official
+    ? (community.avatarUrl ?? "")
+    : (post.author?.avatarURL ?? post.avatarURL ?? "");
 
   return {
     id: String(post.id),
-    authorId: String(post.profileID ?? community.profileId),
-    authorFirstName: getCommunityName(community),
-    authorLastName: "",
-    authorUsername: community.username,
-    authorAvatarLink: community.avatarUrl ?? "",
-    isOwnPost: bundle.permissions.canPost,
+    authorId: String(authorProfileId),
+    authorFirstName,
+    authorLastName,
+    authorUsername,
+    authorAvatarLink,
+    isOwnPost: viewerProfileId !== null && Number(authorProfileId) === viewerProfileId,
     text: typeof post.text === "string" ? post.text : "",
     time: formatPostRelativeTime(post.createdAt),
     timeRaw: post.createdAt ?? "",
@@ -155,4 +197,30 @@ export function mapPostToCommunityPost(post: PostResponse, bundle: CommunityBund
     media,
     images,
   };
+}
+
+export function canEditCommunityPost(
+  post: ProfilePost,
+  bundle: CommunityBundle,
+  viewerProfileId: number | null,
+): boolean {
+  const isOfficial = Number(post.authorId) === bundle.community.profileId;
+  if (isOfficial) {
+    return bundle.membership.role === "owner";
+  }
+
+  return viewerProfileId !== null && Number(post.authorId) === viewerProfileId;
+}
+
+export function canDeleteCommunityPost(
+  post: ProfilePost,
+  bundle: CommunityBundle,
+  viewerProfileId: number | null,
+): boolean {
+  const role = bundle.membership.role;
+  if (role === "owner" || role === "admin" || role === "moderator") {
+    return true;
+  }
+
+  return viewerProfileId !== null && Number(post.authorId) === viewerProfileId;
 }

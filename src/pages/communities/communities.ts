@@ -4,21 +4,29 @@
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import {
+  changeCommunityMemberRole,
   createCommunity,
   deleteCommunity,
   getCommunities,
   getCommunityById,
+  getCommunityMembers,
+  joinCommunity,
+  leaveCommunity,
+  removeCommunityMember,
   updateCommunity,
+  type CommunityBundle,
+  type CommunityMember,
   type CommunityPayload,
 } from "../../api/communities";
 import {
   createPost,
   deletePost,
-  getPostsByProfileId,
+  getOfficialCommunityPosts,
+  getPostsByCommunityId,
   updatePost,
   uploadPostImages,
 } from "../../api/posts";
-import { uploadProfileAvatar } from "../../api/profile";
+import { getMyProfile, uploadProfileAvatar } from "../../api/profile";
 import { getSessionUser } from "../../state/session";
 import { clearFeedCache } from "../feed/cache";
 import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
@@ -26,9 +34,21 @@ import { prepareAvatarLinks } from "../../utils/avatar";
 import type { ComposerMediaItem } from "../profile/types";
 import type { CommunitiesParams } from "./types";
 import {
+  buildCommunityMediaFile,
+  cancelCommunityMediaDrag,
+  endCommunityMediaDrag,
+  loadCommunityMediaFile,
+  moveCommunityMediaDrag,
+  removeCommunityMedia,
+  resetCommunityMediaChanges,
+  rotateCommunityMedia,
+  setCommunityMediaZoom,
+  startCommunityMediaDrag,
+  syncCommunityMediaEditorsUi,
+} from "./media-editor";
+import {
   communitiesState,
   findCommunityById,
-  isCommunityType,
   nextCommunityFormStep,
   openCreateCommunityForm,
   openCommunityPostComposer,
@@ -39,13 +59,12 @@ import {
   resetCommunitiesState,
   resetCommunityFormState,
   resetCommunityPostComposer,
-  setCommunityCoverFile,
   setActiveCommunity,
+  setActiveMembers,
   setActivePosts,
   setCommunities,
-  setCommunityAvatarFile,
 } from "./state";
-import { getCommunityName, mapPostToCommunityPost, slugifyCommunityTitle } from "./helpers";
+import { isOfficialCommunityPost, mapPostToCommunityPost, slugifyCommunityTitle } from "./helpers";
 import {
   refreshCommunitiesList,
   refreshCommunitiesPage,
@@ -58,6 +77,9 @@ type CommunitiesRoot = (Document | HTMLElement) & {
   __communitiesBound?: boolean;
   __communityFormBackdropPressStarted?: boolean;
   __communityDeleteBackdropPressStarted?: boolean;
+  __communityLeaveBackdropPressStarted?: boolean;
+  __communityMembersBackdropPressStarted?: boolean;
+  __memberConfirmBackdropPressStarted?: boolean;
   __communityPostBackdropPressStarted?: boolean;
   __communityPostDeleteBackdropPressStarted?: boolean;
 };
@@ -65,6 +87,57 @@ type CommunitiesRoot = (Document | HTMLElement) & {
 const COMMUNITY_TITLE_MIN_LENGTH = 3;
 const COMMUNITY_BIO_MAX_LENGTH = 2047;
 const COMMUNITY_TITLE_MAX_LENGTH = 64;
+
+function syncCommunityBundle(bundle: CommunityBundle): void {
+  if (communitiesState.activeCommunity?.community.id === bundle.community.id) {
+    communitiesState.activeCommunity = bundle;
+  }
+  communitiesState.items = communitiesState.items.some(
+    (item) => item.community.id === bundle.community.id,
+  )
+    ? communitiesState.items.map((item) =>
+        item.community.id === bundle.community.id ? bundle : item,
+      )
+    : [bundle, ...communitiesState.items];
+}
+
+async function ensureViewerProfileId(signal?: AbortSignal): Promise<void> {
+  if (
+    typeof communitiesState.viewerProfileId === "number" &&
+    communitiesState.viewerProfileId > 0
+  ) {
+    return;
+  }
+
+  const profile = await getMyProfile(signal);
+  const profileId = Number(profile.profileId ?? 0);
+  communitiesState.viewerProfileId = Number.isFinite(profileId) && profileId > 0 ? profileId : null;
+}
+
+async function loadCommunityMembers(
+  communityId: number,
+  includeBlocked = false,
+  signal?: AbortSignal,
+): Promise<CommunityMember[]> {
+  try {
+    const members = await getCommunityMembers(communityId, includeBlocked, signal);
+    setActiveMembers(members);
+    return members;
+  } finally {
+    communitiesState.membersLoading = false;
+  }
+}
+
+async function loadCommunityPosts(bundle: CommunityBundle, signal?: AbortSignal): Promise<void> {
+  const posts =
+    communitiesState.postFeedMode === "official"
+      ? await getOfficialCommunityPosts(bundle.community.id, signal)
+      : await getPostsByCommunityId(bundle.community.id, signal);
+
+  setActivePosts(
+    posts.map((post) => mapPostToCommunityPost(post, bundle, communitiesState.viewerProfileId)),
+  );
+}
 
 async function ensureCommunitiesLoaded(signal?: AbortSignal): Promise<void> {
   if (communitiesState.loaded && communitiesState.items.length) {
@@ -89,12 +162,17 @@ async function ensureCommunitiesLoaded(signal?: AbortSignal): Promise<void> {
 
 async function resolveCommunityDetail(id: string, signal?: AbortSignal): Promise<void> {
   const bundle = await getCommunityById(id, signal);
-  const posts = bundle.community.profileId
-    ? await getPostsByProfileId(String(bundle.community.profileId), signal)
-    : [];
-
+  syncCommunityBundle(bundle);
   setActiveCommunity(bundle);
-  setActivePosts(posts.map((post) => mapPostToCommunityPost(post, bundle)));
+  communitiesState.membersLoading = true;
+  communitiesState.membersLoaded = false;
+  await ensureViewerProfileId(signal).catch(() => {
+    communitiesState.viewerProfileId = null;
+  });
+  await Promise.all([
+    loadCommunityMembers(bundle.community.id, false, signal),
+    loadCommunityPosts(bundle, signal),
+  ]);
 }
 
 function syncCommunityFormFromDom(root: ParentNode): void {
@@ -104,16 +182,12 @@ function syncCommunityFormFromDom(root: ParentNode): void {
   const formData = new FormData(form);
   const title = formData.get("title");
   const bio = formData.get("bio");
-  const type = formData.get("type");
 
   if (typeof title === "string") {
     communitiesState.form.title = title.trim();
   }
   if (typeof bio === "string") {
     communitiesState.form.bio = bio.trim();
-  }
-  if (typeof type === "string" && isCommunityType(type)) {
-    communitiesState.form.type = type;
   }
 }
 
@@ -126,7 +200,7 @@ function buildCommunityPayload(): CommunityPayload {
     title,
     username,
     bio: communitiesState.form.bio.trim(),
-    type: communitiesState.form.type,
+    type: "public",
   };
 }
 
@@ -151,20 +225,8 @@ function validateCommunityTitle(value: string): string {
 function validateCommunityBio(value: string): string {
   const bio = value.trim();
 
-  if (!bio) {
-    return "Введите описание сообщества.";
-  }
-
   if (bio.length > COMMUNITY_BIO_MAX_LENGTH) {
     return `Описание сообщества должно быть не длиннее ${COMMUNITY_BIO_MAX_LENGTH} символов.`;
-  }
-
-  return "";
-}
-
-function validateCommunityType(value: string): string {
-  if (!isCommunityType(value)) {
-    return "Выберите тип сообщества.";
   }
 
   return "";
@@ -174,11 +236,9 @@ function validateCommunityPayload(payload: CommunityPayload): string {
   const username = payload.username?.trim().toLowerCase() ?? "";
   const titleError = validateCommunityTitle(payload.title ?? "");
   const bioError = validateCommunityBio(payload.bio ?? "");
-  const typeError = validateCommunityType(payload.type ?? "");
 
   if (titleError) return titleError;
   if (bioError) return bioError;
-  if (typeError) return typeError;
 
   if (username.length < 3 || username.length > 20) {
     return "Адрес сообщества должен содержать от 3 до 20 символов.";
@@ -194,10 +254,6 @@ function getInvalidCommunityFormStep(payload: CommunityPayload): 1 | 2 | 3 | nul
 
   if (validateCommunityBio(payload.bio ?? "")) {
     return 2;
-  }
-
-  if (validateCommunityType(payload.type ?? "")) {
-    return 3;
   }
 
   if ((payload.username?.trim().length ?? 0) < 3 || (payload.username?.trim().length ?? 0) > 20) {
@@ -228,9 +284,20 @@ async function saveCommunityForm(root: ParentNode): Promise<void> {
   refreshCommunitiesPage(root);
 
   try {
-    if (communitiesState.form.avatarFile) {
-      const uploaded = await uploadProfileAvatar(communitiesState.form.avatarFile);
+    if (communitiesState.form.avatarEditor.dirty && communitiesState.form.avatarEditor.objectUrl) {
+      const avatarFile = await buildCommunityMediaFile("avatar", root);
+      const uploaded = await uploadProfileAvatar(avatarFile);
       payload.avatarId = uploaded.mediaID;
+    } else if (communitiesState.form.avatarEditor.removed) {
+      payload.removeAvatar = true;
+    }
+
+    if (communitiesState.form.coverEditor.dirty && communitiesState.form.coverEditor.objectUrl) {
+      const coverFile = await buildCommunityMediaFile("cover", root);
+      const uploaded = await uploadProfileAvatar(coverFile);
+      payload.coverId = uploaded.mediaID;
+    } else if (communitiesState.form.coverEditor.removed) {
+      payload.removeCover = true;
     }
 
     const saved =
@@ -238,11 +305,12 @@ async function saveCommunityForm(root: ParentNode): Promise<void> {
         ? await updateCommunity(communitiesState.form.communityId, payload)
         : await createCommunity(payload);
 
-    communitiesState.loaded = false;
+    syncCommunityBundle(saved);
+    communitiesState.loaded = true;
     resetCommunityFormState();
 
     if (communitiesState.activeCommunity) {
-      setActiveCommunity(saved);
+      communitiesState.activeCommunity = saved;
       await rerenderCurrentRoute();
       return;
     }
@@ -268,10 +336,6 @@ function validateCommunityFormStep(): string {
 
   if (communitiesState.form.step === 2) {
     return validateCommunityBio(communitiesState.form.bio);
-  }
-
-  if (communitiesState.form.step === 3) {
-    return validateCommunityType(communitiesState.form.type);
   }
 
   return "";
@@ -413,11 +477,22 @@ async function saveCommunityPost(root: ParentNode): Promise<void> {
         : await createPost({
             ...(text ? { text } : {}),
             media,
-            authorProfileId: bundle.community.profileId,
+            communityId: bundle.community.id,
+            ...(communitiesState.postComposer.authorMode === "community"
+              ? { authorProfileId: bundle.community.profileId }
+              : {}),
           });
 
-    if (savedPost && typeof savedPost.id === "number") {
-      const mappedPost = mapPostToCommunityPost(savedPost, bundle);
+    if (
+      savedPost &&
+      typeof savedPost.id === "number" &&
+      (communitiesState.postFeedMode !== "official" || isOfficialCommunityPost(savedPost, bundle))
+    ) {
+      const mappedPost = mapPostToCommunityPost(
+        savedPost,
+        bundle,
+        communitiesState.viewerProfileId,
+      );
       setActivePosts([
         mappedPost,
         ...communitiesState.activePosts.filter((post) => post.id !== mappedPost.id),
@@ -431,9 +506,17 @@ async function saveCommunityPost(root: ParentNode): Promise<void> {
     resetCommunityPostComposer();
     refreshCommunitiesPage(root);
 
-    void getPostsByProfileId(String(bundle.community.profileId))
+    void (
+      communitiesState.postFeedMode === "official"
+        ? getOfficialCommunityPosts(bundle.community.id)
+        : getPostsByCommunityId(bundle.community.id)
+    )
       .then((posts) => {
-        setActivePosts(posts.map((post) => mapPostToCommunityPost(post, bundle)));
+        setActivePosts(
+          posts.map((post) =>
+            mapPostToCommunityPost(post, bundle, communitiesState.viewerProfileId),
+          ),
+        );
         refreshCommunitiesPage(root);
       })
       .catch(() => {
@@ -472,10 +555,18 @@ async function deleteCommunityPostRecord(root: ParentNode): Promise<void> {
     resetCommunityPostComposer();
     refreshCommunitiesPage(root);
 
-    if (bundle?.community.profileId) {
-      void getPostsByProfileId(String(bundle.community.profileId))
+    if (bundle?.community.id) {
+      void (
+        communitiesState.postFeedMode === "official"
+          ? getOfficialCommunityPosts(bundle.community.id)
+          : getPostsByCommunityId(bundle.community.id)
+      )
         .then((posts) => {
-          setActivePosts(posts.map((post) => mapPostToCommunityPost(post, bundle)));
+          setActivePosts(
+            posts.map((post) =>
+              mapPostToCommunityPost(post, bundle, communitiesState.viewerProfileId),
+            ),
+          );
           refreshCommunitiesPage(root);
         })
         .catch(() => {
@@ -559,6 +650,40 @@ function bindFloatingCommunityMenuActions(
       refreshCommunitiesPage(root);
     };
   }
+
+  const membersButton = menu.querySelector<HTMLButtonElement>(
+    `[data-community-members-open="${communityId}"]`,
+  );
+  if (membersButton) {
+    membersButton.onclick = () => {
+      closeCommunityMenus(root);
+      communitiesState.membersManager.open = true;
+      communitiesState.membersManager.errorMessage = "";
+      communitiesState.membersManager.query = "";
+      communitiesState.membersLoading = true;
+      refreshCommunitiesPage(root);
+      void loadCommunityMembers(Number(communityId), communitiesState.membersManager.includeBlocked)
+        .then(() => {
+          refreshCommunitiesPage(root);
+        })
+        .catch((error: unknown) => {
+          communitiesState.membersManager.errorMessage =
+            error instanceof Error ? error.message : "Не удалось загрузить участников.";
+          refreshCommunitiesPage(root);
+        });
+    };
+  }
+
+  const leaveButton = menu.querySelector<HTMLButtonElement>(
+    `[data-community-leave="${communityId}"]`,
+  );
+  if (leaveButton) {
+    leaveButton.onclick = () => {
+      closeCommunityMenus(root);
+      communitiesState.leaveConfirmId = Number(communityId);
+      refreshCommunitiesPage(root);
+    };
+  }
 }
 
 function positionCommunityPostMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
@@ -573,13 +698,18 @@ function bindFloatingCommunityPostMenuActions(
   root: Document | HTMLElement,
   postId: string,
 ): void {
+  const bundle = communitiesState.activeCommunity;
+  const post = communitiesState.activePosts.find((item) => item.id === postId);
+  const authorMode =
+    bundle && post && Number(post.authorId) === bundle.community.profileId ? "community" : "member";
+
   const editButton = menu.querySelector<HTMLButtonElement>(
     `[data-community-post-edit="${postId}"]`,
   );
   if (editButton) {
     editButton.onclick = () => {
       closeCommunityPostMenus(root);
-      openEditCommunityPostComposer(postId);
+      openEditCommunityPostComposer(postId, authorMode);
       refreshCommunitiesPage(root);
     };
   }
@@ -613,7 +743,14 @@ export async function renderCommunities(
     try {
       await resolveCommunityDetail(params.id, signal);
       const bundle = communitiesState.activeCommunity;
-      await prepareAvatarLinks([getSessionUser()?.avatarLink, bundle?.community.avatarUrl]);
+      await prepareAvatarLinks([
+        getSessionUser()?.avatarLink,
+        bundle?.community.avatarUrl,
+        bundle?.community.coverUrl,
+        ...communitiesState.activeMembers.map((member) => member.avatarUrl),
+        ...communitiesState.activePosts.map((post) => post.authorAvatarLink),
+        ...communitiesState.activePosts.flatMap((post) => post.images),
+      ]);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") throw error;
       communitiesState.errorMessage =
@@ -640,9 +777,13 @@ export async function renderCommunities(
   }
 
   await ensureCommunitiesLoaded(signal);
+  await ensureViewerProfileId(signal).catch(() => {
+    communitiesState.viewerProfileId = null;
+  });
   await prepareAvatarLinks([
     getSessionUser()?.avatarLink,
     ...communitiesState.items.map((item) => item.community.avatarUrl),
+    ...communitiesState.items.map((item) => item.community.coverUrl),
   ]);
 
   return `
@@ -671,6 +812,17 @@ export function initCommunities(root: Document | HTMLElement = document): void {
   closeCommunityPostMenus(root);
 
   root.addEventListener("pointerdown", (event: Event) => {
+    if (event instanceof PointerEvent) {
+      const stage =
+        event.target instanceof Element
+          ? event.target.closest<HTMLElement>("[data-community-media-stage]")
+          : null;
+      const kind = stage?.getAttribute("data-community-media-stage");
+      if (kind === "avatar" || kind === "cover") {
+        startCommunityMediaDrag(kind, event, root);
+      }
+    }
+
     const target = event.target;
     if (!(target instanceof Element)) return;
 
@@ -680,6 +832,15 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     bindableRoot.__communityDeleteBackdropPressStarted = target.matches(
       "[data-community-delete-modal]",
     );
+    bindableRoot.__communityLeaveBackdropPressStarted = target.matches(
+      "[data-community-leave-modal]",
+    );
+    bindableRoot.__memberConfirmBackdropPressStarted = target.matches(
+      "[data-member-confirm-modal]",
+    );
+    bindableRoot.__communityMembersBackdropPressStarted = target.matches(
+      "[data-community-members-modal]",
+    );
     bindableRoot.__communityPostBackdropPressStarted = target.matches(
       "[data-community-post-modal]",
     );
@@ -688,12 +849,45 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     );
   });
 
+  root.addEventListener("pointermove", (event: Event) => {
+    if (!(event instanceof PointerEvent)) {
+      return;
+    }
+
+    moveCommunityMediaDrag("avatar", event, root);
+    moveCommunityMediaDrag("cover", event, root);
+  });
+
+  root.addEventListener("pointerup", (event: Event) => {
+    if (!(event instanceof PointerEvent)) {
+      return;
+    }
+
+    endCommunityMediaDrag("avatar", event, root);
+    endCommunityMediaDrag("cover", event, root);
+  });
+
+  root.addEventListener("pointercancel", (event: Event) => {
+    if (!(event instanceof PointerEvent)) {
+      return;
+    }
+
+    cancelCommunityMediaDrag("avatar", root);
+    cancelCommunityMediaDrag("cover", root);
+  });
+
   root.addEventListener("input", (event: Event) => {
     const target = event.target;
 
     if (target instanceof HTMLInputElement && target.matches("[data-communities-search]")) {
       communitiesState.query = target.value;
       refreshCommunitiesList(root);
+      return;
+    }
+
+    if (target instanceof HTMLInputElement && target.matches("[data-community-members-search]")) {
+      communitiesState.membersManager.query = target.value;
+      refreshCommunitiesPage(root);
       return;
     }
 
@@ -714,6 +908,15 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     if (target instanceof HTMLTextAreaElement && target.matches("[data-community-post-text]")) {
       communitiesState.postComposer.text = target.value;
       communitiesState.postComposer.errorMessage = "";
+      return;
+    }
+
+    if (target instanceof HTMLInputElement && target.matches("[data-community-media-zoom]")) {
+      const kind = target.getAttribute("data-community-media-zoom");
+      if (kind === "avatar" || kind === "cover") {
+        setCommunityMediaZoom(kind, root, Number.parseInt(target.value, 10) || 100);
+      }
+      return;
     }
   });
 
@@ -723,16 +926,14 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     if (target instanceof HTMLInputElement && target.matches("[data-community-avatar-input]")) {
       const file = target.files?.[0];
       if (!file) return;
-      setCommunityAvatarFile(file);
-      refreshCommunitiesPage(root);
+      void loadCommunityMediaFile("avatar", file, root);
       return;
     }
 
     if (target instanceof HTMLInputElement && target.matches("[data-community-cover-input]")) {
       const file = target.files?.[0];
       if (!file) return;
-      setCommunityCoverFile(file);
-      refreshCommunitiesPage(root);
+      void loadCommunityMediaFile("cover", file, root);
       return;
     }
 
@@ -745,9 +946,50 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       return;
     }
 
-    if (target instanceof HTMLSelectElement && target.matches("[data-community-type-select]")) {
-      const value = target.value;
-      communitiesState.form.type = isCommunityType(value) ? value : "public";
+    if (
+      target instanceof HTMLInputElement &&
+      target.matches("[data-community-members-include-blocked]")
+    ) {
+      const bundle = communitiesState.activeCommunity;
+      if (!bundle) return;
+
+      communitiesState.membersManager.includeBlocked = target.checked;
+      communitiesState.membersManager.errorMessage = "";
+      communitiesState.membersLoading = true;
+      refreshCommunitiesPage(root);
+      void loadCommunityMembers(bundle.community.id, target.checked)
+        .then(() => {
+          refreshCommunitiesPage(root);
+        })
+        .catch((error: unknown) => {
+          communitiesState.membersManager.errorMessage =
+            error instanceof Error ? error.message : "Не удалось обновить список участников.";
+          refreshCommunitiesPage(root);
+        });
+      return;
+    }
+
+    if (target instanceof HTMLSelectElement && target.matches("[data-community-member-role]")) {
+      const bundle = communitiesState.activeCommunity;
+      const profileId = Number(target.getAttribute("data-community-member-role"));
+      const nextRole = target.value;
+      if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
+      if (
+        nextRole !== "owner" &&
+        nextRole !== "admin" &&
+        nextRole !== "moderator" &&
+        nextRole !== "member" &&
+        nextRole !== "blocked"
+      ) {
+        return;
+      }
+
+      communitiesState.membersManager.confirmAction = {
+        type: "role",
+        profileId,
+        newRole: nextRole,
+      };
+      refreshCommunitiesPage(root);
     }
   });
 
@@ -834,8 +1076,8 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     if (stepButton instanceof HTMLButtonElement && communitiesState.form.mode === "edit") {
       syncCommunityFormFromDom(root);
       const nextStep = Number(stepButton.getAttribute("data-community-form-step"));
-      if (nextStep >= 1 && nextStep <= 5) {
-        communitiesState.form.step = nextStep as 1 | 2 | 3 | 4 | 5;
+      if (nextStep >= 1 && nextStep <= 4) {
+        communitiesState.form.step = nextStep as 1 | 2 | 3 | 4;
         communitiesState.form.errorMessage = "";
         refreshCommunitiesPage(root);
       }
@@ -880,6 +1122,60 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       return;
     }
 
+    const pickMediaButton = target.closest("[data-community-media-pick]");
+    if (pickMediaButton instanceof HTMLButtonElement) {
+      const kind = pickMediaButton.getAttribute("data-community-media-pick");
+      if (kind === "avatar" || kind === "cover") {
+        const input = root.querySelector<HTMLInputElement>(`[data-community-${kind}-input]`);
+        if (input) {
+          input.value = "";
+          input.click();
+        }
+      }
+      return;
+    }
+
+    const resetMediaButton = target.closest("[data-community-media-delete]");
+    if (resetMediaButton instanceof HTMLButtonElement) {
+      const kind = resetMediaButton.getAttribute("data-community-media-delete");
+      if (kind === "avatar" || kind === "cover") {
+        const editor =
+          kind === "avatar"
+            ? communitiesState.form.avatarEditor
+            : communitiesState.form.coverEditor;
+        const hasCurrent = Boolean(
+          kind === "avatar"
+            ? communitiesState.form.currentAvatarUrl
+            : communitiesState.form.currentCoverUrl,
+        );
+        if (hasCurrent && !editor.dirty) {
+          removeCommunityMedia(kind, root);
+        } else {
+          resetCommunityMediaChanges(kind, root);
+        }
+        refreshCommunitiesPage(root);
+      }
+      return;
+    }
+
+    const rotateLeftMediaButton = target.closest("[data-community-media-rotate-left]");
+    if (rotateLeftMediaButton instanceof HTMLButtonElement) {
+      const kind = rotateLeftMediaButton.getAttribute("data-community-media-rotate-left");
+      if (kind === "avatar" || kind === "cover") {
+        rotateCommunityMedia(kind, root, "left");
+      }
+      return;
+    }
+
+    const rotateRightMediaButton = target.closest("[data-community-media-rotate-right]");
+    if (rotateRightMediaButton instanceof HTMLButtonElement) {
+      const kind = rotateRightMediaButton.getAttribute("data-community-media-rotate-right");
+      if (kind === "avatar" || kind === "cover") {
+        rotateCommunityMedia(kind, root, "right");
+      }
+      return;
+    }
+
     const nextStepButton = target.closest("[data-community-form-next]");
     if (nextStepButton instanceof HTMLButtonElement) {
       goToNextCommunityFormStep(root);
@@ -891,17 +1187,6 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       communitiesState.form.errorMessage = "";
       prevCommunityFormStep();
       refreshCommunitiesPage(root);
-      return;
-    }
-
-    const typeOptionButton = target.closest("[data-community-type]");
-    if (typeOptionButton instanceof HTMLButtonElement) {
-      const type = typeOptionButton.getAttribute("data-community-type");
-      if (type && isCommunityType(type)) {
-        communitiesState.form.type = type;
-        communitiesState.form.errorMessage = "";
-        refreshCommunitiesPage(root);
-      }
       return;
     }
 
@@ -952,10 +1237,258 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       return;
     }
 
+    const membersOpenButton = target.closest("[data-community-members-open]");
+    if (membersOpenButton instanceof HTMLButtonElement) {
+      const bundle = communitiesState.activeCommunity;
+      if (!bundle) return;
+
+      closeCommunityMenus(root);
+      communitiesState.membersManager.open = true;
+      communitiesState.membersManager.errorMessage = "";
+      communitiesState.membersLoading = true;
+      refreshCommunitiesPage(root);
+      void loadCommunityMembers(bundle.community.id, communitiesState.membersManager.includeBlocked)
+        .then(() => {
+          refreshCommunitiesPage(root);
+        })
+        .catch((error: unknown) => {
+          communitiesState.membersManager.errorMessage =
+            error instanceof Error ? error.message : "Не удалось загрузить участников.";
+          refreshCommunitiesPage(root);
+        });
+      return;
+    }
+
+    const membersCloseButton = target.closest("[data-community-members-close]");
+    const membersBackdrop = target.closest("[data-community-members-modal]");
+    if (
+      membersCloseButton instanceof HTMLButtonElement ||
+      (membersBackdrop === target && bindableRoot.__communityMembersBackdropPressStarted)
+    ) {
+      bindableRoot.__communityMembersBackdropPressStarted = false;
+      communitiesState.membersManager.open = false;
+      communitiesState.membersManager.errorMessage = "";
+      refreshCommunitiesPage(root);
+      return;
+    }
+
+    const joinButton = target.closest("[data-community-join]");
+    if (joinButton instanceof HTMLButtonElement) {
+      const bundle = communitiesState.activeCommunity;
+      if (!bundle) return;
+
+      closeCommunityMenus(root);
+      communitiesState.membershipLoading = true;
+      communitiesState.membersLoading = true;
+      communitiesState.membersLoaded = false;
+      refreshCommunitiesPage(root);
+      void (async () => {
+        try {
+          await Promise.all([joinCommunity(bundle.community.id), waitMinimumSkeletonTime(800)]);
+          const freshBundle = await getCommunityById(bundle.community.id);
+          syncCommunityBundle(freshBundle);
+          setActiveCommunity(freshBundle);
+          await Promise.all([
+            loadCommunityMembers(
+              freshBundle.community.id,
+              communitiesState.membersManager.includeBlocked,
+            ),
+            loadCommunityPosts(freshBundle),
+          ]);
+          communitiesState.membershipLoading = false;
+          refreshCommunitiesPage(root);
+        } catch (error) {
+          communitiesState.membershipLoading = false;
+          communitiesState.errorMessage =
+            error instanceof Error ? error.message : "Не удалось вступить в сообщество.";
+          refreshCommunitiesPage(root);
+        }
+      })();
+      return;
+    }
+
+    const leaveConfirmButton = target.closest("[data-community-leave-confirm]");
+    if (leaveConfirmButton instanceof HTMLButtonElement) {
+      const communityId = leaveConfirmButton.getAttribute("data-community-leave-confirm");
+      const bundle = communityId ? findCommunityById(communityId) : null;
+      if (!bundle) return;
+
+      communitiesState.leaveConfirmId = null;
+      communitiesState.membershipLoading = true;
+      communitiesState.membersLoading = true;
+      communitiesState.membersLoaded = false;
+      refreshCommunitiesPage(root);
+      void (async () => {
+        try {
+          await Promise.all([leaveCommunity(bundle.community.id), waitMinimumSkeletonTime(800)]);
+          const freshBundle = await getCommunityById(bundle.community.id);
+          syncCommunityBundle(freshBundle);
+          if (communitiesState.activeCommunity?.community.id === bundle.community.id) {
+            setActiveCommunity(freshBundle);
+            await Promise.all([
+              loadCommunityMembers(
+                freshBundle.community.id,
+                communitiesState.membersManager.includeBlocked,
+              ),
+              loadCommunityPosts(freshBundle),
+            ]);
+          }
+          communitiesState.membershipLoading = false;
+          refreshCommunitiesPage(root);
+        } catch (error) {
+          communitiesState.membershipLoading = false;
+          communitiesState.leaveConfirmId = null;
+          communitiesState.errorMessage =
+            error instanceof Error ? error.message : "Не удалось покинуть сообщество.";
+          refreshCommunitiesPage(root);
+        }
+      })();
+      return;
+    }
+
+    const leaveCloseButton = target.closest("[data-community-leave-close]");
+    const leaveBackdrop = target.closest("[data-community-leave-modal]");
+    if (
+      leaveCloseButton instanceof HTMLButtonElement ||
+      (leaveBackdrop === target && bindableRoot.__communityLeaveBackdropPressStarted)
+    ) {
+      bindableRoot.__communityLeaveBackdropPressStarted = false;
+      communitiesState.leaveConfirmId = null;
+      refreshCommunitiesPage(root);
+      return;
+    }
+
+    const switchFeedButton = target.closest("[data-community-post-feed]");
+    if (switchFeedButton instanceof HTMLButtonElement) {
+      const bundle = communitiesState.activeCommunity;
+      const nextMode = switchFeedButton.getAttribute("data-community-post-feed");
+      if (!bundle || (nextMode !== "all" && nextMode !== "official")) {
+        return;
+      }
+
+      communitiesState.postFeedMode = nextMode;
+      refreshCommunitiesPage(root);
+      void loadCommunityPosts(bundle)
+        .then(() => {
+          refreshCommunitiesPage(root);
+        })
+        .catch((error: unknown) => {
+          communitiesState.errorMessage =
+            error instanceof Error ? error.message : "Не удалось переключить ленту сообщества.";
+          refreshCommunitiesPage(root);
+        });
+      return;
+    }
+
+    const removeMemberButton = target.closest("[data-community-member-remove]");
+    if (removeMemberButton instanceof HTMLButtonElement) {
+      const bundle = communitiesState.activeCommunity;
+      const profileId = Number(removeMemberButton.getAttribute("data-community-member-remove"));
+      if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
+
+      communitiesState.membersManager.confirmAction = { type: "remove", profileId };
+      communitiesState.membersManager.errorMessage = "";
+      refreshCommunitiesPage(root);
+      return;
+    }
+
+    const unblockMemberButton = target.closest("[data-community-member-unblock]");
+    if (unblockMemberButton instanceof HTMLButtonElement) {
+      const bundle = communitiesState.activeCommunity;
+      const profileId = Number(unblockMemberButton.getAttribute("data-community-member-unblock"));
+      if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
+
+      communitiesState.membersManager.confirmAction = { type: "remove", profileId };
+      communitiesState.membersManager.errorMessage = "";
+      refreshCommunitiesPage(root);
+      return;
+    }
+
+    const memberConfirmOkButton = target.closest("[data-member-confirm-ok]");
+    if (memberConfirmOkButton instanceof HTMLButtonElement) {
+      const action = communitiesState.membersManager.confirmAction;
+      const bundle = communitiesState.activeCommunity;
+      if (!action || !bundle) return;
+
+      communitiesState.membersManager.confirmAction = null;
+      communitiesState.membersManager.errorMessage = "";
+
+      if (action.type === "remove") {
+        communitiesState.membersManager.removingProfileId = action.profileId;
+        refreshCommunitiesPage(root);
+        void (async () => {
+          try {
+            await Promise.all([
+              removeCommunityMember(bundle.community.id, action.profileId),
+              waitMinimumSkeletonTime(600),
+            ]);
+            setActiveMembers(
+              communitiesState.activeMembers.filter((m) => m.profileId !== action.profileId),
+            );
+            const freshBundle = await getCommunityById(bundle.community.id);
+            syncCommunityBundle(freshBundle);
+            setActiveCommunity(freshBundle);
+          } catch (error) {
+            communitiesState.membersManager.errorMessage =
+              error instanceof Error ? error.message : "Не удалось удалить участника.";
+          } finally {
+            communitiesState.membersManager.removingProfileId = null;
+            refreshCommunitiesPage(root);
+          }
+        })();
+      } else {
+        communitiesState.membersManager.changingRoleProfileId = action.profileId;
+        refreshCommunitiesPage(root);
+        void (async () => {
+          try {
+            const [updatedMember] = await Promise.all([
+              changeCommunityMemberRole(bundle.community.id, action.profileId, action.newRole),
+              waitMinimumSkeletonTime(600),
+            ]);
+            setActiveMembers(
+              communitiesState.activeMembers.map((m) =>
+                m.profileId === action.profileId ? updatedMember : m,
+              ),
+            );
+            if (updatedMember.isSelf && communitiesState.activeCommunity) {
+              syncCommunityBundle({
+                ...communitiesState.activeCommunity,
+                membership: {
+                  isMember: true,
+                  role: updatedMember.blocked ? "blocked" : updatedMember.role,
+                  blocked: updatedMember.blocked,
+                },
+              });
+            }
+          } catch (error) {
+            communitiesState.membersManager.errorMessage =
+              error instanceof Error ? error.message : "Не удалось изменить роль участника.";
+          } finally {
+            communitiesState.membersManager.changingRoleProfileId = null;
+            refreshCommunitiesPage(root);
+          }
+        })();
+      }
+      return;
+    }
+
+    const memberConfirmCloseButton = target.closest("[data-member-confirm-close]");
+    const memberConfirmBackdrop = target.closest("[data-member-confirm-modal]");
+    if (
+      memberConfirmCloseButton instanceof HTMLButtonElement ||
+      (memberConfirmBackdrop === target && bindableRoot.__memberConfirmBackdropPressStarted)
+    ) {
+      bindableRoot.__memberConfirmBackdropPressStarted = false;
+      communitiesState.membersManager.confirmAction = null;
+      refreshCommunitiesPage(root);
+      return;
+    }
+
     const openPostButton = target.closest("[data-community-post-open]");
     if (openPostButton instanceof HTMLButtonElement) {
       closeCommunityPostMenus(root);
-      openCommunityPostComposer();
+      const authorMode = openPostButton.getAttribute("data-community-post-open");
+      openCommunityPostComposer(authorMode === "member" ? "member" : "community");
       refreshCommunitiesPage(root);
       return;
     }
@@ -963,9 +1496,16 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     const editPostButton = target.closest("[data-community-post-edit]");
     if (editPostButton instanceof HTMLButtonElement) {
       const postId = editPostButton.getAttribute("data-community-post-edit");
+      const bundle = communitiesState.activeCommunity;
+      const post = postId ? communitiesState.activePosts.find((item) => item.id === postId) : null;
       if (postId) {
         closeCommunityPostMenus(root);
-        openEditCommunityPostComposer(postId);
+        openEditCommunityPostComposer(
+          postId,
+          bundle && post && Number(post.authorId) === bundle.community.profileId
+            ? "community"
+            : "member",
+        );
         refreshCommunitiesPage(root);
       }
       return;
@@ -1075,6 +1615,8 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     },
     { passive: true },
   );
+
+  syncCommunityMediaEditorsUi(root);
 }
 
 export async function prefetchCommunities(): Promise<void> {

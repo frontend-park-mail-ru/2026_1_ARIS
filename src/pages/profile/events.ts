@@ -4,7 +4,7 @@
  * Содержит пользовательские сценарии и реакцию интерфейса на действия пользователя.
  */
 import { createOrResolvePrivateChatId } from "../../api/chat";
-import { createPost, deletePost, updatePost } from "../../api/posts";
+import { createPost, deletePost, likePost, unlikePost, updatePost } from "../../api/posts";
 import {
   acceptFriendRequest,
   declineFriendRequest,
@@ -113,6 +113,24 @@ function rerenderProfilePostsSection(root: Document | HTMLElement): void {
   section.replaceWith(next);
   applyProfilePostFilters(root);
   initProfilePostListLayout(root);
+}
+
+function updateProfilePostLikeState(postId: string, likes: number, isLiked: boolean): void {
+  const nextPosts = currentProfilePosts.map((post) =>
+    post.id === postId
+      ? {
+          ...post,
+          likes,
+          isLiked,
+        }
+      : post,
+  );
+
+  setCurrentProfilePosts(nextPosts);
+
+  if (currentProfile?.isOwnProfile) {
+    writeJsonStorage(OWN_PROFILE_POSTS_CACHE_KEY, nextPosts);
+  }
 }
 
 async function waitForNextPaint(): Promise<void> {
@@ -261,6 +279,32 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
     if (!target.closest(".profile-post__actions") && !target.closest("[data-profile-post-menu]")) {
       closeProfilePostMenus(root);
+    }
+
+    const likePostButton = target.closest("[data-profile-post-like]");
+    if (likePostButton instanceof HTMLButtonElement) {
+      const postId = likePostButton.getAttribute("data-profile-post-like");
+      const post = postId ? currentProfilePosts.find((item) => item.id === postId) : null;
+      if (!postId || !post || likePostButton.disabled) {
+        return;
+      }
+
+      likePostButton.disabled = true;
+      void (post.isLiked ? unlikePost(postId) : likePost(postId))
+        .then((updatedPost) => {
+          updateProfilePostLikeState(
+            postId,
+            updatedPost.likes ?? 0,
+            updatedPost.isLiked ?? !post.isLiked,
+          );
+          clearFeedCache();
+          rerenderProfilePostsSection(root);
+        })
+        .catch((error: unknown) => {
+          console.error("[profile] like toggle failed", error);
+          likePostButton.disabled = false;
+        });
+      return;
     }
 
     const openPostComposerButton = target.closest("[data-profile-post-open]");
@@ -438,6 +482,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
               timeRaw: savedPost.createdAt ?? "",
               ...(savedPost.updatedAt ? { updatedAtRaw: savedPost.updatedAt } : {}),
               likes: savedPost.likes ?? 0,
+              isLiked: savedPost.isLiked ?? false,
               reposts: 0,
               comments: 0,
               media: Array.isArray(savedPost.media) ? savedPost.media : [],

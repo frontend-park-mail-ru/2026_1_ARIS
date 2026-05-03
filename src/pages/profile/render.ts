@@ -520,6 +520,7 @@ export function renderProfilePosts(
     time: "",
     timeRaw: "",
     likes: 0,
+    isLiked: false,
     reposts: 0,
     comments: 0,
     media: [],
@@ -697,10 +698,20 @@ export function renderProfilePosts(
 
                       <footer class="profile-post__footer">
                         <div class="profile-post__stats">
-                          <span class="profile-post__stat">
-                            <img src="/assets/img/icons/heart.svg" class="profile-post__icon" alt="" />
-                            ${post.likes}
-                          </span>
+                          <button
+                            type="button"
+                            class="profile-post__stat profile-post__stat-button${
+                              post.isLiked ? " profile-post__stat-button--liked" : ""
+                            }"
+                            data-profile-post-like="${escapeHtml(post.id)}"
+                            aria-pressed="${post.isLiked ? "true" : "false"}"
+                            aria-label="Лайки"
+                          >
+                            <span class="profile-post__stat-icon">
+                              <img src="/assets/img/icons/heart.svg" class="profile-post__icon" alt="" />
+                            </span>
+                            <span>${post.likes}</span>
+                          </button>
                           <span class="profile-post__stat">
                             <img src="/assets/img/icons/repost.svg" class="profile-post__icon" alt="" />
                             ${post.reposts}

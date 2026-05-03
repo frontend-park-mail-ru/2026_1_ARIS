@@ -1369,6 +1369,46 @@
     line-height: var(--line-height-solid);
   }
 
+  .profile-post__stat-button {
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease,
+      color 0.2s ease;
+  }
+
+  .profile-post__stat-button:hover {
+    opacity: 0.75;
+  }
+
+  .profile-post__stat-button:active {
+    transform: var(--control-press-transform);
+  }
+
+  .profile-post__stat-button:focus-visible {
+    outline: none;
+    box-shadow: var(--control-focus-ring);
+  }
+
+  .profile-post__stat-button--liked {
+    color: rgb(220 38 38);
+  }
+
+  .profile-post__stat-icon {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    flex-shrink: 0;
+  }
+
   .profile-post__icon {
     width: 18px;
     height: 18px;
@@ -1376,6 +1416,14 @@
     flex-shrink: 0;
     opacity: 0.9;
     object-fit: contain;
+  }
+
+  .profile-post__stat-button--liked .profile-post__stat-icon {
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='14' viewBox='0 0 16 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.6609 1.8746C13.3204 1.53394 12.9161 1.2637 12.4711 1.07932C12.0262 0.894947 11.5492 0.800049 11.0676 0.800049C10.5859 0.800049 10.109 0.894947 9.66401 1.07932C9.21903 1.2637 8.81475 1.53394 8.47424 1.8746L7.76758 2.58127L7.06091 1.8746C6.37311 1.1868 5.44026 0.800405 4.46758 0.800405C3.49489 0.800405 2.56204 1.1868 1.87424 1.8746C1.18645 2.56239 0.800049 3.49524 0.800049 4.46793C0.800049 5.44062 1.18645 6.37347 1.87424 7.06127L7.76758 12.9546L13.6609 7.06127C14.0016 6.72076 14.2718 6.31648 14.4562 5.8715C14.6406 5.42653 14.7355 4.94959 14.7355 4.46793C14.7355 3.98627 14.6406 3.50934 14.4562 3.06436C14.2718 2.61939 14.0016 2.2151 13.6609 1.8746Z' fill='%23DC2626'/%3E%3C/svg%3E");
+  }
+
+  .profile-post__stat-button--liked .profile-post__stat-icon .profile-post__icon {
+    opacity: 0;
   }
 
   .profile-right-rail {

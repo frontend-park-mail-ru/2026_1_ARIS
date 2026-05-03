@@ -41,6 +41,8 @@ export type PostcardPost = {
   timeRaw?: string;
   /** Количество лайков. */
   likes: number;
+  /** Поставил ли текущий пользователь лайк. */
+  isLiked?: boolean;
   /** Количество комментариев. */
   comments: number;
   /** Количество репостов. */
@@ -53,6 +55,7 @@ type PostcardStatOptions = {
   icon: string;
   count: number;
   action: string;
+  isLiked?: boolean;
 };
 
 type PostcardMediaOptions = {
@@ -156,17 +159,20 @@ function shouldRenderExpandButtonInitially(text: string): boolean {
  *   action: "like",
  * });
  */
-function renderPostcardStat({ icon, count, action }: PostcardStatOptions): string {
+function renderPostcardStat({ icon, count, action, isLiked }: PostcardStatOptions): string {
   const isAuthorised = getSessionUser() !== null;
   const accessibleName = getPostcardStatAccessibleName(action, count);
+  const liked = action === "like" && Boolean(isLiked);
 
   if (isAuthorised) {
     return `
       <button
         type="button"
-        class="postcard__stat postcard__stat-button"
+        class="postcard__stat postcard__stat-button${liked ? " postcard__stat-button--liked" : ""}"
         data-action="${action}"
+        data-liked="${liked}"
         aria-label="${accessibleName}"
+        aria-pressed="${liked}"
       >
         <span class="postcard__stat-icon" aria-hidden="true">
           <img src="${icon}" alt="">
@@ -314,13 +320,19 @@ export function renderPostcardInner(
 ): string {
   const sessionUser = getSessionUser();
   const shouldShowExpandInitially = shouldRenderExpandButtonInitially(post.text);
+  const likeStatOptions: PostcardStatOptions = {
+    icon: "/assets/img/icons/heart.svg",
+    count: post.likes,
+    action: "like",
+  };
+
+  if (typeof post.isLiked === "boolean") {
+    likeStatOptions.isLiked = post.isLiked;
+  }
+
   const statsMarkup = `
     <div class="postcard__stats">
-      ${renderPostcardStat({
-        icon: "/assets/img/icons/heart.svg",
-        count: post.likes,
-        action: "like",
-      })}
+      ${renderPostcardStat(likeStatOptions)}
       ${renderPostcardStat({
         icon: "/assets/img/icons/repost.svg",
         count: post.reposts,
@@ -343,7 +355,7 @@ export function renderPostcardInner(
   });
 
   return `
-    <article class="postcard content-card">
+    <article class="postcard content-card" data-post-id="${escapeHtml(String(post.id ?? ""))}">
       <header class="postcard__header">
         ${renderPostcardAvatar(post, displayName)}
         <a

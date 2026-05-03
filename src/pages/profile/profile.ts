@@ -10,6 +10,7 @@
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import {
+  getPostById,
   getMyPosts,
   getPostsByProfileId,
   type PostMedia,
@@ -271,7 +272,8 @@ function mapApiPostToProfilePost(post: PostResponse, profile: DisplayProfile): P
     text: typeof post.text === "string" ? post.text : "",
     time: formatPostRelativeTime(post.createdAt),
     timeRaw: post.createdAt ?? "",
-    likes: 0,
+    likes: post.likes ?? 0,
+    isLiked: post.isLiked ?? false,
     reposts: 0,
     comments: 0,
     media,
@@ -303,7 +305,24 @@ async function resolveProfilePosts(
     const posts = profile.isOwnProfile
       ? await getMyPosts(signal)
       : await getPostsByProfileId(profile.id, signal);
-    const mappedPosts = posts.map((post) => mapApiPostToProfilePost(post, profile));
+    const hydratedPosts = await Promise.all(
+      posts.map(async (post) => {
+        if (!post?.id) {
+          return post;
+        }
+
+        try {
+          return await getPostById(post.id, signal);
+        } catch (error) {
+          if (error instanceof Error && error.name === "AbortError") {
+            throw error;
+          }
+
+          return post;
+        }
+      }),
+    );
+    const mappedPosts = hydratedPosts.map((post) => mapApiPostToProfilePost(post, profile));
 
     if (profile.isOwnProfile) {
       writeJsonStorage(OWN_PROFILE_POSTS_CACHE_KEY, mappedPosts);

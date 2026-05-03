@@ -11,6 +11,8 @@ import { getCommunityMediaAvatarInitials, syncCommunityMediaEditorsUi } from "./
 import {
   canDeleteCommunityPost,
   canEditCommunityPost,
+  canManageCommunityMemberRole,
+  canRemoveCommunityMember,
   escapeHtml,
   formatMemberJoinDate,
   formatPostExactTime,
@@ -441,10 +443,20 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
 
       <footer class="profile-post__footer">
         <div class="profile-post__stats">
-          <span class="profile-post__stat">
-            <img src="/assets/img/icons/heart.svg" class="profile-post__icon" alt="" />
-            ${post.likes}
-          </span>
+          <button
+            type="button"
+            class="profile-post__stat profile-post__stat-button${
+              post.isLiked ? " profile-post__stat-button--liked" : ""
+            }"
+            data-community-post-like="${escapeHtml(post.id)}"
+            aria-pressed="${post.isLiked ? "true" : "false"}"
+            aria-label="Лайки"
+          >
+            <span class="profile-post__stat-icon">
+              <img src="/assets/img/icons/heart.svg" class="profile-post__icon" alt="" />
+            </span>
+            <span>${post.likes}</span>
+          </button>
           <span class="profile-post__stat">
             <img src="/assets/img/icons/repost.svg" class="profile-post__icon" alt="" />
             ${post.reposts}
@@ -526,6 +538,7 @@ function renderCommunityPosts(bundle: CommunityBundle, posts: ProfilePost[]): st
         time: "",
         timeRaw: "",
         likes: 0,
+        isLiked: false,
         reposts: 0,
         comments: 0,
         media: [],
@@ -1101,10 +1114,8 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
               : members.length
                 ? members
                     .map((member) => {
-                      const canChange =
-                        bundle.permissions.canChangeRoles &&
-                        !(member.isSelf && member.role === "owner");
-                      const canRemove = bundle.permissions.canManageMembers && !member.isSelf;
+                      const canChange = canManageCommunityMemberRole(bundle, member);
+                      const canRemove = canRemoveCommunityMember(bundle, member);
                       const isProcessing =
                         manager.changingRoleProfileId === member.profileId ||
                         manager.removingProfileId === member.profileId;

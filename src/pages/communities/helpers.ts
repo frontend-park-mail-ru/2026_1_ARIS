@@ -34,9 +34,57 @@ export function getRoleLabel(role: string): string {
     admin: "Администратор",
     moderator: "Модератор",
     member: "Участник",
-    blocked: "Заблокирован",
+    blocked: "Заблокированный",
   };
   return labels[role] ?? "";
+}
+
+function getCommunityRolePriority(role: string): number {
+  switch (role) {
+    case "owner":
+      return 4;
+    case "admin":
+      return 3;
+    case "moderator":
+      return 2;
+    case "member":
+    case "blocked":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+export function canManageCommunityMemberRole(
+  bundle: CommunityBundle,
+  member: CommunityMember,
+): boolean {
+  if (!bundle.permissions.canChangeRoles || member.isSelf || member.role === "owner") {
+    return false;
+  }
+
+  const actorRole = bundle.membership.role;
+  if (actorRole === "moderator" && getCommunityRolePriority(member.role) >= 3) {
+    return false;
+  }
+
+  return true;
+}
+
+export function canRemoveCommunityMember(
+  bundle: CommunityBundle,
+  member: CommunityMember,
+): boolean {
+  if (!bundle.permissions.canManageMembers || member.isSelf || member.role === "owner") {
+    return false;
+  }
+
+  const actorRole = bundle.membership.role;
+  if (actorRole === "moderator" && getCommunityRolePriority(member.role) >= 3) {
+    return false;
+  }
+
+  return true;
 }
 
 export function getMemberDisplayName(member: CommunityMember): string {
@@ -192,6 +240,7 @@ export function mapPostToCommunityPost(
     timeRaw: post.createdAt ?? "",
     ...(post.updatedAt ? { updatedAtRaw: post.updatedAt } : {}),
     likes: post.likes ?? 0,
+    isLiked: post.isLiked ?? false,
     reposts: 0,
     comments: 0,
     media,

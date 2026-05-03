@@ -12,6 +12,7 @@ import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { getFeed, getPublicFeed, mapFeedResponse, type PostcardModel } from "../../api/feed";
+import { likePost, unlikePost } from "../../api/posts";
 import { getFriends, type Friend } from "../../api/friends";
 import { getFeedMode, getSessionUser } from "../../state/session";
 import { prepareAvatarLinks } from "../../utils/avatar";
@@ -37,6 +38,7 @@ export { clearFeedCache, clearFeedCacheLocal } from "./cache";
 export { initFeedInfiniteScroll } from "./scroll";
 
 const FEED_BATCH_SIZE = 10;
+let isFeedLikeBound = false;
 
 function isOfflineNetworkError(error: unknown): boolean {
   return !navigator.onLine || error instanceof TypeError;
@@ -55,6 +57,118 @@ function isFeedMode(value: string): value is FeedMode {
 function getCurrentFeedMode(): FeedMode {
   const mode = getFeedMode();
   return isFeedMode(mode) ? mode : "by-time";
+}
+
+function formatStatCount(count: number): string {
+  if (count >= 1000000) {
+    return `${Math.floor(count / 1000000)}м`;
+  }
+
+  if (count >= 1000) {
+    return `${Math.floor(count / 1000)}к`;
+  }
+
+  return String(count);
+}
+
+function updateActiveFeedPostLikeState(postId: string, likes: number, isLiked: boolean): void {
+  if (!activeFeedState) {
+    return;
+  }
+
+  const nextItems = activeFeedState.items.map((item) =>
+    item.id === postId
+      ? {
+          ...item,
+          likes,
+          isLiked,
+        }
+      : item,
+  );
+  const nextState: ActiveFeedState = {
+    ...activeFeedState,
+    items: nextItems,
+  };
+  const authKey: FeedAuthKey = getSessionUser() ? "authorised" : "guest";
+  const modeKey = getCurrentFeedMode();
+
+  feedItemsCache.set(`${authKey}:${modeKey}`, nextItems);
+  persistFeedItems(authKey, modeKey, nextItems);
+  setActiveFeedState(nextState);
+}
+
+function syncFeedPostLikeUi(postId: string): void {
+  if (!activeFeedState) {
+    return;
+  }
+
+  const post = activeFeedState.items.find((item) => item.id === postId);
+  if (!post) {
+    return;
+  }
+
+  document
+    .querySelectorAll<HTMLButtonElement>(
+      `[data-feed-list] [data-post-id="${CSS.escape(postId)}"] .postcard__stat-button[data-action="like"]`,
+    )
+    .forEach((button) => {
+      button.classList.toggle("postcard__stat-button--liked", Boolean(post.isLiked));
+      button.dataset.liked = String(Boolean(post.isLiked));
+      button.setAttribute("aria-pressed", String(Boolean(post.isLiked)));
+      button.setAttribute("aria-label", `${formatStatCount(post.likes)} лайков`);
+      button.disabled = false;
+
+      const count = button.querySelector<HTMLElement>(".postcard__stat-count");
+      if (count) {
+        count.textContent = formatStatCount(post.likes);
+      }
+    });
+}
+
+function bindFeedLikeActions(): void {
+  if (isFeedLikeBound) {
+    return;
+  }
+
+  document.addEventListener("click", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const likeButton = target.closest('.postcard__stat-button[data-action="like"]');
+    if (!(likeButton instanceof HTMLButtonElement) || likeButton.disabled) {
+      return;
+    }
+
+    if (!(likeButton.closest("[data-feed-list]") instanceof HTMLElement)) {
+      return;
+    }
+
+    const card = likeButton.closest<HTMLElement>("[data-post-id]");
+    const postId = card?.dataset.postId ?? "";
+    const post = activeFeedState?.items.find((item) => item.id === postId);
+    if (!postId || !post) {
+      return;
+    }
+
+    likeButton.disabled = true;
+    void (post.isLiked ? unlikePost(postId) : likePost(postId))
+      .then((updatedPost) => {
+        updateActiveFeedPostLikeState(
+          postId,
+          updatedPost.likes ?? 0,
+          updatedPost.isLiked ?? !post.isLiked,
+        );
+        syncFeedPostLikeUi(postId);
+      })
+      .catch((error: unknown) => {
+        console.error("[feed] like toggle failed", error);
+        likeButton.disabled = false;
+      });
+  });
+
+  isFeedLikeBound = true;
 }
 
 /**
@@ -260,6 +374,7 @@ export async function renderFeed(
   _params?: Record<string, string>,
   signal?: AbortSignal,
 ): Promise<string> {
+  bindFeedLikeActions();
   const isAuthorised = getSessionUser() !== null;
   const feedResult = await getCachedFeedData(isAuthorised, signal);
   await prepareAvatarLinks([
@@ -327,6 +442,7 @@ async function refreshFeedOnReturn(): Promise<void> {
 }
 
 window.addEventListener("apprender", () => {
+  bindFeedLikeActions();
   initFeedInfiniteScroll();
 });
 

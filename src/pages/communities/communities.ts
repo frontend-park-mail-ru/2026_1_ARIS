@@ -23,6 +23,8 @@ import {
   deletePost,
   getOfficialCommunityPosts,
   getPostsByCommunityId,
+  likePost,
+  unlikePost,
   updatePost,
   uploadPostImages,
 } from "../../api/posts";
@@ -64,7 +66,13 @@ import {
   setActivePosts,
   setCommunities,
 } from "./state";
-import { isOfficialCommunityPost, mapPostToCommunityPost, slugifyCommunityTitle } from "./helpers";
+import {
+  isOfficialCommunityPost,
+  mapPostToCommunityPost,
+  slugifyCommunityTitle,
+  canManageCommunityMemberRole,
+  canRemoveCommunityMember,
+} from "./helpers";
 import {
   refreshCommunitiesList,
   refreshCommunitiesPage,
@@ -99,6 +107,20 @@ function syncCommunityBundle(bundle: CommunityBundle): void {
         item.community.id === bundle.community.id ? bundle : item,
       )
     : [bundle, ...communitiesState.items];
+}
+
+function updateCommunityPostLikeState(postId: string, likes: number, isLiked: boolean): void {
+  setActivePosts(
+    communitiesState.activePosts.map((post) =>
+      post.id === postId
+        ? {
+            ...post,
+            likes,
+            isLiked,
+          }
+        : post,
+    ),
+  );
 }
 
 async function ensureViewerProfileId(signal?: AbortSignal): Promise<void> {
@@ -990,6 +1012,12 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         return;
       }
 
+      const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
+      if (!member || !canManageCommunityMemberRole(bundle, member)) {
+        refreshCommunitiesPage(root);
+        return;
+      }
+
       communitiesState.membersManager.confirmAction = {
         type: "role",
         profileId,
@@ -1076,6 +1104,32 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       !target.closest("[data-community-post-menu]")
     ) {
       closeCommunityPostMenus(root);
+    }
+
+    const likePostButton = target.closest("[data-community-post-like]");
+    if (likePostButton instanceof HTMLButtonElement) {
+      const postId = likePostButton.getAttribute("data-community-post-like");
+      const post = postId ? communitiesState.activePosts.find((item) => item.id === postId) : null;
+      if (!postId || !post || likePostButton.disabled) {
+        return;
+      }
+
+      likePostButton.disabled = true;
+      void (post.isLiked ? unlikePost(postId) : likePost(postId))
+        .then((updatedPost) => {
+          updateCommunityPostLikeState(
+            postId,
+            updatedPost.likes ?? 0,
+            updatedPost.isLiked ?? !post.isLiked,
+          );
+          clearFeedCache();
+          refreshCommunitiesPage(root);
+        })
+        .catch((error: unknown) => {
+          console.error("[communities] like toggle failed", error);
+          likePostButton.disabled = false;
+        });
+      return;
     }
 
     const stepButton = target.closest("[data-community-form-step]");
@@ -1391,6 +1445,11 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const bundle = communitiesState.activeCommunity;
       const profileId = Number(removeMemberButton.getAttribute("data-community-member-remove"));
       if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
+      const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
+      if (!member || !canRemoveCommunityMember(bundle, member)) {
+        refreshCommunitiesPage(root);
+        return;
+      }
 
       communitiesState.membersManager.confirmAction = { type: "remove", profileId };
       communitiesState.membersManager.errorMessage = "";
@@ -1403,6 +1462,11 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const bundle = communitiesState.activeCommunity;
       const profileId = Number(unblockMemberButton.getAttribute("data-community-member-unblock"));
       if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
+      const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
+      if (!member || !canRemoveCommunityMember(bundle, member)) {
+        refreshCommunitiesPage(root);
+        return;
+      }
 
       communitiesState.membersManager.confirmAction = { type: "remove", profileId };
       communitiesState.membersManager.errorMessage = "";
@@ -1415,6 +1479,19 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const action = communitiesState.membersManager.confirmAction;
       const bundle = communitiesState.activeCommunity;
       if (!action || !bundle) return;
+      const member = communitiesState.activeMembers.find(
+        (item) => item.profileId === action.profileId,
+      );
+      if (
+        !member ||
+        (action.type === "remove" && !canRemoveCommunityMember(bundle, member)) ||
+        (action.type === "role" && !canManageCommunityMemberRole(bundle, member))
+      ) {
+        communitiesState.membersManager.confirmAction = null;
+        communitiesState.membersManager.errorMessage = "";
+        refreshCommunitiesPage(root);
+        return;
+      }
 
       communitiesState.membersManager.confirmAction = null;
       communitiesState.membersManager.errorMessage = "";

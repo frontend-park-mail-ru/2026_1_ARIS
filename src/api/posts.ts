@@ -13,6 +13,7 @@ import type { UploadedMedia } from "./profile";
 import { isNetworkUnavailableError } from "../state/network-status";
 import { clearFeedCache } from "../pages/feed/cache";
 import { enqueueRequest, OutboxQueuedError, registerOutboxSync } from "../utils/outbox-idb";
+import { rememberPostLikeState, resolvePostLikeState } from "../utils/post-like-state";
 
 export { ApiError };
 
@@ -55,6 +56,39 @@ export type PostResponse = {
   isLiked?: boolean;
 };
 
+function parseNumericCount(value: unknown): number | undefined {
+  const count =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : Number.NaN;
+
+  return Number.isFinite(count) ? count : undefined;
+}
+
+function parseBooleanFlag(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes", "y"].includes(normalized)) {
+      return true;
+    }
+    if (["false", "0", "no", "n"].includes(normalized)) {
+      return false;
+    }
+  }
+
+  return undefined;
+}
+
 type RawPostMedia = {
   mediaID?: number | string;
   mediaId?: number | string;
@@ -96,8 +130,10 @@ type RawPost = {
   author?: RawPostAuthor;
   createdAt?: string;
   updatedAt?: string | null;
-  likes?: number;
-  isLiked?: boolean;
+  likes?: number | string;
+  liked?: boolean | number | string;
+  isLiked?: boolean | number | string;
+  is_liked?: boolean | number | string;
 };
 
 type ProfilePostsResponse = {
@@ -186,9 +222,16 @@ function mapPost(raw: RawPost): PostResponse {
       ? raw.mediaUrl
       : [];
   const communityId = Number(raw.communityId);
+  const likes = parseNumericCount(raw.likes);
+  const rawIsLiked = parseBooleanFlag(raw.isLiked ?? raw.is_liked ?? raw.liked);
+  const resolvedPostId = Number(raw.id ?? raw.ID ?? 0);
+  const isLiked = resolvePostLikeState(resolvedPostId, rawIsLiked);
+  if (typeof rawIsLiked === "boolean" && resolvedPostId > 0) {
+    rememberPostLikeState(resolvedPostId, rawIsLiked);
+  }
 
   return {
-    id: Number(raw.id ?? raw.ID ?? 0),
+    id: resolvedPostId,
     profileID: Number(raw.profileID ?? raw.profileId ?? author?.profileID ?? 0),
     ...(Number.isFinite(communityId) && communityId > 0 ? { communityId } : {}),
     ...(media.length ? { media } : {}),
@@ -209,8 +252,8 @@ function mapPost(raw: RawPost): PostResponse {
     ...(author ? { author } : {}),
     ...(raw.createdAt ? { createdAt: String(raw.createdAt) } : {}),
     ...(raw.updatedAt ? { updatedAt: String(raw.updatedAt) } : {}),
-    ...(typeof raw.likes === "number" ? { likes: raw.likes } : {}),
-    ...(typeof raw.isLiked === "boolean" ? { isLiked: raw.isLiked } : {}),
+    ...(typeof likes === "number" ? { likes } : {}),
+    ...(typeof isLiked === "boolean" ? { isLiked } : {}),
   };
 }
 
@@ -310,6 +353,23 @@ export async function getOfficialCommunityPosts(
   return mapPostsApiResponse(data);
 }
 
+export async function getPostById(
+  postId: string | number,
+  signal?: AbortSignal,
+): Promise<PostResponse> {
+  const data = await apiRequest<RawPost | null>(
+    `/api/post/${encodeURIComponent(String(postId))}`,
+    { ...(signal ? { signal } : {}) },
+    null,
+  );
+
+  if (!data) {
+    throw new Error("Не удалось загрузить публикацию.");
+  }
+
+  return mapPost(data);
+}
+
 export async function createPost(payload: PostPayload): Promise<PostResponse> {
   const data = await mutatePost("/api/post/upload", "POST", payload);
   clearFeedCache();
@@ -332,6 +392,30 @@ export async function updatePost(
 export async function deletePost(postId: string | number): Promise<void> {
   await mutatePost(`/api/post/${encodeURIComponent(String(postId))}`, "DELETE");
   clearFeedCache();
+}
+
+export async function likePost(postId: string | number): Promise<PostResponse> {
+  const data = await apiRequest<RawPost | null>(
+    `/api/post/${encodeURIComponent(String(postId))}/likes`,
+    { method: "POST" },
+    null,
+  );
+  if (!data) throw new Error("Не удалось поставить лайк.");
+  const mapped = mapPost(data);
+  rememberPostLikeState(postId, mapped.isLiked ?? true);
+  return mapped;
+}
+
+export async function unlikePost(postId: string | number): Promise<PostResponse> {
+  const data = await apiRequest<RawPost | null>(
+    `/api/post/${encodeURIComponent(String(postId))}/likes`,
+    { method: "DELETE" },
+    null,
+  );
+  if (!data) throw new Error("Не удалось убрать лайк.");
+  const mapped = mapPost(data);
+  rememberPostLikeState(postId, mapped.isLiked ?? false);
+  return mapped;
 }
 
 export async function uploadPostImages(files: File[]): Promise<UploadedMedia[]> {

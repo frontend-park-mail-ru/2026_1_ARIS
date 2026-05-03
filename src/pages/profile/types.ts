@@ -162,6 +162,8 @@ export type ProfilePost = {
   updatedAtRaw?: string;
   /** Количество лайков. */
   likes: number;
+  /** Поставил ли текущий пользователь лайк. */
+  isLiked?: boolean;
   /** Количество репостов. */
   reposts: number;
   /** Количество комментариев. */

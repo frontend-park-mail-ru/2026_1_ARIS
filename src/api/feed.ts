@@ -7,6 +7,7 @@
  * - нормализацию backend-ответов в `PostcardModel`
  */
 import { apiRequest } from "./core/client";
+import { rememberPostLikeState, resolvePostLikeState } from "../utils/post-like-state";
 
 export type PostcardModel = {
   /** Идентификатор поста. */
@@ -29,6 +30,8 @@ export type PostcardModel = {
   text: string;
   /** Количество лайков. */
   likes: number;
+  /** Поставил ли текущий пользователь лайк. */
+  isLiked?: boolean;
   /** Количество комментариев. */
   comments: number;
   /** Количество репостов. */
@@ -36,6 +39,39 @@ export type PostcardModel = {
   /** Ссылки на изображения поста. */
   images: string[];
 };
+
+function parseNumericCount(value: unknown): number | undefined {
+  const count =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : Number.NaN;
+
+  return Number.isFinite(count) ? count : undefined;
+}
+
+function parseBooleanFlag(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes", "y"].includes(normalized)) {
+      return true;
+    }
+    if (["false", "0", "no", "n"].includes(normalized)) {
+      return false;
+    }
+  }
+
+  return undefined;
+}
 
 type FeedRequestOptions = {
   cursor?: string;
@@ -60,7 +96,10 @@ type FeedItem = {
   author?: FeedAuthor;
   text?: string;
   createdAt?: string;
-  likes?: number;
+  likes?: number | string;
+  liked?: boolean | number | string;
+  isLiked?: boolean | number | string;
+  is_liked?: boolean | number | string;
   comments?: number;
   reposts?: number;
   medias?: FeedMedia[];
@@ -113,6 +152,13 @@ function formatRelativeTime(iso?: string): string {
  * const card = mapFeedItemToPostcard(rawPost);
  */
 export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
+  const likes = parseNumericCount(item.likes) ?? 0;
+  const rawIsLiked = parseBooleanFlag(item.isLiked ?? item.is_liked ?? item.liked);
+  const isLiked = resolvePostLikeState(item.id ?? "", rawIsLiked);
+  if (typeof rawIsLiked === "boolean" && item.id) {
+    rememberPostLikeState(item.id, rawIsLiked);
+  }
+
   return {
     id: item.id ?? "",
     authorId: item.author?.id ?? "",
@@ -123,7 +169,8 @@ export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
     time: formatRelativeTime(item.createdAt),
     timeRaw: item.createdAt ?? "",
     text: item.text ?? "",
-    likes: item.likes ?? 0,
+    likes,
+    isLiked,
     comments: item.comments ?? 0,
     reposts: item.reposts ?? 0,
     images: Array.isArray(item.medias)

@@ -320,14 +320,19 @@ export function renderPostcardInner(
 ): string {
   const sessionUser = getSessionUser();
   const shouldShowExpandInitially = shouldRenderExpandButtonInitially(post.text);
+  const likeStatOptions: PostcardStatOptions = {
+    icon: "/assets/img/icons/heart.svg",
+    count: post.likes,
+    action: "like",
+  };
+
+  if (typeof post.isLiked === "boolean") {
+    likeStatOptions.isLiked = post.isLiked;
+  }
+
   const statsMarkup = `
     <div class="postcard__stats">
-      ${renderPostcardStat({
-        icon: "/assets/img/icons/heart.svg",
-        count: post.likes,
-        action: "like",
-        isLiked: post.isLiked,
-      })}
+      ${renderPostcardStat(likeStatOptions)}
       ${renderPostcardStat({
         icon: "/assets/img/icons/repost.svg",
         count: post.reposts,

@@ -20,6 +20,7 @@ import { hydrateFriendAvatarLinks } from "../friends/state";
 
 import type { FeedMode, FeedAuthKey, FeedCenterResult, ActiveFeedState } from "./types";
 import {
+  activeFeedState,
   feedItemsCache,
   setActiveFeedState,
   isFeedRefreshInFlight,

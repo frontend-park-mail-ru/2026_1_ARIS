@@ -3,6 +3,7 @@
  *
  * Содержит:
  * - загрузку своих и чужих постов;
+ * - загрузку постов сообщества;
  * - создание, редактирование и удаление;
  * - загрузку изображений для публикаций;
  * - офлайн-очередь через outbox при проблемах сети.
@@ -13,68 +14,97 @@ import { isNetworkUnavailableError } from "../state/network-status";
 import { clearFeedCache } from "../pages/feed/cache";
 import { enqueueRequest, OutboxQueuedError, registerOutboxSync } from "../utils/outbox-idb";
 
-// Повторно экспортируем `ApiError`, чтобы сохранить текущие импорты в других модулях.
 export { ApiError };
 
-/**
- * Тело запроса на создание или обновление поста.
- */
 export type PostPayload = {
-  /** Текст публикации. */
   text?: string;
-  /** Загруженные медиафайлы, привязываемые к посту. */
   media?: UploadedMedia[];
-  /** Идентификатор профиля, от имени которого создаётся публикация. */
   authorProfileId?: number;
+  communityId?: number;
 };
 
-/**
- * Медиавложение поста в клиентском формате.
- */
 export type PostMedia = {
-  /** Идентификатор медиафайла. */
   mediaID: number;
-  /** Ссылка на изображение. */
   mediaURL: string;
 };
 
-/**
- * Пост в ответах API.
- */
-export type PostResponse = {
-  /** Идентификатор поста. */
-  id: number;
-  /** Идентификатор профиля автора. */
+export type PostAuthor = {
   profileID: number;
-  /** Нормализованные медиавложения поста. */
-  media?: PostMedia[];
-  /** Устаревшее поле backend со списком ссылок на медиа. */
-  mediaURL?: string[];
-  /** Текст публикации. */
-  text?: string;
-  /** Имя автора. */
   firstName?: string;
-  /** Фамилия автора. */
   lastName?: string;
-  /** Идентификатор учётной записи автора. */
+  username?: string;
   userAccountID?: number;
-  /** Ссылка на аватар автора. */
   avatarURL?: string;
-  /** Дата создания в формате ISO. */
+};
+
+export type PostResponse = {
+  id: number;
+  profileID: number;
+  communityId?: number;
+  media?: PostMedia[];
+  mediaURL?: string[];
+  text?: string;
+  firstName?: string;
+  lastName?: string;
+  userAccountID?: number;
+  avatarURL?: string;
+  author?: PostAuthor;
   createdAt?: string;
-  /** Дата обновления в формате ISO. */
   updatedAt?: string;
-  /** Количество лайков. */
   likes?: number;
-  /** Признак лайка текущего пользователя. */
+  isLiked?: boolean;
+};
+
+type RawPostMedia = {
+  mediaID?: number | string;
+  mediaId?: number | string;
+  media_id?: number | string;
+  mediaURL?: string;
+  mediaUrl?: string;
+  media_url?: string;
+  url?: string;
+};
+
+type RawPostAuthor = {
+  profileID?: number | string;
+  profileId?: number | string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  userAccountID?: number | string;
+  userAccountId?: number | string;
+  avatarURL?: string | null;
+  avatarUrl?: string | null;
+};
+
+type RawPost = {
+  id?: number | string;
+  ID?: number | string;
+  profileID?: number | string;
+  profileId?: number | string;
+  communityId?: number | string | null;
+  media?: RawPostMedia[];
+  mediaURL?: string[];
+  mediaUrl?: string[];
+  text?: string | null;
+  firstName?: string;
+  lastName?: string;
+  userAccountID?: number | string;
+  userAccountId?: number | string;
+  avatarURL?: string | null;
+  avatarUrl?: string | null;
+  author?: RawPostAuthor;
+  createdAt?: string;
+  updatedAt?: string | null;
+  likes?: number;
   isLiked?: boolean;
 };
 
 type ProfilePostsResponse = {
-  posts?: PostResponse[];
+  posts?: RawPost[];
 };
 
-type PostsApiResponse = ProfilePostsResponse | PostResponse[];
+type PostsApiResponse = ProfilePostsResponse | RawPost[];
 
 type UploadedMediaPayload =
   | UploadedMedia
@@ -117,13 +147,88 @@ function mapUploadedMedia(raw: UploadedMediaPayload | null | undefined): Uploade
   return { mediaID, mediaURL };
 }
 
+function mapPostMedia(raw: RawPostMedia | null | undefined): PostMedia | null {
+  return mapUploadedMedia(raw);
+}
+
+function mapPostAuthor(raw: RawPostAuthor | null | undefined): PostAuthor | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+
+  const profileID = Number(raw.profileID ?? raw.profileId ?? 0);
+  if (!Number.isFinite(profileID) || profileID <= 0) {
+    return undefined;
+  }
+
+  return {
+    profileID,
+    ...(raw.firstName ? { firstName: String(raw.firstName) } : {}),
+    ...(raw.lastName ? { lastName: String(raw.lastName) } : {}),
+    ...(raw.username ? { username: String(raw.username) } : {}),
+    ...(Number(raw.userAccountID ?? raw.userAccountId ?? 0) > 0
+      ? { userAccountID: Number(raw.userAccountID ?? raw.userAccountId) }
+      : {}),
+    ...((raw.avatarURL ?? raw.avatarUrl)
+      ? { avatarURL: String(raw.avatarURL ?? raw.avatarUrl) }
+      : {}),
+  };
+}
+
+function mapPost(raw: RawPost): PostResponse {
+  const author = mapPostAuthor(raw.author);
+  const media = Array.isArray(raw.media)
+    ? raw.media.map((item) => mapPostMedia(item)).filter((item): item is PostMedia => Boolean(item))
+    : [];
+  const legacyMediaUrls = Array.isArray(raw.mediaURL)
+    ? raw.mediaURL
+    : Array.isArray(raw.mediaUrl)
+      ? raw.mediaUrl
+      : [];
+  const communityId = Number(raw.communityId);
+
+  return {
+    id: Number(raw.id ?? raw.ID ?? 0),
+    profileID: Number(raw.profileID ?? raw.profileId ?? author?.profileID ?? 0),
+    ...(Number.isFinite(communityId) && communityId > 0 ? { communityId } : {}),
+    ...(media.length ? { media } : {}),
+    ...(legacyMediaUrls.length ? { mediaURL: legacyMediaUrls.filter(Boolean) } : {}),
+    ...(typeof raw.text === "string" ? { text: raw.text } : {}),
+    ...(raw.firstName || author?.firstName
+      ? { firstName: String(raw.firstName ?? author?.firstName ?? "") }
+      : {}),
+    ...(raw.lastName || author?.lastName
+      ? { lastName: String(raw.lastName ?? author?.lastName ?? "") }
+      : {}),
+    ...(Number(raw.userAccountID ?? raw.userAccountId ?? author?.userAccountID ?? 0) > 0
+      ? { userAccountID: Number(raw.userAccountID ?? raw.userAccountId ?? author?.userAccountID) }
+      : {}),
+    ...((raw.avatarURL ?? raw.avatarUrl ?? author?.avatarURL)
+      ? { avatarURL: String(raw.avatarURL ?? raw.avatarUrl ?? author?.avatarURL ?? "") }
+      : {}),
+    ...(author ? { author } : {}),
+    ...(raw.createdAt ? { createdAt: String(raw.createdAt) } : {}),
+    ...(raw.updatedAt ? { updatedAt: String(raw.updatedAt) } : {}),
+    ...(typeof raw.likes === "number" ? { likes: raw.likes } : {}),
+    ...(typeof raw.isLiked === "boolean" ? { isLiked: raw.isLiked } : {}),
+  };
+}
+
+function mapPostsApiResponse(data: PostsApiResponse): PostResponse[] {
+  if (Array.isArray(data)) {
+    return data.map(mapPost).filter((post) => post.id > 0);
+  }
+
+  return Array.isArray(data.posts) ? data.posts.map(mapPost).filter((post) => post.id > 0) : [];
+}
+
 async function mutatePost(
   path: string,
   method: "POST" | "PATCH" | "DELETE",
   payload?: PostPayload,
 ): Promise<PostResponse | void> {
   try {
-    const data = await apiRequest<PostResponse | null>(
+    const data = await apiRequest<RawPost | null>(
       path,
       {
         method,
@@ -131,7 +236,7 @@ async function mutatePost(
       },
       null,
     );
-    return data ?? undefined;
+    return data ? mapPost(data) : undefined;
   } catch (error) {
     if (!isNetworkUnavailableError(error)) {
       throw error;
@@ -152,20 +257,10 @@ async function mutatePost(
       console.warn("[outbox] background sync registration failed", syncError);
     });
     clearFeedCache();
-    // При офлайн-ошибке ставим запрос в outbox, чтобы пользователь
-    // не потерял действие и смог продолжить работу без сети.
     throw new OutboxQueuedError();
   }
 }
 
-/**
- * Загружает посты текущего пользователя.
- *
- * @param {AbortSignal} [signal] Сигнал отмены запроса.
- * @returns {Promise<PostResponse[]>} Список постов собственного профиля.
- * @example
- * const posts = await getMyPosts();
- */
 export async function getMyPosts(signal?: AbortSignal): Promise<PostResponse[]> {
   const data = await apiRequest<PostsApiResponse>(
     `/api/post/me?ts=${Date.now()}`,
@@ -173,24 +268,9 @@ export async function getMyPosts(signal?: AbortSignal): Promise<PostResponse[]> 
     {},
   );
 
-  if (Array.isArray(data)) {
-    return data as PostResponse[];
-  }
-
-  return Array.isArray((data as ProfilePostsResponse).posts)
-    ? ((data as ProfilePostsResponse).posts as PostResponse[])
-    : [];
+  return mapPostsApiResponse(data);
 }
 
-/**
- * Загружает посты выбранного профиля.
- *
- * @param {string} profileId Идентификатор профиля.
- * @param {AbortSignal} [signal] Сигнал отмены запроса.
- * @returns {Promise<PostResponse[]>} Список постов выбранного профиля.
- * @example
- * const posts = await getPostsByProfileId("7");
- */
 export async function getPostsByProfileId(
   profileId: string,
   signal?: AbortSignal,
@@ -201,41 +281,41 @@ export async function getPostsByProfileId(
     {},
   );
 
-  if (Array.isArray(data)) {
-    return data as PostResponse[];
-  }
-
-  return Array.isArray((data as ProfilePostsResponse).posts)
-    ? ((data as ProfilePostsResponse).posts as PostResponse[])
-    : [];
+  return mapPostsApiResponse(data);
 }
 
-/**
- * Создаёт новый пост.
- *
- * После успешной отправки очищает кэш ленты, потому что новая публикация
- * должна появиться в актуальных списках без ручного обновления страницы.
- *
- * @param {PostPayload} payload Данные новой публикации.
- * @returns {Promise<PostResponse>} Созданный пост.
- * @example
- * const post = await createPost({ text: "Новая запись" });
- */
+export async function getPostsByCommunityId(
+  communityId: string | number,
+  signal?: AbortSignal,
+): Promise<PostResponse[]> {
+  const data = await apiRequest<PostsApiResponse>(
+    `/api/post/community/${encodeURIComponent(String(communityId))}?ts=${Date.now()}`,
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
+
+  return mapPostsApiResponse(data);
+}
+
+export async function getOfficialCommunityPosts(
+  communityId: string | number,
+  signal?: AbortSignal,
+): Promise<PostResponse[]> {
+  const data = await apiRequest<PostsApiResponse>(
+    `/api/post/community/${encodeURIComponent(String(communityId))}/official?ts=${Date.now()}`,
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
+
+  return mapPostsApiResponse(data);
+}
+
 export async function createPost(payload: PostPayload): Promise<PostResponse> {
   const data = await mutatePost("/api/post/upload", "POST", payload);
   clearFeedCache();
   return data as PostResponse;
 }
 
-/**
- * Обновляет существующий пост.
- *
- * @param {string | number} postId Идентификатор поста.
- * @param {PostPayload} payload Новое содержимое поста.
- * @returns {Promise<PostResponse>} Обновлённый пост.
- * @example
- * await updatePost(5, { text: "Обновлённый текст" });
- */
 export async function updatePost(
   postId: string | number,
   payload: PostPayload,
@@ -249,30 +329,11 @@ export async function updatePost(
   return data as PostResponse;
 }
 
-/**
- * Удаляет пост по идентификатору.
- *
- * @param {string | number} postId Идентификатор удаляемого поста.
- * @returns {Promise<void>}
- * @example
- * await deletePost(5);
- */
 export async function deletePost(postId: string | number): Promise<void> {
   await mutatePost(`/api/post/${encodeURIComponent(String(postId))}`, "DELETE");
   clearFeedCache();
 }
 
-/**
- * Загружает изображения для поста в медиахранилище.
- *
- * Используется до создания или редактирования поста, чтобы получить
- * устойчивые `mediaID`, которые потом можно передать в `PostPayload`.
- *
- * @param {File[]} files Список изображений для загрузки.
- * @returns {Promise<UploadedMedia[]>} Загруженные файлы с идентификаторами и ссылками.
- * @example
- * const uploaded = await uploadPostImages(files);
- */
 export async function uploadPostImages(files: File[]): Promise<UploadedMedia[]> {
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));

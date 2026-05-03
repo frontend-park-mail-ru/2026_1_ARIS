@@ -166,13 +166,19 @@ async function resolveCommunityDetail(id: string, signal?: AbortSignal): Promise
   setActiveCommunity(bundle);
   communitiesState.membersLoading = true;
   communitiesState.membersLoaded = false;
-  await ensureViewerProfileId(signal).catch(() => {
-    communitiesState.viewerProfileId = null;
-  });
-  await Promise.all([
-    loadCommunityMembers(bundle.community.id, false, signal),
-    loadCommunityPosts(bundle, signal),
-  ]);
+
+  const members = await loadCommunityMembers(bundle.community.id, false, signal);
+
+  const sessionUser = getSessionUser();
+  if (sessionUser && communitiesState.viewerProfileId === null) {
+    const sessionAccountId = Number(sessionUser.id);
+    const selfMember = members.find((m) => m.userAccountId === sessionAccountId);
+    if (selfMember) {
+      communitiesState.viewerProfileId = selfMember.profileId;
+    }
+  }
+
+  await loadCommunityPosts(bundle, signal);
 }
 
 function syncCommunityFormFromDom(root: ParentNode): void {

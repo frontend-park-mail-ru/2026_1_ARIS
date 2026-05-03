@@ -199,17 +199,18 @@ export function mapPostToCommunityPost(
   };
 }
 
+const POST_EDIT_WINDOW_MS = 10 * 60 * 1000;
+
 export function canEditCommunityPost(
   post: ProfilePost,
-  bundle: CommunityBundle,
+  _bundle: CommunityBundle,
   viewerProfileId: number | null,
 ): boolean {
-  const isOfficial = Number(post.authorId) === bundle.community.profileId;
-  if (isOfficial) {
-    return bundle.membership.role === "owner";
+  if (viewerProfileId === null || Number(post.authorId) !== viewerProfileId) {
+    return false;
   }
-
-  return viewerProfileId !== null && Number(post.authorId) === viewerProfileId;
+  const createdAt = new Date(post.timeRaw).getTime();
+  return Date.now() - createdAt <= POST_EDIT_WINDOW_MS;
 }
 
 export function canDeleteCommunityPost(

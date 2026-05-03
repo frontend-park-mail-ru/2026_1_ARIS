@@ -120,6 +120,12 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
         );
         void initSupportAdmin(nextRoot as HTMLElement);
       }
+      if (nextRoot.querySelector("[data-search-page]")) {
+        const { initSearch } = await import(
+          /* webpackChunkName: "page-search" */ "../pages/search/search"
+        );
+        initSearch(nextRoot);
+      }
     },
   });
 }

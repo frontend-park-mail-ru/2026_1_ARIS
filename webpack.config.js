@@ -4,6 +4,7 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const packageJson = require("./package.json");
 
 const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
+const searchServiceUrl = process.env.SEARCH_URL || "http://localhost:8088";
 const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || "development";
 const sentryRelease = process.env.SENTRY_RELEASE || `arisfront@${packageJson.version}`;
 const sentryDebug = process.env.SENTRY_DEBUG === "true";
@@ -153,6 +154,11 @@ module.exports = {
     port: 3001,
     open: process.env.WEBPACK_OPEN === "true",
     proxy: [
+      {
+        context: ["/api/search"],
+        target: searchServiceUrl,
+        changeOrigin: true,
+      },
       {
         context: ["/api", "/image-proxy", "/media"],
         target: backendUrl,

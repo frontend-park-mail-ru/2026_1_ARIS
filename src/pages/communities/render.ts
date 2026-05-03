@@ -723,7 +723,7 @@ export function renderCommunityFormModal(): string {
                 `
             }
             ${
-              form.step < 5
+              form.step < 4
                 ? `
                   <button type="button" class="community-modal__button community-modal__button--primary" data-community-form-next>
                     Далее

@@ -11,7 +11,7 @@
 import { clearSessionUser, getSessionUser } from "../../state/session";
 import { renderButton } from "../button/button";
 import { logoutUser } from "../../api/auth";
-import { renderAvatarMarkup } from "../../utils/avatar";
+import { renderAvatarMarkup, escapeHtml } from "../../utils/avatar";
 
 /**
  * Минимальный срез данных пользователя, который нужен header.
@@ -84,10 +84,17 @@ function renderGuestHeader(): string {
  *
  * @returns {string} HTML-разметка авторизованной шапки.
  */
+function getHeaderSearchValue(): string {
+  if (typeof window === "undefined") return "";
+  if (window.location.pathname !== "/search") return "";
+  return new URLSearchParams(window.location.search).get("q") ?? "";
+}
+
 function renderAuthorisedHeader(): string {
   const user = getSessionUser() as SessionUser;
 
   const fullName = user ? `${user.firstName} ${user.lastName}` : "";
+  const searchValue = getHeaderSearchValue();
 
   return `
     <div class="header__inner header__inner--authorised">
@@ -104,6 +111,8 @@ function renderAuthorisedHeader(): string {
           class="header__search-input search-field__input"
           type="text"
           placeholder="Поиск"
+          data-header-search
+          value="${escapeHtml(searchValue)}"
         >
       </label>
 
@@ -163,6 +172,16 @@ export function initHeader(root: Document | HTMLElement = document): void {
   const rootEl = root as Document & { __headerBound?: boolean };
 
   if (rootEl.__headerBound) return;
+
+  root.addEventListener("keydown", (event: Event) => {
+    if (!(event instanceof KeyboardEvent) || event.key !== "Enter") return;
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !target.matches("[data-header-search]")) return;
+    const q = target.value.trim();
+    if (!q) return;
+    window.history.pushState({}, "", `/search?q=${encodeURIComponent(q)}`);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
 
   root.addEventListener("click", async (event: Event) => {
     const target = event.target;

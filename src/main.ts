@@ -27,6 +27,7 @@ import "./pages/profile/profile.css";
 import "./pages/support/support.scss";
 import "./pages/support-admin/support-admin.scss";
 import "./pages/support-stats/support-stats.scss";
+import "./pages/search/search.css";
 
 import "./components/postcard/postcard-element";
 import { createRouter, type Route } from "./router/router";
@@ -75,6 +76,7 @@ const loadSupportAdmin = () =>
   import(/* webpackChunkName: "page-support-admin" */ "./pages/support-admin/support-admin");
 const loadSupportStats = () =>
   import(/* webpackChunkName: "page-support-stats" */ "./pages/support-stats/support-stats");
+const loadSearch = () => import(/* webpackChunkName: "page-search" */ "./pages/search/search");
 
 function normalisePathname(pathname: string): string {
   return pathname.replace(/\/+$/g, "") || "/";
@@ -239,6 +241,11 @@ const routes: Route[] = [
     path: "/id:id",
     title: "ARISNET — Profile",
     render: async (p, s) => (await loadProfile()).renderProfile(p, s),
+  },
+  {
+    path: "/search",
+    title: "ARISNET — Search",
+    render: async (p, s) => (await loadSearch()).renderSearch(p, s),
   },
   {
     path: "/support",

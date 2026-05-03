@@ -1,0 +1,116 @@
+@layer pages {
+  .search-page {
+    width: 100%;
+  }
+
+  .search-panel {
+    width: 100%;
+    padding: var(--space-4) var(--space-4) var(--space-6);
+    border-radius: var(--radius-panel);
+    background: var(--color-surface-muted);
+    box-shadow: var(--shadow-card);
+  }
+
+  .search-panel__title {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-size-heading-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-main);
+  }
+
+  .search-section {
+    margin-top: var(--space-5);
+  }
+
+  .search-section + .search-section {
+    margin-top: var(--space-6);
+  }
+
+  .search-section__heading {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-size-body-lg);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-name);
+  }
+
+  .search-results-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .search-result-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+  }
+
+  .search-result-card:not(:last-child) {
+    border-bottom: 1px solid rgb(108 118 214 / 16%);
+  }
+
+  .search-result-card__avatar-link {
+    display: block;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+
+  .search-result-card__avatar {
+    display: block;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .search-result-card__avatar.avatar-fallback {
+    display: inline-flex !important;
+    width: 64px;
+    height: 64px;
+    font-size: 18px;
+    letter-spacing: 0;
+  }
+
+  .search-result-card__body {
+    min-width: 0;
+  }
+
+  .search-result-card__name {
+    display: inline-block;
+    color: var(--color-text-name);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+  }
+
+  .search-result-card__name:hover {
+    text-decoration: underline;
+  }
+
+  .search-result-card__meta {
+    margin: 4px 0 0;
+    font-size: var(--text-size-meta);
+    color: var(--color-text-meta);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .search-page__error {
+    margin: var(--space-3) 0 0;
+    font-size: var(--text-size-main);
+    color: var(--color-text-error);
+  }
+
+  .search-page__empty {
+    padding: var(--space-2) 0;
+    font-size: var(--text-size-meta);
+    color: var(--color-text-meta);
+  }
+
+  .search-page__hint {
+    margin: 0;
+    font-size: var(--text-size-main);
+    color: var(--color-text-meta);
+  }
+}

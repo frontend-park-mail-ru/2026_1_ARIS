@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy Production
 
 on:
   push:
@@ -17,25 +17,33 @@ jobs:
     environment: production
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Deploy via SSH
+      - name: Deploy frontend via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -euo pipefail
+
             cd ${{ secrets.DEPLOY_PATH }}
-            git fetch --all
+            git fetch origin
             git reset --hard origin/main
-            INSTALL_STATIC=true \
-              BASE_URL=${{ secrets.DEPLOY_BASE_URL }} \
-              BUILD_COMMIT=${{ github.sha }} \
-              BUILD_VERSION=$(node -p "require('./package.json').version") \
+
+            NODE_ENV=development npm ci
+
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_VERSION=$(node -p "require('./package.json').version")
+            BUILD_COMMIT="$BUILD_COMMIT" \
+              BUILD_VERSION="$BUILD_VERSION" \
               NODE_ENV=production \
-              bash scripts/deploy.sh
+              npm run build
+
+            printf 'BUILD_COMMIT=%s\nBUILD_VERSION=%s\n' "$BUILD_COMMIT" "$BUILD_VERSION" > .env.build
+            sudo systemctl restart arisfront
+
+            sleep 5
+            curl --fail --silent --show-error --max-time 10 ${{ secrets.DEPLOY_BASE_URL }}/ >/dev/null
 
   notify-telegram:
     runs-on: ubuntu-latest

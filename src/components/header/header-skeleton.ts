@@ -45,7 +45,7 @@ export function renderHeaderSkeleton(): string {
           <img class="header__logo" src="/assets/img/logo-v3.png" width="300" height="114" alt="ARIS">
         </a>
 
-        <label class="header__search-box search-field" aria-label="${t("header.search")}">
+        <form class="header__search-box search-field" role="search" aria-label="${t("header.search")}">
           <span class="header__search-icon search-field__icon" aria-hidden="true">
             <img src="/assets/img/icons/search.svg" alt="">
           </span>
@@ -53,8 +53,9 @@ export function renderHeaderSkeleton(): string {
             class="header__search-input search-field__input"
             type="text"
             placeholder="${t("header.search")}"
+            aria-label="${t("header.search")}"
           >
-        </label>
+        </form>
 
         <div class="header__user">
           ${

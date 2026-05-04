@@ -70,7 +70,12 @@ export async function trackedFetch(
 
     return response;
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "name" in error &&
+      (error as { name?: unknown }).name === "AbortError"
+    ) {
       throw error;
     }
     markConnectionUnavailable();

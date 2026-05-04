@@ -308,6 +308,7 @@ export async function renderChats(
 ): Promise<string> {
   const isAuthorised = getSessionUser() !== null;
   const currentUserId = String(getSessionUser()?.id ?? "");
+  const requestedChatId = getRequestedChatId();
 
   if (chatsState.loadedForUserId !== currentUserId) {
     resetChatsState();
@@ -321,6 +322,7 @@ export async function renderChats(
 
   hydratePersistedChatsUiState();
   await ensureChatsLoaded(signal);
+  chatsState.mobileView = requestedChatId ? "dialog" : "list";
   await prepareAvatarLinks([
     getSessionUser()?.avatarLink,
     ...chatsState.threads.map((thread) => thread.avatarLink),

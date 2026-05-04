@@ -237,4 +237,94 @@
       animation-range: 40px 120px;
     }
   }
+
+  @media (width <= 1199px) {
+    .header {
+      --header-height: 68px;
+      --header-logo-width: 108px;
+      --header-avatar-size: 46px;
+
+      &__inner {
+        width: 100%;
+        min-width: 0;
+        grid-template-columns: var(--layout-sidebar-width) minmax(0, 1fr) auto;
+        padding: 0 var(--layout-padding-x);
+        box-sizing: border-box;
+      }
+
+      &__inner--guest {
+        grid-template-columns: var(--layout-sidebar-width) minmax(0, 420px) auto;
+        justify-content: center;
+      }
+
+      &__inner--authorised {
+        grid-template-columns: var(--layout-sidebar-width) minmax(0, 1fr) auto;
+      }
+
+      &__search-box {
+        width: min(100%, 520px);
+      }
+
+      &__user {
+        width: auto;
+        padding-left: 0;
+      }
+
+      &__username {
+        display: none;
+      }
+    }
+  }
+
+  @media (width <= 768px) {
+    .header {
+      --header-height: 64px;
+      --header-logo-width: 92px;
+      --header-search-height: 44px;
+      --header-search-padding-x: 14px;
+      --header-avatar-size: 42px;
+
+      &__inner,
+      &__inner--authorised,
+      &__inner--guest {
+        min-height: var(--header-height);
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        column-gap: 10px;
+        padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
+      }
+
+      &__inner--guest {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      &__search-box {
+        width: 100%;
+        padding: 0 14px;
+      }
+
+      &__guest-actions {
+        gap: 8px;
+        padding: 0;
+      }
+
+      &__guest-actions .button {
+        min-height: 40px;
+        padding: 0 10px;
+        font-size: var(--font-size-sm);
+      }
+
+      &__inner--guest &__user {
+        display: none;
+      }
+
+      &__avatar {
+        width: var(--header-avatar-size);
+        height: var(--header-avatar-size);
+      }
+
+      &__user-menu {
+        right: -2px;
+      }
+    }
+  }
 }

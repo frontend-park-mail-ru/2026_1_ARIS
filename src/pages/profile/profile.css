@@ -564,18 +564,18 @@
   }
 
   .profile-composer {
-    display: flex;
-    width: 100%;
+    display: inline-flex;
+    width: auto;
     min-height: 44px;
     margin: 0;
     padding: 0 var(--space-6);
     align-items: center;
     justify-content: center;
     gap: 10px;
-    border: var(--border-width) solid rgb(255 255 255 / 62%);
-    border-radius: var(--radius-content-card);
-    background: var(--color-surface-content-card);
-    box-shadow: var(--shadow-content-card);
+    border: 0;
+    border-radius: var(--radius-control-pill);
+    background: transparent;
+    box-shadow: none;
     color: var(--color-interactive-primary);
     cursor: pointer;
     text-decoration: none;
@@ -590,9 +590,8 @@
 
   .profile-composer:hover {
     transform: none;
-    border-color: rgb(255 255 255 / 74%);
-    background: var(--color-surface-content-card);
-    box-shadow: var(--shadow-content-card);
+    background: rgb(255 255 255 / 42%);
+    box-shadow: none;
   }
 
   .profile-composer:focus-visible {
@@ -634,6 +633,13 @@
     flex-direction: column;
     gap: 16px;
     overflow-anchor: none;
+  }
+
+  .profile-posts__controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 10px 18px;
   }
 
   .profile-posts__header + .profile-posts__list {
@@ -679,6 +685,10 @@
     box-shadow: none;
   }
 
+  .profile-posts__header[hidden] {
+    display: none;
+  }
+
   .profile-posts__top {
     display: flex;
     align-items: center;
@@ -708,11 +718,14 @@
   }
 
   .profile-posts__toolbar {
+    position: relative;
     display: flex;
-    min-height: 32px;
+    min-height: 44px;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     gap: 16px;
+    padding-right: 52px;
+    padding-left: 52px;
   }
 
   .profile-posts__toolbar[hidden] {
@@ -752,16 +765,20 @@
   }
 
   .profile-posts__search-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0;
     display: inline-flex;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     align-items: center;
     justify-content: center;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-control-pill);
     background: transparent;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    transform: translateY(-50%);
     transition:
       background-color var(--transition-control),
       opacity var(--transition-control);
@@ -783,18 +800,10 @@
   }
 
   .profile-posts__search {
+    position: relative;
     width: 100%;
-    min-height: 32px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .profile-posts__search:hover,
-  .profile-posts__search:focus-within {
-    border-color: transparent;
-    box-shadow: none;
+    min-height: 44px;
+    padding-right: 52px;
   }
 
   .profile-posts__search[hidden] {
@@ -802,19 +811,16 @@
   }
 
   .profile-posts__search-icon {
-    width: 20px;
-    height: 20px;
-    opacity: 0.62;
-  }
-
-  .profile-posts__search-input::placeholder {
-    color: rgb(82 98 122 / 78%);
+    opacity: 0.78;
   }
 
   .profile-posts__search-close {
+    position: absolute;
+    top: 50%;
+    right: 0;
     display: inline-flex;
-    width: 28px;
-    height: 28px;
+    width: 44px;
+    height: 44px;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
@@ -827,6 +833,7 @@
     font-weight: var(--font-weight-regular);
     line-height: 1;
     -webkit-tap-highlight-color: transparent;
+    transform: translateY(-50%);
   }
 
   .profile-posts__search-close:hover {
@@ -855,7 +862,7 @@
   .profile-post-delete-modal {
     position: fixed;
     inset: 0;
-    z-index: 40;
+    z-index: 1200;
     display: grid;
     place-items: center;
     padding: 24px;
@@ -1891,7 +1898,7 @@
   .profile-delete-modal {
     position: fixed;
     inset: 0;
-    z-index: 220;
+    z-index: 1200;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2078,6 +2085,176 @@
 
     .profile-post-modal__preview img {
       height: 200px;
+    }
+  }
+
+  @media (width <= 768px) {
+    .profile-page {
+      gap: 16px;
+    }
+
+    .profile-card,
+    .profile-editor,
+    .profile-post,
+    .profile-posts__header,
+    .profile-friends-card,
+    .profile-guest-card,
+    .profile-guest-sidecard {
+      border-radius: 20px;
+    }
+
+    .profile-card {
+      padding: 12px;
+    }
+
+    .profile-card__hero {
+      align-items: center;
+      gap: 14px;
+      padding: 8px 8px 14px;
+      text-align: center;
+    }
+
+    .profile-card__hero-copy {
+      align-items: center;
+      width: 100%;
+    }
+
+    .profile-card__hero-copy h1,
+    .profile-card__hero-copy p {
+      text-align: center;
+    }
+
+    .profile-card__avatar {
+      width: 88px;
+      height: 88px;
+    }
+
+    .profile-friend-actions,
+    .profile-editor__actions,
+    .profile-posts__heading,
+    .profile-post__footer {
+      align-items: stretch;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .profile-friend-action,
+    .profile-friend-request-cancel,
+    .profile-posts__tab,
+    .profile-posts__search-toggle,
+    .profile-posts__item-action,
+    .profile-post__stat-button,
+    .profile-post__menu-toggle {
+      min-height: 44px;
+    }
+
+    .profile-section__header,
+    .profile-section__body {
+      padding-inline: 14px;
+    }
+
+    .profile-editor__form,
+    .profile-post-modal__dialog,
+    .profile-avatar-modal__dialog,
+    .profile-avatar-delete-modal__dialog,
+    .profile-post-delete-modal__dialog {
+      padding: 16px;
+    }
+
+    .profile-posts__header {
+      padding: 14px;
+    }
+
+    .profile-posts__tabs {
+      display: grid;
+      width: 100%;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .profile-post {
+      padding: 16px 14px 14px;
+    }
+
+    .profile-post__footer {
+      align-items: center;
+      flex-direction: row;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .profile-post__header {
+      gap: 10px;
+    }
+
+    .profile-post__images--double,
+    .profile-post__images--triple,
+    .profile-post__images--quad,
+    .profile-post__images--five {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .profile-post__images--triple .profile-post__image--lead {
+      grid-row: auto;
+    }
+
+    .profile-post__images--single .profile-post__image {
+      aspect-ratio: 4 / 3;
+    }
+
+    .profile-post__images--five .profile-post__image:nth-child(n) {
+      grid-column: auto;
+    }
+
+    .profile-post__stats {
+      width: auto;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 16px;
+    }
+
+    .profile-post__time {
+      align-items: center;
+      min-height: 18px;
+      line-height: 18px;
+    }
+
+    .profile-post__time::before,
+    .profile-post__time::after {
+      display: none;
+    }
+
+    .profile-right-rail {
+      padding-top: 0;
+    }
+
+    .profile-avatar-modal,
+    .profile-avatar-delete-modal,
+    .profile-post-modal,
+    .profile-post-delete-modal {
+      align-items: end;
+      padding: 10px;
+    }
+
+    .profile-avatar-modal__dialog,
+    .profile-avatar-delete-modal__dialog,
+    .profile-post-modal__dialog,
+    .profile-post-delete-modal__dialog {
+      width: 100%;
+      max-height: calc(100dvh - 20px);
+      border-radius: 24px;
+    }
+
+    .profile-avatar-modal__tools,
+    .profile-avatar-modal__actions,
+    .profile-avatar-delete-modal__actions,
+    .profile-post-modal__toolbar,
+    .profile-post-modal__actions,
+    .profile-post-delete-modal__actions {
+      flex-direction: column;
+    }
+
+    .profile-post-modal__textarea {
+      min-height: 150px;
     }
   }
 }

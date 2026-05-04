@@ -1,4 +1,4 @@
-const CACHE_VERSION = "aris-v4";
+const CACHE_VERSION = "aris-v5";
 const STATIC_CACHE = `${CACHE_VERSION}:static`;
 const API_CACHE = `${CACHE_VERSION}:api`;
 const OUTBOX_DB_NAME = "aris-outbox";
@@ -16,6 +16,8 @@ const STATIC_FALLBACK_URLS = [
   "/assets/img/apple-touch-icon.png",
   "/assets/img/pwa-192.png",
   "/assets/img/pwa-512.png",
+  "/assets/img/screenshots/mobile.png",
+  "/assets/img/screenshots/desktop.png",
 ];
 
 function withSourceHeader(response, source) {
@@ -326,6 +328,11 @@ self.addEventListener("sync", (event) => {
 });
 
 self.addEventListener("message", (event) => {
+  if (event.data?.type === "ARIS_SKIP_WAITING") {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
+
   if (event.data?.type !== "ARIS_DRAIN_OUTBOX") {
     return;
   }

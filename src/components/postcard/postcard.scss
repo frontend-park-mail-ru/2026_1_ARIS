@@ -317,12 +317,18 @@
     &__time {
       margin: 0;
       position: relative;
+      padding: 0;
+      border: 0;
+      background: transparent;
       white-space: nowrap;
       text-align: right;
       color: var(--color-text-meta);
+      cursor: pointer;
+      font: inherit;
       font-size: var(--text-size-meta);
       font-weight: var(--font-weight-medium);
       line-height: var(--line-height-base);
+      -webkit-tap-highlight-color: transparent;
 
       &[data-tooltip]::before,
       &[data-tooltip]::after {
@@ -368,15 +374,19 @@
       }
 
       &[data-tooltip]:hover::before,
-      &[data-tooltip]:hover::after {
+      &[data-tooltip]:hover::after,
+      &--tooltip-open[data-tooltip]::before,
+      &--tooltip-open[data-tooltip]::after {
         opacity: 1;
       }
 
-      &[data-tooltip]:hover::before {
+      &[data-tooltip]:hover::before,
+      &--tooltip-open[data-tooltip]::before {
         transform: translateY(0);
       }
 
-      &[data-tooltip]:hover::after {
+      &[data-tooltip]:hover::after,
+      &--tooltip-open[data-tooltip]::after {
         transform: translateY(0) rotate(45deg);
       }
     }
@@ -433,5 +443,54 @@
   .postcard__media--five-plus .postcard__media-row--top,
   .postcard__media--five-plus .postcard__media-row--bottom {
     grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  @media (width <= 768px) {
+    .postcard {
+      --postcard-padding-y: 14px;
+      --postcard-padding-x: 14px;
+      --postcard-gap: 10px;
+      --postcard-media-height: clamp(210px, 66vw, 320px);
+      --postcard-media-row-height: clamp(104px, 31vw, 155px);
+      --postcard-stats-gap: 14px;
+      --postcard-stat-icon-size: 18px;
+
+      border-radius: 20px;
+    }
+
+    .postcard__footer {
+      align-items: center;
+      flex-direction: row;
+      gap: 12px;
+      justify-content: space-between;
+    }
+
+    .postcard__stats {
+      width: auto;
+      justify-content: flex-start;
+      gap: 16px;
+    }
+
+    .postcard__stat-link,
+    .postcard__stat-button {
+      min-width: 44px;
+      min-height: 44px;
+      justify-content: center;
+    }
+
+    .postcard__time {
+      min-height: 44px;
+      align-self: flex-end;
+      display: inline-flex;
+      align-items: center;
+    }
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    .postcard__expand,
+    .postcard__stat-link,
+    .postcard__stat-button {
+      -webkit-tap-highlight-color: transparent;
+    }
   }
 }

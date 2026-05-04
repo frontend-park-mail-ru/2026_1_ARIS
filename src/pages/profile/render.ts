@@ -426,7 +426,7 @@ export function renderFriends(profile: DisplayProfile): string {
                 .join("")}
             </div>
           `
-          : `<p class="profile-empty-copy">Друзей пока нет</p>`
+          : `<p class="profile-empty-copy">Список пуст.</p>`
       }
 
       ${
@@ -546,37 +546,12 @@ export function renderProfilePosts(
       ${
         isOwnProfile
           ? `
-            <button type="button" class="profile-composer content-card" data-profile-post-open>
-              <span class="profile-composer__icon" aria-hidden="true">+</span>
-              <span class="profile-composer__label">Создать запись</span>
-            </button>
-          `
-          : ""
-      }
-
-      <header class="profile-posts__header content-card">
-        ${
-          isOwnProfile
-            ? `
+            <div class="profile-posts__controls content-card">
               <div class="profile-posts__toolbar" data-profile-post-toolbar>
-                <div class="profile-posts__tabs" aria-label="Фильтр публикаций">
-                  <button
-                    type="button"
-                    class="profile-posts__tab is-active"
-                    data-profile-post-filter="all"
-                    aria-pressed="true"
-                  >
-                    Все посты
-                  </button>
-                  <button
-                    type="button"
-                    class="profile-posts__tab"
-                    data-profile-post-filter="own"
-                    aria-pressed="false"
-                  >
-                    Мои посты
-                  </button>
-                </div>
+                <button type="button" class="profile-composer" data-profile-post-open>
+                  <span class="profile-composer__icon" aria-hidden="true">+</span>
+                  <span class="profile-composer__label">Создать запись</span>
+                </button>
 
                 <button
                   type="button"
@@ -588,14 +563,14 @@ export function renderProfilePosts(
                 </button>
               </div>
 
-              <label class="search-field profile-posts__search" data-profile-post-search-panel hidden>
-                <span class="search-field__icon profile-posts__search-icon" aria-hidden="true">
+              <label class="profile-posts__search search-field" aria-label="Поиск по публикациям" data-profile-post-search-panel hidden>
+                <span class="profile-posts__search-icon search-field__icon" aria-hidden="true">
                   <img src="/assets/img/icons/search.svg" alt="">
                 </span>
                 <input
                   type="search"
-                  class="search-field__input profile-posts__search-input"
-                  placeholder="Введите слово или фразу..."
+                  class="profile-posts__search-input search-field__input"
+                  placeholder="Поиск"
                   data-profile-post-search
                 >
                 <button
@@ -607,9 +582,13 @@ export function renderProfilePosts(
                   ×
                 </button>
               </label>
-            `
-            : `<h2>Публикации</h2>`
-        }
+            </div>
+          `
+          : ""
+      }
+
+      <header class="profile-posts__header content-card"${isOwnProfile ? " hidden" : ""}>
+        ${isOwnProfile ? "" : `<h2>Публикации</h2>`}
       </header>
 
       <div class="profile-posts__list" data-profile-post-list>
@@ -734,13 +713,13 @@ export function renderProfilePosts(
             `
             : `
                 <div class="profile-posts__empty content-card">
-                  <p class="profile-empty-copy">Публикаций пока нет</p>
+                  <p class="profile-empty-copy">Список пуст.</p>
                 </div>
               `
         }
 
         <div class="profile-posts__empty profile-posts__empty--search content-card" data-profile-post-search-empty hidden>
-          <p class="profile-empty-copy">Ничего не найдено. Попробуйте изменить запрос.</p>
+          <p class="profile-empty-copy">Ничего не найдено.</p>
         </div>
       </div>
     </section>

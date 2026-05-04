@@ -17,6 +17,14 @@ type SidebarItemOptions = {
   attributes?: string;
 };
 
+type MobileNavItemOptions = {
+  href: string;
+  label: string;
+  icon: string;
+  isActive?: boolean;
+  attributes?: string;
+};
+
 type RenderSidebarOptions = {
   isAuthorised?: boolean;
 };
@@ -77,6 +85,29 @@ function renderSidebarItem({
   `;
 }
 
+function renderMobileNavItem({
+  href,
+  label,
+  icon,
+  isActive = false,
+  attributes = "",
+}: MobileNavItemOptions): string {
+  const itemClass = isActive ? "mobile-nav__item mobile-nav__item--active" : "mobile-nav__item";
+  const hasAuthModalTrigger = attributes.includes("data-open-auth-modal=");
+  const linkAttributes = [hasAuthModalTrigger ? "" : "data-link", attributes]
+    .filter(Boolean)
+    .join(" ");
+
+  return `
+    <a href="${href}" class="${itemClass}" ${linkAttributes} aria-label="${label}">
+      <span class="mobile-nav__icon" aria-hidden="true">
+        <img src="${icon}" alt="">
+      </span>
+      <span class="mobile-nav__label">${label}</span>
+    </a>
+  `;
+}
+
 /**
  * Рендерит левую боковую панель.
  *
@@ -97,6 +128,45 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
   const isChatsRoute = currentPath === "/chats";
   const isForYouActive = getFeedMode() === "for-you";
   const isByTimeActive = getFeedMode() === "by-time";
+
+  const mobileNav = `
+    <nav class="mobile-nav" aria-label="Основная навигация">
+      ${renderMobileNavItem({
+        href: feedHref,
+        label: "Лента",
+        icon: "/assets/img/icons/home.svg",
+        isActive: isFeedRoute,
+      })}
+      ${renderMobileNavItem({
+        href: "/profile",
+        label: "Профиль",
+        icon: "/assets/img/icons/profile.svg",
+        isActive: isProfileRoute,
+        attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+      })}
+      ${renderMobileNavItem({
+        href: "/friends",
+        label: "Друзья",
+        icon: "/assets/img/icons/friends.svg",
+        isActive: isFriendsRoute,
+        attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+      })}
+      ${renderMobileNavItem({
+        href: "/communities",
+        label: "Сообщества",
+        icon: "/assets/img/icons/communities.svg",
+        isActive: isCommunitiesRoute,
+        attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+      })}
+      ${renderMobileNavItem({
+        href: "/chats",
+        label: "Чаты",
+        icon: "/assets/img/icons/chat.svg",
+        isActive: isChatsRoute,
+        attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+      })}
+    </nav>
+  `;
 
   return `
     <aside class="sidebar">
@@ -173,6 +243,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           : ""
       }
     </aside>
+    ${mobileNav}
   `;
 }
 

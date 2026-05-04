@@ -84,7 +84,7 @@ export function renderProfileSkeleton(): string {
             </section>
           </section>
         </section>
-        <aside class="app-layout__right">
+        <aside class="app-layout__right app-layout__right--rail">
           ${renderProfileRightRailSkeleton()}
         </aside>
       </main>

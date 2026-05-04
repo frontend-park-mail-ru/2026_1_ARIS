@@ -97,6 +97,8 @@ export type CommunitiesState = {
   viewerProfileId: number | null;
   activePosts: ProfilePost[];
   postFeedMode: CommunityPostFeedMode;
+  postSearchOpen: boolean;
+  postSearchQuery: string;
   pendingPost: CommunityPendingPostState;
   form: CommunityFormState;
   postComposer: CommunityPostComposerState;

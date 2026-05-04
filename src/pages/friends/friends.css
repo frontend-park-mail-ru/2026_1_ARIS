@@ -184,7 +184,7 @@
   .friends-modal {
     position: fixed;
     inset: 0;
-    z-index: 200;
+    z-index: 1200;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -296,20 +296,75 @@
 
   @media (width <= 768px) {
     .friends-panel {
-      padding: 22px 14px;
+      padding: 20px 14px;
+      border-radius: 20px;
+    }
+
+    .friends-panel__header {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .friends-panel__discover,
+    .friends-tabs__button,
+    .friends-card__action {
+      min-height: 44px;
     }
 
     .friends-card {
       align-items: flex-start;
+      gap: 12px;
     }
 
     .friends-card__avatar {
-      width: 92px;
-      height: 92px;
+      width: 72px;
+      height: 72px;
     }
 
     .friends-card__avatar.avatar-fallback {
-      font-size: 25px;
+      font-size: 22px;
+    }
+
+    .friends-card__actions {
+      width: 100%;
+    }
+
+    .friends-modal {
+      align-items: end;
+      padding: 10px;
+    }
+
+    .friends-modal__dialog {
+      width: 100%;
+      padding: 18px;
+      border-radius: 24px;
+    }
+
+    .friends-modal__identity {
+      align-items: flex-start;
+    }
+
+    .friends-modal__avatar {
+      width: 72px;
+      height: 72px;
+    }
+
+    .friends-modal__button:not(.friends-modal__button--primary),
+    .friends-modal__button--primary {
+      flex: 1 1 100%;
+    }
+  }
+
+  @media (width <= 420px) {
+    .friends-card {
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr);
+    }
+
+    .friends-card__avatar {
+      width: 64px;
+      height: 64px;
     }
   }
 }

@@ -232,7 +232,7 @@ function renderMessages(thread?: ChatViewThread): string {
   const messages = thread.messages ?? [];
 
   if (!messages.length) {
-    return '<div class="chat-view__empty">Сообщений пока нет.</div>';
+    return '<div class="chat-view__empty">Список пуст.</div>';
   }
 
   let previousDateKey = "";
@@ -345,7 +345,7 @@ function renderScrollControls(thread?: ChatViewThread): string {
 
 function renderThreadsList(threads: ChatViewThread[]): string {
   if (!threads.length) {
-    return '<p class="chats-list__empty">Чатов пока нет.</p>';
+    return `<p class="chats-list__empty">${chatsState.query.trim() ? "Ничего не найдено." : "Список пуст."}</p>`;
   }
 
   return threads
@@ -387,13 +387,15 @@ export function renderChatsContent(): string {
   const composeDraft = selectedThread
     ? (chatsState.composeDraftByChatId.get(selectedThread.id) ?? "")
     : "";
+  const mobileViewClass =
+    chatsState.mobileView === "dialog" ? "chats-page--mobile-dialog" : "chats-page--mobile-list";
 
   if (selectedThread && selectedThread.id !== chatsState.selectedChatId) {
     chatsState.selectedChatId = selectedThread.id;
   }
 
   return `
-    <section class="chats-page content-card" data-chats-page>
+    <section class="chats-page ${mobileViewClass} content-card" data-chats-page>
       <aside class="chats-sidebar">
         <h1 class="chats-sidebar__title">Сообщения</h1>
 
@@ -417,6 +419,14 @@ export function renderChatsContent(): string {
         ${
           selectedThread
             ? `<header class="chat-header">
+                 <button
+                   type="button"
+                   class="chat-header__back"
+                   data-chat-mobile-back
+                   aria-label="Вернуться к списку чатов"
+                 >
+                   ←
+                 </button>
                  ${renderAvatarElement(
                    "chat-header__avatar",
                    selectedThread.title,

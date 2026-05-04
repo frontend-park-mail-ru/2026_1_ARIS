@@ -49,7 +49,7 @@ function renderCommunityDetailSkeletonContent(): string {
 
       <section class="community-posts" aria-hidden="true">
         <span class="profile-composer content-card skeleton" style="display:block;height:44px"></span>
-        <header class="profile-posts__header content-card">
+        <header class="profile-posts__header community-posts__header content-card">
           <span class="skeleton" style="display:block;width:118px;height:24px"></span>
         </header>
         <div class="profile-posts__list">
@@ -99,7 +99,7 @@ export function renderCommunitiesSkeleton(path = "/communities"): string {
         <section class="app-layout__center">
           ${isDetailRoute ? renderCommunityDetailSkeletonContent() : renderCommunityListSkeletonContent()}
         </section>
-        <aside class="app-layout__right">
+        <aside class="app-layout__right ${isDetailRoute ? "app-layout__right--rail" : "app-layout__right--optional"}">
           ${isDetailRoute ? renderCommunityDetailSkeletonRail() : '<div class="profile-right-rail"></div>'}
         </aside>
       </main>

@@ -113,4 +113,26 @@
     font-size: var(--text-size-main);
     color: var(--color-text-meta);
   }
+
+  @media (width <= 768px) {
+    .search-panel {
+      padding: 18px 14px 20px;
+      border-radius: 20px;
+    }
+
+    .search-result-card {
+      min-height: 72px;
+      gap: 12px;
+    }
+
+    .search-result-card__avatar,
+    .search-result-card__avatar.avatar-fallback {
+      width: 52px;
+      height: 52px;
+    }
+
+    .search-result-card__meta {
+      white-space: normal;
+    }
+  }
 }

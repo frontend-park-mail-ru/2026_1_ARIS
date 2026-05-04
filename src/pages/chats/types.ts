@@ -130,6 +130,8 @@ export type ChatsState = {
   source: "api" | "mock";
   /** Текущий поисковый запрос по списку диалогов. */
   query: string;
+  /** Активная мобильная панель: список диалогов или открытая переписка. */
+  mobileView: "list" | "dialog";
   /** Черновики текста сообщений по chatId. */
   composeDraftByChatId: Map<string, string>;
   /** Полный список тредов, известных странице. */

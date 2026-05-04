@@ -12,6 +12,7 @@ function createInitialChatsState(): ChatsState {
     loadingMessages: false,
     source: "mock",
     query: "",
+    mobileView: "list",
     composeDraftByChatId: new Map(),
     threads: [],
     selectedChatId: "",

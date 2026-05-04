@@ -94,4 +94,105 @@
       }
     }
   }
+
+  @media (width <= 1199px) {
+    .app-page {
+      min-width: 0;
+    }
+
+    .app-page--content-wide {
+      .header__inner {
+        min-width: 0;
+      }
+    }
+
+    .app-layout {
+      width: 100%;
+      min-width: 0;
+      grid-template-columns:
+        var(--layout-sidebar-width)
+        minmax(0, var(--layout-content-width));
+      justify-content: center;
+      box-sizing: border-box;
+
+      &__center {
+        align-items: stretch;
+      }
+
+      &__right {
+        display: none;
+      }
+
+      &__right--rail {
+        display: flex;
+        grid-column: 2;
+        padding-left: 0;
+      }
+
+      &--content-wide {
+        width: 100%;
+        min-width: 0;
+        grid-template-columns: var(--layout-sidebar-width) minmax(0, 1fr);
+        justify-content: stretch;
+
+        .app-layout__right {
+          display: none;
+        }
+      }
+    }
+  }
+
+  @media (width <= 768px) {
+    .app-page {
+      overflow-x: clip;
+    }
+
+    .app-page--content-wide {
+      height: 100dvh;
+    }
+
+    .app-layout {
+      display: grid;
+      width: 100%;
+      min-width: 0;
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: var(--layout-content-gap);
+      padding: var(--layout-padding-top) max(12px, env(safe-area-inset-right))
+        var(--layout-padding-bottom) max(12px, env(safe-area-inset-left));
+
+      &__left {
+        display: contents;
+      }
+
+      &__center {
+        width: 100%;
+        padding: 0;
+        gap: var(--layout-content-gap);
+      }
+
+      &__right,
+      &__right--optional {
+        display: none;
+      }
+
+      &__right--rail {
+        display: flex;
+        grid-column: 1;
+        padding-left: 0;
+      }
+
+      &--content-wide {
+        height: 100%;
+        min-height: 0;
+        padding: var(--space-3) max(10px, env(safe-area-inset-right)) var(--layout-padding-bottom)
+          max(10px, env(safe-area-inset-left));
+        overflow: hidden;
+
+        .app-layout__center {
+          height: 100%;
+          min-height: 0;
+        }
+      }
+    }
+  }
 }

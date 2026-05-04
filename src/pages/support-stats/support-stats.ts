@@ -28,7 +28,7 @@ export async function renderSupportStats(
               <div class="ss-error"><p>Для просмотра статистики необходимо <a href="/login" data-link>войти в аккаунт</a>.</p></div>
             </div>
           </section>
-          <aside class="app-layout__right"></aside>
+          <aside class="app-layout__right app-layout__right--optional"></aside>
         </main>
       </div>
     `;
@@ -45,7 +45,7 @@ export async function renderSupportStats(
               <div class="ss-error"><p>Нет доступа к статистике обращений.</p></div>
             </div>
           </section>
-          <aside class="app-layout__right"></aside>
+          <aside class="app-layout__right app-layout__right--optional"></aside>
         </main>
       </div>
     `;
@@ -89,7 +89,7 @@ export async function renderSupportStats(
           </div>
         </section>
 
-        <aside class="app-layout__right"></aside>
+        <aside class="app-layout__right app-layout__right--optional"></aside>
       </main>
     </div>
   `;

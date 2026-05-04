@@ -259,9 +259,7 @@ async function renderPopularUsersWidget(): Promise<string> {
           `,
         )
         .join("")
-    : renderWidgetbarEmptyState(
-        failed ? "Не удалось загрузить пользователей." : "Пока здесь никого нет.",
-      );
+    : renderWidgetbarEmptyState(failed ? "Не удалось загрузить пользователей." : "Список пуст.");
 
   return `
     <section class="widgetbar-card">
@@ -323,9 +321,7 @@ async function renderKnownPeopleWidget(): Promise<string> {
           `,
           )
           .join("") ||
-        renderWidgetbarEmptyState(
-          failed ? "Не удалось загрузить рекомендации." : "Новые рекомендации появятся позже.",
-        )
+        renderWidgetbarEmptyState(failed ? "Не удалось загрузить рекомендации." : "Список пуст.")
       }
     </section>
   `;
@@ -381,9 +377,7 @@ async function renderEventsWidget(): Promise<string> {
             .join("")}
         </div>
       `
-    : renderWidgetbarEmptyState(
-        result.failed ? "Не удалось загрузить события." : "Пока событий нет.",
-      );
+    : renderWidgetbarEmptyState(result.failed ? "Не удалось загрузить события." : "Список пуст.");
 
   return `
     <section class="widgetbar-card">

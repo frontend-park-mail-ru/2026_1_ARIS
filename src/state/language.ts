@@ -1,7 +1,7 @@
 /**
  * Глобальное состояние языка интерфейса.
  */
-import { updateUserSettings, type LanguageMode, type UserSettingsResponse } from "../api/settings";
+import type { LanguageMode, UserSettingsResponse } from "../api/settings";
 import { StateManager } from "./StateManager";
 
 export { type LanguageMode };
@@ -96,6 +96,7 @@ export async function saveLanguageToServer(
   language: LanguageMode,
   signal?: AbortSignal,
 ): Promise<UserSettingsResponse> {
+  const { updateUserSettings } = await import("../api/settings");
   const settings = await updateUserSettings({ language }, signal);
   applyLanguage(normaliseLanguageFromSettings(settings) ?? language);
   return settings;

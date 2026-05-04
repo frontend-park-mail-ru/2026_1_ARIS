@@ -16,6 +16,8 @@ const STATIC_FALLBACK_URLS = [
   "/assets/img/apple-touch-icon.png",
   "/assets/img/pwa-192.png",
   "/assets/img/pwa-512.png",
+  "/assets/img/screenshots/mobile.png",
+  "/assets/img/screenshots/desktop.png",
 ];
 
 function withSourceHeader(response, source) {

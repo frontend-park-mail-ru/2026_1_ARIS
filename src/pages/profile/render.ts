@@ -8,6 +8,9 @@ import { pendingProfilePostState } from "./state";
 import { escapeHtml, getAvatarImageSrc, hasVisibleValue, renderAvatar } from "./helpers";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderAvatarMarkup } from "../../utils/avatar";
+import { formatPersonName } from "../../utils/display-name";
+import { getLanguageMode } from "../../state/language";
+import { t } from "../../state/i18n";
 
 export {
   renderAvatarModal,
@@ -42,8 +45,8 @@ export function renderMissingProfileCard(profile: DisplayProfile): string {
         </div>
 
         <div class="profile-card__hero-copy">
-          <div class="profile-card__eyebrow">Профиль</div>
-          <h1>Профиль не существует</h1>
+          <div class="profile-card__eyebrow">${t("profile.profile")}</div>
+          <h1>${t("profile.profileMissing")}</h1>
           <p>${escapeHtml(profile.status)}</p>
         </div>
       </header>
@@ -67,7 +70,7 @@ function renderProfileFriendActionsContent(profile: ProfileFriendActionsModel): 
       class="profile-friend-action profile-friend-action--secondary"
       data-profile-open-chat="${escapeHtml(profile.id)}"
     >
-      Сообщение
+      ${t("chats.message")}
     </button>
   `;
 
@@ -80,7 +83,7 @@ function renderProfileFriendActionsContent(profile: ProfileFriendActionsModel): 
           class="profile-friend-action profile-friend-action--danger"
           data-profile-delete-friend="${escapeHtml(profile.id)}"
         >
-          Удалить из друзей
+          ${t("profile.removeFriend")}
         </button>
       </div>
     `;
@@ -95,14 +98,14 @@ function renderProfileFriendActionsContent(profile: ProfileFriendActionsModel): 
           class="profile-friend-action profile-friend-action--primary"
           data-profile-accept-friend="${escapeHtml(profile.id)}"
         >
-          Принять в друзья
+          ${t("friends.accept")}
         </button>
         <button
           type="button"
           class="profile-friend-action profile-friend-action--danger"
           data-profile-decline-friend="${escapeHtml(profile.id)}"
         >
-          Отклонить
+          ${t("friends.decline")}
         </button>
       </div>
     `;
@@ -113,13 +116,13 @@ function renderProfileFriendActionsContent(profile: ProfileFriendActionsModel): 
       <div class="profile-friend-actions">
         ${messageButton}
         <div class="profile-friend-request-state">
-          <span>Запрос отправлен.</span>
+          <span>${t("profile.requestSent")}</span>
           <button
             type="button"
             class="profile-friend-request-cancel"
             data-profile-revoke-friend="${escapeHtml(profile.id)}"
           >
-            Отменить
+            ${t("friends.cancel")}
           </button>
         </div>
       </div>
@@ -134,7 +137,7 @@ function renderProfileFriendActionsContent(profile: ProfileFriendActionsModel): 
         class="profile-friend-action profile-friend-action--primary"
         data-profile-request-friend="${escapeHtml(profile.id)}"
       >
-        Добавить в друзья
+        ${t("profile.addFriend")}
       </button>
     </div>
   `;
@@ -162,9 +165,9 @@ export function renderDeleteFriendModal(profile: DisplayProfile): string {
     return "";
   }
 
-  const friendName = `${profile.firstName} ${profile.lastName}`.trim() || profile.username;
+  const friendName = formatPersonName(profile.firstName, profile.lastName, profile.username);
   const friendshipDate = formatFriendshipDateLocal(profile.friendshipCreatedAt);
-  const friendshipCopy = friendshipDate ? `Вы в друзьях с ${friendshipDate} года` : "";
+  const friendshipCopy = friendshipDate ? `${t("friends.modalHint")} ${friendshipDate}` : "";
 
   return `
     <div class="profile-delete-modal" data-profile-delete-modal hidden>
@@ -172,10 +175,10 @@ export function renderDeleteFriendModal(profile: DisplayProfile): string {
         class="profile-delete-modal__dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Удалить из друзей"
+        aria-label="${t("profile.removeFriend")}"
       >
         <header class="profile-delete-modal__header">
-          <h2 class="profile-delete-modal__title">Удалить из друзей</h2>
+          <h2 class="profile-delete-modal__title">${t("profile.removeFriend")}</h2>
           ${renderModalCloseButton({
             className: "profile-delete-modal__close",
             attributes: "data-profile-delete-modal-close",
@@ -188,7 +191,7 @@ export function renderDeleteFriendModal(profile: DisplayProfile): string {
         </div>
 
         <p class="profile-delete-modal__text">
-          Вы действительно хотите удалить этого пользователя из друзей?
+          ${t("friends.confirmDeleteText")}
         </p>
 
         ${
@@ -203,14 +206,14 @@ export function renderDeleteFriendModal(profile: DisplayProfile): string {
             class="profile-delete-modal__button profile-delete-modal__button--primary"
             data-profile-confirm-delete="${escapeHtml(profile.id)}"
           >
-            Удалить из друзей
+            ${t("profile.removeFriend")}
           </button>
           <button
             type="button"
             class="profile-delete-modal__button"
             data-profile-delete-modal-close
           >
-            Отмена
+            ${t("friends.cancel")}
           </button>
         </div>
       </section>
@@ -229,7 +232,7 @@ function formatFriendshipDateLocal(value?: string): string {
     return "";
   }
 
-  return new Intl.DateTimeFormat("ru-RU", {
+  return new Intl.DateTimeFormat(getLanguageMode() === "EN" ? "en-US" : "ru-RU", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -238,28 +241,48 @@ function formatFriendshipDateLocal(value?: string): string {
     .replace(/\s*г\.$/, "");
 }
 
+function formatProfileGender(profile: DisplayProfile): string {
+  const value = profile.editable.gender || profile.gender.toLowerCase();
+  if (value === "male" || value === "мужской") return t("profile.male");
+  if (value === "female" || value === "женский") return t("profile.female");
+  return profile.gender;
+}
+
+function formatProfileBirthday(profile: DisplayProfile): string {
+  if (getLanguageMode() !== "EN") return profile.birthday;
+  const value = profile.editable.birthdayDate;
+  if (!value) return profile.birthday;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return profile.birthday;
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
+}
+
 export function renderInfoRows(profile: DisplayProfile): string {
   const rows = [
     hasVisibleValue(profile.gender)
       ? `
         <div class="profile-info-grid__row">
-          <dt>Пол</dt>
-          <dd>${escapeHtml(profile.gender)}</dd>
+          <dt>${t("profile.gender")}</dt>
+          <dd>${escapeHtml(formatProfileGender(profile))}</dd>
         </div>
       `
       : "",
     hasVisibleValue(profile.birthday)
       ? `
         <div class="profile-info-grid__row">
-          <dt>День рождения</dt>
-          <dd>${escapeHtml(profile.birthday)}</dd>
+          <dt>${t("profile.birthday")}</dt>
+          <dd>${escapeHtml(formatProfileBirthday(profile))}</dd>
         </div>
       `
       : "",
     hasVisibleValue(profile.phone)
       ? `
         <div class="profile-info-grid__row">
-          <dt>Телефон</dt>
+          <dt>${t("profile.phone")}</dt>
           <dd>${escapeHtml(profile.phone)}</dd>
         </div>
       `
@@ -267,7 +290,7 @@ export function renderInfoRows(profile: DisplayProfile): string {
     hasVisibleValue(profile.email)
       ? `
         <div class="profile-info-grid__row">
-          <dt>Email</dt>
+          <dt>${t("profile.email")}</dt>
           <dd>${escapeHtml(profile.email)}</dd>
         </div>
       `
@@ -275,7 +298,7 @@ export function renderInfoRows(profile: DisplayProfile): string {
     hasVisibleValue(profile.city)
       ? `
         <div class="profile-info-grid__row">
-          <dt>Город</dt>
+          <dt>${t("profile.city")}</dt>
           <dd>${escapeHtml(profile.city)}</dd>
         </div>
       `
@@ -283,7 +306,7 @@ export function renderInfoRows(profile: DisplayProfile): string {
     hasVisibleValue(profile.nativeTown)
       ? `
         <div class="profile-info-grid__row">
-          <dt>Родной город</dt>
+          <dt>${t("profile.nativeTown")}</dt>
           <dd>${escapeHtml(profile.nativeTown)}</dd>
         </div>
       `
@@ -351,7 +374,7 @@ export function renderPersonal(profile: DisplayProfile): string {
     hasVisibleValue(profile.interests)
       ? `
         <div class="profile-info-grid__row">
-          <dt>Интересы</dt>
+          <dt>${t("profile.interests")}</dt>
           <dd>${escapeHtml(profile.interests)}</dd>
         </div>
       `
@@ -359,7 +382,7 @@ export function renderPersonal(profile: DisplayProfile): string {
     hasVisibleValue(profile.favoriteMusic)
       ? `
         <div class="profile-info-grid__row">
-          <dt>Любимая музыка</dt>
+          <dt>${t("profile.music")}</dt>
           <dd>${escapeHtml(profile.favoriteMusic)}</dd>
         </div>
       `
@@ -383,7 +406,7 @@ export function renderFriends(profile: DisplayProfile): string {
   const friends = profile.friends;
   const previewCount = 6;
   const hasMoreFriends = friends.length > previewCount;
-  const title = profile.isOwnProfile ? "Друзья" : "Друзья этого пользователя";
+  const title = profile.isOwnProfile ? t("profile.friends") : t("profile.friendsOfUser");
   const countMarkup =
     friends.length > 0
       ? `<span class="profile-friends-card__count">(${friends.length})</span>`
@@ -413,12 +436,14 @@ export function renderFriends(profile: DisplayProfile): string {
                     >
                       ${renderAvatarMarkup(
                         "profile-friend__avatar",
-                        `${friend.firstName} ${friend.lastName}`.trim(),
+                        formatPersonName(friend.firstName, friend.lastName, friend.username),
                         friend.avatarLink,
                         { width: 44, height: 44 },
                       )}
                       <div class="profile-friend__content">
-                        <strong>${escapeHtml(`${friend.firstName} ${friend.lastName}`)}</strong>
+                        <strong>${escapeHtml(
+                          formatPersonName(friend.firstName, friend.lastName, friend.username),
+                        )}</strong>
                       </div>
                     </a>
                   `,
@@ -426,7 +451,7 @@ export function renderFriends(profile: DisplayProfile): string {
                 .join("")}
             </div>
           `
-          : `<p class="profile-empty-copy">Список пуст.</p>`
+          : `<p class="profile-empty-copy">${t("common.emptyList")}</p>`
       }
 
       ${
@@ -438,7 +463,7 @@ export function renderFriends(profile: DisplayProfile): string {
                 data-link
                 class="profile-friends-card__more"
               >
-                показать всех
+                ${t("profile.moreFriends")}
               </a>
             </footer>
           `
@@ -474,7 +499,7 @@ function renderProfilePostImages(images: string[]): string {
               decoding="async"
               class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
               src="${escapeHtml(getAvatarImageSrc(image))}"
-              alt="Изображение публикации"
+              alt="${t("profile.imageAlt")}"
             >
           `,
         )
@@ -550,34 +575,34 @@ export function renderProfilePosts(
               <div class="profile-posts__toolbar" data-profile-post-toolbar>
                 <button type="button" class="profile-composer" data-profile-post-open>
                   <span class="profile-composer__icon" aria-hidden="true">+</span>
-                  <span class="profile-composer__label">Создать запись</span>
+                  <span class="profile-composer__label">${t("profile.createPost")}</span>
                 </button>
 
                 <button
                   type="button"
                   class="profile-posts__search-toggle"
                   data-profile-post-search-open
-                  aria-label="Открыть поиск по публикациям"
+                  aria-label="${t("profile.openPostSearch")}"
                 >
                   <img src="/assets/img/icons/search.svg" alt="">
                 </button>
               </div>
 
-              <label class="profile-posts__search search-field" aria-label="Поиск по публикациям" data-profile-post-search-panel hidden>
+              <label class="profile-posts__search search-field" aria-label="${t("profile.postSearch")}" data-profile-post-search-panel hidden>
                 <span class="profile-posts__search-icon search-field__icon" aria-hidden="true">
                   <img src="/assets/img/icons/search.svg" alt="">
                 </span>
                 <input
                   type="search"
                   class="profile-posts__search-input search-field__input"
-                  placeholder="Поиск"
+                  placeholder="${t("header.search")}"
                   data-profile-post-search
                 >
                 <button
                   type="button"
                   class="profile-posts__search-close"
                   data-profile-post-search-close
-                  aria-label="Закрыть поиск по публикациям"
+                  aria-label="${t("profile.closePostSearch")}"
                 >
                   ×
                 </button>
@@ -588,7 +613,7 @@ export function renderProfilePosts(
       }
 
       <header class="profile-posts__header content-card"${isOwnProfile ? " hidden" : ""}>
-        ${isOwnProfile ? "" : `<h2>Публикации</h2>`}
+        ${isOwnProfile ? "" : `<h2>${t("profile.posts")}</h2>`}
       </header>
 
       <div class="profile-posts__list" data-profile-post-list>
@@ -621,17 +646,22 @@ export function renderProfilePosts(
                         >
                           ${renderAvatarMarkup(
                             "profile-post__avatar",
-                            `${post.authorFirstName || post.authorUsername} ${
-                              post.authorLastName
-                            }`.trim(),
+                            formatPersonName(
+                              post.authorFirstName,
+                              post.authorLastName,
+                              post.authorUsername,
+                            ),
                             post.authorAvatarLink,
                             { width: 44, height: 44 },
                           )}
 
                           <div class="profile-post__meta">
                             <strong>${escapeHtml(
-                              `${post.authorFirstName} ${post.authorLastName}`.trim() ||
+                              formatPersonName(
+                                post.authorFirstName,
+                                post.authorLastName,
                                 post.authorUsername,
+                              ),
                             )}</strong>
                           </div>
                         </a>
@@ -644,7 +674,7 @@ export function renderProfilePosts(
                                   type="button"
                                   class="profile-post__menu-toggle"
                                   data-profile-post-menu-toggle="${escapeHtml(post.id)}"
-                                  aria-label="Действия с публикацией"
+                                  aria-label="${t("profile.actionsAria")}"
                                   aria-expanded="false"
                                 >
                                   <span></span><span></span><span></span>
@@ -655,14 +685,14 @@ export function renderProfilePosts(
                                     class="profile-post__menu-action"
                                     data-profile-post-edit="${escapeHtml(post.id)}"
                                   >
-                                    Редактировать
+                                    ${t("profile.edit")}
                                   </button>
                                   <button
                                     type="button"
                                     class="profile-post__menu-action profile-post__menu-action--danger"
                                     data-profile-post-delete="${escapeHtml(post.id)}"
                                   >
-                                    Удалить
+                                    ${t("communities.delete")}
                                   </button>
                                 </div>
                               </div>
@@ -684,7 +714,7 @@ export function renderProfilePosts(
                             }"
                             data-profile-post-like="${escapeHtml(post.id)}"
                             aria-pressed="${post.isLiked ? "true" : "false"}"
-                            aria-label="Лайки"
+                            aria-label="${t("profile.likes")}"
                           >
                             <span class="profile-post__stat-icon">
                               <img src="/assets/img/icons/heart.svg" class="profile-post__icon" alt="" />
@@ -704,7 +734,7 @@ export function renderProfilePosts(
                           class="profile-post__time"
                           ${post.timeRaw ? `datetime="${escapeHtml(post.timeRaw)}"` : ""}
                           ${post.timeRaw ? `data-tooltip="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}
-                        >${escapeHtml(post.time)}</time>
+                        >${escapeHtml(formatProfilePostRelativeTime(post.timeRaw, post.time))}</time>
                       </footer>
                     </article>
                   `,
@@ -713,13 +743,13 @@ export function renderProfilePosts(
             `
             : `
                 <div class="profile-posts__empty content-card">
-                  <p class="profile-empty-copy">Список пуст.</p>
+                  <p class="profile-empty-copy">${t("common.emptyList")}</p>
                 </div>
               `
         }
 
         <div class="profile-posts__empty profile-posts__empty--search content-card" data-profile-post-search-empty hidden>
-          <p class="profile-empty-copy">Ничего не найдено.</p>
+          <p class="profile-empty-copy">${t("friends.noneFound")}</p>
         </div>
       </div>
     </section>
@@ -754,18 +784,44 @@ function formatPostExactTime(iso?: string): string {
     return "";
   }
 
-  const datePart = new Intl.DateTimeFormat("ru-RU", {
+  const locale = getLanguageMode() === "EN" ? "en-US" : "ru-RU";
+  const datePart = new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(createdAt);
 
-  const timePart = new Intl.DateTimeFormat("ru-RU", {
+  const timePart = new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(createdAt);
 
   return `${datePart}\n${timePart}`;
+}
+
+function formatProfilePostRelativeTime(iso?: string, fallback = ""): string {
+  if (!iso) return fallback;
+
+  const createdAt = new Date(iso);
+  if (Number.isNaN(createdAt.getTime())) return fallback;
+
+  const diff = Date.now() - createdAt.getTime();
+  const minutes = Math.max(0, Math.floor(diff / 60000));
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return t("postcard.justNow");
+  if (minutes < 60) return `${minutes} ${t("postcard.minutesAgo")}`;
+  if (hours < 24) return `${hours} ${t("postcard.hoursAgo")}`;
+  if (days < 30) return `${days} ${t("postcard.daysAgo")}`;
+
+  return new Intl.DateTimeFormat(getLanguageMode() === "EN" ? "en-US" : "ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(createdAt);
 }
 
 export function renderSection(title: string, content: string, action = ""): string {
@@ -787,8 +843,8 @@ export function renderSection(title: string, content: string, action = ""): stri
 }
 
 export function renderProfileSections(profile: DisplayProfile): string {
-  const educationSection = renderSection("Образование", renderEducation(profile));
-  const workSection = renderSection("Место работы", renderWork(profile));
-  const personalSection = renderSection("Личная информация", renderPersonal(profile));
+  const educationSection = renderSection(t("profile.education"), renderEducation(profile));
+  const workSection = renderSection(t("profile.work"), renderWork(profile));
+  const personalSection = renderSection(t("profile.personal"), renderPersonal(profile));
   return `${educationSection}${workSection}${personalSection}`;
 }

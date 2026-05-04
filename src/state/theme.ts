@@ -75,7 +75,7 @@ function emitThemeChange(theme: ThemeMode): void {
   );
 }
 
-function normaliseThemeFromSettings(settings: UserSettingsResponse): ThemeMode | null {
+export function normaliseThemeFromSettings(settings: UserSettingsResponse): ThemeMode | null {
   return isThemeMode(settings.theme) ? settings.theme : null;
 }
 

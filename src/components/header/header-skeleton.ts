@@ -4,6 +4,8 @@
  * Повторяет структуру header, чтобы при асинхронном старте не прыгал layout.
  */
 import { getSessionUser } from "../../state/session";
+import { t } from "../../state/i18n";
+import { formatPersonName } from "../../utils/display-name";
 
 /**
  * Рендерит скелетон шапки для гостя или авторизованного пользователя.
@@ -12,7 +14,7 @@ import { getSessionUser } from "../../state/session";
  */
 export function renderHeaderSkeleton(): string {
   const user = getSessionUser();
-  const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : "";
+  const fullName = user ? formatPersonName(user.firstName, user.lastName) : "";
 
   if (!user) {
     return `
@@ -24,11 +26,11 @@ export function renderHeaderSkeleton(): string {
 
           <div class="header__guest-actions">
             <button type="button" class="button button--primary button--large" data-open-auth-modal="register">
-              Регистрация
+              ${t("header.register")}
             </button>
 
             <button type="button" class="button button--secondary button--small" data-open-auth-modal="login">
-              Войти
+              ${t("header.login")}
             </button>
           </div>
         </div>
@@ -43,14 +45,14 @@ export function renderHeaderSkeleton(): string {
           <img class="header__logo" src="/assets/img/logo-v3.png" width="300" height="114" alt="ARIS">
         </a>
 
-        <label class="header__search-box search-field" aria-label="Поиск">
+        <label class="header__search-box search-field" aria-label="${t("header.search")}">
           <span class="header__search-icon search-field__icon" aria-hidden="true">
             <img src="/assets/img/icons/search.svg" alt="">
           </span>
           <input
             class="header__search-input search-field__input"
             type="text"
-            placeholder="Поиск"
+            placeholder="${t("header.search")}"
           >
         </label>
 
@@ -61,7 +63,7 @@ export function renderHeaderSkeleton(): string {
               : `<span class="skeleton header__username" style="display:block;height:16px"></span>`
           }
           <div class="header__avatar-wrap">
-            <span class="header__avatar avatar-skeleton skeleton" role="img" aria-label="Загрузка профиля"></span>
+            <span class="header__avatar avatar-skeleton skeleton" role="img" aria-label="${t("profile.profile")}"></span>
           </div>
         </div>
       </div>

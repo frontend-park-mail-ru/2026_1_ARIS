@@ -5,6 +5,7 @@
  */
 import { renderPostcard } from "../../components/postcard/postcard";
 import { getFeedMode } from "../../state/session";
+import { t } from "../../state/i18n";
 import type { PostcardModel } from "../../api/feed";
 
 type RenderFeedCardsOptions = {
@@ -16,20 +17,20 @@ function renderFeedModeMobileSwitcher(): string {
   const activeMode = getFeedMode();
 
   return `
-    <section class="feed-mode-mobile content-card" aria-label="Тип ленты">
+    <section class="feed-mode-mobile content-card" aria-label="${t("sidebar.feedType")}">
       <button
         type="button"
         class="feed-mode-mobile__button${activeMode === "for-you" ? " feed-mode-mobile__button--active" : ""}"
         data-feed-mode="for-you"
       >
-        Для вас
+        ${t("sidebar.forYou")}
       </button>
       <button
         type="button"
         class="feed-mode-mobile__button${activeMode !== "for-you" ? " feed-mode-mobile__button--active" : ""}"
         data-feed-mode="by-time"
       >
-        По времени
+        ${t("sidebar.byTime")}
       </button>
     </section>
   `;
@@ -45,9 +46,9 @@ export function renderEmptyFriendsFeed(): string {
     <section class="app-layout__center">
       ${renderFeedModeMobileSwitcher()}
       <section class="feed-empty-state content-card">
-        <h2 class="feed-empty-state__title">Список пуст.</h2>
+        <h2 class="feed-empty-state__title">${t("common.emptyList")}</h2>
         <p class="feed-empty-state__text">
-          Как только друзья начнут публиковать новые записи, они появятся здесь.
+          ${t("feed.emptyFriendsDescription")}
         </p>
       </section>
     </section>
@@ -64,9 +65,9 @@ export function renderEmptyPublicFeed(): string {
     <section class="app-layout__center">
       ${renderFeedModeMobileSwitcher()}
       <section class="feed-empty-state content-card">
-        <h2 class="feed-empty-state__title">Список пуст.</h2>
+        <h2 class="feed-empty-state__title">${t("common.emptyList")}</h2>
         <p class="feed-empty-state__text">
-          Как только в сети появятся новые посты, они сразу отобразятся здесь.
+          ${t("feed.emptyPublicDescription")}
         </p>
       </section>
     </section>
@@ -84,10 +85,10 @@ export function renderOfflineFeedFallback(isAuthorised: boolean): string {
     <section class="app-layout__center">
       ${renderFeedModeMobileSwitcher()}
       <section class="feed-empty-state content-card">
-        <h2 class="feed-empty-state__title">Лента временно недоступна</h2>
+        <h2 class="feed-empty-state__title">${t("feed.unavailable")}</h2>
         <p class="feed-empty-state__text">
-          ${isAuthorised ? "Нет соединения с интернетом." : "Не удалось загрузить публичную ленту."}
-          Покажем свежие посты, когда соединение вернётся.
+          ${isAuthorised ? t("feed.noInternet") : t("feed.publicLoadError")}
+          ${t("feed.offlineDescription")}
         </p>
       </section>
     </section>
@@ -103,9 +104,7 @@ export function renderOfflineFeedFallback(isAuthorised: boolean): string {
  */
 export function renderFeedStatus(hasMore: boolean, isLoading: boolean): string {
   const hiddenClass = hasMore ? "" : " feed-infinite-status--hidden";
-  const text = isLoading
-    ? "Загружаем ещё публикации..."
-    : "Прокрутите ниже, чтобы увидеть ещё публикации.";
+  const text = isLoading ? t("feed.loadingMore") : t("feed.loadMore");
 
   return `<div class="feed-infinite-status${hiddenClass}" data-feed-status>${text}</div>`;
 }

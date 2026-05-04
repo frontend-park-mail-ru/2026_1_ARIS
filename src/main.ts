@@ -43,7 +43,9 @@ import { registerServiceWorker } from "./utils/register-service-worker";
 import { onCacheInvalidation } from "./utils/cache-channel";
 import { captureAppException, initSentry, syncSentryUser } from "./utils/sentry";
 import { initSupportIframe } from "./utils/support-widget";
-import { applyTheme, initThemeFromStorage, syncThemeWithServer } from "./state/theme";
+import { applyLanguage, initLanguageFromStorage } from "./state/language";
+import { applyTheme, initThemeFromStorage } from "./state/theme";
+import { resetUserSettingsSyncState, syncUserSettingsWithServer } from "./state/user-settings";
 
 const SITE_ORIGIN = "https://arisnet.ru";
 const CANONICAL_ROUTE_ALIASES: Record<string, string> = {
@@ -191,6 +193,7 @@ if (!(root instanceof HTMLElement)) {
 }
 
 initThemeFromStorage();
+initLanguageFromStorage();
 
 const routes: Route[] = [
   {
@@ -306,20 +309,23 @@ const chunkMap: Record<string, () => Promise<unknown>> = {
   "/support/admin": loadSupportAdmin,
 };
 
-async function syncThemeForSession(action: string): Promise<void> {
+async function syncSettingsForSession(action: string): Promise<void> {
+  resetUserSettingsSyncState();
+
   if (!getSessionUser()) {
+    applyLanguage("RU", { emit: false });
     applyTheme("light", { emit: false });
     return;
   }
 
   try {
-    await syncThemeWithServer();
+    await syncUserSettingsWithServer(undefined, { force: true });
   } catch (error) {
     captureAppException(error, {
-      area: "theme",
+      area: "settings",
       action,
     });
-    console.error("[theme] sync failed", error);
+    console.error("[settings] sync failed", error);
   }
 }
 
@@ -348,7 +354,7 @@ document.addEventListener(
 void (async () => {
   try {
     await initSession();
-    await syncThemeForSession("init-sync");
+    await syncSettingsForSession("init-sync");
     syncSentryUser(getSessionUser());
   } catch (error) {
     captureAppException(error, {
@@ -415,7 +421,7 @@ window.addEventListener("sessionchange", async (event: Event) => {
     }
 
     if (detail?.key === "user") {
-      await syncThemeForSession("session-user-sync");
+      await syncSettingsForSession("session-user-sync");
       syncSentryUser(getSessionUser());
       await router.render();
       initHeader();

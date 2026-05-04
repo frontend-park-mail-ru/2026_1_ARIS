@@ -6,6 +6,8 @@
 import { API_BASE_URL } from "../../api/config";
 import type { DisplayProfile } from "./types";
 import { renderAvatarMarkup, type AvatarOptions } from "../../utils/avatar";
+import { formatPersonName } from "../../utils/display-name";
+import { t } from "../../state/i18n";
 
 export function escapeHtml(value: string): string {
   return value
@@ -83,8 +85,9 @@ export function renderAvatar(
   options: AvatarOptions = {},
 ): string {
   const label = profile.isMissingProfile
-    ? "Профиль"
-    : `${profile.firstName} ${profile.lastName}`.trim() || "Пользователь";
+    ? t("profile.profile")
+    : formatPersonName(profile.firstName, profile.lastName, profile.username) ||
+      t("widgetbar.userFallback");
 
   return renderAvatarMarkup(className, label, profile.avatarLink, options);
 }

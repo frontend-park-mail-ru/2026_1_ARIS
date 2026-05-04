@@ -1,5 +1,8 @@
 import type { Community, CommunityBundle, CommunityMember } from "../../api/communities";
 import type { PostMedia, PostResponse } from "../../api/posts";
+import { t } from "../../state/i18n";
+import { getLanguageMode } from "../../state/language";
+import { formatPersonName } from "../../utils/display-name";
 import type { ProfilePost } from "../profile/types";
 
 export function escapeHtml(value: string): string {
@@ -16,10 +19,14 @@ export function getCommunityUrl(community: Community): string {
 }
 
 export function getCommunityName(community: Community): string {
-  return community.title.trim() || community.username.trim() || "Сообщество";
+  return community.title.trim() || community.username.trim() || t("communities.communityFallback");
 }
 
 export function getMembersLabel(count: number): string {
+  if (getLanguageMode() === "EN") {
+    return `${count} ${count === 1 ? "member" : "members"}`;
+  }
+
   const mod100 = count % 100;
   const mod10 = count % 10;
   if (mod100 >= 11 && mod100 <= 14) return `${count} участников`;
@@ -30,11 +37,11 @@ export function getMembersLabel(count: number): string {
 
 export function getRoleLabel(role: string): string {
   const labels: Record<string, string> = {
-    owner: "Владелец",
-    admin: "Администратор",
-    moderator: "Модератор",
-    member: "Участник",
-    blocked: "Заблокированный",
+    owner: t("community.role.owner"),
+    admin: t("community.role.admin"),
+    moderator: t("community.role.moderator"),
+    member: t("community.role.member"),
+    blocked: t("community.role.blocked"),
   };
   return labels[role] ?? "";
 }
@@ -100,12 +107,16 @@ export function canRemoveCommunityMember(
 }
 
 export function getMemberDisplayName(member: CommunityMember): string {
-  return `${member.firstName} ${member.lastName}`.trim() || member.username || "Пользователь";
+  return (
+    formatPersonName(member.firstName, member.lastName, member.username) ||
+    t("widgetbar.userFallback")
+  );
 }
 
 export function getPostAuthorDisplayName(post: ProfilePost): string {
   return (
-    `${post.authorFirstName} ${post.authorLastName}`.trim() || post.authorUsername || "Пользователь"
+    formatPersonName(post.authorFirstName, post.authorLastName, post.authorUsername) ||
+    t("widgetbar.userFallback")
   );
 }
 
@@ -176,11 +187,11 @@ export function formatPostRelativeTime(iso?: string): string {
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-  if (minutes < 1) return "только что";
-  if (minutes < 60) return `${minutes} мин назад`;
-  if (hours < 24) return `${hours} ч назад`;
-  if (days < 30) return `${days} д назад`;
-  return new Intl.DateTimeFormat("ru-RU", {
+  if (minutes < 1) return t("postcard.justNow");
+  if (minutes < 60) return `${minutes} ${t("postcard.minutesAgo")}`;
+  if (hours < 24) return `${hours} ${t("postcard.hoursAgo")}`;
+  if (days < 30) return `${days} ${t("postcard.daysAgo")}`;
+  return new Intl.DateTimeFormat(getLanguageMode() === "EN" ? "en-US" : "ru-RU", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -193,12 +204,13 @@ export function formatPostExactTime(iso?: string): string {
   if (!iso) return "";
   const createdAt = new Date(iso);
   if (Number.isNaN(createdAt.getTime())) return "";
-  const datePart = new Intl.DateTimeFormat("ru-RU", {
+  const locale = getLanguageMode() === "EN" ? "en-US" : "ru-RU";
+  const datePart = new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(createdAt);
-  const timePart = new Intl.DateTimeFormat("ru-RU", {
+  const timePart = new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(createdAt);

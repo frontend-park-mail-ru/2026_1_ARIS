@@ -24,6 +24,8 @@ import {
 } from "../../api/friends";
 import { getMyProfile, getProfileById } from "../../api/profile";
 import { getSessionUser } from "../../state/session";
+import { getLanguageMode } from "../../state/language";
+import { t } from "../../state/i18n";
 
 import type { ProfileParams, ProfileFriendState, ProfilePost } from "./types";
 import {
@@ -69,6 +71,7 @@ import {
   renderPersonal,
 } from "./render";
 import { prepareAvatarLinks } from "../../utils/avatar";
+import { formatPersonName } from "../../utils/display-name";
 import { bindProfileEvents } from "./events";
 import { applyProfilePostFilters, initProfilePostListLayout } from "./post-list";
 
@@ -225,12 +228,12 @@ function formatPostRelativeTime(iso?: string): string {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (minutes < 1) return "только что";
-  if (minutes < 60) return `${minutes} мин назад`;
-  if (hours < 24) return `${hours} ч назад`;
-  if (days < 30) return `${days} д назад`;
+  if (minutes < 1) return t("postcard.justNow");
+  if (minutes < 60) return `${minutes} ${t("postcard.minutesAgo")}`;
+  if (hours < 24) return `${hours} ${t("postcard.hoursAgo")}`;
+  if (days < 30) return `${days} ${t("postcard.daysAgo")}`;
 
-  return new Intl.DateTimeFormat("ru-RU", {
+  return new Intl.DateTimeFormat(getLanguageMode() === "EN" ? "en-US" : "ru-RU", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -402,9 +405,9 @@ export async function renderProfile(
   setCurrentProfile(profile);
   setCurrentProfilePosts(posts);
 
-  const educationSection = renderSection("Образование", renderEducation(profile));
-  const workSection = renderSection("Место работы", renderWork(profile));
-  const personalSection = renderSection("Личная информация", renderPersonal(profile));
+  const educationSection = renderSection(t("profile.education"), renderEducation(profile));
+  const workSection = renderSection(t("profile.work"), renderWork(profile));
+  const personalSection = renderSection(t("profile.personal"), renderPersonal(profile));
   const hasMoreSections = Boolean(
     educationSection.trim() || workSection.trim() || personalSection.trim(),
   );
@@ -412,7 +415,7 @@ export async function renderProfile(
   const profileInfoAction = profile.isOwnProfile
     ? `
         <button type="button" class="profile-section__action-button" data-profile-edit-toggle>
-          редактировать
+          ${t("profile.edit")}
         </button>
       `
     : "";
@@ -438,7 +441,7 @@ export async function renderProfile(
                           type="button"
                           class="profile-card__avatar-trigger"
                           data-profile-avatar-open
-                          aria-label="Изменить аватар"
+                          aria-label="${t("profile.avatarChange")}"
                         >
                           ${renderAvatar(profile, "profile-card__avatar", {
                             width: 96,
@@ -458,15 +461,19 @@ export async function renderProfile(
                 </div>
 
                 <div class="profile-card__hero-copy">
-                  ${profile.isOwnProfile ? '<div class="profile-card__eyebrow">Мой профиль</div>' : ""}
-                  <h1>${escapeHtml(`${profile.firstName} ${profile.lastName}`)}</h1>
+                  ${
+                    profile.isOwnProfile
+                      ? `<div class="profile-card__eyebrow">${t("profile.myProfile")}</div>`
+                      : ""
+                  }
+                  <h1>${escapeHtml(formatPersonName(profile.firstName, profile.lastName, profile.username))}</h1>
                   ${hasVisibleValue(profile.status) ? `<p>${escapeHtml(profile.status)}</p>` : ""}
                   ${renderProfileFriendActions(profile)}
                 </div>
               </header>
 
               <div class="profile-card__details">
-                ${renderSection("Информация", renderInfoRows(profile), profileInfoAction)}
+                ${renderSection(t("profile.info"), renderInfoRows(profile), profileInfoAction)}
 
                 ${
                   hasMoreSections
@@ -478,7 +485,7 @@ export async function renderProfile(
                       </div>
 
                       <button type="button" class="profile-card__toggle" data-profile-toggle aria-expanded="false">
-                        показать подробнее
+                        ${t("profile.more")}
                       </button>
                     `
                     : ""

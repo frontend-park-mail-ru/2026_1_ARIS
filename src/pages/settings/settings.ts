@@ -4,14 +4,16 @@
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
-import { getSessionUser } from "../../state/session";
 import {
-  applyTheme,
-  getThemeMode,
-  saveThemeToServer,
-  syncThemeWithServer,
-  type ThemeMode,
-} from "../../state/theme";
+  applyLanguage,
+  getLanguageMode,
+  saveLanguageToServer,
+  type LanguageMode,
+} from "../../state/language";
+import { t } from "../../state/i18n";
+import { getSessionUser } from "../../state/session";
+import { applyTheme, getThemeMode, saveThemeToServer, type ThemeMode } from "../../state/theme";
+import { syncUserSettingsWithServer } from "../../state/user-settings";
 
 type SettingsRoot = (Document | HTMLElement) & {
   __settingsBound?: boolean;
@@ -21,20 +23,48 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+function isLanguageMode(value: unknown): value is LanguageMode {
+  return value === "RU" || value === "EN";
+}
+
+function renderLanguageOption(
+  language: LanguageMode,
+  label: string,
+  currentLanguage: LanguageMode,
+): string {
+  return `
+    <label class="settings-segmented__option">
+      <input
+        type="radio"
+        class="settings-segmented__input"
+        name="settings-language"
+        value="${language}"
+        data-language-option
+        ${currentLanguage === language ? "checked" : ""}
+        aria-label="${label}"
+      />
+      <span class="settings-segmented__text">${label}</span>
+    </label>
+  `;
+}
+
 function renderSettingsPanel(loadError = ""): string {
   const isDark = getThemeMode() === "dark";
+  const currentLanguage = getLanguageMode();
 
   return `
     <section class="settings-page" data-settings-page>
       <section class="settings-panel content-card">
         <header class="settings-panel__header">
-          <h1 class="settings-panel__title">Настройки</h1>
+          <h1 class="settings-panel__title">${t("settings.title")}</h1>
         </header>
 
         <section class="settings-section" aria-labelledby="settings-appearance-title">
           <div class="settings-section__body">
-            <h2 class="settings-section__title" id="settings-appearance-title">Оформление</h2>
-            <span class="settings-section__label">Тёмная тема</span>
+            <h2 class="settings-section__title" id="settings-appearance-title">${t(
+              "settings.appearance",
+            )}</h2>
+            <span class="settings-section__label">${t("settings.darkTheme")}</span>
           </div>
 
           <label class="settings-switch">
@@ -43,12 +73,26 @@ function renderSettingsPanel(loadError = ""): string {
               class="settings-switch__input"
               data-theme-toggle
               ${isDark ? "checked" : ""}
-              aria-label="Тёмная тема"
+              aria-label="${t("settings.darkTheme")}"
             />
             <span class="settings-switch__track" aria-hidden="true">
               <span class="settings-switch__thumb"></span>
             </span>
           </label>
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-language-title">
+          <div class="settings-section__body">
+            <h2 class="settings-section__title" id="settings-language-title">${t(
+              "settings.language",
+            )}</h2>
+            <span class="settings-section__label">${t("settings.interfaceLanguage")}</span>
+          </div>
+
+          <fieldset class="settings-segmented" aria-labelledby="settings-language-title">
+            ${renderLanguageOption("RU", t("settings.russian"), currentLanguage)}
+            ${renderLanguageOption("EN", t("settings.english"), currentLanguage)}
+          </fieldset>
         </section>
 
         <p
@@ -63,9 +107,11 @@ function renderSettingsPanel(loadError = ""): string {
 }
 
 function setSettingsSaving(root: Document | HTMLElement, saving: boolean): void {
-  root.querySelectorAll<HTMLInputElement>("[data-theme-toggle]").forEach((input) => {
-    input.disabled = saving;
-  });
+  root
+    .querySelectorAll<HTMLInputElement>("[data-theme-toggle], [data-language-option]")
+    .forEach((input) => {
+      input.disabled = saving;
+    });
 }
 
 function setSettingsMessage(root: Document | HTMLElement, message: string): void {
@@ -83,6 +129,13 @@ function syncToggleState(root: Document | HTMLElement): void {
   });
 }
 
+function syncLanguageState(root: Document | HTMLElement): void {
+  const language = getLanguageMode();
+  root.querySelectorAll<HTMLInputElement>("[data-language-option]").forEach((input) => {
+    input.checked = input.value === language;
+  });
+}
+
 export async function renderSettings(
   _params?: Record<string, string>,
   signal?: AbortSignal,
@@ -96,10 +149,10 @@ export async function renderSettings(
   let loadError = "";
 
   try {
-    await syncThemeWithServer(signal);
+    await syncUserSettingsWithServer(signal);
   } catch (error) {
     if (isAbortError(error)) throw error;
-    loadError = "Не удалось загрузить настройки.";
+    loadError = t("settings.loadError");
   }
 
   return `
@@ -126,27 +179,60 @@ export function initSettings(root: Document | HTMLElement = document): void {
 
   root.addEventListener("change", (event: Event) => {
     const target = event.target;
-    if (!(target instanceof HTMLInputElement) || !target.matches("[data-theme-toggle]")) return;
+    if (!(target instanceof HTMLInputElement)) return;
 
-    const previousTheme = getThemeMode();
-    const nextTheme: ThemeMode = target.checked ? "dark" : "light";
-    if (previousTheme === nextTheme) return;
+    if (target.matches("[data-theme-toggle]")) {
+      const previousTheme = getThemeMode();
+      const nextTheme: ThemeMode = target.checked ? "dark" : "light";
+      if (previousTheme === nextTheme) return;
+
+      setSettingsMessage(root, "");
+      setSettingsSaving(root, true);
+      applyTheme(nextTheme);
+      syncToggleState(root);
+
+      void saveThemeToServer(nextTheme)
+        .then(() => {
+          syncToggleState(root);
+        })
+        .catch((error) => {
+          if (isAbortError(error)) return;
+
+          applyTheme(previousTheme);
+          syncToggleState(root);
+          setSettingsMessage(root, t("settings.saveThemeError"));
+        })
+        .finally(() => {
+          setSettingsSaving(root, false);
+        });
+
+      return;
+    }
+
+    if (!target.matches("[data-language-option]")) return;
+
+    const nextLanguage = target.value;
+    if (!isLanguageMode(nextLanguage)) return;
+
+    const previousLanguage = getLanguageMode();
+    if (previousLanguage === nextLanguage) return;
 
     setSettingsMessage(root, "");
     setSettingsSaving(root, true);
-    applyTheme(nextTheme);
-    syncToggleState(root);
+    applyLanguage(nextLanguage);
+    syncLanguageState(root);
 
-    void saveThemeToServer(nextTheme)
+    void saveLanguageToServer(nextLanguage)
       .then(() => {
-        syncToggleState(root);
+        syncLanguageState(root);
+        window.location.reload();
       })
       .catch((error) => {
         if (isAbortError(error)) return;
 
-        applyTheme(previousTheme);
-        syncToggleState(root);
-        setSettingsMessage(root, "Не удалось сохранить тему.");
+        applyLanguage(previousLanguage);
+        syncLanguageState(root);
+        setSettingsMessage(root, t("settings.saveLanguageError"));
       })
       .finally(() => {
         setSettingsSaving(root, false);

@@ -4,6 +4,7 @@
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderAvatarMarkup, resolveAvatarSrc } from "../../utils/avatar";
 import { resolveMediaUrl } from "../../utils/media";
+import { t } from "../../state/i18n";
 import type { CommunityBundle } from "../../api/communities";
 import type { ProfilePost } from "../profile/types";
 import { communitiesState, getVisibleCommunities, getVisibleCommunityMembers } from "./state";
@@ -16,6 +17,7 @@ import {
   escapeHtml,
   formatMemberJoinDate,
   formatPostExactTime,
+  formatPostRelativeTime,
   getCommunityName,
   getCommunityUrl,
   getMemberDisplayName,
@@ -52,7 +54,7 @@ function renderCommunityMenu(bundle: CommunityBundle): string {
         type="button"
         class="community-actions__toggle"
         data-community-menu-toggle="${community.id}"
-        aria-label="Действия с сообществом"
+        aria-label="${t("communities.actionsAria")}"
         aria-expanded="false"
       >
         <span></span><span></span><span></span>
@@ -62,7 +64,7 @@ function renderCommunityMenu(bundle: CommunityBundle): string {
           permissions.canEditCommunity
             ? `
               <button type="button" class="community-actions__item" data-community-edit="${community.id}">
-                Изменить сообщество
+                ${t("communities.edit")}
               </button>
             `
             : ""
@@ -71,7 +73,7 @@ function renderCommunityMenu(bundle: CommunityBundle): string {
           permissions.canManageMembers || permissions.canChangeRoles
             ? `
               <button type="button" class="community-actions__item" data-community-members-open="${community.id}">
-                Участники сообщества
+                ${t("communities.members")}
               </button>
             `
             : ""
@@ -80,7 +82,7 @@ function renderCommunityMenu(bundle: CommunityBundle): string {
           permissions.canDeleteCommunity
             ? `
               <button type="button" class="community-actions__item community-actions__item--danger" data-community-delete-open="${community.id}">
-                Удалить сообщество
+                ${t("communities.delete")}
               </button>
             `
             : ""
@@ -105,7 +107,7 @@ function renderCommunityListItem(bundle: CommunityBundle): string {
           ${escapeHtml(getCommunityName(community))}
         </a>
         <p class="community-list-card__meta">
-          ${roleLabel ? escapeHtml(roleLabel) : "Сообщество"}
+          ${roleLabel ? escapeHtml(roleLabel) : t("communities.communityFallback")}
         </p>
       </div>
 
@@ -135,7 +137,7 @@ function renderCommunitiesList(): string {
   if (!visible.length) {
     return `
       <p class="communities-page__empty">
-        ${communitiesState.query.trim() ? "Ничего не найдено." : "Список пуст."}
+        ${communitiesState.query.trim() ? t("friends.noneFound") : t("common.emptyList")}
       </p>
     `;
   }
@@ -148,22 +150,22 @@ export function renderCommunitiesListContent(): string {
     <section class="communities-page" data-communities-page>
       <button type="button" class="profile-composer content-card communities-create-button" data-community-create-open>
         <span class="profile-composer__icon" aria-hidden="true">+</span>
-        <span class="profile-composer__label">Создать новое сообщество</span>
+        <span class="profile-composer__label">${t("communities.create")}</span>
       </button>
 
       <section class="communities-panel content-card">
-        <label class="communities-search search-field" aria-label="Поиск по сообществам">
+        <label class="communities-search search-field" aria-label="${t("communities.search")}">
           <img class="communities-search__icon search-field__icon" src="/assets/img/icons/search.svg" alt="">
           <input
             class="communities-search__input search-field__input"
             type="text"
             value="${escapeHtml(communitiesState.query)}"
-            placeholder="Поиск по сообществам"
+            placeholder="${t("communities.search")}"
             data-communities-search
           >
         </label>
 
-        <p class="communities-panel__eyebrow">Ваши сообщества</p>
+        <p class="communities-panel__eyebrow">${t("communities.yours")}</p>
 
         ${communitiesState.errorMessage ? `<p class="communities-page__error">${escapeHtml(communitiesState.errorMessage)}</p>` : ""}
 
@@ -224,7 +226,7 @@ function renderCommunityPrimaryAction(bundle: CommunityBundle): string {
   if (communitiesState.membershipLoading) {
     return `
       <button type="button" class="community-hero__cta community-hero__cta--muted" disabled aria-busy="true">
-        Пожалуйста, подождите...
+        ${t("communities.wait")}
       </button>
     `;
   }
@@ -232,7 +234,7 @@ function renderCommunityPrimaryAction(bundle: CommunityBundle): string {
   if (bundle.membership.blocked) {
     return `
       <button type="button" class="community-hero__cta community-hero__cta--muted" disabled>
-        Вы заблокированы
+        ${t("community.blocked")}
       </button>
     `;
   }
@@ -240,7 +242,7 @@ function renderCommunityPrimaryAction(bundle: CommunityBundle): string {
   if (!bundle.membership.isMember) {
     return `
       <button type="button" class="community-hero__cta community-hero__cta--primary" data-community-join="${bundle.community.id}">
-        Вступить в сообщество
+        ${t("communities.join")}
       </button>
     `;
   }
@@ -248,7 +250,7 @@ function renderCommunityPrimaryAction(bundle: CommunityBundle): string {
   if (bundle.membership.role !== "owner") {
     return `
       <button type="button" class="community-hero__cta community-hero__cta--muted" data-community-leave="${bundle.community.id}">
-        Покинуть сообщество
+        ${t("communities.leave")}
       </button>
     `;
   }
@@ -259,8 +261,8 @@ function renderCommunityPrimaryAction(bundle: CommunityBundle): string {
 function renderCommunityDescription(bundle: CommunityBundle): string {
   return `
     <section class="community-side-card">
-      <h2>Описание</h2>
-      <p>${escapeHtml(bundle.community.bio || "Описание пока не заполнено.")}</p>
+      <h2>${t("communities.description")}</h2>
+      <p>${escapeHtml(bundle.community.bio || t("communities.descriptionEmpty"))}</p>
     </section>
   `;
 }
@@ -268,10 +270,10 @@ function renderCommunityDescription(bundle: CommunityBundle): string {
 function renderCommunityMeta(bundle: CommunityBundle): string {
   return `
     <section class="community-side-card">
-      <h2>Сообщество</h2>
+      <h2>${t("communities.communityFallback")}</h2>
       <dl class="community-meta">
         <div>
-          <dt>Адрес</dt>
+          <dt>${t("community.address")}</dt>
           <dd>@${escapeHtml(bundle.community.username || String(bundle.community.id))}</dd>
         </div>
       </dl>
@@ -287,13 +289,13 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
   return `
     <section class="community-side-card">
       <div class="community-side-card__header">
-        <h2>Участники</h2>
+        <h2>${t("communities.membersShort")}</h2>
         <span>${visibleMembers.length}</span>
       </div>
       ${
         communitiesState.membershipLoading ||
         (communitiesState.membersLoading && !communitiesState.membersLoaded)
-          ? '<p class="community-members-card__empty">Загружаем участников...</p>'
+          ? `<p class="community-members-card__empty">${t("chats.loadingMessages")}</p>`
           : visibleMembers.length
             ? `
             <div class="community-members-card">
@@ -317,13 +319,13 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
                 .join("")}
             </div>
           `
-            : '<p class="community-members-card__empty">Список пуст.</p>'
+            : `<p class="community-members-card__empty">${t("common.emptyList")}</p>`
       }
       ${
         bundle.permissions.canManageMembers || bundle.permissions.canChangeRoles
           ? `
             <button type="button" class="community-side-card__button" data-community-members-open="${bundle.community.id}">
-              Управление участниками
+              ${t("communities.manageMembers")}
             </button>
           `
           : ""
@@ -355,7 +357,7 @@ function renderPostImages(images: string[]): string {
               decoding="async"
               class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
               src="${escapeHtml(image)}"
-              alt="Изображение публикации"
+              alt="${t("profile.imageAlt")}"
             >
           `,
         )
@@ -385,7 +387,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
           )}
           <div class="profile-post__meta">
             <strong>${escapeHtml(getPostAuthorDisplayName(post))}</strong>
-            ${isOfficialPost ? '<span class="community-post__badge">Сообщество</span>' : ""}
+            ${isOfficialPost ? `<span class="community-post__badge">${t("community.badge")}</span>` : ""}
           </div>
         </a>
 
@@ -397,7 +399,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
                   type="button"
                   class="profile-post__menu-toggle"
                   data-community-post-menu-toggle="${escapeHtml(post.id)}"
-                  aria-label="Действия с публикацией"
+                  aria-label="${t("profile.actionsAria")}"
                   aria-expanded="false"
                 >
                   <span></span><span></span><span></span>
@@ -411,7 +413,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
                           class="profile-post__menu-action"
                           data-community-post-edit="${escapeHtml(post.id)}"
                         >
-                          Редактировать
+                          ${t("profile.edit")}
                         </button>
                       `
                       : ""
@@ -424,7 +426,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
                           class="profile-post__menu-action profile-post__menu-action--danger"
                           data-community-post-delete="${escapeHtml(post.id)}"
                         >
-                          Удалить
+                          ${t("communities.delete")}
                         </button>
                       `
                       : ""
@@ -448,7 +450,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
             }"
             data-community-post-like="${escapeHtml(post.id)}"
             aria-pressed="${post.isLiked ? "true" : "false"}"
-            aria-label="Лайки"
+            aria-label="${t("profile.likes")}"
           >
             <span class="profile-post__stat-icon">
               <img src="/assets/img/icons/heart.svg" class="profile-post__icon" alt="" />
@@ -468,7 +470,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
           class="profile-post__time"
           ${post.timeRaw ? `datetime="${escapeHtml(post.timeRaw)}"` : ""}
           ${post.timeRaw ? `data-tooltip="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}
-        >${escapeHtml(post.time)}</time>
+        >${escapeHtml(formatPostRelativeTime(post.timeRaw) || post.time)}</time>
       </footer>
     </article>
   `;
@@ -563,7 +565,7 @@ function renderCommunityPosts(bundle: CommunityBundle, posts: ProfilePost[]): st
             : `
               <div class="profile-posts__empty content-card">
                 <p class="profile-empty-copy">${
-                  searchQuery ? "Ничего не найдено." : "Список пуст."
+                  searchQuery ? t("friends.noneFound") : t("common.emptyList")
                 }</p>
               </div>
             `
@@ -592,14 +594,14 @@ function renderCommunityPostsControls(bundle: CommunityBundle): string {
       ${
         communitiesState.postSearchOpen
           ? `
-            <label class="community-posts__search search-field" aria-label="Поиск по публикациям сообщества">
+            <label class="community-posts__search search-field" aria-label="${t("communities.postSearch")}">
               <span class="community-posts__search-icon search-field__icon" aria-hidden="true">
                 <img src="/assets/img/icons/search.svg" alt="">
               </span>
               <input
                 type="search"
                 class="community-posts__search-input search-field__input"
-                placeholder="Поиск"
+                placeholder="${t("header.search")}"
                 value="${escapeHtml(communitiesState.postSearchQuery)}"
                 data-community-post-search
               >
@@ -607,7 +609,7 @@ function renderCommunityPostsControls(bundle: CommunityBundle): string {
                 type="button"
                 class="community-posts__search-close"
                 data-community-post-search-close
-                aria-label="Закрыть поиск по публикациям"
+                aria-label="${t("profile.closePostSearch")}"
               >
                 ×
               </button>
@@ -620,7 +622,7 @@ function renderCommunityPostsControls(bundle: CommunityBundle): string {
                 type="button"
                 class="community-posts__search-toggle"
                 data-community-post-search-open
-                aria-label="Открыть поиск по публикациям"
+                aria-label="${t("profile.openPostSearch")}"
               >
                 <img src="/assets/img/icons/search.svg" alt="">
               </button>
@@ -645,7 +647,7 @@ function renderCommunityComposerActions(bundle: CommunityBundle): string {
     <div class="community-posts__composer-row">
       <button type="button" class="profile-composer" data-community-post-open>
         <span class="profile-composer__icon" aria-hidden="true">+</span>
-        <span class="profile-composer__label">Написать пост</span>
+        <span class="profile-composer__label">${t("communities.writePost")}</span>
       </button>
     </div>
   `;
@@ -659,14 +661,14 @@ function renderCommunityPostFeedSwitcher(): string {
         class="community-posts__feed-button${communitiesState.postFeedMode === "all" ? " community-posts__feed-button--active" : ""}"
         data-community-post-feed="all"
       >
-        Все публикации
+        ${t("communities.postsAll")}
       </button>
       <button
         type="button"
         class="community-posts__feed-button${communitiesState.postFeedMode === "official" ? " community-posts__feed-button--active" : ""}"
         data-community-post-feed="official"
       >
-        Посты сообщества
+        ${t("communities.postAsCommunity")}
       </button>
     </div>
   `;
@@ -679,7 +681,7 @@ export function renderCommunityDetailContent(): string {
     return `
       <section class="communities-page" data-communities-page>
         <section class="communities-panel content-card">
-          <p class="communities-page__empty">Сообщество не найдено.</p>
+          <p class="communities-page__empty">${t("communities.notFound")}</p>
         </section>
       </section>
     `;
@@ -700,7 +702,7 @@ export function renderCommunityDetailContent(): string {
           </div>
         </article>
         <section class="communities-panel content-card" style="text-align:center;padding:32px 24px">
-          <p class="communities-page__empty" style="margin:0">Вы заблокированы в этом сообществе.</p>
+          <p class="communities-page__empty" style="margin:0">${t("community.blockedInCommunity")}</p>
         </section>
       </section>
     `;
@@ -1157,9 +1159,9 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
 
   return `
     <div class="community-modal" data-community-members-modal ${manager.open ? "" : "hidden"}>
-      <section class="community-modal__dialog community-modal__dialog--members" role="dialog" aria-modal="true" aria-label="Участники сообщества">
+      <section class="community-modal__dialog community-modal__dialog--members" role="dialog" aria-modal="true" aria-label="${t("communities.members")}">
         <header class="community-modal__header">
-          <h2 class="community-modal__title">Участники сообщества</h2>
+          <h2 class="community-modal__title">${t("communities.members")}</h2>
           ${renderModalCloseButton({
             className: "community-modal__close",
             attributes: "data-community-members-close",
@@ -1167,20 +1169,20 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
         </header>
 
         <div class="community-members-manager__toolbar">
-          <label class="communities-search search-field" aria-label="Поиск участников">
+          <label class="communities-search search-field" aria-label="${t("communities.searchMembers")}">
             <img class="communities-search__icon search-field__icon" src="/assets/img/icons/search.svg" alt="">
             <input
               class="communities-search__input search-field__input"
               type="text"
               value="${escapeHtml(manager.query)}"
-              placeholder="Поиск по участникам"
+              placeholder="${t("communities.searchMembers")}"
               data-community-members-search
             >
           </label>
 
           <label class="community-members-manager__toggle">
             <input type="checkbox" ${manager.includeBlocked ? "checked" : ""} data-community-members-include-blocked>
-            <span>Показывать заблокированных</span>
+            <span>${t("communities.showBlocked")}</span>
           </label>
         </div>
 
@@ -1193,7 +1195,7 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
         <div class="community-members-manager__list">
           ${
             communitiesState.membersLoading
-              ? '<p class="communities-page__empty">Загружаем участников...</p>'
+              ? `<p class="communities-page__empty">${t("communities.membersLoading")}</p>`
               : members.length
                 ? members
                     .map((member) => {
@@ -1240,7 +1242,7 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
                                     <summary class="community-members-manager__role-current">
                                       <span>${escapeHtml(getRoleLabel(member.role))}</span>
                                     </summary>
-                                    <div class="community-members-manager__role-menu" role="listbox" aria-label="Роль участника">
+                                    <div class="community-members-manager__role-menu" role="listbox" aria-label="${t("communities.memberRoleAria")}">
                                       ${roleOptions
                                         .map(
                                           (role) => `
@@ -1272,7 +1274,7 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
                                     data-community-member-unblock="${member.profileId}"
                                     ${isProcessing ? "disabled" : ""}
                                   >
-                                    ${isProcessing ? "Пожалуйста, подождите..." : "Удалить из чёрного списка"}
+                                    ${isProcessing ? t("communities.wait") : t("communities.removeFromBlocked")}
                                   </button>
                                 `
                                 : !member.blocked && canRemove
@@ -1283,7 +1285,7 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
                                     data-community-member-remove="${member.profileId}"
                                     ${isProcessing ? "disabled" : ""}
                                   >
-                                    ${isProcessing ? "Пожалуйста, подождите..." : "Удалить"}
+                                    ${isProcessing ? t("communities.wait") : t("communities.remove")}
                                   </button>
                                 `
                                   : ""
@@ -1294,7 +1296,7 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
                     })
                     .join("")
                 : `<p class="communities-page__empty">${
-                    manager.query.trim() ? "Ничего не найдено." : "Список пуст."
+                    manager.query.trim() ? t("friends.noneFound") : t("common.emptyList")
                   }</p>`
           }
         </div>
@@ -1389,7 +1391,11 @@ export function renderMemberConfirmModal(): string {
           </a>
           <div>
             <a class="community-modal__identity-name" href="${profileHref}" data-link>${escapeHtml(displayName)}</a>
-            ${joinedDate ? `<span class="community-modal__identity-meta">Участник с ${escapeHtml(joinedDate)}</span>` : ""}
+            ${
+              joinedDate
+                ? `<span class="community-modal__identity-meta">${t("communities.memberSince")} ${escapeHtml(joinedDate)}</span>`
+                : ""
+            }
           </div>
         </div>
 

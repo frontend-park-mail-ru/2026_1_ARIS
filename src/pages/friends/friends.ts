@@ -19,6 +19,7 @@ import { renderSidebar } from "../../components/sidebar/sidebar";
 import { clearWidgetbarCache, renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { createOrResolvePrivateChatId } from "../../api/chat";
 import { getSessionUser } from "../../state/session";
+import { t } from "../../state/i18n";
 import { prepareAvatarLinks } from "../../utils/avatar";
 import { rememberChatContactHint } from "../chats/contact-hints";
 
@@ -90,7 +91,7 @@ async function runFriendAction(root: ParentNode, action: () => Promise<void>): P
     await ensureFriendsLoaded(true);
     friendsState.deleteModalFriend = null;
   } catch (error) {
-    friendsState.errorMessage = getFriendsErrorMessage(error, "Не удалось выполнить действие.");
+    friendsState.errorMessage = getFriendsErrorMessage(error, t("friends.actionError"));
   } finally {
     friendsState.loading = false;
     refreshFriendsPage(root);
@@ -204,7 +205,7 @@ export function initFriends(root: Document | HTMLElement = document): void {
       if (!friendId) return;
       const friend = findFriendById(friendId);
       if (!friend) {
-        friendsState.errorMessage = "Не удалось найти пользователя для открытия чата.";
+        friendsState.errorMessage = t("friends.userNotFound");
         refreshFriendsPage(root);
         return;
       }
@@ -221,7 +222,7 @@ export function initFriends(root: Document | HTMLElement = document): void {
           navigateToChat(chatId);
         })
         .catch((error: unknown) => {
-          friendsState.errorMessage = getFriendsErrorMessage(error, "Не удалось открыть чат.");
+          friendsState.errorMessage = getFriendsErrorMessage(error, t("friends.openChatError"));
           openChatButton.disabled = false;
           refreshFriendsPage(root);
         });

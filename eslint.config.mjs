@@ -30,7 +30,14 @@ function createTypeScriptConfig(files, envGlobals) {
 
 export default [
   {
-    ignores: ["node_modules/**", "dist/**", "build/**", "coverage/**"],
+    ignores: [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      "coverage/**",
+      "allure-results/**",
+      "allure-report/**",
+    ],
   },
 
   {

@@ -20,17 +20,70 @@ TLS терминируется nginx (из репозитория бэкенда
 | npm        | 10+    |
 | curl       | любая  |
 
-Переменные окружения на сервере :
+Переменные окружения на сервере:
 
-| Переменная    | Описание                             | Пример                     |
-| ------------- | ------------------------------------ | -------------------------- |
-| `HOST`        | Адрес для привязки                   | `127.0.0.1`                |
-| `PORT`        | Порт                                 | `3001`                     |
-| `BACKEND_URL` | URL бэкенд API                       | `http://localhost:8080`    |
-| `NODE_ENV`    | Режим запуска                        | `production`               |
-| `PM2_NAME`    | Имя процесса PM2 (если используется) | `arisfront`                |
-| `BASE_URL`    | Публичный URL для smoke-проверок     | `https://aris.example.com` |
-| `SENTRY_DSN`  | (опционально) Sentry DSN             |                            |
+| Переменная           | Описание                             | Пример                             |
+| -------------------- | ------------------------------------ | ---------------------------------- |
+| `HOST`               | Адрес для привязки                   | `127.0.0.1`                        |
+| `PORT`               | Порт                                 | `3001`                             |
+| `BACKEND_URL`        | URL бэкенд API                       | `http://localhost:8080`            |
+| `NODE_ENV`           | Режим запуска                        | `production`                       |
+| `APP_ROOT`           | Директория установки статики         | `/var/www/aris`                    |
+| `PM2_NAME`           | Имя процесса PM2 (если используется) | `arisfront`                        |
+| `SYSTEMD_SERVICE`    | systemd-юнит для перезапуска         | `arisfront`                        |
+| `RESTART_CMD`        | Произвольная команда перезапуска     | `sudo systemctl restart arisfront` |
+| `BASE_URL`           | Публичный URL для smoke-проверок     | `https://aris.example.com`         |
+| `BUILD_COMMIT`       | SHA релиза для `/health`             | `a1b2c3d`                          |
+| `BUILD_VERSION`      | Версия релиза для `/health`          | `1.0.0`                            |
+| `SENTRY_DSN`         | (опционально) Sentry DSN             |                                    |
+| `SENTRY_ENVIRONMENT` | (опционально) окружение Sentry       | `production`                       |
+| `SENTRY_RELEASE`     | (опционально) релиз Sentry           | `arisfront@1.0.0`                  |
+
+---
+
+## Локальная проверка перед PR
+
+Быстрый обязательный набор:
+
+```bash
+npm run format:check
+npm run lint
+npm run lint:css
+npm run typecheck
+npm run test
+npm run build
+```
+
+То же самое одной командой:
+
+```bash
+npm run check
+```
+
+Unit-тесты используют Vitest. Для HTML-отчёта Allure:
+
+```bash
+npm run test:allure
+npm run allure:open
+```
+
+Полезные команды Allure:
+
+| Команда                   | Что делает                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------ |
+| `npm run test:allure`     | очищает старые `allure-results` / `allure-report`, запускает Vitest и собирает свежий HTML-отчёт |
+| `npm run allure:open`     | открывает уже собранный `allure-report`                                                          |
+| `npm run allure:serve`    | поднимает временный Allure-сервер из `allure-results`                                            |
+| `npm run allure:generate` | собирает `allure-report` из текущих `allure-results`                                             |
+| `npm run allure:clean`    | удаляет `allure-results` и `allure-report`                                                       |
+
+Покрытие кода:
+
+```bash
+npm run test:coverage
+```
+
+HTML-отчёт покрытия пишется в `coverage/`.
 
 ---
 
@@ -49,10 +102,10 @@ INSTALL_STATIC=true \
 
 Скрипт выполняет:
 
-1. `npm ci` — установка зависимостей
+1. `NODE_ENV=development npm ci` — установка зависимостей, включая dev-зависимости для сборки
 2. `npm run build` — продакшен-сборка с SHA коммита
-3. Резервная копия текущего `/var/www/aris` → `/var/www/aris.prev`
-4. Замена содержимого `/var/www/aris` на новую сборку
+3. Резервная копия текущего `$APP_ROOT` → `$APP_ROOT.prev`
+4. Замена содержимого `$APP_ROOT` на новую сборку
 5. Перезапуск сервера (через `PM2_NAME`, `SYSTEMD_SERVICE` или `RESTART_CMD`)
 6. Опрос `/health` до получения `status: ok` (до 30 сек)
 7. Smoke-проверка — автоматический откат при падении
@@ -79,7 +132,7 @@ INSTALL_STATIC=true \
 BASE_URL=https://aris.example.com bash scripts/deploy.sh --rollback
 ```
 
-Скрипт восстанавливает `/var/www/aris.prev` → `/var/www/aris`, перезапускает сервер
+Скрипт восстанавливает `$APP_ROOT.prev` → `$APP_ROOT`, перезапускает сервер
 и прогоняет smoke-проверку.
 
 > **Доступен только один уровень отката.** Для возврата к более ранней версии
@@ -203,11 +256,11 @@ nginx не проксирует на `127.0.0.1:3001`. Проверить upstre
 
 ## CI / CD
 
-| Воркфлоу                        | Триггер          | Что делает                                              |
-| ------------------------------- | ---------------- | ------------------------------------------------------- |
-| `.github/workflows/ci.yml`      | push / PR        | линтинг, typecheck, тесты, сборка                       |
-| `.github/workflows/deploy.yml`  | push в `main`    | деплой по SSH + smoke-проверка + уведомление в Telegram |
-| `.github/workflows/staging.yml` | push в `staging` | деплой на staging + smoke-проверка + уведомление        |
+| Воркфлоу                        | Триггер                                                                           | Что делает                                                            |
+| ------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `.github/workflows/ci.yml`      | push в `dev`, `main`, `master`, `staging`, `ARIS-*`; PR в `dev`, `main`, `master` | `npm run ci` (`format:check`, lint, css lint, typecheck, test, build) |
+| `.github/workflows/deploy.yml`  | push в `main`                                                                     | деплой по SSH + smoke-проверка + уведомление в Telegram               |
+| `.github/workflows/staging.yml` | push в `dev`                                                                      | деплой на staging + smoke-проверка + уведомление                      |
 
 Секреты задаются в GitHub → Settings → Secrets and variables → Actions.
 
@@ -238,35 +291,69 @@ Staging-секреты (те же данные, другой сервер):
 ## Staging-контур
 
 Staging — отдельный сервер (или путь) для проверки фич до попадания в `main`.
+Актуальный GitHub Actions staging-деплой запускается при push в `dev`.
 
 ### Деплой на staging вручную
+
+Вариант, совпадающий с `.github/workflows/staging.yml`:
 
 ```bash
 # На staging-сервере, из корня репозитория:
 git fetch --all
-git reset --hard origin/staging
+git reset --hard origin/dev
 
-INSTALL_STATIC=true \
-  BASE_URL=https://staging.aris.example.com \
-  BUILD_COMMIT=$(git rev-parse --short HEAD) \
+NODE_ENV=development npm ci
+
+BUILD_COMMIT=$(git rev-parse HEAD)
+BUILD_VERSION=$(node -p "require('./package.json').version")
+
+BUILD_COMMIT="$BUILD_COMMIT" \
+  BUILD_VERSION="$BUILD_VERSION" \
   SENTRY_ENVIRONMENT=staging \
   NODE_ENV=production \
-  bash scripts/deploy.sh
+  npm run build
+
+printf 'BUILD_COMMIT=%s\nBUILD_VERSION=%s\n' "$BUILD_COMMIT" "$BUILD_VERSION" > .env.build
+sudo systemctl set-environment BUILD_COMMIT="$BUILD_COMMIT" BUILD_VERSION="$BUILD_VERSION"
+sudo systemctl restart arisfront
+
+BASE_URL=https://staging.aris.example.com bash scripts/smoke.sh
 ```
 
 ### Процесс работы
 
 ```
-feature-branch → PR → staging → проверка → PR → main → production
+feature-branch → PR → dev → staging-проверка → PR → main → production
 ```
 
-1. Смержить фичу в `staging` (или запушить напрямую)
+1. Смержить фичу в `dev` (или запушить напрямую, если это принято в процессе)
 2. GitHub Actions автоматически задеплоит на staging-сервер
 3. Проверить фичу на `https://staging.aris.example.com`
 4. При подтверждении — PR в `main`
 
 ### Откат на staging
 
+Текущий staging workflow не делает резервную копию через `scripts/deploy.sh`, поэтому
+откат выполняется возвратом `dev` к нужному коммиту и повторной сборкой:
+
 ```bash
-BASE_URL=https://staging.aris.example.com bash scripts/deploy.sh --rollback
+# На staging-сервере:
+git fetch --all
+git reset --hard <good-commit-sha>
+NODE_ENV=development npm ci
+
+BUILD_COMMIT=$(git rev-parse HEAD)
+BUILD_VERSION=$(node -p "require('./package.json').version")
+BUILD_COMMIT="$BUILD_COMMIT" BUILD_VERSION="$BUILD_VERSION" \
+  SENTRY_ENVIRONMENT=staging \
+  NODE_ENV=production \
+  npm run build
+
+sudo systemctl set-environment BUILD_COMMIT="$BUILD_COMMIT" BUILD_VERSION="$BUILD_VERSION"
+sudo systemctl restart arisfront
+BASE_URL=https://staging.aris.example.com bash scripts/smoke.sh
 ```
+
+Если staging переведён на `INSTALL_STATIC=true bash scripts/deploy.sh`, тогда можно
+использовать стандартный `scripts/deploy.sh --rollback`, потому что в этом режиме
+создаётся `$APP_ROOT.prev`.

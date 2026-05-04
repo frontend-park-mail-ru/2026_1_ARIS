@@ -16,23 +16,9 @@ on:
 
 jobs:
   frontend-checks:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run frontend checks
-        run: npm run ci
+    uses: ./.github/workflows/frontend-quality-gate.yml
+    with:
+      artifact_prefix: ci
 
   notify-telegram:
     runs-on: ubuntu-latest
@@ -40,10 +26,16 @@ jobs:
     if: >
       always() &&
       github.event_name == 'push' &&
-      needs.frontend-checks.result != 'success'
+      (
+        needs.frontend-checks.result != 'success' ||
+        github.ref_name == 'dev' ||
+        github.ref_name == 'staging' ||
+        github.ref_name == 'main' ||
+        github.ref_name == 'master'
+      )
 
     steps:
-      - name: Send CI failure alert to Telegram
+      - name: Send CI notification to Telegram
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -59,15 +51,13 @@ jobs:
             exit 0
           fi
 
-          BOT_INFO="$(curl --fail --silent --show-error \
-            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe")"
-          BOT_NAME="$(printf '%s' "${BOT_INFO}" | sed -n 's/.*"first_name":"\([^"]*\)".*/\1/p')"
-          BOT_USERNAME="$(printf '%s' "${BOT_INFO}" | sed -n 's/.*"username":"\([^"]*\)".*/\1/p')"
+          if [ "$CI_RESULT" = "success" ]; then
+            STATUS_ICON="✅"
+          else
+            STATUS_ICON="🚨"
+          fi
 
-          echo "Sending Telegram alert via bot: ${BOT_NAME} (@${BOT_USERNAME})"
-          echo "Target chat id: ${TELEGRAM_CHAT_ID}"
-
-          MESSAGE="ARIS frontend CI alert%0A%0AStatus: ${CI_RESULT}%0ARepository: ${REPOSITORY}%0ABranch: ${BRANCH}%0AActor: ${ACTOR}%0ACommit: ${COMMIT_SHA}%0ARun: ${RUN_URL}"
+          MESSAGE="${STATUS_ICON} ARIS frontend CI ${CI_RESULT}%0ARepository: ${REPOSITORY}%0ABranch: ${BRANCH}%0AActor: ${ACTOR}%0ACommit: ${COMMIT_SHA}%0ARun: ${RUN_URL}"
 
           curl --fail --silent --show-error \
             --request POST \

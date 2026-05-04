@@ -1,12 +1,40 @@
+/**
+ * Валидация полей профиля и регистрации.
+ *
+ * Содержит:
+ * - проверки имени и фамилии
+ * - проверки даты рождения
+ * - проверки email и телефона
+ * - нормализацию пользовательского ввода
+ */
+/**
+ * Проверяет, является ли год високосным.
+ *
+ * @param {number} year Год для проверки.
+ * @returns {boolean}
+ */
 export function isLeapYear(year: number): boolean {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
+/**
+ * Возвращает количество дней в месяце.
+ *
+ * @param {number} month Номер месяца от 1 до 12.
+ * @param {number} year Год.
+ * @returns {number} Количество дней в месяце.
+ */
 export function getDaysInMonth(month: number, year: number): number {
   const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   return days[month - 1] ?? 31;
 }
 
+/**
+ * Нормализует имя к виду `Имя`.
+ *
+ * @param {string} value Исходное значение.
+ * @returns {string} Нормализованная строка.
+ */
 export function normalizeName(value: string): string {
   if (!value) return value;
 
@@ -14,6 +42,12 @@ export function normalizeName(value: string): string {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
+/**
+ * Определяет алфавит строки.
+ *
+ * @param {string} value Значение для проверки.
+ * @returns {"latin" | "cyrillic" | null} Определённый алфавит или `null`.
+ */
 export function detectAlphabet(value: string): "latin" | "cyrillic" | null {
   if (/^[A-Za-z-]+$/.test(value)) {
     return "latin";
@@ -26,6 +60,14 @@ export function detectAlphabet(value: string): "latin" | "cyrillic" | null {
   return null;
 }
 
+/**
+ * Валидирует имя или фамилию.
+ *
+ * @param {string} value Значение поля.
+ * @param {string} label Человекочитаемое имя поля.
+ * @param {boolean} [isSubmitAttempted=false] Была ли попытка отправить форму.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateName(value: string, label: string, isSubmitAttempted = false): string {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
@@ -53,6 +95,13 @@ export function validateName(value: string, label: string, isSubmitAttempted = f
   return "";
 }
 
+/**
+ * Проверяет, что имя и фамилия написаны на одном алфавите.
+ *
+ * @param {string} firstName Имя пользователя.
+ * @param {string} lastName Фамилия пользователя.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateAlphabetConsistency(firstName: string, lastName: string): string {
   if (!firstName || !lastName) {
     return "";
@@ -72,6 +121,12 @@ export function validateAlphabetConsistency(firstName: string, lastName: string)
   return "";
 }
 
+/**
+ * Проверяет допустимый возраст по дате рождения.
+ *
+ * @param {Date} date Дата рождения.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateAgeRange(date: Date): string {
   const now = new Date();
 
@@ -92,6 +147,16 @@ export function validateAgeRange(date: Date): string {
   return "";
 }
 
+/**
+ * Валидирует дату рождения в формате `дд/мм/гггг`.
+ *
+ * Здесь много промежуточных проверок, чтобы форма могла подсвечивать
+ * ошибку ещё во время ввода, а не только после полного заполнения даты.
+ *
+ * @param {string} value Значение поля.
+ * @param {boolean} [isSubmitAttempted=false] Была ли попытка отправить форму.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateBirthDate(value: string, isSubmitAttempted = false): string {
   if (!value) {
     return isSubmitAttempted ? "Обязательное поле" : "";
@@ -198,6 +263,12 @@ export function validateBirthDate(value: string, isSubmitAttempted = false): str
   return validateAgeRange(birthDate);
 }
 
+/**
+ * Валидирует дату рождения в ISO-формате `гггг-мм-дд`.
+ *
+ * @param {string} value Значение поля.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateIsoBirthDate(value: string): string {
   if (!value) {
     return "";
@@ -225,6 +296,12 @@ export function validateIsoBirthDate(value: string): string {
   return validateAgeRange(date);
 }
 
+/**
+ * Валидирует необязательный email.
+ *
+ * @param {string} value Значение поля.
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 export function validateOptionalEmail(value: string): string {
   if (!value) {
     return "";

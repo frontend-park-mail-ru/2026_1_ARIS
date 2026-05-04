@@ -1,3 +1,6 @@
+/**
+ * Разметка формы авторизации и регистрации.
+ */
 import { renderButton } from "../button/button";
 import { renderInput } from "../input/input";
 import type { RegisterStep, RegisterValues } from "../../state/register-draft";
@@ -28,10 +31,10 @@ type RenderAuthFormOptions = {
 };
 
 /**
- * Renders a single auth form field with input and error area.
+ * Рендерит одно поле формы авторизации с инпутом и областью ошибки.
  *
- * @param {RenderAuthFieldOptions} options
- * @returns {string}
+ * @param {RenderAuthFieldOptions} options Параметры поля.
+ * @returns {string} HTML-разметка поля.
  */
 function renderAuthField({
   type,
@@ -68,11 +71,11 @@ function renderAuthField({
 }
 
 /**
- * Renders login fields.
+ * Рендерит поля входа.
  *
- * @param {boolean} hasError
- * @param {Partial<RegisterValues>} [values={}]
- * @returns {string}
+ * @param {boolean} hasError Нужно ли показать ошибочное состояние полей.
+ * @param {Partial<RegisterValues>} [values={}] Текущие значения формы.
+ * @returns {string} HTML-разметка полей входа.
  */
 function renderLoginFields(hasError: boolean, values: Partial<RegisterValues> = {}): string {
   const state: InputState = hasError ? "error" : "default";
@@ -99,10 +102,10 @@ function renderLoginFields(hasError: boolean, values: Partial<RegisterValues> = 
 }
 
 /**
- * Renders gender select field.
+ * Рендерит поле выбора пола.
  *
- * @param {Partial<RegisterValues>} [values={}]
- * @returns {string}
+ * @param {Partial<RegisterValues>} [values={}] Значения формы регистрации.
+ * @returns {string} HTML-разметка select-поля.
  */
 function renderGenderField(values: Partial<RegisterValues> = {}): string {
   return `
@@ -121,10 +124,10 @@ function renderGenderField(values: Partial<RegisterValues> = {}): string {
 }
 
 /**
- * Renders register step progress.
+ * Рендерит прогресс шага регистрации.
  *
- * @param {RegisterStep} step
- * @returns {string}
+ * @param {RegisterStep} step Текущий шаг регистрации.
+ * @returns {string} HTML-разметка индикатора прогресса.
  */
 function renderRegisterProgress(step: RegisterStep): string {
   return `
@@ -145,10 +148,10 @@ function renderRegisterProgress(step: RegisterStep): string {
 }
 
 /**
- * Renders register step one fields.
+ * Рендерит поля первого шага регистрации.
  *
- * @param {Partial<RegisterValues>} values
- * @returns {string}
+ * @param {Partial<RegisterValues>} values Текущие значения формы.
+ * @returns {string} HTML-разметка первого шага.
  */
 function renderRegisterStepOneFields(values: Partial<RegisterValues> = {}): string {
   return `
@@ -188,10 +191,10 @@ function renderRegisterStepOneFields(values: Partial<RegisterValues> = {}): stri
 }
 
 /**
- * Renders register step two fields.
+ * Рендерит поля второго шага регистрации.
  *
- * @param {Partial<RegisterValues>} values
- * @returns {string}
+ * @param {Partial<RegisterValues>} values Текущие значения формы.
+ * @returns {string} HTML-разметка второго шага.
  */
 function renderRegisterStepTwoFields(values: Partial<RegisterValues> = {}): string {
   return `
@@ -276,11 +279,11 @@ function renderRegisterStepActions(step: RegisterStep): string {
 }
 
 /**
- * Renders register fields by current step.
+ * Рендерит поля регистрации для текущего шага.
  *
- * @param {RegisterStep} step
- * @param {Partial<RegisterValues>} values
- * @returns {string}
+ * @param {RegisterStep} step Текущий шаг регистрации.
+ * @param {Partial<RegisterValues>} values Текущие значения формы.
+ * @returns {string} HTML-разметка активного шага регистрации.
  */
 function renderRegisterFields(
   step: RegisterStep,
@@ -299,10 +302,10 @@ function renderRegisterFields(
 }
 
 /**
- * Renders auth form.
+ * Рендерит форму авторизации.
  *
- * @param {RenderAuthFormOptions} options
- * @returns {string}
+ * @param {RenderAuthFormOptions} options Параметры формы.
+ * @returns {string} HTML-разметка формы авторизации или регистрации.
  */
 export function renderAuthForm({
   mode,
@@ -324,7 +327,7 @@ export function renderAuthForm({
       ${mode === "register" ? `data-register-step="${registerStep}"` : ""}
     >
       <div class="auth-form__header">
-        <img class="auth-form__logo" src="assets/img/logo.svg" alt="ARIS">
+        <img class="auth-form__logo" src="/assets/img/logo-v3.png" width="300" height="114" alt="ARIS">
 
         <div class="auth-form__header-text">
           <h1 class="auth-form__title">

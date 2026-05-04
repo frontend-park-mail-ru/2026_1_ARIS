@@ -1,4 +1,7 @@
 node_modules/
 dist/
+coverage/
+allure-results/
+allure-report/
 .DS_Store
 .env

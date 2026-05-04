@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /chats
+Disallow: /friends
+Disallow: /profile
+Disallow: /id
+Disallow: /support/admin
+Disallow: /support/stats
+
+Sitemap: https://arisnet.ru/sitemap.xml

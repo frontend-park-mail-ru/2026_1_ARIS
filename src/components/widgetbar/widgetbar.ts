@@ -1,5 +1,12 @@
+/**
+ * Правая колонка с рекомендательными виджетами.
+ *
+ * Отвечает за:
+ * - подбор пользователей для гостя и авторизованного пользователя
+ * - объединение нескольких источников рекомендаций
+ * - кэширование готовой разметки на короткое время
+ */
 import { getSuggestedUsers, getPublicPopularUsers, getLatestEvents } from "../../api/users";
-import { getPopularPosts, getPublicPopularPosts } from "../../api/feed";
 import {
   getFriends,
   getIncomingFriendRequests,
@@ -7,11 +14,10 @@ import {
 } from "../../api/friends";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
 import { getSessionUser } from "../../state/session";
-
-type WidgetbarCache = {
-  guest: string | null;
-  authorised: string | null;
-};
+import { t } from "../../state/i18n";
+import { prepareAvatarLinks, renderAvatarMarkup } from "../../utils/avatar";
+import { formatPersonName } from "../../utils/display-name";
+import { TtlCache } from "../../utils/ttl-cache";
 
 type WidgetbarUser = {
   id: string;
@@ -25,10 +31,6 @@ type WidgetbarEventUser = WidgetbarUser & {
   type: number;
 };
 
-type WidgetbarPost = {
-  title: string;
-};
-
 type RenderWidgetbarOptions = {
   isAuthorised: boolean;
 };
@@ -38,31 +40,27 @@ type WidgetbarLoadResult<T> = {
   failed: boolean;
 };
 
-/**
- * In-memory widgetbar cache for the current page session.
- * It is reset only on full page reload.
- */
-const widgetbarCache: WidgetbarCache = {
-  guest: null,
-  authorised: null,
-};
+/** Кэш виджетбара с TTL 10 минут. Ключ: "guest" | "authorised". */
+const widgetbarCache = new TtlCache<"guest" | "authorised", string>(10 * 60 * 1000);
+
+// Временный выключатель, пока виджет не будет корректно восстановлен.
+const SHOW_LATEST_EVENTS_WIDGET = false;
 
 /**
- * Clears widgetbar cache.
+ * Очищает кэш виджетбара.
  *
  * @returns {void}
  */
 export function clearWidgetbarCache(): void {
-  widgetbarCache.guest = null;
-  widgetbarCache.authorised = null;
+  widgetbarCache.clear();
 }
 
 /**
- * Renders a stub button.
+ * Рендерит кнопку-заглушку.
  *
- * @param {string} text
- * @param {string} className
- * @returns {string}
+ * @param {string} text Текст кнопки.
+ * @param {string} className CSS-класс.
+ * @returns {string} HTML-разметка кнопки.
  */
 function renderStubButton(text: string, className: string): string {
   return `
@@ -72,23 +70,46 @@ function renderStubButton(text: string, className: string): string {
   `;
 }
 
+/**
+ * Рендерит пустое состояние карточки виджетбара.
+ *
+ * @param {string} text Текст сообщения.
+ * @returns {string} HTML-разметка пустого состояния.
+ */
 function renderWidgetbarEmptyState(text: string): string {
   return `<p class="widgetbar-card__empty">${text}</p>`;
 }
 
 /**
- * Renders a profile link.
+ * Рендерит ссылку на профиль.
  *
- * @param {string} text
- * @param {string} profileId
- * @param {string} className
- * @returns {string}
+ * Для гостя ссылка ведёт в авторизацию, чтобы не показывать защищённые профили
+ * как будто они доступны без сессии.
+ *
+ * @param {string} text Текст ссылки.
+ * @param {Pick<WidgetbarUser, "id" | "username" | "firstName" | "lastName">} user Пользователь ссылки.
+ * @param {string} className CSS-класс ссылки.
+ * @param {boolean} isAuthorised Авторизован ли текущий пользователь.
+ * @returns {string} HTML-разметка ссылки.
  */
 function renderProfileLink(
   text: string,
   user: Pick<WidgetbarUser, "id" | "username" | "firstName" | "lastName">,
   className: string,
+  isAuthorised: boolean,
 ): string {
+  if (!isAuthorised) {
+    return `
+      <a
+        href="/login"
+        data-open-auth-modal="login"
+        class="${className}"
+      >
+        ${text}
+      </a>
+    `;
+  }
+
   return `
     <a
       href="${resolveProfilePath({
@@ -105,16 +126,19 @@ function renderProfileLink(
   `;
 }
 
-function resolveAvatarSrc(avatarLink?: string): string {
-  if (!avatarLink) {
-    return "/assets/img/default-avatar.png";
-  }
-
-  if (avatarLink.startsWith("/image-proxy?url=") || /^https?:\/\//i.test(avatarLink)) {
-    return avatarLink;
-  }
-
-  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
+/**
+ * Рендерит аватар пользователя для карточек виджетбара.
+ *
+ * @param {WidgetbarUser} user Пользователь виджета.
+ * @returns {string} HTML-разметка аватара.
+ */
+function renderWidgetbarAvatar(user: WidgetbarUser): string {
+  const label =
+    formatPersonName(user.firstName, user.lastName, user.username) || t("widgetbar.userFallback");
+  return renderAvatarMarkup("widgetbar-person__avatar", label, user.avatarLink, {
+    width: 32,
+    height: 32,
+  });
 }
 
 function getUserKey(user: WidgetbarUser): string {
@@ -141,6 +165,12 @@ function isArisTeamUser(user: WidgetbarUser): boolean {
   );
 }
 
+/**
+ * Объединяет несколько групп пользователей без дублей.
+ *
+ * @param {WidgetbarUser[][]} groups Наборы пользователей из разных источников.
+ * @returns {WidgetbarUser[]} Уникальный список пользователей.
+ */
 function mergeUniqueUsers(groups: WidgetbarUser[][]): WidgetbarUser[] {
   const seen = new Set<string>();
   const result: WidgetbarUser[] = [];
@@ -160,6 +190,13 @@ function mergeUniqueUsers(groups: WidgetbarUser[][]): WidgetbarUser[] {
   return result;
 }
 
+/**
+ * Загружает список пользователей для виджета с безопасным fallback.
+ *
+ * @param {string} scope Техническое имя источника для логов.
+ * @param {() => Promise<{ items?: WidgetbarUser[] | WidgetbarEventUser[] }>} loader Функция загрузки.
+ * @returns {Promise<WidgetbarLoadResult<WidgetbarUser>>} Результат с флагом ошибки.
+ */
 async function loadWidgetbarUsers(
   scope: string,
   loader: () => Promise<{ items?: WidgetbarUser[] | WidgetbarEventUser[] }>,
@@ -179,6 +216,13 @@ async function loadWidgetbarUsers(
   }
 }
 
+/**
+ * Загружает идентификаторы пользователей, которых нужно исключить из рекомендаций.
+ *
+ * @param {string} scope Техническое имя источника для логов.
+ * @param {() => Promise<Array<{ profileId: string }>>} loader Функция загрузки.
+ * @returns {Promise<string[]>} Идентификаторы профилей.
+ */
 async function loadExcludedFriendIds(
   scope: string,
   loader: () => Promise<Array<{ profileId: string }>>,
@@ -192,60 +236,37 @@ async function loadExcludedFriendIds(
   }
 }
 
-async function loadWidgetbarPosts(
-  scope: string,
-  loader: () => Promise<{ items?: WidgetbarPost[] }>,
-): Promise<WidgetbarLoadResult<WidgetbarPost>> {
-  try {
-    const response = await loader();
-    return {
-      items: Array.isArray(response.items) ? [...response.items] : [],
-      failed: false,
-    };
-  } catch (error) {
-    console.warn(`[widgetbar] source=api scope=${scope} failed`, error);
-    return {
-      items: [],
-      failed: true,
-    };
-  }
-}
-
 /**
- * Renders popular users widget for guests.
+ * Рендерит виджет популярных пользователей для гостей.
  *
- * @returns {Promise<string>}
+ * @returns {Promise<string>} HTML карточки виджета.
  */
 async function renderPopularUsersWidget(): Promise<string> {
   const { items, failed } = await loadWidgetbarUsers("popular-users-guest", () =>
     getPublicPopularUsers(),
   );
+  await prepareAvatarLinks(items.map((user) => user.avatarLink));
   const content = items.length
     ? items
         .map(
           (user) => `
             <div class="widgetbar-person">
-              ${
-                user.avatarLink
-                  ? `<img class="widgetbar-person__avatar" src="${resolveAvatarSrc(user.avatarLink)}" alt="${user.firstName} ${user.lastName}">`
-                  : `<img class="widgetbar-person__avatar" src="/assets/img/default-avatar.png" alt="${user.firstName} ${user.lastName}">`
-              }
+              ${renderWidgetbarAvatar(user)}
               ${renderProfileLink(
-                `${user.firstName} ${user.lastName}`,
+                formatPersonName(user.firstName, user.lastName, user.username),
                 user,
                 "widgetbar-card__username",
+                false,
               )}
             </div>
           `,
         )
         .join("")
-    : renderWidgetbarEmptyState(
-        failed ? "Не удалось загрузить пользователей." : "Пока здесь никого нет.",
-      );
+    : renderWidgetbarEmptyState(failed ? t("widgetbar.loadUsersError") : t("common.emptyList"));
 
   return `
     <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Популярные пользователи</h3>
+      <h3 class="widgetbar-card__title">${t("widgetbar.popularUsers")}</h3>
 
       ${content}
     </section>
@@ -253,9 +274,9 @@ async function renderPopularUsersWidget(): Promise<string> {
 }
 
 /**
- * Renders known people widget.
+ * Рендерит виджет «Возможно, вы знакомы».
  *
- * @returns {Promise<string>}
+ * @returns {Promise<string>} HTML карточки виджета.
  */
 async function renderKnownPeopleWidget(): Promise<string> {
   const [suggestedResult, popularResult, eventResult, friends, incoming, outgoing] =
@@ -280,33 +301,31 @@ async function renderKnownPeopleWidget(): Promise<string> {
       !isArisTeamUser(user)
     );
   });
+  const visibleItems = filteredItems.slice(0, 4);
+  await prepareAvatarLinks(visibleItems.map((user) => user.avatarLink));
 
   return `
     <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Возможно, вы знакомы:</h3>
+      <h3 class="widgetbar-card__title">${t("widgetbar.maybeYouKnow")}</h3>
 
       ${
-        filteredItems
-          .slice(0, 4)
+        visibleItems
           .map(
             (user) => `
             <div class="widgetbar-person">
-              <img
-                class="widgetbar-person__avatar"
-                src="${resolveAvatarSrc(user.avatarLink)}"
-                alt="${user.firstName} ${user.lastName}"
-              >
+              ${renderWidgetbarAvatar(user)}
               ${renderProfileLink(
-                `${user.firstName} ${user.lastName}`,
+                formatPersonName(user.firstName, user.lastName, user.username),
                 user,
                 "widgetbar-card__username",
+                true,
               )}
             </div>
           `,
           )
           .join("") ||
         renderWidgetbarEmptyState(
-          failed ? "Не удалось загрузить рекомендации." : "Новые рекомендации появятся позже.",
+          failed ? t("widgetbar.loadRecommendationsError") : t("common.emptyList"),
         )
       }
     </section>
@@ -314,7 +333,7 @@ async function renderKnownPeopleWidget(): Promise<string> {
 }
 
 /**
- * Renders latest events widget.
+ * Рендерит виджет последних событий.
  *
  * @returns {Promise<string>}
  */
@@ -327,17 +346,18 @@ async function renderEventsWidget(): Promise<string> {
           ${items
             .map((user) => {
               const userLink = renderProfileLink(
-                `${user.firstName} ${user.lastName}`,
+                formatPersonName(user.firstName, user.lastName, user.username),
                 user,
                 "widgetbar-card__username",
+                false,
               );
 
               if (user.type === 1) {
                 return `
                   <p class="widgetbar-card__event">
                     ${userLink}
-                    <span class="widgetbar-card__text"> поставил лайк вашему </span>
-                    ${renderStubButton("посту", "widgetbar-card__link")}
+                    <span class="widgetbar-card__text">${t("widgetbar.likedYour")}</span>
+                    ${renderStubButton(t("widgetbar.post"), "widgetbar-card__link")}
                   </p>
                 `;
               }
@@ -346,8 +366,8 @@ async function renderEventsWidget(): Promise<string> {
                 return `
                   <p class="widgetbar-card__event">
                     ${userLink}
-                    <span class="widgetbar-card__text"> добавил </span>
-                    ${renderStubButton("фото", "widgetbar-card__link")}
+                    <span class="widgetbar-card__text">${t("widgetbar.added")}</span>
+                    ${renderStubButton(t("widgetbar.photo"), "widgetbar-card__link")}
                   </p>
                 `;
               }
@@ -355,7 +375,7 @@ async function renderEventsWidget(): Promise<string> {
               return `
                 <p class="widgetbar-card__event">
                   ${userLink}
-                  <span class="widgetbar-card__text"> подписался на вас</span>
+                  <span class="widgetbar-card__text">${t("widgetbar.followedYou")}</span>
                 </p>
               `;
             })
@@ -363,12 +383,12 @@ async function renderEventsWidget(): Promise<string> {
         </div>
       `
     : renderWidgetbarEmptyState(
-        result.failed ? "Не удалось загрузить события." : "Пока событий нет.",
+        result.failed ? t("widgetbar.loadEventsError") : t("common.emptyList"),
       );
 
   return `
     <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Последние события</h3>
+      <h3 class="widgetbar-card__title">${t("widgetbar.latestEvents")}</h3>
 
       ${content}
     </section>
@@ -376,105 +396,7 @@ async function renderEventsWidget(): Promise<string> {
 }
 
 /**
- * Renders guest popular posts widget.
- *
- * @returns {Promise<string>}
- */
-async function renderGuestPopularPostsWidget(): Promise<string> {
-  const { items, failed } = await loadWidgetbarPosts("popular-posts-guest", () =>
-    getPublicPopularPosts(),
-  );
-  const content = items.length
-    ? items
-        .map(
-          (post) => `
-            <a href="/login" data-open-auth-modal="login" class="widgetbar-card__post-link">
-              ${post.title}
-            </a>
-          `,
-        )
-        .join("")
-    : renderWidgetbarEmptyState(
-        failed ? "Не удалось загрузить популярные посты." : "Пока популярных постов нет.",
-      );
-
-  return `
-    <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Популярные посты</h3>
-
-      ${content}
-    </section>
-  `;
-}
-
-/**
- * Renders authorised popular posts widget.
- *
- * @returns {Promise<string>}
- */
-async function renderAuthorisedPopularPostsWidget(): Promise<string> {
-  const { items, failed } = await loadWidgetbarPosts("popular-posts-authorised", () =>
-    getPopularPosts(),
-  );
-  const content = items.length
-    ? items
-        .map(
-          (post) => `
-            ${renderStubButton(post.title, "widgetbar-card__post-link")}
-          `,
-        )
-        .join("")
-    : renderWidgetbarEmptyState(
-        failed ? "Не удалось загрузить популярные посты." : "Пока популярных постов нет.",
-      );
-
-  return `
-    <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Популярные посты</h3>
-
-      ${content}
-    </section>
-  `;
-}
-
-/**
- * Renders weather widget.
- *
- * @returns {string}
- */
-function renderWeatherWidget(): string {
-  return `
-    <section class="widgetbar-card widgetbar-card--weather">
-      <h3 class="widgetbar-card__title">Сегодня — Москва</h3>
-
-      <p class="widgetbar-card__text">Днем: -7°C, ночью -17°C</p>
-
-      <div class="widgetbar-weather-row">
-        <span class="widgetbar-weather-row__icon">
-          <img src="/assets/img/icons/weather-cloud.svg" alt="">
-        </span>
-        <span class="widgetbar-card__text">Пасмурно</span>
-      </div>
-
-      <div class="widgetbar-weather-row">
-        <span class="widgetbar-weather-row__icon">
-          <img src="/assets/img/icons/sunrise.svg" alt="">
-        </span>
-        <span class="widgetbar-card__text">Восход: 07:19</span>
-      </div>
-
-      <div class="widgetbar-weather-row">
-        <span class="widgetbar-weather-row__icon">
-          <img src="/assets/img/icons/sunset.svg" alt="">
-        </span>
-        <span class="widgetbar-card__text">Заход: 18:13</span>
-      </div>
-    </section>
-  `;
-}
-
-/**
- * Builds widgetbar markup for authorised user.
+ * Собирает разметку виджетбара для авторизованного пользователя.
  *
  * @returns {Promise<string>}
  */
@@ -482,13 +404,13 @@ async function buildAuthorisedWidgetbar(): Promise<string> {
   return `
     <aside class="widgetbar">
       ${await renderKnownPeopleWidget()}
-      ${await renderEventsWidget()}
+      ${SHOW_LATEST_EVENTS_WIDGET ? await renderEventsWidget() : ""}
     </aside>
   `;
 }
 
 /**
- * Builds widgetbar markup for guest user.
+ * Собирает разметку виджетбара для гостя.
  *
  * @returns {Promise<string>}
  */
@@ -501,24 +423,18 @@ async function buildGuestWidgetbar(): Promise<string> {
 }
 
 /**
- * Renders the widgetbar.
- * Cached for the current browser page session.
+ * Рендерит виджетбар.
+ * Кэшируется на время текущей сессии страницы в браузере.
  *
  * @param {RenderWidgetbarOptions} options
  * @returns {Promise<string>}
  */
 export async function renderWidgetbar({ isAuthorised }: RenderWidgetbarOptions): Promise<string> {
-  if (isAuthorised) {
-    if (!widgetbarCache.authorised) {
-      widgetbarCache.authorised = await buildAuthorisedWidgetbar();
-    }
+  const key = isAuthorised ? "authorised" : "guest";
+  const cached = widgetbarCache.get(key);
+  if (cached) return cached;
 
-    return widgetbarCache.authorised;
-  }
-
-  if (!widgetbarCache.guest) {
-    widgetbarCache.guest = await buildGuestWidgetbar();
-  }
-
-  return widgetbarCache.guest;
+  const html = isAuthorised ? await buildAuthorisedWidgetbar() : await buildGuestWidgetbar();
+  widgetbarCache.set(key, html);
+  return html;
 }

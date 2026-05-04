@@ -1,8 +1,20 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
+const packageJson = require("./package.json");
 
 const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
+const searchServiceUrl = process.env.SEARCH_URL || "http://localhost:8088";
+const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || "development";
+const sentryRelease = process.env.SENTRY_RELEASE || `arisfront@${packageJson.version}`;
+const sentryDebug = process.env.SENTRY_DEBUG === "true";
+const sentryTracesSampleRate = Number(process.env.SENTRY_TRACES_SAMPLE_RATE || "0.1");
+const sentryReplaysSessionSampleRate = Number(
+  process.env.SENTRY_REPLAYS_SESSION_SAMPLE_RATE || "0.05",
+);
+const sentryReplaysOnErrorSampleRate = Number(
+  process.env.SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE || "1",
+);
 
 class AssetManifestPlugin {
   apply(compiler) {
@@ -51,7 +63,11 @@ module.exports = {
     publicPath: "/",
   },
 
-  devtool: "source-map",
+  devtool: "eval-cheap-module-source-map",
+
+  performance: {
+    hints: false,
+  },
 
   module: {
     rules: [
@@ -82,6 +98,15 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: "./public/index.html",
+      runtimeConfig: {
+        sentryDsn: process.env.SENTRY_DSN || "",
+        sentryEnvironment,
+        sentryRelease,
+        sentryDebug,
+        sentryTracesSampleRate,
+        sentryReplaysSessionSampleRate,
+        sentryReplaysOnErrorSampleRate,
+      },
     }),
     new AssetManifestPlugin(),
     new CopyWebpackPlugin({
@@ -91,23 +116,51 @@ module.exports = {
           to: "sw.js",
         },
         {
+          from: path.resolve(__dirname, "public/robots.txt"),
+          to: "robots.txt",
+        },
+        {
+          from: path.resolve(__dirname, "public/sitemap.xml"),
+          to: "sitemap.xml",
+        },
+        {
+          from: path.resolve(__dirname, "public/manifest.webmanifest"),
+          to: "manifest.webmanifest",
+        },
+        {
+          from: path.resolve(__dirname, "public/offline.html"),
+          to: "offline.html",
+        },
+        {
           from: path.resolve(__dirname, "public/assets/img"),
           to: "assets/img",
+          globOptions: { ignore: ["**/.DS_Store"] },
         },
       ],
     }),
   ],
 
   devServer: {
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false,
+      },
+    },
     static: {
       directory: path.resolve(__dirname, "public"),
     },
     historyApiFallback: true,
     port: 3001,
-    open: true,
+    open: process.env.WEBPACK_OPEN === "true",
     proxy: [
       {
-        context: ["/api", "/image-proxy"],
+        context: ["/api/search"],
+        target: searchServiceUrl,
+        changeOrigin: true,
+      },
+      {
+        context: ["/api", "/image-proxy", "/media"],
         target: backendUrl,
         changeOrigin: true,
       },

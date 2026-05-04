@@ -1,324 +1,521 @@
-.postcard {
-  --postcard-padding-y: 16px; // вертикальные внутренние отступы карточки
-  --postcard-padding-x: 26px; // горизонтальные внутренние отступы карточки
-  --postcard-gap: 10px; // основной вертикальный промежуток между секциями карточки
-  --postcard-header-gap: 10px; // расстояние между аватаркой и автором в шапке
-  --postcard-media-height: 320px; // базовая высота медиа-блока
-  --postcard-media-row-height: 155px; // высота строки в двухрядных сетках медиа
-  --postcard-stats-gap: 20px; // расстояние между группами статистики внизу карточки
-  --postcard-stat-gap: 6px; // расстояние между иконкой и числом внутри stat-элемента
-  --postcard-stat-padding: 4px; // внутренний отступ у stat-элемента, чтобы увеличить кликабельную область
-  --postcard-stat-icon-size: 16px; // размер иконок статистики
-  --postcard-expand-offset: 4px; // отступ сверху у кнопки "читать полностью"
+@layer components {
+  .postcard {
+    --postcard-padding-y: 16px; // вертикальные внутренние отступы карточки
+    --postcard-padding-x: 26px; // горизонтальные внутренние отступы карточки
+    --postcard-gap: 10px; // основной вертикальный промежуток между секциями карточки
+    --postcard-header-gap: 10px; // расстояние между аватаркой и автором в шапке
+    --postcard-media-height: 320px; // базовая высота медиа-блока
+    --postcard-media-row-height: 155px; // высота строки в двухрядных сетках медиа
+    --postcard-stats-gap: 20px; // расстояние между группами статистики внизу карточки
+    --postcard-stat-gap: 6px; // расстояние между иконкой и числом внутри stat-элемента
+    --postcard-stat-padding: 4px; // внутренний отступ у stat-элемента, чтобы увеличить кликабельную область
+    --postcard-stat-icon-size: 16px; // размер иконок статистики
+    --postcard-expand-offset: 4px; // отступ сверху у кнопки "читать полностью"
 
-  display: flex; // карточка становится flex-контейнером
-  width: 100%; // карточка занимает всю доступную ширину центральной колонки
-  padding: var(--postcard-padding-y) var(--postcard-padding-x); // применяем внутренние отступы карточки
-  flex-direction: column; // секции карточки идут сверху вниз
-  align-items: stretch; // дочерние блоки растягиваются по ширине карточки
-  gap: var(--postcard-gap); // одинаковый промежуток между секциями карточки
-  border-radius: var(--radius-card); // скругление углов карточки
-  background: var(--color-surface-card-elevated); // фон карточки
-  box-shadow: var(--shadow-card); // тень карточки
+    container-type: inline-size;
 
-  &__header {
-    display: flex; // шапка карточки — flex-контейнер
-    width: 100%; // шапка занимает всю внутреннюю ширину карточки
-    align-items: center; // аватар и имя выровнены по вертикали
-    gap: var(--postcard-header-gap); // расстояние между аватаркой и именем
-  }
+    display: flex; // карточка становится flex-контейнером
+    width: 100%; // карточка занимает всю доступную ширину центральной колонки
+    padding: var(--postcard-padding-y) var(--postcard-padding-x); // применяем внутренние отступы карточки
+    flex-direction: column; // секции карточки идут сверху вниз
+    align-items: stretch; // дочерние блоки растягиваются по ширине карточки
+    gap: var(--postcard-gap); // одинаковый промежуток между секциями карточки
+    border-radius: var(--radius-card); // скругление углов карточки
+    background: var(--color-surface-card-elevated); // фон карточки
+    box-shadow: var(--shadow-card); // тень карточки
 
-  &__avatar {
-    width: var(--avatar-size-sm); // ширина аватарки из глобальных токенов
-    height: var(--avatar-size-sm); // высота аватарки такая же, чтобы сохранить квадрат
-    flex-shrink: 0; // аватарка не сжимается при нехватке места
-    border-radius: var(--radius-round); // делает аватарку полностью круглой
-    background: var(--color-surface-avatar-placeholder); // фон-заглушка под картинку
-  }
-
-  &__author {
-    display: flex; // блок автора — flex-контейнер
-    min-width: 0; // позволяет тексту автора не ломать layout при длинном имени
-    flex: 1 1 auto; // блок автора занимает всё оставшееся место
-    flex-direction: column; // если строк будет несколько, они пойдут вертикально
-    justify-content: center; // содержимое автора центрируется по вертикали
-    margin: 0; // убираем дефолтные внешние отступы
-    text-decoration: none; // убираем подчёркивание, если автор рендерится ссылкой
-    color: var(--color-text-name); // цвет имени автора
-    font-size: var(--text-size-main);
-    font-weight: var(--font-weight-medium);
-    line-height: normal;
-  }
-
-  &__text-container {
-    display: flex; // контейнер текста и кнопки раскрытия — flex-контейнер
-    width: 100%; // контейнер занимает всю внутреннюю ширину карточки
-    flex-direction: column; // текст и кнопка идут друг под другом
-    align-items: flex-start; // кнопка раскрытия прижимается влево
-  }
-
-  &__text {
-    width: 100%;
-    margin: 0;
-    color: var(--color-text-main);
-    font-size: var(--text-size-main);
-    font-weight: var(--font-weight-regular);
-    line-height: normal;
-    letter-spacing: 0;
-
-    &--collapsed {
-      display: -webkit-box;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: normal;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
+    &__header {
+      display: flex; // шапка карточки — flex-контейнер
+      width: 100%; // шапка занимает всю внутреннюю ширину карточки
+      align-items: center; // аватар и имя выровнены по вертикали
+      gap: var(--postcard-header-gap); // расстояние между аватаркой и именем
     }
 
-    &:not(&--collapsed) {
-      white-space: pre-line;
+    &__avatar {
+      width: var(--avatar-size-sm); // ширина аватарки из глобальных токенов
+      height: var(--avatar-size-sm); // высота аватарки такая же, чтобы сохранить квадрат
+      flex-shrink: 0; // аватарка не сжимается при нехватке места
+      border-radius: var(--radius-round); // делает аватарку полностью круглой
+      background: var(--color-surface-avatar-placeholder); // фон-заглушка под картинку
     }
 
-    a {
-      color: var(--color-text-link);
-      text-decoration: none;
+    &__author {
+      display: flex; // блок автора — flex-контейнер
+      min-width: 0; // позволяет тексту автора не ломать layout при длинном имени
+      flex: 1 1 auto; // блок автора занимает всё оставшееся место
+      flex-direction: column; // если строк будет несколько, они пойдут вертикально
+      justify-content: center; // содержимое автора центрируется по вертикали
+      margin: 0; // убираем дефолтные внешние отступы
+      text-decoration: none; // убираем подчёркивание, если автор рендерится ссылкой
+      color: var(--color-text-name); // цвет имени автора
+      font-size: var(--text-size-main);
       font-weight: var(--font-weight-medium);
+      line-height: var(--line-height-base);
+    }
+
+    &__text-container {
+      display: flex; // контейнер текста и кнопки раскрытия — flex-контейнер
+      width: 100%; // контейнер занимает всю внутреннюю ширину карточки
+      flex-direction: column; // текст и кнопка идут друг под другом
+      align-items: flex-start; // кнопка раскрытия прижимается влево
+    }
+
+    &__text {
+      width: 100%;
+      margin: 0;
+      color: var(--color-text-main);
+      font-size: var(--text-size-main);
+      font-weight: var(--font-weight-regular);
+      line-height: var(--line-height-relaxed);
+      letter-spacing: 0;
+
+      &--collapsed {
+        display: -webkit-box;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: normal;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+
+      &:not(&--collapsed) {
+        white-space: pre-line;
+      }
+
+      a {
+        color: var(--color-text-link);
+        text-decoration: none;
+        font-weight: var(--font-weight-medium);
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    &__expand {
+      margin-top: var(--postcard-expand-offset);
+      padding: 0;
+      border: none;
+      background: none;
+      color: var(--color-text-meta);
+      font-size: var(--text-size-main);
+      font-weight: var(--font-weight-medium);
+      line-height: var(--line-height-base);
+      cursor: pointer;
 
       &:hover {
+        color: var(--color-text-main);
         text-decoration: underline;
       }
-    }
-  }
 
-  &__expand {
-    margin-top: var(--postcard-expand-offset);
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--color-text-meta);
-    font-size: var(--text-size-main);
-    font-weight: var(--font-weight-medium);
-    line-height: normal;
-    cursor: pointer;
-
-    &:hover {
-      color: var(--color-text-main);
-      text-decoration: underline;
-    }
-
-    &--hidden {
-      display: none;
-    }
-  }
-
-  &__media {
-    display: flex; // медиа-контейнер — flex-контейнер
-    width: 100%; // медиа-контейнер занимает всю ширину карточки
-    height: var(--postcard-media-height); // фиксированная высота медиа-контейнера
-    flex-direction: column; // строки медиа идут сверху вниз
-    gap: var(--postcard-gap); // расстояние между строками медиа
-    overflow: hidden; // скрываем всё, что выходит за пределы контейнера
-
-    &--five,
-    &--five-plus {
-      display: flex; // варианты с 5 и 6+ картинками тоже flex-контейнеры
-      flex-direction: column; // строки идут сверху вниз
-      gap: var(--postcard-gap); // расстояние между строками
-    }
-  }
-
-  &__media-grid {
-    display: grid; // сетка медиа строится на CSS Grid
-    width: 100%; // сетка занимает всю ширину медиа-контейнера
-    height: 100%; // сетка занимает всю высоту медиа-контейнера
-    gap: var(--postcard-gap); // расстояние между ячейками сетки
-    overflow: hidden; // обрезаем выходящие части медиа
-
-    &--single {
-      grid-template-columns: 1fr; // одна колонка на всю ширину
-      grid-template-rows: 1fr; // одна строка на всю высоту
-    }
-
-    &--double {
-      grid-template-columns: 1fr 1fr; // две равные колонки
-      grid-template-rows: 1fr; // одна строка
-    }
-
-    &--triple {
-      grid-template-columns: 2fr 1fr; // слева широкий блок, справа узкий столбец
-      grid-template-rows: 1fr 1fr; // справа две строки
-
-      .postcard__media-item--featured {
-        grid-column: 1; // featured-элемент ставим в первую колонку
-        grid-row: 1 / 3; // и растягиваем на две строки по высоте
+      &--hidden {
+        display: none;
       }
     }
 
-    &--quad {
-      grid-template-columns: 1fr 1fr; // две колонки
-      grid-template-rows: 1fr 1fr; // две строки
-    }
-  }
+    &__media {
+      display: flex; // медиа-контейнер — flex-контейнер
+      width: 100%; // медиа-контейнер занимает всю ширину карточки
+      height: var(--postcard-media-height); // фиксированная высота медиа-контейнера
+      flex-direction: column; // строки медиа идут сверху вниз
+      gap: var(--postcard-gap); // расстояние между строками медиа
+      overflow: hidden; // скрываем всё, что выходит за пределы контейнера
 
-  &__media-row {
-    display: grid; // строка медиа строится как grid
-    width: 100%; // строка занимает всю ширину
-    gap: var(--postcard-gap); // расстояние между картинками в строке
-
-    &--top,
-    &--bottom {
-      height: var(--postcard-media-row-height); // обе строки одинаковой высоты
-    }
-  }
-
-  &__media--five {
-    .postcard__media-row--top {
-      grid-template-columns: 1fr 1fr; // верхняя строка: 2 изображения
-    }
-
-    .postcard__media-row--bottom {
-      grid-template-columns: 1fr 1fr 1fr; // нижняя строка: 3 изображения
-    }
-  }
-
-  &__media--five-plus {
-    .postcard__media-row--top,
-    .postcard__media-row--bottom {
-      grid-template-columns: 1fr 1fr 1fr; // обе строки по 3 изображения
-    }
-  }
-
-  &__media-item {
-    display: block; // картинка — блочный элемент
-    width: 100%; // картинка занимает всю ширину своей ячейки
-    height: 100%; // картинка занимает всю высоту своей ячейки
-    overflow: hidden; // обрезаем выступающие края
-    border-radius: var(--radius-input); // скругляем углы изображения
-    object-fit: cover; // изображение заполняет контейнер без искажений
-  }
-
-  &__media-overlay {
-    position: relative; // нужен для абсолютного позиционирования счётчика поверх картинки
-    width: 100%; // overlay занимает всю ширину ячейки
-    height: 100%; // overlay занимает всю высоту ячейки
-    overflow: hidden; // обрезаем выступающие части
-    border-radius: var(--radius-input); // скругление совпадает с изображением
-
-    .postcard__media-item {
-      filter: brightness(0.55); // затемняем картинку под счётчиком "+N"
-    }
-  }
-
-  &__media-overlay-count {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-text-on-primary);
-    font-size: var(--text-size-title);
-    font-weight: var(--font-weight-bold);
-    line-height: 22px;
-  }
-
-  &__footer {
-    display: flex; // футер — flex-контейнер
-    width: 100%; // футер занимает всю ширину карточки
-    align-items: center; // статистика и время выровнены по вертикали
-    justify-content: space-between; // статистика слева, время справа
-  }
-
-  &__stats {
-    display: flex; // блок статистики — flex-контейнер
-    align-items: center; // stat-элементы выровнены по вертикали
-    gap: var(--postcard-stats-gap); // расстояние между like/repost/comment
-    flex-shrink: 0; // блок статистики не сжимается
-  }
-
-  &__stat {
-    display: flex; // stat-элемент — flex-контейнер
-    align-items: center; // иконка и число на одной линии
-    gap: var(--postcard-stat-gap); // расстояние между иконкой и числом
-    padding: var(--postcard-stat-padding); // увеличиваем кликабельную область stat-элемента
-
-    &-link,
-    &-button {
-      color: inherit; // наследуем цвет от родителя
-      text-decoration: none; // убираем подчёркивание у ссылки
-      transition:
-        opacity 0.2s ease,
-        // плавное изменение прозрачности
-        transform 0.2s ease; // плавная анимация нажатия
-
-      &:hover {
-        opacity: 0.75; // слегка приглушаем элемент при наведении
-      }
-
-      &:active {
-        transform: var(--control-press-transform); // даём эффект нажатия
+      &--five,
+      &--five-plus {
+        display: flex; // варианты с 5 и 6+ картинками тоже flex-контейнеры
+        flex-direction: column; // строки идут сверху вниз
+        gap: var(--postcard-gap); // расстояние между строками
       }
     }
 
-    &-button {
-      padding: 0; // убираем дефолтные отступы кнопки
-      border: none; // убираем дефолтную рамку кнопки
-      background: transparent; // делаем фон кнопки прозрачным
-      cursor: pointer; // курсор-рука
-    }
+    &__media-grid {
+      display: grid; // сетка медиа строится на CSS Grid
+      width: 100%; // сетка занимает всю ширину медиа-контейнера
+      height: 100%; // сетка занимает всю высоту медиа-контейнера
+      gap: var(--postcard-gap); // расстояние между ячейками сетки
+      overflow: hidden; // обрезаем выходящие части медиа
 
-    &-icon {
-      display: inline-flex; // контейнер иконки — inline-flex
-      align-items: center; // выравниваем содержимое по вертикали
-      justify-content: center; // выравниваем содержимое по горизонтали
-      width: var(--postcard-stat-icon-size); // ширина иконки
-      height: var(--postcard-stat-icon-size); // высота иконки
-      flex-shrink: 0; // иконка не сжимается
+      &--single {
+        grid-template-columns: 1fr; // одна колонка на всю ширину
+        grid-template-rows: 1fr; // одна строка на всю высоту
+      }
 
-      img {
-        display: block; // убираем inline-артефакты изображения
-        width: 100%; // картинка заполняет контейнер
-        height: 100%; // картинка заполняет контейнер по высоте
+      &--double {
+        grid-template-columns: 1fr 1fr; // две равные колонки
+        grid-template-rows: 1fr; // одна строка
+      }
+
+      &--triple {
+        grid-template-columns: 2fr 1fr; // слева широкий блок, справа узкий столбец
+        grid-template-rows: 1fr 1fr; // справа две строки
+
+        .postcard__media-item--featured {
+          grid-column: 1; // featured-элемент ставим в первую колонку
+          grid-row: 1 / 3; // и растягиваем на две строки по высоте
+        }
+      }
+
+      &--quad {
+        grid-template-columns: 1fr 1fr; // две колонки
+        grid-template-rows: 1fr 1fr; // две строки
       }
     }
 
-    &-count {
+    &__media-row {
+      display: grid; // строка медиа строится как grid
+      width: 100%; // строка занимает всю ширину
+      gap: var(--postcard-gap); // расстояние между картинками в строке
+
+      &--top,
+      &--bottom {
+        height: var(--postcard-media-row-height); // обе строки одинаковой высоты
+      }
+    }
+
+    &__media--five {
+      .postcard__media-row--top {
+        grid-template-columns: 1fr 1fr; // верхняя строка: 2 изображения
+      }
+
+      .postcard__media-row--bottom {
+        grid-template-columns: 1fr 1fr 1fr; // нижняя строка: 3 изображения
+      }
+    }
+
+    &__media--five-plus {
+      .postcard__media-row--top,
+      .postcard__media-row--bottom {
+        grid-template-columns: 1fr 1fr 1fr; // обе строки по 3 изображения
+      }
+    }
+
+    &__media-item {
+      display: block; // картинка — блочный элемент
+      width: 100%; // картинка занимает всю ширину своей ячейки
+      height: 100%; // картинка занимает всю высоту своей ячейки
+      overflow: hidden; // обрезаем выступающие края
+      border-radius: var(--radius-input); // скругляем углы изображения
+      object-fit: cover; // изображение заполняет контейнер без искажений
+    }
+
+    &__media-overlay {
+      position: relative; // нужен для абсолютного позиционирования счётчика поверх картинки
+      width: 100%; // overlay занимает всю ширину ячейки
+      height: 100%; // overlay занимает всю высоту ячейки
+      overflow: hidden; // обрезаем выступающие части
+      border-radius: var(--radius-input); // скругление совпадает с изображением
+
+      .postcard__media-item {
+        filter: brightness(0.55); // затемняем картинку под счётчиком "+N"
+      }
+    }
+
+    &__media-overlay-count {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-on-primary);
+      font-size: var(--text-size-title);
+      font-weight: var(--font-weight-bold);
+      line-height: var(--line-height-base);
+    }
+
+    &__footer {
+      display: flex; // футер — flex-контейнер
+      width: 100%; // футер занимает всю ширину карточки
+      align-items: center; // статистика и время выровнены по вертикали
+      justify-content: space-between; // статистика слева, время справа
+    }
+
+    &__stats {
+      display: flex; // блок статистики — flex-контейнер
+      align-items: center; // stat-элементы выровнены по вертикали
+      gap: var(--postcard-stats-gap); // расстояние между like/repost/comment
+      flex-shrink: 0; // блок статистики не сжимается
+    }
+
+    &__stat {
+      display: flex; // stat-элемент — flex-контейнер
+      align-items: center; // иконка и число на одной линии
+      gap: var(--postcard-stat-gap); // расстояние между иконкой и числом
+      padding: var(--postcard-stat-padding); // увеличиваем кликабельную область stat-элемента
+
+      &-link,
+      &-button {
+        color: inherit; // наследуем цвет от родителя
+        text-decoration: none; // убираем подчёркивание у ссылки
+        transition:
+          opacity 0.2s ease,
+          // плавное изменение прозрачности
+          transform 0.2s ease; // плавная анимация нажатия
+
+        &:hover {
+          opacity: 0.75; // слегка приглушаем элемент при наведении
+        }
+
+        &:active {
+          transform: var(--control-press-transform); // даём эффект нажатия
+        }
+
+        &:focus-visible {
+          outline: none;
+          box-shadow: var(--control-focus-ring);
+        }
+      }
+
+      &-button {
+        padding: 0; // убираем дефолтные отступы кнопки
+        border: none; // убираем дефолтную рамку кнопки
+        background: transparent; // делаем фон кнопки прозрачным
+        cursor: pointer; // курсор-рука
+
+        &--liked {
+          .postcard__stat-count {
+            color: rgb(220 38 38);
+          }
+
+          .postcard__stat-icon {
+            background-image: url("data:image/svg+xml,%3Csvg width='16' height='14' viewBox='0 0 16 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.6609 1.8746C13.3204 1.53394 12.9161 1.2637 12.4711 1.07932C12.0262 0.894947 11.5492 0.800049 11.0676 0.800049C10.5859 0.800049 10.109 0.894947 9.66401 1.07932C9.21903 1.2637 8.81475 1.53394 8.47424 1.8746L7.76758 2.58127L7.06091 1.8746C6.37311 1.1868 5.44026 0.800405 4.46758 0.800405C3.49489 0.800405 2.56204 1.1868 1.87424 1.8746C1.18645 2.56239 0.800049 3.49524 0.800049 4.46793C0.800049 5.44062 1.18645 6.37347 1.87424 7.06127L7.76758 12.9546L13.6609 7.06127C14.0016 6.72076 14.2718 6.31648 14.4562 5.8715C14.6406 5.42653 14.7355 4.94959 14.7355 4.46793C14.7355 3.98627 14.6406 3.50934 14.4562 3.06436C14.2718 2.61939 14.0016 2.2151 13.6609 1.8746Z' fill='%23DC2626'/%3E%3C/svg%3E");
+          }
+
+          .postcard__stat-icon img {
+            opacity: 0;
+          }
+        }
+      }
+
+      &-icon {
+        display: inline-flex; // контейнер иконки — inline-flex
+        align-items: center; // выравниваем содержимое по вертикали
+        justify-content: center; // выравниваем содержимое по горизонтали
+        width: var(--postcard-stat-icon-size); // ширина иконки
+        height: var(--postcard-stat-icon-size); // высота иконки
+        flex-shrink: 0; // иконка не сжимается
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+
+        img {
+          display: block; // убираем inline-артефакты изображения
+          width: 100%; // картинка заполняет контейнер
+          height: 100%; // картинка заполняет контейнер по высоте
+        }
+      }
+
+      &-count {
+        color: var(--color-text-meta);
+        font-size: var(--text-size-meta);
+        font-weight: var(--font-weight-medium);
+        line-height: var(--line-height-base);
+      }
+    }
+
+    &__time {
+      margin: 0;
+      position: relative;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      white-space: nowrap;
+      text-align: right;
       color: var(--color-text-meta);
+      cursor: pointer;
+      font: inherit;
       font-size: var(--text-size-meta);
       font-weight: var(--font-weight-medium);
-      line-height: 18px;
+      line-height: var(--line-height-base);
+      -webkit-tap-highlight-color: transparent;
+
+      &[data-tooltip]::before,
+      &[data-tooltip]::after {
+        position: absolute;
+        right: 0;
+        bottom: calc(100% + 8px);
+        z-index: 6;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(4px);
+        transition:
+          opacity var(--transition-control),
+          transform var(--transition-control);
+      }
+
+      &[data-tooltip]::before {
+        content: attr(data-tooltip);
+        width: max-content;
+        max-width: 220px;
+        padding: 8px 10px;
+        border: 1px solid var(--color-border-default);
+        border-radius: 10px;
+        background: var(--color-surface-glass-strong);
+        box-shadow: var(--shadow-card-elevated);
+        color: var(--color-text-main);
+        font-size: var(--text-size-caption);
+        font-weight: var(--font-weight-medium);
+        line-height: var(--line-height-base);
+        text-align: right;
+        white-space: pre-line;
+      }
+
+      &[data-tooltip]::after {
+        content: "";
+        bottom: calc(100% + 3px);
+        width: 10px;
+        height: 10px;
+        margin-right: 16px;
+        border-right: 1px solid var(--color-border-default);
+        border-bottom: 1px solid var(--color-border-default);
+        background: var(--color-surface-card);
+        transform: translateY(4px) rotate(45deg);
+      }
+
+      &[data-tooltip]:hover::before,
+      &[data-tooltip]:hover::after,
+      &--tooltip-open[data-tooltip]::before,
+      &--tooltip-open[data-tooltip]::after {
+        opacity: 1;
+      }
+
+      &[data-tooltip]:hover::before,
+      &--tooltip-open[data-tooltip]::before {
+        transform: translateY(0);
+      }
+
+      &[data-tooltip]:hover::after,
+      &--tooltip-open[data-tooltip]::after {
+        transform: translateY(0) rotate(45deg);
+      }
     }
   }
 
-  &__time {
-    margin: 0;
-    white-space: nowrap;
-    text-align: right;
-    color: var(--color-text-meta);
-    font-size: var(--text-size-meta);
-    font-weight: var(--font-weight-medium);
-    line-height: 18px;
+  /* Container query: compact layout when postcard container is narrower than 380px.
+   container-type is on .postcard itself, so only DESCENDANTS can be targeted here. */
+  @container (max-width: 380px) {
+    .postcard__header {
+      gap: 8px;
+    }
+
+    .postcard__text-container {
+      padding-inline: 0;
+    }
+
+    .postcard__footer {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .postcard__stats {
+      gap: 12px;
+    }
+
+    .postcard__media {
+      height: 200px;
+    }
+
+    .postcard__media-row--top,
+    .postcard__media-row--bottom {
+      height: 96px;
+    }
   }
-}
 
-.postcard__media-grid--triple {
-  grid-template-columns: 2fr 1fr;
-  grid-template-rows: 1fr 1fr;
-}
+  .postcard__media-grid--triple {
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
 
-.postcard__media-grid--triple .postcard__media-item--featured {
-  grid-column: 1;
-  grid-row: 1 / 3;
-}
+  .postcard__media-grid--triple .postcard__media-item--featured {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
 
-.postcard__media--five .postcard__media-row--top {
-  grid-template-columns: 1fr 1fr;
-}
+  .postcard__media--five .postcard__media-row--top {
+    grid-template-columns: 1fr 1fr;
+  }
 
-.postcard__media--five .postcard__media-row--bottom {
-  grid-template-columns: 1fr 1fr 1fr;
-}
+  .postcard__media--five .postcard__media-row--bottom {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
 
-.postcard__media--five-plus .postcard__media-row--top,
-.postcard__media--five-plus .postcard__media-row--bottom {
-  grid-template-columns: 1fr 1fr 1fr;
+  .postcard__media--five-plus .postcard__media-row--top,
+  .postcard__media--five-plus .postcard__media-row--bottom {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  :root[data-theme="dark"] {
+    .postcard__stat-count {
+      color: var(--color-text-meta);
+    }
+
+    .postcard__stat-icon img {
+      filter: brightness(0) invert(1);
+      opacity: 0.72;
+    }
+
+    .postcard__stat-link:hover .postcard__stat-icon img,
+    .postcard__stat-button:hover .postcard__stat-icon img {
+      opacity: 0.9;
+    }
+
+    .postcard__stat-button--liked .postcard__stat-count {
+      color: #ff8d8d;
+    }
+
+    .postcard__stat-button--liked .postcard__stat-icon img {
+      filter: none;
+      opacity: 0;
+    }
+  }
+
+  @media (width <= 768px) {
+    .postcard {
+      --postcard-padding-y: 14px;
+      --postcard-padding-x: 14px;
+      --postcard-gap: 10px;
+      --postcard-media-height: clamp(210px, 66vw, 320px);
+      --postcard-media-row-height: clamp(104px, 31vw, 155px);
+      --postcard-stats-gap: 14px;
+      --postcard-stat-icon-size: 18px;
+
+      border-radius: 20px;
+    }
+
+    .postcard__footer {
+      align-items: center;
+      flex-direction: row;
+      gap: 12px;
+      justify-content: space-between;
+    }
+
+    .postcard__stats {
+      width: auto;
+      justify-content: flex-start;
+      gap: 16px;
+    }
+
+    .postcard__stat-link,
+    .postcard__stat-button {
+      min-width: 44px;
+      min-height: 44px;
+      justify-content: center;
+    }
+
+    .postcard__time {
+      min-height: 44px;
+      align-self: flex-end;
+      display: inline-flex;
+      align-items: center;
+    }
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    .postcard__expand,
+    .postcard__stat-link,
+    .postcard__stat-button {
+      -webkit-tap-highlight-color: transparent;
+    }
+  }
 }

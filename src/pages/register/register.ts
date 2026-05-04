@@ -1,11 +1,16 @@
+/**
+ * Страница регистрации.
+ *
+ * Если пользователь уже авторизован, вместо формы сразу возвращает ленту.
+ */
 import { renderAuthForm } from "../../components/auth-form/auth-form";
 import { renderFeed } from "../feed/feed";
 import { getSessionUser } from "../../state/session";
 
 /**
- * Renders the register page.
+ * Рендерит страницу регистрации.
  *
- * @returns {string}
+ * @returns {Promise<string>} HTML страницы регистрации или ленты.
  */
 export async function renderRegister(): Promise<string> {
   if (getSessionUser()) {

@@ -3,7 +3,7 @@ export type RouteParams = Record<string, string>;
 export type Route = {
   path: string;
   title: string;
-  render: (params?: RouteParams) => string | Promise<string>;
+  render: (params?: RouteParams, signal?: AbortSignal) => string | Promise<string>;
 };
 
 type MatchResult = {
@@ -12,6 +12,8 @@ type MatchResult = {
 };
 
 type RouterHooks = {
+  beforeRender?: () => void;
+  getSkeleton?: (path: string) => string | null;
   afterRender?: (root: HTMLElement) => void | Promise<void>;
 };
 
@@ -23,6 +25,35 @@ export type AppRouter = {
 function normalisePath(pathname: string): string {
   const noTrailing = (pathname || "/").replace(/\/+$/g, "");
   return noTrailing === "" ? "/" : noTrailing;
+}
+
+async function preloadImages(html: string): Promise<void> {
+  try {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = html;
+    const srcs: string[] = [];
+    tpl.content.querySelectorAll<HTMLImageElement>("img[src]").forEach((img) => {
+      const src = img.getAttribute("src");
+      // Skip static assets — already cached by the service worker.
+      if (!src || src.startsWith("/assets/")) return;
+      srcs.push(src);
+    });
+    if (!srcs.length) return;
+    // Keep Image references alive in Promise closures so they aren't GC'd
+    // before the network request completes and the HTTP cache is populated.
+    await Promise.all(
+      srcs.map(
+        (src) =>
+          new Promise<void>((resolve) => {
+            const img = new Image();
+            img.onload = img.onerror = () => resolve();
+            img.src = src;
+          }),
+      ),
+    );
+  } catch {
+    // ignore
+  }
 }
 
 function matchRoute(routePath: string, currentPath: string): MatchResult {
@@ -69,12 +100,52 @@ function matchRoute(routePath: string, currentPath: string): MatchResult {
   return { matched: true, params };
 }
 
+type VTDocument = Document & {
+  startViewTransition?: (cb: () => void) => {
+    finished: Promise<void>;
+    ready?: Promise<void>;
+    updateCallbackDone?: Promise<void>;
+  };
+};
+
 export function createRouter(
   root: HTMLElement,
   routes: Route[],
   hooks: RouterHooks = {},
 ): AppRouter {
-  async function render(): Promise<void> {
+  let navController = new AbortController();
+  let navId = 0;
+  let isViewTransitionRunning = false;
+
+  async function applyWithViewTransition(update: () => void): Promise<void> {
+    const vtDoc = document as VTDocument;
+
+    if (!vtDoc.startViewTransition || isViewTransitionRunning) {
+      update();
+      return;
+    }
+
+    isViewTransitionRunning = true;
+
+    try {
+      const transition = vtDoc.startViewTransition(update);
+      void transition.ready?.catch(() => undefined);
+      void transition.updateCallbackDone?.catch(() => undefined);
+      await transition.finished.catch(() => undefined);
+    } catch {
+      update();
+    } finally {
+      isViewTransitionRunning = false;
+    }
+  }
+
+  async function render(resetScroll = false): Promise<void> {
+    hooks.beforeRender?.();
+    navController.abort();
+    navController = new AbortController();
+    const currentNavId = ++navId;
+    const { signal } = navController;
+
     const path = normalisePath(window.location.pathname);
 
     let matchedRoute: Route | null = null;
@@ -97,7 +168,51 @@ export function createRouter(
     }
 
     document.title = matchedRoute.title;
-    root.innerHTML = await matchedRoute.render(matchedParams);
+
+    // Show skeleton synchronously while async render runs. Do not wrap skeleton
+    // in View Transitions: the old page snapshot can visually leak into loading
+    // states and briefly show unrelated empty states from the previous route.
+    const skeleton = hooks.getSkeleton?.(path);
+    const skeletonShownAt = skeleton ? Date.now() : 0;
+    if (skeleton) {
+      root.innerHTML = skeleton;
+      if (resetScroll) window.scrollTo(0, 0);
+    }
+
+    let html: string;
+    try {
+      html = await matchedRoute.render(matchedParams, signal);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      throw err;
+    }
+
+    if (navId !== currentNavId) return;
+
+    if (skeleton) {
+      const elapsed = Date.now() - skeletonShownAt;
+      // Kick off image fetches and wait until they're cached OR the hard
+      // deadline is reached. Images are held in Promise closures so they
+      // can't be GC'd before the HTTP cache is populated.
+      const IMAGE_MAX_WAIT_MS = 3000;
+      const MIN_SKELETON_MS = 900;
+      const imagesDone = preloadImages(html);
+      const deadline = new Promise<void>((resolve) =>
+        setTimeout(resolve, Math.max(0, IMAGE_MAX_WAIT_MS - elapsed)),
+      );
+      const minVisible = new Promise<void>((resolve) =>
+        setTimeout(resolve, Math.max(0, MIN_SKELETON_MS - elapsed)),
+      );
+      // Show content only after images are ready (or timeout) AND the
+      // skeleton has been visible for at least MIN_SKELETON_MS.
+      await Promise.all([Promise.race([imagesDone, deadline]), minVisible]);
+      if (navId !== currentNavId) return;
+    }
+
+    await applyWithViewTransition(() => {
+      if (resetScroll && !skeleton) window.scrollTo(0, 0);
+      root.innerHTML = html;
+    });
 
     await hooks.afterRender?.(root);
     window.dispatchEvent(new CustomEvent("apprender"));
@@ -108,8 +223,7 @@ export function createRouter(
       window.history.pushState({}, "", to);
     }
 
-    window.scrollTo(0, 0);
-    await render();
+    await render(true);
   }
 
   document.addEventListener("click", (event: Event) => {

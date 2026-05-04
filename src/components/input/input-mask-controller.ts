@@ -1,7 +1,8 @@
 /**
- * Formats a raw date string into dd/mm/yyyy form.
- * @param {string} digits
- * @returns {string}
+ * Форматирует сырую строку даты в вид `dd/mm/yyyy`.
+ *
+ * @param {string} digits Последовательность цифр без разделителей.
+ * @returns {string} Дата в пользовательском формате.
  */
 function formatDateDigits(digits: string): string {
   const clean = digits.replace(/\D/g, "").slice(0, 8);
@@ -18,7 +19,7 @@ function formatDateDigits(digits: string): string {
 }
 
 /**
- * Applies date mask formatting to an input element.
+ * Применяет маску даты к полю ввода.
  */
 function handleDateMaskInput(input: HTMLInputElement): void {
   const digitsOnly = input.value.replace(/\D/g, "").slice(0, 8);
@@ -26,7 +27,7 @@ function handleDateMaskInput(input: HTMLInputElement): void {
 }
 
 /**
- * Restricts key input for a date-masked field.
+ * Ограничивает ввод клавиш для поля с маской даты.
  */
 function handleDateMaskKeyDown(event: KeyboardEvent, input: HTMLInputElement): void {
   const allowedKeys = [
@@ -59,7 +60,7 @@ function handleDateMaskKeyDown(event: KeyboardEvent, input: HTMLInputElement): v
 }
 
 /**
- * Handles paste action for a date-masked input.
+ * Обрабатывает вставку в поле с маской даты.
  */
 function handleDateMaskPaste(event: ClipboardEvent, input: HTMLInputElement): void {
   event.preventDefault();
@@ -78,7 +79,10 @@ type MaskRoot = (Document | HTMLElement) & {
 };
 
 /**
- * Initializes input masks inside the given root.
+ * Инициализирует маски ввода внутри указанного корня.
+ *
+ * @param {Document | HTMLElement} [root=document] Корень для делегированных обработчиков.
+ * @returns {void}
  */
 export function initInputMasks(root: Document | HTMLElement = document): void {
   const bindableRoot = root as MaskRoot;

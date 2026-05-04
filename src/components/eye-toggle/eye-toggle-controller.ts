@@ -1,9 +1,12 @@
+/**
+ * Контроллер переключателя видимости пароля.
+ */
 type EyeToggleRoot = (Document | HTMLElement) & {
   __eyeToggleBound?: boolean;
 };
 
 /**
- * Initializes password visibility toggle handlers.
+ * Инициализирует обработчики переключения видимости пароля.
  *
  * @param {Document | HTMLElement} [root=document]
  * @returns {void}

@@ -1,182 +1,199 @@
+/**
+ * Страница ленты.
+ *
+ * Отвечает за:
+ * - загрузку публичной и авторизованной ленты
+ * - использование памяти и persistent-кэша
+ * - построение центральной колонки
+ * - мягкое обновление контента без полного rerender страницы
+ */
+import { domPatch } from "../../vdom/patch";
 import { renderHeader } from "../../components/header/header";
-import { initPostcardExpand, renderPostcard } from "../../components/postcard/postcard";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { getFeed, getPublicFeed, mapFeedResponse, type PostcardModel } from "../../api/feed";
+import { ApiError } from "../../api/core/client";
+import { likePost, unlikePost } from "../../api/posts";
 import { getFriends, type Friend } from "../../api/friends";
 import { getFeedMode, getSessionUser } from "../../state/session";
+import { prepareAvatarLinks } from "../../utils/avatar";
+import { hydrateFriendAvatarLinks } from "../friends/state";
 
-type FeedMode = "by-time" | "for-you";
-type FeedAuthKey = "guest" | "authorised";
+import type { FeedMode, FeedAuthKey, FeedCenterResult, ActiveFeedState } from "./types";
+import {
+  activeFeedState,
+  feedItemsCache,
+  setActiveFeedState,
+  isFeedRefreshInFlight,
+  setIsFeedRefreshInFlight,
+} from "./state";
+import { readPersistedFeedItems, persistFeedItems } from "./cache";
+import {
+  renderEmptyFriendsFeed,
+  renderEmptyPublicFeed,
+  renderOfflineFeedFallback,
+  renderIncrementalFeedCenter,
+} from "./render";
+import { initFeedInfiniteScroll, disconnectFeedObserver } from "./scroll";
 
-type FeedItemsCache = Record<FeedAuthKey, Record<FeedMode, PostcardModel[] | null>>;
-
-type FeedCenterResult =
-  | {
-      kind: "items";
-      items: PostcardModel[];
-    }
-  | {
-      kind: "html";
-      html: string;
-    };
-
-type ActiveFeedState = {
-  items: PostcardModel[];
-  renderedCount: number;
-  isLoadingMore: boolean;
-};
+export { clearFeedCache, clearFeedCacheLocal } from "./cache";
+export { initFeedInfiniteScroll } from "./scroll";
 
 const FEED_BATCH_SIZE = 10;
-const FEED_SCROLL_THRESHOLD_PX = 280;
-
-/**
- * In-memory feed cache for the current browser page session.
- * It is reset only on full page reload.
- */
-const feedItemsCache: FeedItemsCache = {
-  guest: {
-    "by-time": null,
-    "for-you": null,
-  },
-  authorised: {
-    "by-time": null,
-    "for-you": null,
-  },
-};
-
-let activeFeedState: ActiveFeedState | null = null;
-let isFeedScrollBound = false;
-let feedLoadScheduled = false;
-let isFeedRefreshInFlight = false;
-
-function getFeedItemsStorageKey(authKey: FeedAuthKey, modeKey: FeedMode): string {
-  return `arisfront:feed-items:${authKey}:${modeKey}`;
-}
-
-function readPersistedFeedItems(authKey: FeedAuthKey, modeKey: FeedMode): PostcardModel[] | null {
-  try {
-    const raw = sessionStorage.getItem(getFeedItemsStorageKey(authKey, modeKey));
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as PostcardModel[];
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function persistFeedItems(authKey: FeedAuthKey, modeKey: FeedMode, items: PostcardModel[]): void {
-  try {
-    sessionStorage.setItem(getFeedItemsStorageKey(authKey, modeKey), JSON.stringify(items));
-  } catch {
-    // Ignore storage errors and keep the feed usable.
-  }
-}
+let isFeedLikeBound = false;
 
 function isOfflineNetworkError(error: unknown): boolean {
-  return !navigator.onLine || error instanceof TypeError;
+  if (!navigator.onLine || error instanceof TypeError) {
+    return true;
+  }
+
+  if (error instanceof ApiError && [502, 503, 504].includes(error.status)) {
+    return true;
+  }
+
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return message.includes("proxy") || message.includes("failed to fetch");
+  }
+
+  return false;
 }
 
 function isFeedEmptyResponseError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
+  if (!(error instanceof Error)) return false;
   const message = error.message.toLowerCase();
   return message.includes("no more posts") || message.includes("failed to load feed");
 }
 
-function renderOfflineFeedFallback(isAuthorised: boolean): string {
-  return `
-    <section class="app-layout__center">
-      <section class="feed-empty-state">
-        <h2 class="feed-empty-state__title">Лента временно недоступна</h2>
-        <p class="feed-empty-state__text">
-          ${isAuthorised ? "Нет соединения с интернетом." : "Не удалось загрузить публичную ленту."}
-          Покажем свежие посты, когда соединение вернётся.
-        </p>
-      </section>
-    </section>
-  `;
-}
-
-function renderEmptyFriendsFeed(): string {
-  return `
-    <section class="app-layout__center">
-      <section class="feed-empty-state">
-        <h2 class="feed-empty-state__title">Постов друзей пока нет</h2>
-        <p class="feed-empty-state__text">
-          Как только друзья начнут публиковать новые записи, они появятся здесь.
-        </p>
-      </section>
-    </section>
-  `;
-}
-
-function renderEmptyPublicFeed(): string {
-  return `
-    <section class="app-layout__center">
-      <section class="feed-empty-state">
-        <h2 class="feed-empty-state__title">Публикаций пока нет</h2>
-        <p class="feed-empty-state__text">
-          Как только в сети появятся новые посты, они сразу отобразятся здесь.
-        </p>
-      </section>
-    </section>
-  `;
-}
-
-/**
- * Checks whether a string is a valid feed mode.
- *
- * @param {string} value
- * @returns {value is FeedMode}
- */
 function isFeedMode(value: string): value is FeedMode {
   return value === "by-time" || value === "for-you";
 }
 
-/**
- * Returns current feed mode in a narrowed type-safe form.
- *
- * @returns {FeedMode}
- */
 function getCurrentFeedMode(): FeedMode {
   const mode = getFeedMode();
   return isFeedMode(mode) ? mode : "by-time";
 }
 
-/**
- * Clears feed cache.
- *
- * @returns {void}
- */
-export function clearFeedCache(): void {
-  feedItemsCache.guest["by-time"] = null;
-  feedItemsCache.guest["for-you"] = null;
-  feedItemsCache.authorised["by-time"] = null;
-  feedItemsCache.authorised["for-you"] = null;
-  activeFeedState = null;
-
-  try {
-    sessionStorage.removeItem(getFeedItemsStorageKey("guest", "by-time"));
-    sessionStorage.removeItem(getFeedItemsStorageKey("guest", "for-you"));
-    sessionStorage.removeItem(getFeedItemsStorageKey("authorised", "by-time"));
-    sessionStorage.removeItem(getFeedItemsStorageKey("authorised", "for-you"));
-  } catch {
-    // Ignore storage errors.
+function formatStatCount(count: number): string {
+  if (count >= 1000000) {
+    return `${Math.floor(count / 1000000)}м`;
   }
+
+  if (count >= 1000) {
+    return `${Math.floor(count / 1000)}к`;
+  }
+
+  return String(count);
+}
+
+function updateActiveFeedPostLikeState(postId: string, likes: number, isLiked: boolean): void {
+  if (!activeFeedState) {
+    return;
+  }
+
+  const nextItems = activeFeedState.items.map((item) =>
+    item.id === postId
+      ? {
+          ...item,
+          likes,
+          isLiked,
+        }
+      : item,
+  );
+  const nextState: ActiveFeedState = {
+    ...activeFeedState,
+    items: nextItems,
+  };
+  const authKey: FeedAuthKey = getSessionUser() ? "authorised" : "guest";
+  const modeKey = getCurrentFeedMode();
+
+  feedItemsCache.set(`${authKey}:${modeKey}`, nextItems);
+  persistFeedItems(authKey, modeKey, nextItems);
+  setActiveFeedState(nextState);
+}
+
+function syncFeedPostLikeUi(postId: string): void {
+  if (!activeFeedState) {
+    return;
+  }
+
+  const post = activeFeedState.items.find((item) => item.id === postId);
+  if (!post) {
+    return;
+  }
+
+  document
+    .querySelectorAll<HTMLButtonElement>(
+      `[data-feed-list] [data-post-id="${CSS.escape(postId)}"] .postcard__stat-button[data-action="like"]`,
+    )
+    .forEach((button) => {
+      button.classList.toggle("postcard__stat-button--liked", Boolean(post.isLiked));
+      button.dataset.liked = String(Boolean(post.isLiked));
+      button.setAttribute("aria-pressed", String(Boolean(post.isLiked)));
+      button.setAttribute("aria-label", `${formatStatCount(post.likes)} лайков`);
+      button.disabled = false;
+
+      const count = button.querySelector<HTMLElement>(".postcard__stat-count");
+      if (count) {
+        count.textContent = formatStatCount(post.likes);
+      }
+    });
+}
+
+function bindFeedLikeActions(): void {
+  if (isFeedLikeBound) {
+    return;
+  }
+
+  document.addEventListener("click", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const likeButton = target.closest('.postcard__stat-button[data-action="like"]');
+    if (!(likeButton instanceof HTMLButtonElement) || likeButton.disabled) {
+      return;
+    }
+
+    if (!(likeButton.closest("[data-feed-list]") instanceof HTMLElement)) {
+      return;
+    }
+
+    const card = likeButton.closest<HTMLElement>("[data-post-id]");
+    const postId = card?.dataset.postId ?? "";
+    const post = activeFeedState?.items.find((item) => item.id === postId);
+    if (!postId || !post) {
+      return;
+    }
+
+    likeButton.disabled = true;
+    void (post.isLiked ? unlikePost(postId) : likePost(postId))
+      .then((updatedPost) => {
+        updateActiveFeedPostLikeState(
+          postId,
+          updatedPost.likes ?? 0,
+          updatedPost.isLiked ?? !post.isLiked,
+        );
+        syncFeedPostLikeUi(postId);
+      })
+      .catch((error: unknown) => {
+        console.error("[feed] like toggle failed", error);
+        likeButton.disabled = false;
+      });
+  });
+
+  isFeedLikeBound = true;
 }
 
 /**
- * Returns sorted feed items for the current feed mode.
- * "for-you" is shuffled once and then cached.
+ * Сортирует элементы ленты в зависимости от выбранного режима.
  *
- * @param {PostcardModel[]} items
- * @returns {PostcardModel[]}
+ * Для режима `for-you` используется перемешивание, чтобы выдача ощущалась
+ * менее предсказуемой без отдельного рекомендательного backend-слоя.
+ *
+ * @param {PostcardModel[]} items Элементы ленты.
+ * @returns {PostcardModel[]} Отсортированный массив.
  */
 function getSortedFeedItems(items: PostcardModel[]): PostcardModel[] {
   const result = [...items];
@@ -186,109 +203,79 @@ function getSortedFeedItems(items: PostcardModel[]): PostcardModel[] {
       const j = Math.floor(Math.random() * (i + 1));
       const current = result[i];
       const random = result[j];
-
       if (current && random) {
         result[i] = random;
         result[j] = current;
       }
     }
-
     return result;
   }
 
-  return result.sort((a, b) => {
-    const aTime = new Date(a.timeRaw).getTime();
-    const bTime = new Date(b.timeRaw).getTime();
-    return bTime - aTime;
-  });
-}
-
-function renderFeedStatus(hasMore: boolean, isLoading: boolean): string {
-  const hiddenClass = hasMore ? "" : " feed-infinite-status--hidden";
-  const text = isLoading
-    ? "Загружаем ещё публикации..."
-    : "Прокрутите ниже, чтобы увидеть ещё публикации.";
-
-  return `
-    <div class="feed-infinite-status${hiddenClass}" data-feed-status>
-      ${text}
-    </div>
-  `;
-}
-
-function renderFeedCards(items: PostcardModel[]): string {
-  return items.map(renderPostcard).join("");
-}
-
-function renderIncrementalFeedCenter(items: PostcardModel[], renderedCount: number): string {
-  const visibleItems = items.slice(0, renderedCount);
-
-  return `
-    <section class="app-layout__center" data-feed-center>
-      <div class="feed-stream" data-feed-list>
-        ${renderFeedCards(visibleItems)}
-      </div>
-      ${renderFeedStatus(renderedCount < items.length, false)}
-    </section>
-  `;
-}
-
-function isFeedRouteActive(): boolean {
-  const path = window.location.pathname.replace(/\/+$/g, "") || "/";
-  return path === "/" || path === "/feed";
+  return result.sort((a, b) => new Date(b.timeRaw).getTime() - new Date(a.timeRaw).getTime());
 }
 
 /**
- * Builds guest feed items.
+ * Загружает публичную ленту для гостевой страницы.
  *
- * @returns {Promise<PostcardModel[]>}
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<PostcardModel[]>} Готовые карточки ленты.
  */
-async function buildGuestFeedItems(): Promise<PostcardModel[]> {
-  const response = await getPublicFeed({ limit: 100 });
-  const mapped = mapFeedResponse(response);
-
-  return getSortedFeedItems(mapped.items);
+async function buildGuestFeedItems(signal?: AbortSignal): Promise<PostcardModel[]> {
+  const response = await getPublicFeed({ limit: 100, ...(signal ? { signal } : {}) });
+  return getSortedFeedItems(mapFeedResponse(response).items);
 }
 
 /**
- * Builds authorised feed items.
+ * Загружает ленту для авторизованного пользователя.
  *
- * @returns {Promise<PostcardModel[]>}
+ * После загрузки feed дополнительно подтягиваются друзья, чтобы в карточках
+ * использовать более точные имя и аватар автора, чем в сыром feed-ответе.
+ *
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<PostcardModel[]>} Готовые карточки ленты.
  */
-async function buildAuthorisedFeedItems(): Promise<PostcardModel[]> {
+async function buildAuthorisedFeedItems(signal?: AbortSignal): Promise<PostcardModel[]> {
   const [feedResult, friendsResult] = await Promise.allSettled([
-    getFeed({ limit: 100 }),
-    getFriends("accepted"),
+    getFeed({ limit: 100, ...(signal ? { signal } : {}) }),
+    getFriends("accepted", signal),
   ]);
 
-  const friends = friendsResult.status === "fulfilled" ? friendsResult.value : [];
+  // Пробрасываем AbortError до любой логики кэширования.
+  if (
+    feedResult.status === "rejected" &&
+    feedResult.reason instanceof Error &&
+    feedResult.reason.name === "AbortError"
+  ) {
+    throw feedResult.reason;
+  }
+  if (
+    friendsResult.status === "rejected" &&
+    friendsResult.reason instanceof Error &&
+    friendsResult.reason.name === "AbortError"
+  ) {
+    throw friendsResult.reason;
+  }
+
+  const friends =
+    friendsResult.status === "fulfilled"
+      ? await hydrateFriendAvatarLinks(friendsResult.value, signal)
+      : [];
 
   if (feedResult.status === "rejected") {
-    if (isOfflineNetworkError(feedResult.reason)) {
-      throw feedResult.reason;
-    }
-
-    if (isFeedEmptyResponseError(feedResult.reason)) {
-      return [];
-    }
-
+    if (isOfflineNetworkError(feedResult.reason)) throw feedResult.reason;
+    if (isFeedEmptyResponseError(feedResult.reason)) return [];
     throw feedResult.reason;
   }
 
   const mapped = mapFeedResponse(feedResult.value);
-  const friendIds = new Set(friends.map((friend) => String(friend.profileId)));
-  const friendsById = new Map<string, Friend>(
-    friends.map((friend) => [String(friend.profileId), friend]),
-  );
+  const friendIds = new Set(friends.map((f: Friend) => String(f.profileId)));
+  const friendsById = new Map<string, Friend>(friends.map((f: Friend) => [String(f.profileId), f]));
+
   const filteredItems = mapped.items
     .filter((item) => friendIds.has(String(item.authorId)))
     .map((item) => {
       const friend = friendsById.get(String(item.authorId));
-
-      if (!friend) {
-        return item;
-      }
-
+      if (!friend) return item;
       return {
         ...item,
         firstName: friend.firstName || item.firstName,
@@ -302,184 +289,124 @@ async function buildAuthorisedFeedItems(): Promise<PostcardModel[]> {
 }
 
 /**
- * Returns cached feed data for the current auth state and feed mode.
- * Builds and caches it on first request.
+ * Возвращает данные ленты из памяти, persistent-кэша или сети.
  *
- * @param {boolean} isAuthorised
- * @returns {Promise<FeedCenterResult>}
+ * @param {boolean} isAuthorised Открыта ли лента авторизованным пользователем.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<FeedCenterResult>} Результат для центральной колонки.
  */
-async function getCachedFeedData(isAuthorised: boolean): Promise<FeedCenterResult> {
+async function getCachedFeedData(
+  isAuthorised: boolean,
+  signal?: AbortSignal,
+): Promise<FeedCenterResult> {
   const authKey: FeedAuthKey = isAuthorised ? "authorised" : "guest";
   const modeKey = getCurrentFeedMode();
+  const cacheKey = `${authKey}:${modeKey}`;
 
-  const cachedItems = feedItemsCache[authKey][modeKey];
+  // Если в памяти есть свежие данные в пределах TTL, сразу возвращаем их без сетевого запроса.
+  const cachedItems = feedItemsCache.get(cacheKey);
+  if (cachedItems?.length) {
+    return { kind: "items", items: cachedItems };
+  }
+
   const persistedItems = readPersistedFeedItems(authKey, modeKey);
-  const fallbackItems = cachedItems?.length ? cachedItems : persistedItems;
 
   try {
-    const items = isAuthorised ? await buildAuthorisedFeedItems() : await buildGuestFeedItems();
-    feedItemsCache[authKey][modeKey] = items;
+    const items = isAuthorised
+      ? await buildAuthorisedFeedItems(signal)
+      : await buildGuestFeedItems(signal);
+    feedItemsCache.set(cacheKey, items);
     persistFeedItems(authKey, modeKey, items);
     return { kind: "items", items };
   } catch (error) {
-    if (fallbackItems?.length) {
-      feedItemsCache[authKey][modeKey] = fallbackItems;
-      return { kind: "items", items: fallbackItems };
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    if (persistedItems?.length) {
+      feedItemsCache.set(cacheKey, persistedItems);
+      return { kind: "items", items: persistedItems };
     }
-
-    if (!isOfflineNetworkError(error)) {
-      throw error;
-    }
-
+    if (!isOfflineNetworkError(error)) throw error;
     return { kind: "html", html: renderOfflineFeedFallback(isAuthorised) };
   }
 }
 
-function updateFeedStatusElement(): void {
-  const status = document.querySelector("[data-feed-status]");
-
-  if (!(status instanceof HTMLElement) || !activeFeedState) {
-    return;
+/**
+ * Строит HTML центральной колонки и синхронизирует runtime-состояние ленты.
+ *
+ * @param {FeedCenterResult} feedResult Данные или готовый HTML.
+ * @param {boolean} isAuthorised Открыта ли лента авторизованным пользователем.
+ * @returns {string} Разметка центральной колонки.
+ */
+function buildFeedCenter(feedResult: FeedCenterResult, isAuthorised: boolean): string {
+  if (feedResult.kind === "html") {
+    disconnectFeedObserver();
+    setActiveFeedState(null);
+    return feedResult.html;
   }
 
-  const hasMore = activeFeedState.renderedCount < activeFeedState.items.length;
-  status.classList.toggle("feed-infinite-status--hidden", !hasMore);
-  status.textContent = activeFeedState.isLoadingMore
-    ? "Загружаем ещё публикации..."
-    : "Прокрутите ниже, чтобы увидеть ещё публикации.";
-}
-
-function appendMoreFeedCards(): void {
-  const list = document.querySelector("[data-feed-list]");
-
-  if (!(list instanceof HTMLElement) || !activeFeedState) {
-    return;
+  if (!feedResult.items.length) {
+    disconnectFeedObserver();
+    setActiveFeedState(null);
+    return isAuthorised ? renderEmptyFriendsFeed() : renderEmptyPublicFeed();
   }
 
-  const startIndex = activeFeedState.renderedCount;
-  const nextCount = Math.min(
-    activeFeedState.renderedCount + FEED_BATCH_SIZE,
-    activeFeedState.items.length,
-  );
-
-  if (nextCount <= startIndex) {
-    return;
-  }
-
-  const nextItems = activeFeedState.items.slice(startIndex, nextCount);
-  list.insertAdjacentHTML("beforeend", renderFeedCards(nextItems));
-  activeFeedState.renderedCount = nextCount;
-  initPostcardExpand(list);
-  updateFeedStatusElement();
-}
-
-function scheduleFeedLoadCheck(): void {
-  if (feedLoadScheduled) {
-    return;
-  }
-
-  feedLoadScheduled = true;
-
-  requestAnimationFrame(() => {
-    feedLoadScheduled = false;
-
-    if (!activeFeedState || activeFeedState.isLoadingMore) {
-      return;
-    }
-
-    if (activeFeedState.renderedCount >= activeFeedState.items.length) {
-      updateFeedStatusElement();
-      return;
-    }
-
-    const distanceToBottom =
-      document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
-
-    if (distanceToBottom > FEED_SCROLL_THRESHOLD_PX) {
-      updateFeedStatusElement();
-      return;
-    }
-
-    activeFeedState.isLoadingMore = true;
-    updateFeedStatusElement();
-
-    requestAnimationFrame(() => {
-      appendMoreFeedCards();
-
-      if (activeFeedState) {
-        activeFeedState.isLoadingMore = false;
-      }
-
-      updateFeedStatusElement();
-      scheduleFeedLoadCheck();
-    });
-  });
-}
-
-function bindFeedInfiniteScroll(): void {
-  if (isFeedScrollBound) {
-    return;
-  }
-
-  window.addEventListener("scroll", scheduleFeedLoadCheck, { passive: true });
-  window.addEventListener("resize", scheduleFeedLoadCheck);
-  isFeedScrollBound = true;
-}
-
-export function initFeedInfiniteScroll(): void {
-  const center = document.querySelector("[data-feed-center]");
-
-  if (!(center instanceof HTMLElement) || !activeFeedState) {
-    return;
-  }
-
-  bindFeedInfiniteScroll();
-  initPostcardExpand(center);
-  updateFeedStatusElement();
-  scheduleFeedLoadCheck();
+  const nextState: ActiveFeedState = {
+    items: feedResult.items,
+    renderedCount: Math.min(FEED_BATCH_SIZE, feedResult.items.length),
+    isLoadingMore: false,
+  };
+  setActiveFeedState(nextState);
+  return renderIncrementalFeedCenter(nextState.items, nextState.renderedCount);
 }
 
 /**
- * Renders the feed page.
+ * Предзагружает данные ленты в кэш. Если кэш актуален — возвращается мгновенно.
  *
- * @returns {Promise<string>}
+ * @returns {Promise<void>}
+ *
+ * @example
+ * await prefetchFeed();
  */
-export async function renderFeed(): Promise<string> {
+export async function prefetchFeed(): Promise<void> {
   const isAuthorised = getSessionUser() !== null;
-  const feedResult = await getCachedFeedData(isAuthorised);
+  const authKey: FeedAuthKey = isAuthorised ? "authorised" : "guest";
+  const modeKey = getCurrentFeedMode();
+  const cacheKey = `${authKey}:${modeKey}`;
+  if (feedItemsCache.get(cacheKey)?.length) return;
+  await getCachedFeedData(isAuthorised);
+}
 
-  let centerMarkup = "";
-
-  if (feedResult.kind === "html") {
-    activeFeedState = null;
-    centerMarkup = feedResult.html;
-  } else if (!feedResult.items.length) {
-    activeFeedState = null;
-    centerMarkup = isAuthorised ? renderEmptyFriendsFeed() : renderEmptyPublicFeed();
-  } else {
-    activeFeedState = {
-      items: feedResult.items,
-      renderedCount: Math.min(FEED_BATCH_SIZE, feedResult.items.length),
-      isLoadingMore: false,
-    };
-    centerMarkup = renderIncrementalFeedCenter(
-      activeFeedState.items,
-      activeFeedState.renderedCount,
-    );
-  }
+/**
+ * Рендерит HTML страницы ленты.
+ *
+ * @param {Record<string, string>} [_params] Параметры маршрута.
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<string>} HTML страницы.
+ *
+ * @example
+ * const html = await renderFeed();
+ */
+export async function renderFeed(
+  _params?: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<string> {
+  bindFeedLikeActions();
+  const isAuthorised = getSessionUser() !== null;
+  const feedResult = await getCachedFeedData(isAuthorised, signal);
+  await prepareAvatarLinks([
+    getSessionUser()?.avatarLink,
+    ...(feedResult.kind === "items" ? feedResult.items.map((item) => item.avatar) : []),
+  ]);
+  const centerMarkup = buildFeedCenter(feedResult, isAuthorised);
 
   return `
     <div class="app-page">
       ${renderHeader()}
-
       <main class="app-layout">
         <aside class="app-layout__left">
           ${renderSidebar({ isAuthorised })}
         </aside>
-
         ${centerMarkup}
-
-        <aside class="app-layout__right">
+        <aside class="app-layout__right app-layout__right--optional">
           ${await renderWidgetbar({ isAuthorised })}
         </aside>
       </main>
@@ -488,9 +415,12 @@ export async function renderFeed(): Promise<string> {
 }
 
 /**
- * Refreshes feed center in place.
+ * Обновляет центральную колонку ленты на месте без полного перерендера страницы.
  *
  * @returns {Promise<void>}
+ *
+ * @example
+ * await refreshFeedCenter();
  */
 export async function refreshFeedCenter(): Promise<void> {
   const center = document.querySelector(".app-layout__center");
@@ -498,51 +428,36 @@ export async function refreshFeedCenter(): Promise<void> {
 
   const isAuthorised = getSessionUser() !== null;
   const feedResult = await getCachedFeedData(isAuthorised);
-
-  let html = "";
-
-  if (feedResult.kind === "html") {
-    activeFeedState = null;
-    html = feedResult.html;
-  } else if (!feedResult.items.length) {
-    activeFeedState = null;
-    html = isAuthorised ? renderEmptyFriendsFeed() : renderEmptyPublicFeed();
-  } else {
-    activeFeedState = {
-      items: feedResult.items,
-      renderedCount: Math.min(FEED_BATCH_SIZE, feedResult.items.length),
-      isLoadingMore: false,
-    };
-    html = renderIncrementalFeedCenter(activeFeedState.items, activeFeedState.renderedCount);
-  }
+  const html = buildFeedCenter(feedResult, isAuthorised);
 
   const template = document.createElement("template");
   template.innerHTML = html.trim();
-
   const newCenter = template.content.firstElementChild;
   if (!(newCenter instanceof HTMLElement)) return;
 
-  center.replaceWith(newCenter);
+  domPatch(center, newCenter);
   initFeedInfiniteScroll();
 }
 
+function isFeedRouteActive(): boolean {
+  const path = window.location.pathname.replace(/\/+$/g, "") || "/";
+  return path === "/" || path === "/feed";
+}
+
 async function refreshFeedOnReturn(): Promise<void> {
-  if (!isFeedRouteActive() || isFeedRefreshInFlight) {
-    return;
-  }
-
-  isFeedRefreshInFlight = true;
-
+  if (!isFeedRouteActive() || isFeedRefreshInFlight) return;
+  setIsFeedRefreshInFlight(true);
   try {
     await refreshFeedCenter();
   } catch (error) {
-    console.error("[feed] refresh on return failed", error);
+    console.error("[feed] Не удалось обновить ленту при возврате на вкладку.", error);
   } finally {
-    isFeedRefreshInFlight = false;
+    setIsFeedRefreshInFlight(false);
   }
 }
 
 window.addEventListener("apprender", () => {
+  bindFeedLikeActions();
   initFeedInfiniteScroll();
 });
 
@@ -551,7 +466,5 @@ window.addEventListener("focus", () => {
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
-    void refreshFeedOnReturn();
-  }
+  if (document.visibilityState === "visible") void refreshFeedOnReturn();
 });

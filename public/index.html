@@ -2,10 +2,55 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ARISNET</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#4c6fff" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="ARISNET" />
+    <title>ARISNET — социальная сеть</title>
+
+    <meta
+      name="description"
+      content="ARISNET — современная социальная сеть для общения, публикации постов и взаимодействия с друзьями."
+    />
+    <meta name="robots" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+
+    <meta property="og:title" content="ARISNET" />
+    <meta property="og:description" content="Социальная сеть для общения и публикации постов" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ARISNET" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:url" content="https://arisnet.ru" />
+    <meta property="og:image" content="https://arisnet.ru/assets/img/logo-v3.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ARISNET" />
+    <meta name="twitter:description" content="Социальная сеть для общения и публикации постов" />
+    <meta name="twitter:image" content="https://arisnet.ru/assets/img/logo-v3.png" />
+
+    <link rel="canonical" href="https://arisnet.ru/" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
     <link rel="icon" type="image/png" href="/assets/img/icons8-a-stickers-32.png" />
+    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" />
+    <script id="aris-runtime-config" type="application/json">
+      <%= JSON.stringify(htmlWebpackPlugin.options.runtimeConfig || {}) %>
+    </script>
+    <script>
+      (() => {
+        const runtimeConfigNode = document.getElementById("aris-runtime-config");
+        try {
+          window.__ARIS_RUNTIME_CONFIG__ = runtimeConfigNode?.textContent
+            ? JSON.parse(runtimeConfigNode.textContent)
+            : {};
+        } catch {
+          window.__ARIS_RUNTIME_CONFIG__ = {};
+        }
+      })();
+    </script>
   </head>
+
   <body>
     <div id="app"></div>
   </body>

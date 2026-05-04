@@ -1,119 +1,105 @@
-import { trackedFetch } from "../state/network-status";
+/**
+ * Модуль слоя API.
+ *
+ * Содержит клиентские запросы и нормализацию данных для интерфейса.
+ */
+/**
+ * API для пользовательских подборок и событий активности.
+ *
+ * Содержит запросы для виджетбара:
+ * - рекомендованные пользователи;
+ * - популярные пользователи;
+ * - последние события активности.
+ */
+import { apiRequest } from "./core/client";
 
+/**
+ * Пользователь в подборках виджетбара.
+ */
 type SuggestedUser = {
+  /** Идентификатор пользователя или профиля. */
   id: string;
+  /** Логин пользователя. */
   username: string;
+  /** Имя пользователя. */
   firstName: string;
+  /** Фамилия пользователя. */
   lastName: string;
+  /** Ссылка на аватар, если она доступна. */
   avatarLink?: string;
 };
 
+/**
+ * Пользователь из ленты последних событий с типом действия.
+ */
 type LatestEventUser = SuggestedUser & {
+  /** Тип события, который определяет формат отображения. */
   type: number;
 };
 
+/**
+ * Ответ API со списком пользователей для виджетбара.
+ */
 type SuggestedUsersResponse = {
+  /** Набор пользователей, если сервер вернул данные успешно. */
   items?: SuggestedUser[];
 };
 
+/**
+ * Ответ API со списком последних событий активности.
+ */
 type LatestEventsResponse = {
+  /** Набор пользователей с типом события. */
   items?: LatestEventUser[];
 };
 
-type ApiError = Error & {
-  status?: number;
-  data?: unknown;
-};
-
 /**
- * Safely parses JSON response body.
+ * Запрашивает рекомендованных пользователей для виджета авторизованного пользователя.
  *
- * @param {Response} response
- * @returns {Promise<unknown>}
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<SuggestedUsersResponse>} Список рекомендованных пользователей.
+ * @example
+ * const data = await getSuggestedUsers();
+ * const firstUser = data.items?.[0];
  */
-async function parseJson(response: Response): Promise<unknown> {
-  const text = await response.text();
-
-  try {
-    return text ? JSON.parse(text) : {};
-  } catch {
-    return { error: text || "invalid server response" };
-  }
+export async function getSuggestedUsers(signal?: AbortSignal): Promise<SuggestedUsersResponse> {
+  return apiRequest<SuggestedUsersResponse>(
+    "/api/users/suggested",
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
 }
 
 /**
- * Builds API error with extra fields.
+ * Запрашивает популярных пользователей для публичного виджета.
  *
- * @param {string} message
- * @param {number} status
- * @param {unknown} data
- * @returns {ApiError}
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<SuggestedUsersResponse>} Список популярных пользователей.
+ * @example
+ * const data = await getPublicPopularUsers();
  */
-function createApiError(message: string, status: number, data: unknown): ApiError {
-  const error = new Error(message) as ApiError;
-  error.status = status;
-  error.data = data;
-  return error;
+export async function getPublicPopularUsers(signal?: AbortSignal): Promise<SuggestedUsersResponse> {
+  return apiRequest<SuggestedUsersResponse>(
+    "/api/public/popular-users",
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
 }
 
 /**
- * Requests suggested users for the authorised user widget.
+ * Запрашивает последние события активности пользователей.
  *
- * @returns {Promise<SuggestedUsersResponse>}
- * @throws {ApiError}
+ * @param {AbortSignal} [signal] Сигнал отмены запроса.
+ * @returns {Promise<LatestEventsResponse>} Последние события активности.
+ * @example
+ * const events = await getLatestEvents();
  */
-export async function getSuggestedUsers(): Promise<SuggestedUsersResponse> {
-  const response = await trackedFetch("/api/users/suggested", {
-    credentials: "include",
-  });
-
-  const data = (await parseJson(response)) as SuggestedUsersResponse & { error?: string };
-
-  if (!response.ok) {
-    throw createApiError(data.error || "failed to load users", response.status, data);
-  }
-
-  return data;
-}
-
-/**
- * Requests popular users for the public widget.
- *
- * @returns {Promise<SuggestedUsersResponse>}
- * @throws {ApiError}
- */
-export async function getPublicPopularUsers(): Promise<SuggestedUsersResponse> {
-  const response = await trackedFetch("/api/public/popular-users", {
-    credentials: "include",
-  });
-
-  const data = (await parseJson(response)) as SuggestedUsersResponse & { error?: string };
-
-  if (!response.ok) {
-    throw createApiError(data.error || "failed to load popular users", response.status, data);
-  }
-
-  return data;
-}
-
-/**
- * Requests latest user activity events.
- *
- * @returns {Promise<LatestEventsResponse>}
- * @throws {ApiError}
- */
-export async function getLatestEvents(): Promise<LatestEventsResponse> {
-  const response = await trackedFetch("/api/users/latest-events", {
-    credentials: "include",
-  });
-
-  const data = (await parseJson(response)) as LatestEventsResponse & { error?: string };
-
-  if (!response.ok) {
-    throw createApiError(data.error || "failed to load latest events", response.status, data);
-  }
-
-  return data;
+export async function getLatestEvents(signal?: AbortSignal): Promise<LatestEventsResponse> {
+  return apiRequest<LatestEventsResponse>(
+    "/api/users/latest-events",
+    { ...(signal ? { signal } : {}) },
+    {},
+  );
 }
 
 export type { SuggestedUser, LatestEventUser, SuggestedUsersResponse, LatestEventsResponse };

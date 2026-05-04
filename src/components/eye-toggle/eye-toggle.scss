@@ -1,23 +1,25 @@
-.eye-toggle {
-  --eye-toggle-size: 28px;
-  --eye-toggle-icon-size: 20px;
-  --eye-toggle-icon-scale: 0.95;
+@layer components {
+  .eye-toggle {
+    --eye-toggle-size: 28px;
+    --eye-toggle-icon-size: 20px;
+    --eye-toggle-icon-scale: 0.95;
 
-  display: inline-flex;
-  width: var(--eye-toggle-size);
-  height: var(--eye-toggle-size);
-  padding: 0;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
+    display: inline-flex;
+    width: var(--eye-toggle-size);
+    height: var(--eye-toggle-size);
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
 
-  &__icon {
-    display: block;
-    width: var(--eye-toggle-icon-size);
-    height: var(--eye-toggle-icon-size);
-    transform: scale(var(--eye-toggle-icon-scale));
+    &__icon {
+      display: block;
+      width: var(--eye-toggle-icon-size);
+      height: var(--eye-toggle-icon-size);
+      transform: scale(var(--eye-toggle-icon-scale));
+    }
   }
 }

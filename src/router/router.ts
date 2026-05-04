@@ -106,7 +106,7 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
         const { initSupport } = await import(
           /* webpackChunkName: "page-support" */ "../pages/support/support"
         );
-        void initSupport(nextRoot);
+        await initSupport(nextRoot);
       }
       if (nextRoot.querySelector("[data-support-stats-page]")) {
         const { initSupportStats } = await import(

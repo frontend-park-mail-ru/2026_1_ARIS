@@ -127,6 +127,15 @@ function upsertMetaByProperty(property: string, content: string): void {
   meta.setAttribute("content", content);
 }
 
+function markAppRendering(): void {
+  window.__ARIS_APP_READY__ = false;
+}
+
+function markAppReady(): void {
+  window.__ARIS_APP_READY__ = true;
+  window.dispatchEvent(new Event("aris:ready"));
+}
+
 function upsertCanonicalLink(href: string): void {
   let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
 
@@ -352,6 +361,8 @@ document.addEventListener(
 // ---------------------------------------------------------------------------
 
 void (async () => {
+  markAppRendering();
+
   try {
     await initSession();
     await syncSettingsForSession("init-sync");
@@ -378,6 +389,7 @@ void (async () => {
   initSidebar();
   initAvatarFallback(document);
   initOfflineIndicator();
+  markAppReady();
 })();
 
 onCacheInvalidation(async (key) => {
@@ -421,12 +433,14 @@ window.addEventListener("sessionchange", async (event: Event) => {
     }
 
     if (detail?.key === "user") {
+      markAppRendering();
       await syncSettingsForSession("session-user-sync");
       syncSentryUser(getSessionUser());
       await router.render();
       initHeader();
       initSidebar();
       initAvatarFallback(document);
+      markAppReady();
       return;
     }
 

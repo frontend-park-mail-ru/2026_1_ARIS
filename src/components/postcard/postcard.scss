@@ -349,10 +349,10 @@
         width: max-content;
         max-width: 220px;
         padding: 8px 10px;
-        border: 1px solid rgb(203 210 222 / 88%);
+        border: 1px solid var(--color-border-default);
         border-radius: 10px;
-        background: rgb(255 255 255 / 98%);
-        box-shadow: 0 12px 28px rgb(31 42 95 / 18%);
+        background: var(--color-surface-glass-strong);
+        box-shadow: var(--shadow-card-elevated);
         color: var(--color-text-main);
         font-size: var(--text-size-caption);
         font-weight: var(--font-weight-medium);
@@ -367,9 +367,9 @@
         width: 10px;
         height: 10px;
         margin-right: 16px;
-        border-right: 1px solid rgb(203 210 222 / 88%);
-        border-bottom: 1px solid rgb(203 210 222 / 88%);
-        background: rgb(255 255 255 / 98%);
+        border-right: 1px solid var(--color-border-default);
+        border-bottom: 1px solid var(--color-border-default);
+        background: var(--color-surface-card);
         transform: translateY(4px) rotate(45deg);
       }
 
@@ -443,6 +443,31 @@
   .postcard__media--five-plus .postcard__media-row--top,
   .postcard__media--five-plus .postcard__media-row--bottom {
     grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  :root[data-theme="dark"] {
+    .postcard__stat-count {
+      color: var(--color-text-meta);
+    }
+
+    .postcard__stat-icon img {
+      filter: brightness(0) invert(1);
+      opacity: 0.72;
+    }
+
+    .postcard__stat-link:hover .postcard__stat-icon img,
+    .postcard__stat-button:hover .postcard__stat-icon img {
+      opacity: 0.9;
+    }
+
+    .postcard__stat-button--liked .postcard__stat-count {
+      color: #ff8d8d;
+    }
+
+    .postcard__stat-button--liked .postcard__stat-icon img {
+      filter: none;
+      opacity: 0;
+    }
   }
 
   @media (width <= 768px) {

@@ -126,6 +126,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
   const isCommunitiesListRoute = currentPath === "/communities";
   const isCommunitiesRoute = isCommunitiesListRoute || currentPath.startsWith("/communities/");
   const isChatsRoute = currentPath === "/chats";
+  const isSettingsRoute = currentPath === "/settings";
   const isForYouActive = getFeedMode() === "for-you";
   const isByTimeActive = getFeedMode() === "by-time";
 
@@ -163,6 +164,13 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
         label: "Чаты",
         icon: "/assets/img/icons/chat.svg",
         isActive: isChatsRoute,
+        attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+      })}
+      ${renderMobileNavItem({
+        href: "/settings",
+        label: "Настройки",
+        icon: "/assets/img/icons/settings.svg",
+        isActive: isSettingsRoute,
         attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
       })}
     </nav>
@@ -212,6 +220,15 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           label: "Чаты",
           icon: "/assets/img/icons/chat.svg",
           isActive: isChatsRoute,
+          attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+          preventWhenActive: true,
+        })}
+
+        ${renderSidebarItem({
+          href: "/settings",
+          label: "Настройки",
+          icon: "/assets/img/icons/settings.svg",
+          isActive: isSettingsRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
           preventWhenActive: true,
         })}
@@ -309,14 +326,21 @@ export function initSidebar(root: Document | HTMLElement = document): void {
  */
 export function refreshSidebar(): void {
   const sidebar = document.querySelector(".sidebar");
-  if (!sidebar) return;
+  const mobileNav = document.querySelector(".mobile-nav");
+  if (!sidebar && !mobileNav) return;
 
   const isAuthorised = getSessionUser() !== null;
   const template = document.createElement("template");
   template.innerHTML = renderSidebar({ isAuthorised }).trim();
 
-  const newSidebar = template.content.firstElementChild;
-  if (!(newSidebar instanceof HTMLElement)) return;
+  const newSidebar = template.content.querySelector(".sidebar");
+  const newMobileNav = template.content.querySelector(".mobile-nav");
 
-  domPatch(sidebar, newSidebar);
+  if (sidebar instanceof HTMLElement && newSidebar instanceof HTMLElement) {
+    domPatch(sidebar, newSidebar);
+  }
+
+  if (mobileNav instanceof HTMLElement && newMobileNav instanceof HTMLElement) {
+    domPatch(mobileNav, newMobileNav);
+  }
 }

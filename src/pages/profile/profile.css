@@ -2257,4 +2257,158 @@
       min-height: 150px;
     }
   }
+
+  :root[data-theme="dark"] {
+    .profile-guest-card,
+    .profile-guest-sidecard,
+    .profile-card,
+    .profile-editor {
+      border-color: var(--color-border-glass);
+      background:
+        radial-gradient(circle at top right, rgb(143 161 255 / 12%), transparent 24%),
+        var(--color-surface-content-card);
+      box-shadow: var(--shadow-card);
+    }
+
+    .profile-card__hero-copy p,
+    .profile-friend-request-state,
+    .profile-editor__field span,
+    .profile-info-grid__row dt {
+      color: var(--color-text-muted);
+    }
+
+    .profile-section {
+      border-color: var(--color-border-glass-soft);
+      background: rgb(17 25 44 / 72%);
+    }
+
+    .profile-section__header {
+      background: linear-gradient(90deg, rgb(48 60 104 / 70%), rgb(32 42 72 / 64%));
+    }
+
+    .profile-section__body {
+      background: rgb(13 20 36 / 44%);
+    }
+
+    .profile-composer:hover {
+      background: var(--color-interactive-hover);
+    }
+
+    .profile-posts__header,
+    .profile-posts__item-action,
+    .profile-editor__button,
+    .profile-editor__input,
+    .profile-editor__textarea {
+      border-color: var(--color-border-default);
+      background: var(--color-surface-input);
+      color: var(--color-text-main);
+    }
+
+    .profile-editor__control--error {
+      border-color: var(--color-border-error);
+      background: var(--color-surface-input-error);
+    }
+
+    .profile-posts__tab:hover {
+      background: var(--color-interactive-hover);
+    }
+
+    .profile-post-modal,
+    .profile-post-delete-modal,
+    .profile-avatar-modal,
+    .profile-avatar-delete-modal,
+    .profile-delete-modal {
+      background: var(--color-surface-backdrop-soft);
+    }
+
+    .profile-post-modal__dialog,
+    .profile-post-delete-modal__dialog,
+    .profile-avatar-modal__dialog,
+    .profile-avatar-delete-modal__dialog,
+    .profile-delete-modal__dialog {
+      border-color: var(--color-border-glass);
+      background: var(--color-surface-glass-strong);
+      box-shadow: var(--shadow-card-elevated);
+    }
+
+    .profile-post-modal__textarea {
+      border-color: var(--color-border-default);
+      background: var(--color-surface-input);
+      color: var(--color-text-main);
+    }
+
+    .profile-post-modal__textarea::placeholder {
+      color: var(--color-text-placeholder);
+    }
+
+    .profile-post-modal__textarea:focus {
+      border-color: var(--color-border-strong);
+      box-shadow: var(--control-focus-ring);
+    }
+
+    .profile-post-modal__actions {
+      background: linear-gradient(180deg, rgb(20 29 50 / 0%), rgb(20 29 50 / 96%) 35%);
+    }
+
+    .profile-post-modal__button,
+    .profile-post-delete-modal__button,
+    .profile-avatar-modal__button,
+    .profile-avatar-delete-modal__button,
+    .profile-delete-modal__button {
+      border-color: var(--color-border-default);
+      background: var(--color-surface-input);
+      color: var(--color-interactive-primary);
+    }
+
+    .profile-post-modal__button--primary,
+    .profile-post-delete-modal__button--primary,
+    .profile-avatar-modal__button--primary,
+    .profile-avatar-delete-modal__button--primary,
+    .profile-delete-modal__button--primary {
+      border-color: transparent;
+      background: var(--color-interactive-primary);
+      color: var(--color-text-on-primary);
+    }
+
+    .profile-post-modal__preview {
+      border-color: var(--color-border-default);
+      background: var(--color-surface-muted);
+    }
+
+    .profile-post-modal__preview-remove,
+    .profile-post__menu,
+    .profile-post__time::before {
+      border-color: var(--color-border-default);
+      background: var(--color-surface-glass-strong);
+      box-shadow: var(--shadow-card-elevated);
+    }
+
+    .profile-post__time::after {
+      border-color: var(--color-border-default);
+      background: var(--color-surface-card);
+    }
+
+    .profile-post__stat {
+      color: var(--color-text-meta);
+    }
+
+    .profile-post__icon {
+      filter: brightness(0) invert(1);
+      opacity: 0.72;
+    }
+
+    .profile-post__stat-button--liked {
+      color: #ff8d8d;
+    }
+
+    .profile-post__stat-button--liked .profile-post__icon {
+      filter: none;
+      opacity: 0;
+    }
+
+    .profile-post__stat-button:hover .profile-post__icon,
+    .profile-post__stat:hover .profile-post__icon {
+      opacity: 0.9;
+    }
+  }
 }

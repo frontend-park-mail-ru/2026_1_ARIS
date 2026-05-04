@@ -733,4 +733,15 @@
       bottom: 72px;
     }
   }
+
+  :root[data-theme="dark"] {
+    .chat-date-divider__label {
+      border-color: rgb(143 161 255 / 34%);
+      background: rgb(20 29 50 / 92%);
+      box-shadow:
+        0 8px 20px rgb(0 0 0 / 22%),
+        0 0 0 1px rgb(143 161 255 / 8%);
+      color: var(--color-text-main);
+    }
+  }
 }

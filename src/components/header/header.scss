@@ -180,10 +180,10 @@
       z-index: 2000;
       min-width: 132px;
       padding: 8px;
-      border: 1px solid rgb(203 210 222 / 82%);
+      border: 1px solid var(--color-border-default);
       border-radius: 12px;
-      background: rgb(255 255 255 / 98%);
-      box-shadow: 0 14px 30px rgb(31 42 95 / 18%);
+      background: var(--color-surface-glass-strong);
+      box-shadow: var(--shadow-card-elevated);
       opacity: 0;
       pointer-events: none;
       transform: translateY(-4px);
@@ -213,7 +213,7 @@
     }
 
     &__user-menu-item:hover {
-      background: rgb(74 81 208 / 8%);
+      background: var(--color-interactive-hover);
       color: var(--color-interactive-primary);
     }
 

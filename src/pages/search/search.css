@@ -46,7 +46,7 @@
   }
 
   .search-result-card:not(:last-child) {
-    border-bottom: 1px solid rgb(108 118 214 / 16%);
+    border-bottom: 1px solid var(--color-border-glass-soft);
   }
 
   .search-result-card__avatar-link {

@@ -28,6 +28,7 @@ import "./pages/support/support.scss";
 import "./pages/support-admin/support-admin.scss";
 import "./pages/support-stats/support-stats.scss";
 import "./pages/search/search.css";
+import "./pages/settings/settings.css";
 
 import "./components/postcard/postcard-element";
 import { createRouter, type Route } from "./router/router";
@@ -42,12 +43,13 @@ import { registerServiceWorker } from "./utils/register-service-worker";
 import { onCacheInvalidation } from "./utils/cache-channel";
 import { captureAppException, initSentry, syncSentryUser } from "./utils/sentry";
 import { initSupportIframe } from "./utils/support-widget";
+import { applyTheme, initThemeFromStorage, syncThemeWithServer } from "./state/theme";
 
 const SITE_ORIGIN = "https://arisnet.ru";
 const CANONICAL_ROUTE_ALIASES: Record<string, string> = {
   "/feed": "/",
 };
-const NOINDEX_EXACT_PATHS = new Set(["/login", "/register"]);
+const NOINDEX_EXACT_PATHS = new Set(["/login", "/register", "/settings"]);
 const NOINDEX_PATH_PREFIXES = [
   "/chats",
   "/friends",
@@ -77,6 +79,8 @@ const loadSupportAdmin = () =>
 const loadSupportStats = () =>
   import(/* webpackChunkName: "page-support-stats" */ "./pages/support-stats/support-stats");
 const loadSearch = () => import(/* webpackChunkName: "page-search" */ "./pages/search/search");
+const loadSettings = () =>
+  import(/* webpackChunkName: "page-settings" */ "./pages/settings/settings");
 
 function normalisePathname(pathname: string): string {
   return pathname.replace(/\/+$/g, "") || "/";
@@ -186,6 +190,8 @@ if (!(root instanceof HTMLElement)) {
   throw new Error('Root element "#app" not found');
 }
 
+initThemeFromStorage();
+
 const routes: Route[] = [
   {
     path: "/",
@@ -248,6 +254,11 @@ const routes: Route[] = [
     render: async (p, s) => (await loadSearch()).renderSearch(p, s),
   },
   {
+    path: "/settings",
+    title: "ARISNET — Settings",
+    render: async (p, s) => (await loadSettings()).renderSettings(p, s),
+  },
+  {
     path: "/support",
     title: "ARISNET — Support",
     render: async () => (await loadSupport()).renderSupportWidget(),
@@ -291,8 +302,26 @@ const chunkMap: Record<string, () => Promise<unknown>> = {
   "/profile": loadProfile,
   "/login": loadLogin,
   "/register": loadRegister,
+  "/settings": loadSettings,
   "/support/admin": loadSupportAdmin,
 };
+
+async function syncThemeForSession(action: string): Promise<void> {
+  if (!getSessionUser()) {
+    applyTheme("light", { emit: false });
+    return;
+  }
+
+  try {
+    await syncThemeWithServer();
+  } catch (error) {
+    captureAppException(error, {
+      area: "theme",
+      action,
+    });
+    console.error("[theme] sync failed", error);
+  }
+}
 
 document.addEventListener(
   "mouseover",
@@ -319,6 +348,7 @@ document.addEventListener(
 void (async () => {
   try {
     await initSession();
+    await syncThemeForSession("init-sync");
     syncSentryUser(getSessionUser());
   } catch (error) {
     captureAppException(error, {
@@ -385,6 +415,7 @@ window.addEventListener("sessionchange", async (event: Event) => {
     }
 
     if (detail?.key === "user") {
+      await syncThemeForSession("session-user-sync");
       syncSentryUser(getSessionUser());
       await router.render();
       initHeader();

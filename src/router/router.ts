@@ -126,6 +126,12 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
         );
         initSearch(nextRoot);
       }
+      if (nextRoot.querySelector("[data-settings-page]")) {
+        const { initSettings } = await import(
+          /* webpackChunkName: "page-settings" */ "../pages/settings/settings"
+        );
+        initSettings(nextRoot);
+      }
     },
   });
 }

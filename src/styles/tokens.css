@@ -114,6 +114,8 @@
     --color-surface-input: #e1e6ee;
     --color-surface-input-error: #fed7d7;
     --color-surface-avatar-placeholder: #e4e8f4;
+    --color-surface-2: #f0f2f8;
+    --color-surface-3: #e4e8f4;
 
     /* ================= ГРАНИЦЫ ================= */
 
@@ -211,6 +213,90 @@
     /* ================= ЛОГОТИП ================= */
     --logo-width: 138px;
     --logo-height: 52px;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --color-text-main: #f3f6f7;
+    --color-text-name: #9eb3ff;
+    --color-text-link: var(--color-interactive-primary);
+    --color-text-meta: rgb(221 227 245 / 84%);
+    --color-text-muted: rgb(221 227 245 / 66%);
+    --color-text-error: #ff8d8d;
+    --color-text-danger: #ff8fa8;
+    --color-text-on-primary: #fff;
+    --color-text-placeholder: #9aa7c6;
+    --color-surface-page: #0c1220;
+    --color-gradient-status: linear-gradient(
+      90deg,
+      rgb(28 37 84) 0%,
+      rgb(74 86 178) 58%,
+      rgb(197 145 45) 100%
+    );
+    --color-gradient-avatar: linear-gradient(135deg, rgb(91 111 255) 0%, rgb(154 166 255) 100%);
+    --color-page-gradient: linear-gradient(
+      135deg,
+      #111827 0%,
+      #182542 38%,
+      #253655 70%,
+      #4c4f98 100%
+    );
+    --color-page-auth-gradient: linear-gradient(135deg, #111827 0%, #1e2a45 48%, #43498f 100%);
+    --color-surface-base: #151d32;
+    --color-surface-raised: rgb(25 34 56 / 92%);
+    --color-surface-muted: rgb(28 38 61 / 82%);
+    --color-surface-overlay: rgb(22 31 52 / 72%);
+    --color-surface-glass: linear-gradient(180deg, rgb(25 34 57 / 94%), rgb(18 26 46 / 88%));
+    --color-surface-glass-strong: linear-gradient(180deg, rgb(31 41 68 / 97%), rgb(20 29 50 / 94%));
+    --color-surface-glass-soft: linear-gradient(180deg, rgb(29 39 64 / 96%), rgb(19 28 48 / 92%));
+    --color-surface-glass-faint: linear-gradient(180deg, rgb(30 40 66 / 78%), rgb(17 25 44 / 72%));
+    --color-surface-tinted: rgb(24 34 56 / 82%);
+    --color-surface-backdrop: rgb(3 6 14 / 68%);
+    --color-surface-backdrop-soft: rgb(3 6 14 / 58%);
+    --color-surface-card: #151d32;
+    --color-surface-content-card: linear-gradient(180deg, rgb(24 33 55 / 98%), rgb(16 24 43 / 94%));
+    --color-surface-card-elevated: radial-gradient(
+      141.49% 141.42% at 0% 0%,
+      #202a48 0%,
+      #151e35 100%
+    );
+    --color-surface-input: #202a43;
+    --color-surface-input-error: #4a232b;
+    --color-surface-avatar-placeholder: #293555;
+    --color-surface-2: #1b2540;
+    --color-surface-3: #273454;
+    --color-border-default: #354361;
+    --color-border-strong: #8fa1ff;
+    --color-border-error: #f28787;
+    --color-border-accent-soft: rgb(143 161 255 / 55%);
+    --color-border-glass: rgb(118 135 181 / 36%);
+    --color-border-glass-soft: rgb(118 135 181 / 24%);
+    --color-border-danger: rgb(255 143 168 / 32%);
+    --color-interactive-primary: #8fa1ff;
+    --color-interactive-primary-hover: #a8b6ff;
+    --color-interactive-primary-active: #c6ceff;
+    --color-interactive-secondary: transparent;
+    --color-interactive-secondary-hover: rgb(143 161 255 / 18%);
+    --color-interactive-secondary-active: rgb(143 161 255 / 26%);
+    --color-interactive-hover: rgb(143 161 255 / 18%);
+    --color-interactive-active: rgb(143 161 255 / 28%);
+    --shadow-sm: 0 1px 3px rgb(0 0 0 / 24%);
+    --shadow-md: 0 8px 20px rgb(0 0 0 / 36%);
+    --shadow-lg: 0 24px 48px rgb(0 0 0 / 32%);
+    --shadow-avatar: 0 8px 18px rgb(0 0 0 / 26%);
+    --shadow-card-soft: 0 0 0 1px rgb(143 161 255 / 12%), 0 12px 28px rgb(0 0 0 / 20%);
+    --shadow-card: var(--shadow-card-soft);
+    --shadow-card-elevated: var(--shadow-lg);
+    --shadow-content-card: var(--shadow-card-soft);
+    --content-card-glow: radial-gradient(
+      circle,
+      rgb(91 111 255 / 22%) 0%,
+      rgb(197 145 45 / 12%) 42%,
+      transparent 74%
+    );
+    --control-focus-ring: 0 0 0 3px rgb(143 161 255 / 24%);
+    --control-focus-outline: 2px solid rgb(143 161 255 / 52%);
   }
 
   @media (width <= 1199px) {

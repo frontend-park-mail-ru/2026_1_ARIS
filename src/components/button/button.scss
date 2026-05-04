@@ -49,7 +49,7 @@
     }
 
     &--surface {
-      border: var(--border-width) solid rgb(203 210 222 / 48%);
+      border: var(--border-width) solid var(--color-border-default);
       background: var(--color-surface-base);
       color: var(--color-interactive-primary);
 

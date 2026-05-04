@@ -12,6 +12,8 @@ import { clearSessionUser, getSessionUser } from "../../state/session";
 import { renderButton } from "../button/button";
 import { logoutUser } from "../../api/auth";
 import { renderAvatarMarkup, escapeHtml } from "../../utils/avatar";
+import { formatPersonName } from "../../utils/display-name";
+import { t } from "../../state/i18n";
 
 /**
  * Минимальный срез данных пользователя, который нужен header.
@@ -53,7 +55,7 @@ function renderGuestHeader(): string {
 
       <div class="header__guest-actions">
         ${renderButton({
-          text: "Регистрация",
+          text: t("header.register"),
           variant: "primary",
           tag: "button",
           type: "button",
@@ -62,7 +64,7 @@ function renderGuestHeader(): string {
         })}
 
         ${renderButton({
-          text: "Войти",
+          text: t("header.login"),
           variant: "secondary",
           tag: "button",
           type: "button",
@@ -72,8 +74,8 @@ function renderGuestHeader(): string {
       </div>
 
       <a href="/login" data-open-auth-modal="login" class="header__user">
-        <span class="header__username">Твоя страничка</span>
-        ${renderHeaderAvatar("header__avatar", "Гостевой профиль")}
+        <span class="header__username">${t("header.yourPage")}</span>
+        ${renderHeaderAvatar("header__avatar", t("header.guestProfile"))}
       </a>
     </div>
   `;
@@ -93,7 +95,7 @@ function getHeaderSearchValue(): string {
 function renderAuthorisedHeader(): string {
   const user = getSessionUser() as SessionUser;
 
-  const fullName = user ? `${user.firstName} ${user.lastName}` : "";
+  const fullName = user ? formatPersonName(user.firstName, user.lastName) : "";
   const searchValue = getHeaderSearchValue();
 
   return `
@@ -102,7 +104,7 @@ function renderAuthorisedHeader(): string {
         <img class="header__logo" src="/assets/img/logo-v3.png" width="300" height="114" alt="ARIS">
       </a>
 
-      <label class="header__search-box search-field" aria-label="Поиск">
+      <label class="header__search-box search-field" aria-label="${t("header.search")}">
         <span class="header__search-icon search-field__icon" aria-hidden="true">
           <img src="/assets/img/icons/search.svg" alt="">
         </span>
@@ -110,7 +112,7 @@ function renderAuthorisedHeader(): string {
         <input
           class="header__search-input search-field__input"
           type="text"
-          placeholder="Поиск"
+          placeholder="${t("header.search")}"
           data-header-search
           value="${escapeHtml(searchValue)}"
         >
@@ -124,18 +126,18 @@ function renderAuthorisedHeader(): string {
             type="button"
             class="header__avatar-button"
             data-header-user-menu-toggle
-            aria-label="Открыть меню профиля"
+            aria-label="${t("header.openProfileMenu")}"
             aria-expanded="false"
           >
-            ${renderHeaderAvatar("header__avatar", fullName || "Профиль", user?.avatarLink)}
+            ${renderHeaderAvatar("header__avatar", fullName || t("header.profile"), user?.avatarLink)}
           </button>
 
           <div class="header__user-menu" role="menu">
             <button type="button" class="header__user-menu-item" data-support-open role="menuitem">
-              Помощь
+              ${t("header.help")}
             </button>
             <button type="button" class="header__user-menu-item" data-logout role="menuitem">
-              Выйти
+              ${t("header.logout")}
             </button>
           </div>
         </div>

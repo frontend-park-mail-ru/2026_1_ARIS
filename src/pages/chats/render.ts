@@ -17,6 +17,8 @@ import {
 import { getFilteredThreads, getSelectedThread, getThreadPreviewState } from "./threads";
 import { readPersistedChatsUiState, persistChatsUiState } from "./storage";
 import { hasHydratedPersistedChatsUiState, setHasHydratedPersistedChatsUiState } from "./state";
+import { t } from "../../state/i18n";
+import { formatDisplayName } from "../../utils/display-name";
 
 /** Возвращает количество непрочитанных входящих сообщений в чате. */
 function getUnreadIncomingCount(chatId: string): number {
@@ -222,17 +224,17 @@ export function hydratePersistedChatsUiState(): void {
 
 function renderMessages(thread?: ChatViewThread): string {
   if (!thread) {
-    return '<div class="chat-view__empty">Выбери чат слева, чтобы открыть переписку.</div>';
+    return `<div class="chat-view__empty">${t("chats.emptySelect")}</div>`;
   }
 
   if (chatsState.loadingMessages && thread.source === "api" && !thread.messages) {
-    return '<div class="chat-view__loading">Загружаем сообщения...</div>';
+    return `<div class="chat-view__loading">${t("chats.loadingMessages")}</div>`;
   }
 
   const messages = thread.messages ?? [];
 
   if (!messages.length) {
-    return '<div class="chat-view__empty">Список пуст.</div>';
+    return `<div class="chat-view__empty">${t("common.emptyList")}</div>`;
   }
 
   let previousDateKey = "";
@@ -289,7 +291,7 @@ function renderMessageBubble(message: ChatViewMessage): string {
             href="${escapeHtml(message.profilePath ?? (message.isOwn ? "/profile" : "#"))}"
             data-link
           >
-            ${escapeHtml(message.authorName)}
+            ${escapeHtml(formatDisplayName(message.authorName))}
           </a>
         </h3>
         <p class="chat-bubble__text">${escapeHtml(message.text)}</p>
@@ -306,8 +308,8 @@ function renderMessageBubble(message: ChatViewMessage): string {
                 type="button"
                 class="chat-bubble__retry"
                 data-chat-retry-message="${escapeHtml(message.id)}"
-                aria-label="Отправить сообщение снова"
-                title="Отправить снова"
+                aria-label="${t("chats.retryAria")}"
+                title="${t("chats.retry")}"
                >↻</button>`
             : ""
         }
@@ -326,7 +328,7 @@ function renderScrollControls(thread?: ChatViewThread): string {
       hasUnread
         ? `<div class="chat-scroll-indicator-wrap">
              <button type="button" class="chat-new-indicator" data-chat-scroll-bottom>
-               Новые сообщения
+               ${t("chats.newMessages")}
              </button>
            </div>`
         : ""
@@ -336,8 +338,8 @@ function renderScrollControls(thread?: ChatViewThread): string {
         type="button"
         class="chat-scroll-bottom-button"
         data-chat-scroll-bottom
-        aria-label="Прокрутить вниз"
-        title="Прокрутить вниз"
+        aria-label="${t("chats.scrollDown")}"
+        title="${t("chats.scrollDown")}"
       >↓</button>
     </div>
   `;
@@ -345,13 +347,14 @@ function renderScrollControls(thread?: ChatViewThread): string {
 
 function renderThreadsList(threads: ChatViewThread[]): string {
   if (!threads.length) {
-    return `<p class="chats-list__empty">${chatsState.query.trim() ? "Ничего не найдено." : "Список пуст."}</p>`;
+    return `<p class="chats-list__empty">${chatsState.query.trim() ? t("friends.noneFound") : t("common.emptyList")}</p>`;
   }
 
   return threads
     .map((thread) => {
       const isActive = thread.id === chatsState.selectedChatId;
       const previewState = getThreadPreviewState(thread);
+      const threadTitle = formatDisplayName(thread.title);
 
       return `
         <button
@@ -362,10 +365,14 @@ function renderThreadsList(threads: ChatViewThread[]): string {
         >
           ${renderAvatarElement("chat-thread__avatar", thread.title, thread.avatarLink)}
           <div class="chat-thread__content">
-            <strong class="chat-thread__title">${escapeHtml(thread.title)}</strong>
+            <strong class="chat-thread__title">${escapeHtml(threadTitle)}</strong>
             <div class="chat-thread__meta">
               <span class="chat-thread__preview">
-                ${previewState.isOwn ? '<span class="chat-thread__preview-prefix">Вы:</span> ' : ""}
+                ${
+                  previewState.isOwn
+                    ? `<span class="chat-thread__preview-prefix">${t("chats.you")}</span> `
+                    : ""
+                }
                 ${escapeHtml(previewState.text)}
               </span>
               <time
@@ -397,15 +404,15 @@ export function renderChatsContent(): string {
   return `
     <section class="chats-page ${mobileViewClass} content-card" data-chats-page>
       <aside class="chats-sidebar">
-        <h1 class="chats-sidebar__title">Сообщения</h1>
+        <h1 class="chats-sidebar__title">${t("chats.title")}</h1>
 
-        <label class="chats-search search-field" aria-label="Поиск по чатам">
+        <label class="chats-search search-field" aria-label="${t("chats.search")}">
           <img class="chats-search__icon search-field__icon" src="/assets/img/icons/search.svg" alt="">
           <input
             class="chats-search__input search-field__input"
             type="text"
             value="${escapeHtml(chatsState.query)}"
-            placeholder="Поиск по сообщениям"
+            placeholder="${t("chats.search")}"
             data-chat-search
           >
         </label>
@@ -423,7 +430,7 @@ export function renderChatsContent(): string {
                    type="button"
                    class="chat-header__back"
                    data-chat-mobile-back
-                   aria-label="Вернуться к списку чатов"
+                   aria-label="${t("chats.backToList")}"
                  >
                    ←
                  </button>
@@ -439,12 +446,12 @@ export function renderChatsContent(): string {
                        href="${escapeHtml(selectedThread.profilePath ?? "#")}"
                        data-link
                      >
-                       ${escapeHtml(selectedThread.title)}
+                       ${escapeHtml(formatDisplayName(selectedThread.title))}
                      </a>
                    </h2>
                    ${
                      chatsState.source === "mock"
-                       ? '<p class="chat-header__meta">Демо-интерфейс до полного подключения API.</p>'
+                       ? `<p class="chat-header__meta">${t("chats.demoMeta")}</p>`
                        : ""
                    }
                  </div>
@@ -476,10 +483,10 @@ export function renderChatsContent(): string {
                    type="text"
                    name="message"
                    value="${escapeHtml(composeDraft)}"
-                   placeholder="Начните печатать сообщение..."
+                   placeholder="${t("chats.typeMessage")}"
                    autocomplete="off"
                  >
-                 <button type="submit" class="chat-compose__send">Отправить</button>
+                 <button type="submit" class="chat-compose__send">${t("chats.send")}</button>
                </form>`
             : ""
         }

@@ -5,6 +5,7 @@ import { getFeedMode, getSessionUser, setFeedMode, type FeedMode } from "../../s
 import { clearFeedCache } from "../../pages/feed/cache";
 import { clearWidgetbarCache } from "../widgetbar/widgetbar";
 import { domPatch } from "../../vdom/patch";
+import { t } from "../../state/i18n";
 
 type SidebarItemOptions = {
   href?: string;
@@ -131,44 +132,44 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
   const isByTimeActive = getFeedMode() === "by-time";
 
   const mobileNav = `
-    <nav class="mobile-nav" aria-label="Основная навигация">
+    <nav class="mobile-nav" aria-label="${t("sidebar.mainNavigation")}">
       ${renderMobileNavItem({
         href: feedHref,
-        label: "Лента",
+        label: t("nav.feed"),
         icon: "/assets/img/icons/home.svg",
         isActive: isFeedRoute,
       })}
       ${renderMobileNavItem({
         href: "/profile",
-        label: "Профиль",
+        label: t("nav.profile"),
         icon: "/assets/img/icons/profile.svg",
         isActive: isProfileRoute,
         attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
       })}
       ${renderMobileNavItem({
         href: "/friends",
-        label: "Друзья",
+        label: t("nav.friends"),
         icon: "/assets/img/icons/friends.svg",
         isActive: isFriendsRoute,
         attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
       })}
       ${renderMobileNavItem({
         href: "/communities",
-        label: "Сообщества",
+        label: t("nav.communities"),
         icon: "/assets/img/icons/communities.svg",
         isActive: isCommunitiesRoute,
         attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
       })}
       ${renderMobileNavItem({
         href: "/chats",
-        label: "Чаты",
+        label: t("nav.chats"),
         icon: "/assets/img/icons/chat.svg",
         isActive: isChatsRoute,
         attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
       })}
       ${renderMobileNavItem({
         href: "/settings",
-        label: "Настройки",
+        label: t("nav.settings"),
         icon: "/assets/img/icons/settings.svg",
         isActive: isSettingsRoute,
         attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
@@ -181,7 +182,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
       <section class="sidebar-card sidebar-card--menu">
         ${renderSidebarItem({
           href: feedHref,
-          label: "Лента",
+          label: t("nav.feed"),
           icon: "/assets/img/icons/home.svg",
           isActive: isFeedRoute,
           reloadOnClick: true,
@@ -190,7 +191,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
 
         ${renderSidebarItem({
           href: "/profile",
-          label: "Профиль",
+          label: t("nav.profile"),
           icon: "/assets/img/icons/profile.svg",
           isActive: isProfileRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
@@ -199,7 +200,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
 
         ${renderSidebarItem({
           href: "/friends",
-          label: "Друзья",
+          label: t("nav.friends"),
           icon: "/assets/img/icons/friends.svg",
           isActive: isFriendsRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
@@ -208,7 +209,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
 
         ${renderSidebarItem({
           href: "/communities",
-          label: "Сообщества",
+          label: t("nav.communities"),
           icon: "/assets/img/icons/communities.svg",
           isActive: isCommunitiesRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
@@ -217,7 +218,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
 
         ${renderSidebarItem({
           href: "/chats",
-          label: "Чаты",
+          label: t("nav.chats"),
           icon: "/assets/img/icons/chat.svg",
           isActive: isChatsRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
@@ -226,7 +227,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
 
         ${renderSidebarItem({
           href: "/settings",
-          label: "Настройки",
+          label: t("nav.settings"),
           icon: "/assets/img/icons/settings.svg",
           isActive: isSettingsRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
@@ -238,10 +239,10 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
         isFeedRoute
           ? `
             <section class="sidebar-card sidebar-card--feed-type">
-              <h3 class="sidebar-card__title">Тип ленты</h3>
+              <h3 class="sidebar-card__title">${t("sidebar.feedType")}</h3>
 
               ${renderSidebarItem({
-                label: "Для вас",
+                label: t("sidebar.forYou"),
                 icon: "/assets/img/icons/star.svg",
                 isActive: isForYouActive,
                 isStub: true,
@@ -249,7 +250,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
               })}
 
               ${renderSidebarItem({
-                label: "По времени",
+                label: t("sidebar.byTime"),
                 icon: "/assets/img/icons/clock.svg",
                 isActive: isByTimeActive,
                 isStub: true,

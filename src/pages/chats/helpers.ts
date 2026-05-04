@@ -4,7 +4,10 @@
  * Содержит локальные утилиты, используемые модулями страницы.
  */
 import { getSessionUser } from "../../state/session";
+import { getLanguageMode } from "../../state/language";
+import { t } from "../../state/i18n";
 import { renderAvatarMarkup, resolveAvatarSrc } from "../../utils/avatar";
+import { formatDisplayName } from "../../utils/display-name";
 import { resolveProfilePath } from "../profile/profile-data";
 import type { ChatViewMessage } from "./types";
 
@@ -54,7 +57,7 @@ export function getAvatarSrc(avatarLink?: string): string {
 }
 
 export function renderAvatarElement(className: string, label: string, avatarLink?: string): string {
-  return renderAvatarMarkup(className, label, avatarLink);
+  return renderAvatarMarkup(className, formatDisplayName(label), avatarLink);
 }
 
 /** Возвращает полное имя текущего пользователя или пустую строку. */
@@ -101,6 +104,10 @@ function isSameCalendarDate(left: Date, right: Date): boolean {
 }
 
 function formatShortMonthDate(date: Date): string {
+  if (getLanguageMode() === "EN") {
+    return new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "short" }).format(date);
+  }
+
   return `${String(date.getDate()).padStart(2, "0")} ${CHAT_MONTH_SHORT[date.getMonth()]}`;
 }
 
@@ -135,7 +142,7 @@ export function formatChatTime(value?: string): string {
 export function formatMessageTime(value?: string): string {
   const parsed = parseDate(value);
   if (!parsed) return "";
-  return new Intl.DateTimeFormat("ru-RU", {
+  return new Intl.DateTimeFormat(getLanguageMode() === "EN" ? "en-US" : "ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
   }).format(parsed);
@@ -145,12 +152,13 @@ export function formatMessageTime(value?: string): string {
 export function formatChatExactTime(value?: string): string {
   const parsed = parseDate(value);
   if (!parsed) return "";
-  const datePart = new Intl.DateTimeFormat("ru-RU", {
+  const locale = getLanguageMode() === "EN" ? "en-US" : "ru-RU";
+  const datePart = new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(parsed);
-  const timePart = new Intl.DateTimeFormat("ru-RU", {
+  const timePart = new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(parsed);
@@ -161,8 +169,8 @@ export function formatChatExactTime(value?: string): string {
 export function formatChatDayLabel(value?: string): string {
   const parsed = parseDate(value);
   if (!parsed) return "";
-  if (isSameCalendarDate(parsed, new Date())) return "Сегодня";
-  const datePart = new Intl.DateTimeFormat("ru-RU", {
+  if (isSameCalendarDate(parsed, new Date())) return t("chats.today");
+  const datePart = new Intl.DateTimeFormat(getLanguageMode() === "EN" ? "en-US" : "ru-RU", {
     day: "numeric",
     month: "long",
   }).format(parsed);

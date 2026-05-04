@@ -13,6 +13,7 @@ export type UserSettingsResponse = {
 };
 
 export type UpdateUserSettingsPayload = {
+  language?: LanguageMode;
   theme?: ThemeMode;
 };
 

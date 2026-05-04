@@ -14,7 +14,9 @@ import {
 } from "../../api/friends";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
 import { getSessionUser } from "../../state/session";
+import { t } from "../../state/i18n";
 import { prepareAvatarLinks, renderAvatarMarkup } from "../../utils/avatar";
+import { formatPersonName } from "../../utils/display-name";
 import { TtlCache } from "../../utils/ttl-cache";
 
 type WidgetbarUser = {
@@ -131,7 +133,8 @@ function renderProfileLink(
  * @returns {string} HTML-разметка аватара.
  */
 function renderWidgetbarAvatar(user: WidgetbarUser): string {
-  const label = `${user.firstName} ${user.lastName}`.trim() || user.username || "Пользователь";
+  const label =
+    formatPersonName(user.firstName, user.lastName, user.username) || t("widgetbar.userFallback");
   return renderAvatarMarkup("widgetbar-person__avatar", label, user.avatarLink, {
     width: 32,
     height: 32,
@@ -250,7 +253,7 @@ async function renderPopularUsersWidget(): Promise<string> {
             <div class="widgetbar-person">
               ${renderWidgetbarAvatar(user)}
               ${renderProfileLink(
-                `${user.firstName} ${user.lastName}`,
+                formatPersonName(user.firstName, user.lastName, user.username),
                 user,
                 "widgetbar-card__username",
                 false,
@@ -259,11 +262,11 @@ async function renderPopularUsersWidget(): Promise<string> {
           `,
         )
         .join("")
-    : renderWidgetbarEmptyState(failed ? "Не удалось загрузить пользователей." : "Список пуст.");
+    : renderWidgetbarEmptyState(failed ? t("widgetbar.loadUsersError") : t("common.emptyList"));
 
   return `
     <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Популярные пользователи</h3>
+      <h3 class="widgetbar-card__title">${t("widgetbar.popularUsers")}</h3>
 
       ${content}
     </section>
@@ -303,7 +306,7 @@ async function renderKnownPeopleWidget(): Promise<string> {
 
   return `
     <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Возможно, вы знакомы:</h3>
+      <h3 class="widgetbar-card__title">${t("widgetbar.maybeYouKnow")}</h3>
 
       ${
         visibleItems
@@ -312,7 +315,7 @@ async function renderKnownPeopleWidget(): Promise<string> {
             <div class="widgetbar-person">
               ${renderWidgetbarAvatar(user)}
               ${renderProfileLink(
-                `${user.firstName} ${user.lastName}`,
+                formatPersonName(user.firstName, user.lastName, user.username),
                 user,
                 "widgetbar-card__username",
                 true,
@@ -321,7 +324,9 @@ async function renderKnownPeopleWidget(): Promise<string> {
           `,
           )
           .join("") ||
-        renderWidgetbarEmptyState(failed ? "Не удалось загрузить рекомендации." : "Список пуст.")
+        renderWidgetbarEmptyState(
+          failed ? t("widgetbar.loadRecommendationsError") : t("common.emptyList"),
+        )
       }
     </section>
   `;
@@ -341,7 +346,7 @@ async function renderEventsWidget(): Promise<string> {
           ${items
             .map((user) => {
               const userLink = renderProfileLink(
-                `${user.firstName} ${user.lastName}`,
+                formatPersonName(user.firstName, user.lastName, user.username),
                 user,
                 "widgetbar-card__username",
                 false,
@@ -351,8 +356,8 @@ async function renderEventsWidget(): Promise<string> {
                 return `
                   <p class="widgetbar-card__event">
                     ${userLink}
-                    <span class="widgetbar-card__text"> поставил лайк вашему </span>
-                    ${renderStubButton("посту", "widgetbar-card__link")}
+                    <span class="widgetbar-card__text">${t("widgetbar.likedYour")}</span>
+                    ${renderStubButton(t("widgetbar.post"), "widgetbar-card__link")}
                   </p>
                 `;
               }
@@ -361,8 +366,8 @@ async function renderEventsWidget(): Promise<string> {
                 return `
                   <p class="widgetbar-card__event">
                     ${userLink}
-                    <span class="widgetbar-card__text"> добавил </span>
-                    ${renderStubButton("фото", "widgetbar-card__link")}
+                    <span class="widgetbar-card__text">${t("widgetbar.added")}</span>
+                    ${renderStubButton(t("widgetbar.photo"), "widgetbar-card__link")}
                   </p>
                 `;
               }
@@ -370,18 +375,20 @@ async function renderEventsWidget(): Promise<string> {
               return `
                 <p class="widgetbar-card__event">
                   ${userLink}
-                  <span class="widgetbar-card__text"> подписался на вас</span>
+                  <span class="widgetbar-card__text">${t("widgetbar.followedYou")}</span>
                 </p>
               `;
             })
             .join("")}
         </div>
       `
-    : renderWidgetbarEmptyState(result.failed ? "Не удалось загрузить события." : "Список пуст.");
+    : renderWidgetbarEmptyState(
+        result.failed ? t("widgetbar.loadEventsError") : t("common.emptyList"),
+      );
 
   return `
     <section class="widgetbar-card">
-      <h3 class="widgetbar-card__title">Последние события</h3>
+      <h3 class="widgetbar-card__title">${t("widgetbar.latestEvents")}</h3>
 
       ${content}
     </section>

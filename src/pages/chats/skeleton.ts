@@ -5,6 +5,7 @@
  */
 import { renderHeaderSkeleton } from "../../components/header/header-skeleton";
 import { renderSidebar } from "../../components/sidebar/sidebar";
+import { t } from "../../state/i18n";
 
 function renderSkeletonChatItem(): string {
   return `
@@ -53,7 +54,7 @@ export function renderChatsSkeleton(): string {
         <section class="app-layout__center">
           <section class="chats-page content-card" data-chats-page>
             <aside class="chats-sidebar">
-              <h1 class="chats-sidebar__title">Сообщения</h1>
+              <h1 class="chats-sidebar__title">${t("chats.title")}</h1>
 
               <div class="chats-list">${items}</div>
             </aside>

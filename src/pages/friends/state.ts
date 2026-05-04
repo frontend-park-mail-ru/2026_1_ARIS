@@ -12,6 +12,7 @@ import {
 import { getProfileById } from "../../api/profile";
 import { isNetworkUnavailableError } from "../../state/network-status";
 import { StateManager } from "../../state/StateManager";
+import { t } from "../../state/i18n";
 import { normaliseAvatarLink } from "../profile/state";
 import type { DisplayFriend, FriendsData, FriendsState, FriendsTab } from "./types";
 
@@ -62,7 +63,7 @@ export const friendsState = new Proxy({} as FriendsState, {
 export function getFriendsErrorMessage(
   error: unknown,
   fallbackMessage: string,
-  unavailableMessage = "Нет соединения с сервером.",
+  unavailableMessage = t("friends.networkError"),
 ): string {
   if (isNetworkUnavailableError(error)) return unavailableMessage;
   return error instanceof Error ? error.message : fallbackMessage;
@@ -273,7 +274,7 @@ export async function ensureFriendsLoaded(force = false, signal?: AbortSignal): 
     friendsState.loaded = true;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
-    friendsState.errorMessage = getFriendsErrorMessage(error, "Не удалось загрузить друзей.");
+    friendsState.errorMessage = getFriendsErrorMessage(error, t("friends.loadError"));
     friendsState.friends = [];
     friendsState.incoming = [];
     friendsState.outgoing = [];

@@ -15,7 +15,10 @@
 import { getSessionUser } from "../../state/session";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
 import { renderAvatarMarkup } from "../../utils/avatar";
+import { formatPersonName } from "../../utils/display-name";
 import { resolveMediaUrl } from "../../utils/media";
+import { getLanguageMode } from "../../state/language";
+import { t } from "../../state/i18n";
 
 /**
  * Модель поста для карточки ленты.
@@ -72,11 +75,11 @@ type PostcardRoot = (Document | HTMLElement) & {
 
 function formatStatCount(count: number): string {
   if (count >= 1000000) {
-    return `${Math.floor(count / 1000000)}м`;
+    return `${Math.floor(count / 1000000)}${getLanguageMode() === "EN" ? "m" : "м"}`;
   }
 
   if (count >= 1000) {
-    return `${Math.floor(count / 1000)}к`;
+    return `${Math.floor(count / 1000)}${getLanguageMode() === "EN" ? "k" : "к"}`;
   }
 
   return String(count);
@@ -84,9 +87,9 @@ function formatStatCount(count: number): string {
 
 function getPostcardStatAccessibleName(action: string, count: number): string {
   const nounByAction: Record<string, string> = {
-    like: "лайков",
-    repost: "репостов",
-    comment: "комментариев",
+    like: t("postcard.likeNoun"),
+    repost: t("postcard.repostNoun"),
+    comment: t("postcard.commentNoun"),
   };
 
   return `${formatStatCount(count)} ${nounByAction[action] ?? action}`.trim();
@@ -119,18 +122,36 @@ function formatPostExactTime(iso?: string): string {
     return "";
   }
 
-  const datePart = new Intl.DateTimeFormat("ru-RU", {
+  const locale = getLanguageMode() === "EN" ? "en-US" : "ru-RU";
+  const datePart = new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(createdAt);
 
-  const timePart = new Intl.DateTimeFormat("ru-RU", {
+  const timePart = new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(createdAt);
 
   return `${datePart}\n${timePart}`;
+}
+
+function formatPostRelativeTime(iso?: string, fallback = ""): string {
+  if (!iso) return fallback;
+
+  const createdAt = new Date(iso);
+  if (Number.isNaN(createdAt.getTime())) return fallback;
+
+  const diff = Date.now() - createdAt.getTime();
+  const minutes = Math.max(0, Math.floor(diff / 60000));
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return t("postcard.justNow");
+  if (minutes < 60) return `${minutes} ${t("postcard.minutesAgo")}`;
+  if (hours < 24) return `${hours} ${t("postcard.hoursAgo")}`;
+  return `${days} ${t("postcard.daysAgo")}`;
 }
 
 function shouldRenderExpandButtonInitially(text: string): boolean {
@@ -346,7 +367,9 @@ export function renderPostcardInner(
     </div>
   `;
   const displayName =
-    `${post.firstName || ""} ${post.lastName || ""}`.trim() || post.author || "Пользователь";
+    formatPersonName(post.firstName, post.lastName, post.author) || t("widgetbar.userFallback");
+  const displayTime = formatPostRelativeTime(post.timeRaw, post.time);
+  const exactTime = formatPostExactTime(post.timeRaw);
   const profilePath = resolveProfilePath({
     id: post.authorId,
     username: post.author,
@@ -369,7 +392,7 @@ export function renderPostcardInner(
 
       <div class="postcard__text-container">
         <p class="postcard__text postcard__text--collapsed">${post.text}</p>
-        <button type="button" class="postcard__expand${shouldShowExpandInitially ? "" : " postcard__expand--hidden"}">читать полностью</button>
+        <button type="button" class="postcard__expand${shouldShowExpandInitially ? "" : " postcard__expand--hidden"}">${t("postcard.expand")}</button>
       </div>
 
       ${renderPostcardMedia(
@@ -383,10 +406,10 @@ export function renderPostcardInner(
         <button
           type="button"
           class="postcard__time"
-          ${post.timeRaw ? `data-tooltip="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}
+          ${exactTime ? `data-tooltip="${escapeHtml(exactTime)}"` : ""}
           ${post.timeRaw ? 'data-postcard-time="true"' : ""}
-          aria-label="${post.timeRaw ? `Показать точную дату: ${escapeHtml(formatPostExactTime(post.timeRaw).replace(/\n/g, ", "))}` : escapeHtml(post.time)}"
-        >${post.time}</button>
+          aria-label="${exactTime ? `${t("postcard.exactDateAria")} ${escapeHtml(exactTime.replace(/\n/g, ", "))}` : escapeHtml(displayTime)}"
+        >${displayTime}</button>
       </footer>
     </article>
   `;

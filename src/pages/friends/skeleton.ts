@@ -6,6 +6,7 @@
 import { renderHeaderSkeleton } from "../../components/header/header-skeleton";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbarSkeleton } from "../../components/widgetbar/widgetbar-skeleton";
+import { t } from "../../state/i18n";
 
 function renderFriendSkeletonCard(): string {
   return `
@@ -35,7 +36,7 @@ function renderFriendsPanelSkeleton(): string {
           <span class="skeleton" style="display:block;width:190px;height:16px"></span>
         </header>
 
-        <nav class="friends-tabs" aria-label="Фильтр друзей">
+        <nav class="friends-tabs" aria-label="${t("friends.filterAria")}">
           <span class="skeleton" style="display:block;width:118px;height:30px;border-radius:var(--radius-small)"></span>
           <span class="skeleton" style="display:block;width:154px;height:30px;border-radius:var(--radius-small)"></span>
           <span class="skeleton" style="display:block;width:164px;height:30px;border-radius:var(--radius-small)"></span>

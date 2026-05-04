@@ -5,9 +5,11 @@
  */
 import { friendsState, getVisibleFriends } from "./state";
 import type { DisplayFriend, FriendsTab } from "./types";
-import { TAB_TITLES } from "./types";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderAvatarMarkup } from "../../utils/avatar";
+import { formatPersonName } from "../../utils/display-name";
+import { getLanguageMode } from "../../state/language";
+import { t } from "../../state/i18n";
 
 function escapeHtml(value: string): string {
   return value
@@ -19,7 +21,10 @@ function escapeHtml(value: string): string {
 }
 
 function getFriendName(friend: DisplayFriend): string {
-  return `${friend.firstName} ${friend.lastName}`.trim() || friend.username || "Пользователь";
+  return (
+    formatPersonName(friend.firstName, friend.lastName, friend.username) ||
+    t("widgetbar.userFallback")
+  );
 }
 
 function renderFriendAvatar(friend: DisplayFriend, className: string): string {
@@ -30,18 +35,32 @@ function formatFriendshipSince(createdAt?: string): string {
   if (!createdAt) return "";
   const parsed = new Date(createdAt);
   if (Number.isNaN(parsed.getTime())) return "";
-  return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+  const locale = getLanguageMode() === "EN" ? "en-US" : "ru-RU";
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" })
     .format(parsed)
     .replace(/\s*г\.$/, "");
 }
 
 function getFriendsCountLabel(count: number): string {
+  if (getLanguageMode() === "EN") {
+    return `${count} ${count === 1 ? t("friends.userNoun") : t("friends.userNounMany")}`;
+  }
+
   const mod100 = count % 100;
   const mod10 = count % 10;
-  if (mod100 >= 11 && mod100 <= 14) return `${count} человек`;
-  if (mod10 === 1) return `${count} человек`;
-  if (mod10 >= 2 && mod10 <= 4) return `${count} человека`;
-  return `${count} человек`;
+  if (mod100 >= 11 && mod100 <= 14) return `${count} ${t("friends.userNounMany")}`;
+  if (mod10 === 1) return `${count} ${t("friends.userNoun")}`;
+  if (mod10 >= 2 && mod10 <= 4) return `${count} ${t("friends.userNounFew")}`;
+  return `${count} ${t("friends.userNounMany")}`;
+}
+
+function getFriendsTabTitle(tab: FriendsTab): string {
+  const titles: Record<FriendsTab, string> = {
+    accepted: t("friends.all"),
+    incoming: t("friends.incoming"),
+    outgoing: t("friends.outgoing"),
+  };
+  return titles[tab];
 }
 
 function renderFriendActions(friend: DisplayFriend): string {
@@ -49,10 +68,10 @@ function renderFriendActions(friend: DisplayFriend): string {
     return `
       <div class="friends-card__actions">
         <button type="button" class="friends-card__action" data-friend-accept="${escapeHtml(friend.profileId)}">
-          Принять
+          ${t("friends.accept")}
         </button>
         <button type="button" class="friends-card__action friends-card__action--danger" data-friend-decline="${escapeHtml(friend.profileId)}">
-          Отклонить
+          ${t("friends.decline")}
         </button>
       </div>
     `;
@@ -61,9 +80,9 @@ function renderFriendActions(friend: DisplayFriend): string {
   if (friendsState.activeTab === "outgoing") {
     return `
       <div class="friends-card__actions">
-        <button type="button" class="friends-card__action" disabled>Заявка отправлена</button>
+        <button type="button" class="friends-card__action" disabled>${t("friends.sent")}</button>
         <button type="button" class="friends-card__action friends-card__action--danger" data-friend-revoke="${escapeHtml(friend.profileId)}">
-          Отменить заявку
+          ${t("friends.cancelRequest")}
         </button>
       </div>
     `;
@@ -72,10 +91,10 @@ function renderFriendActions(friend: DisplayFriend): string {
   return `
     <div class="friends-card__actions">
       <button type="button" class="friends-card__action" data-friend-open-chat="${escapeHtml(friend.profileId)}">
-        Сообщение
+        ${t("chats.message")}
       </button>
       <button type="button" class="friends-card__action friends-card__action--danger" data-friend-open-delete="${escapeHtml(friend.profileId)}">
-        Удалить из друзей
+        ${t("friends.delete")}
       </button>
     </div>
   `;
@@ -104,8 +123,8 @@ export function renderFriendsList(): string {
 
   if (!visibleFriends.length) {
     return friendsState.query.trim()
-      ? '<p class="friends-page__empty">Ничего не найдено.</p>'
-      : '<p class="friends-page__empty">Список пуст.</p>';
+      ? `<p class="friends-page__empty">${t("friends.noneFound")}</p>`
+      : `<p class="friends-page__empty">${t("common.emptyList")}</p>`;
   }
 
   return visibleFriends
@@ -139,9 +158,9 @@ export function renderDeleteModal(): string {
 
   return `
     <div class="friends-modal" data-friends-modal-backdrop>
-      <section class="friends-modal__dialog" role="dialog" aria-modal="true" aria-label="Удалить из друзей">
+      <section class="friends-modal__dialog" role="dialog" aria-modal="true" aria-label="${t("friends.delete")}">
         <header class="friends-modal__header">
-          <h2 class="friends-modal__title">Удалить из друзей</h2>
+          <h2 class="friends-modal__title">${t("friends.delete")}</h2>
           ${renderModalCloseButton({
             className: "friends-modal__close",
             attributes: "data-friends-modal-close",
@@ -151,13 +170,13 @@ export function renderDeleteModal(): string {
           ${renderFriendAvatar(friend, "friends-modal__avatar")}
           <p class="friends-modal__name">${escapeHtml(friendName)}</p>
         </div>
-        <p class="friends-modal__text">Вы действительно хотите удалить этого пользователя из друзей?</p>
-        ${friendshipSince ? `<p class="friends-modal__hint">Вы в друзьях с ${escapeHtml(friendshipSince)} года</p>` : ""}
+        <p class="friends-modal__text">${t("friends.confirmDeleteText")}</p>
+        ${friendshipSince ? `<p class="friends-modal__hint">${t("friends.modalHint")} ${escapeHtml(friendshipSince)}</p>` : ""}
         <div class="friends-modal__actions">
           <button type="button" class="friends-modal__button friends-modal__button--primary" data-friend-confirm-delete="${escapeHtml(friend.profileId)}">
-            Удалить из друзей
+            ${t("friends.delete")}
           </button>
-          <button type="button" class="friends-modal__button" data-friends-modal-close>Отмена</button>
+          <button type="button" class="friends-modal__button" data-friends-modal-close>${t("friends.cancel")}</button>
         </div>
       </section>
     </div>
@@ -173,12 +192,16 @@ export function renderFriendsContent(): string {
       <section class="friends-panel content-card">
         <header class="friends-panel__header">
           <p class="friends-panel__summary">
-            ${totalCount === 0 ? "Список пуст." : `У вас в друзьях ${getFriendsCountLabel(totalCount)}.`}
+            ${
+              totalCount === 0
+                ? t("common.emptyList")
+                : t("friends.summary").replace("{count}", getFriendsCountLabel(totalCount))
+            }
           </p>
-          <button type="button" class="friends-panel__discover" disabled hidden>Найти друзей</button>
+          <button type="button" class="friends-panel__discover" disabled hidden>${t("friends.find")}</button>
         </header>
 
-        <nav class="friends-tabs" aria-label="Фильтр друзей">
+        <nav class="friends-tabs" aria-label="${t("friends.filterAria")}">
           ${(["accepted", "incoming", "outgoing"] as FriendsTab[])
             .map((tab) => {
               const count =
@@ -193,20 +216,20 @@ export function renderFriendsContent(): string {
                   class="friends-tabs__button${friendsState.activeTab === tab ? " friends-tabs__button--active" : ""}"
                   data-friends-tab="${tab}"
                 >
-                  ${TAB_TITLES[tab]} (${count})
+                  ${getFriendsTabTitle(tab)} (${count})
                 </button>
               `;
             })
             .join("")}
         </nav>
 
-        <label class="friends-search search-field" aria-label="Поиск по друзьям">
+        <label class="friends-search search-field" aria-label="${t("friends.search")}">
           <img class="friends-search__icon search-field__icon" src="/assets/img/icons/search.svg" alt="">
           <input
             class="friends-search__input search-field__input"
             type="text"
             value="${escapeHtml(friendsState.query)}"
-            placeholder="Поиск по друзьям"
+            placeholder="${t("friends.search")}"
             data-friends-search
           >
         </label>

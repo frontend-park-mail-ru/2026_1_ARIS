@@ -10,6 +10,7 @@ type ArisRuntimeConfig = {
 
 declare global {
   interface Window {
+    __ARIS_APP_READY__?: boolean;
     __ARIS_RUNTIME_CONFIG__?: ArisRuntimeConfig;
   }
 }

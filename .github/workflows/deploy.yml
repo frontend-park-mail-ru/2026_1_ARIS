@@ -1,0 +1,40 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy frontend via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            cd ${{ secrets.DEPLOY_PATH }}
+            git fetch origin
+            git reset --hard origin/main
+
+            NODE_ENV=development npm ci
+
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_VERSION=$(node -p "require('./package.json').version")
+            BUILD_COMMIT="$BUILD_COMMIT" \
+              BUILD_VERSION="$BUILD_VERSION" \
+              NODE_ENV=production \
+              npm run build
+
+            printf 'BUILD_COMMIT=%s\nBUILD_VERSION=%s\n' "$BUILD_COMMIT" "$BUILD_VERSION" > .env.build
+            sudo systemctl restart arisfront
+
+            sleep 5
+            curl --fail --silent --show-error --max-time 10 ${{ secrets.DEPLOY_BASE_URL }}/ >/dev/null

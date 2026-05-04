@@ -1,0 +1,63 @@
+name: Frontend Quality Gate
+
+on:
+  workflow_call:
+    inputs:
+      artifact_prefix:
+        description: Prefix for uploaded test artifacts.
+        required: false
+        type: string
+        default: frontend
+
+jobs:
+  checks:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Java for Allure
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Clean Allure results
+        run: npm run allure:clean
+
+      - name: Run frontend quality gate
+        run: npm run ci
+
+      - name: Generate Allure report
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -d allure-results ] && find allure-results -type f | grep -q .; then
+            npm run allure:generate
+          else
+            echo "No Allure results were produced."
+          fi
+
+      - name: Upload test artifacts
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-test-artifacts-${{ github.run_id }}
+          path: |
+            allure-results
+            allure-report
+            cypress/screenshots
+          if-no-files-found: ignore
+          retention-days: 14

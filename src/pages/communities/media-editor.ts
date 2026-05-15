@@ -124,7 +124,7 @@ function getCurrentCommunityMediaSrc(kind: CommunityMediaEditorKind): string {
     // Ниже останется безопасный fallback.
   }
 
-  return `/image-proxy?url=${encodeURIComponent(rawValue)}`;
+  return rawValue;
 }
 
 function applyCommunityMediaSource(
@@ -280,7 +280,7 @@ export function ensureCommunityMediaEditorSource(
   root: ParentNode,
 ): void {
   const editor = getCommunityMediaEditor(kind);
-  if (editor.objectUrl || editor.loading) {
+  if (editor.objectUrl || editor.loading || editor.errorMessage) {
     return;
   }
   if (editor.removed) {
@@ -443,6 +443,8 @@ function syncSingleCommunityMediaEditor(root: ParentNode, kind: CommunityMediaEd
     `[data-community-media-current-image="${kind}"]`,
   );
   const zoomWrap = wrapper.querySelector<HTMLElement>(`[data-community-media-zoom-wrap="${kind}"]`);
+  const tools = wrapper.querySelector<HTMLElement>(".community-media-editor__tools");
+  const zoomLabel = wrapper.querySelector<HTMLElement>(".community-media-editor__zoom-label");
   const zoomInput = wrapper.querySelector<HTMLInputElement>(
     `[data-community-media-zoom="${kind}"]`,
   );
@@ -489,10 +491,19 @@ function syncSingleCommunityMediaEditor(root: ParentNode, kind: CommunityMediaEd
   }
 
   if (zoomWrap instanceof HTMLElement) {
-    zoomWrap.hidden = !hasEditorImage;
+    zoomWrap.hidden = !hasEditorImage && !hasCurrentImage;
+  }
+
+  if (tools instanceof HTMLElement) {
+    tools.hidden = !hasEditorImage;
+  }
+
+  if (zoomLabel instanceof HTMLElement) {
+    zoomLabel.hidden = !hasEditorImage;
   }
 
   if (zoomInput instanceof HTMLInputElement) {
+    zoomInput.hidden = !hasEditorImage;
     zoomInput.value = String(getCommunityMediaZoomPercent(kind));
     zoomInput.disabled = !hasEditorImage || editor.loading;
   }

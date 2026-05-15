@@ -703,7 +703,7 @@ export function renderProfilePosts(
                                           class="profile-post__menu-action"
                                           data-profile-post-edit="${escapeHtml(post.id)}"
                                         >
-                                          ${t("profile.edit")}
+                                          ${t("profile.editPost")}
                                         </button>
                                       `
                                       : ""

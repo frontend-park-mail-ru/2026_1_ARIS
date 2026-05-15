@@ -429,7 +429,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
                           class="profile-post__menu-action"
                           data-community-post-edit="${escapeHtml(post.id)}"
                         >
-                          ${t("profile.edit")}
+                          ${t("profile.editPost")}
                         </button>
                       `
                       : ""

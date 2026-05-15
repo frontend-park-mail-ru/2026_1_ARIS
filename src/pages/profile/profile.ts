@@ -315,7 +315,17 @@ async function resolveProfilePosts(
         }
 
         try {
-          return await getPostById(post.id, signal);
+          const details = await getPostById(post.id, signal);
+          const mergedPost: PostResponse = { ...post, ...details };
+
+          if (!mergedPost.createdAt && post.createdAt) {
+            mergedPost.createdAt = post.createdAt;
+          }
+          if (!mergedPost.updatedAt && post.updatedAt) {
+            mergedPost.updatedAt = post.updatedAt;
+          }
+
+          return mergedPost;
         } catch (error) {
           if (error instanceof Error && error.name === "AbortError") {
             throw error;

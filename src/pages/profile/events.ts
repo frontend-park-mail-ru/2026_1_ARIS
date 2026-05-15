@@ -78,6 +78,7 @@ import {
   initProfilePostListLayout,
   openProfilePostSearch,
 } from "./post-list";
+import { canEditProfilePost } from "./helpers";
 import type { DisplayProfile } from "./types";
 import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 
@@ -189,6 +190,12 @@ function bindFloatingPostMenuActions(
   const editButton = menu.querySelector<HTMLButtonElement>(`[data-profile-post-edit="${postId}"]`);
   if (editButton) {
     editButton.onclick = () => {
+      const post = currentProfilePosts.find((item) => item.id === postId);
+      if (!post || !canEditProfilePost(post)) {
+        closeProfilePostMenus(root);
+        return;
+      }
+
       closeProfilePostMenus(root);
       openEditPostComposer(postId);
       syncPostComposerUi(root);
@@ -314,6 +321,12 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     if (editPostButton instanceof HTMLButtonElement) {
       const postId = editPostButton.getAttribute("data-profile-post-edit");
       if (postId) {
+        const post = currentProfilePosts.find((item) => item.id === postId);
+        if (!post || !canEditProfilePost(post)) {
+          closeProfilePostMenus(root);
+          return;
+        }
+
         closeProfilePostMenus(root);
         openEditPostComposer(postId);
         syncPostComposerUi(root);
@@ -467,6 +480,11 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           clearFeedCache();
           clearWidgetbarCache();
           if (currentProfile) {
+            const existingPost = composerSnapshot.editingPostId
+              ? currentProfilePosts.find((post) => post.id === composerSnapshot.editingPostId)
+              : undefined;
+            const createdAt =
+              savedPost.createdAt ?? existingPost?.timeRaw ?? new Date().toISOString();
             const nextPost = {
               id: String(savedPost.id),
               authorId: String(savedPost.profileID ?? currentProfile.id),
@@ -477,8 +495,8 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
                 normaliseAvatarLink(savedPost.avatarURL) ?? currentProfile.avatarLink ?? "",
               isOwnPost: true,
               text: typeof savedPost.text === "string" ? savedPost.text : "",
-              time: "только что",
-              timeRaw: savedPost.createdAt ?? "",
+              time: existingPost?.time ?? "только что",
+              timeRaw: createdAt,
               ...(savedPost.updatedAt ? { updatedAtRaw: savedPost.updatedAt } : {}),
               likes: savedPost.likes ?? 0,
               isLiked: savedPost.isLiked ?? false,

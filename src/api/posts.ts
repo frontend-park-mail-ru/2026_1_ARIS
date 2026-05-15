@@ -129,7 +129,9 @@ type RawPost = {
   avatarUrl?: string | null;
   author?: RawPostAuthor;
   createdAt?: string;
+  created_at?: string;
   updatedAt?: string | null;
+  updated_at?: string | null;
   likes?: number | string;
   liked?: boolean | number | string;
   isLiked?: boolean | number | string;
@@ -226,6 +228,8 @@ function mapPost(raw: RawPost): PostResponse {
   const rawIsLiked = parseBooleanFlag(raw.isLiked ?? raw.is_liked ?? raw.liked);
   const resolvedPostId = Number(raw.id ?? raw.ID ?? 0);
   const isLiked = resolvePostLikeState(resolvedPostId, rawIsLiked);
+  const createdAt = raw.createdAt ?? raw.created_at;
+  const updatedAt = raw.updatedAt ?? raw.updated_at;
   if (typeof rawIsLiked === "boolean" && resolvedPostId > 0) {
     rememberPostLikeState(resolvedPostId, rawIsLiked);
   }
@@ -250,8 +254,8 @@ function mapPost(raw: RawPost): PostResponse {
       ? { avatarURL: String(raw.avatarURL ?? raw.avatarUrl ?? author?.avatarURL ?? "") }
       : {}),
     ...(author ? { author } : {}),
-    ...(raw.createdAt ? { createdAt: String(raw.createdAt) } : {}),
-    ...(raw.updatedAt ? { updatedAt: String(raw.updatedAt) } : {}),
+    ...(createdAt ? { createdAt: String(createdAt) } : {}),
+    ...(updatedAt ? { updatedAt: String(updatedAt) } : {}),
     ...(typeof likes === "number" ? { likes } : {}),
     ...(typeof isLiked === "boolean" ? { isLiked } : {}),
   };

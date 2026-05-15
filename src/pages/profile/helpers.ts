@@ -4,7 +4,7 @@
  * Содержит локальные утилиты, используемые модулями страницы.
  */
 import { API_BASE_URL } from "../../api/config";
-import type { DisplayProfile } from "./types";
+import type { DisplayProfile, ProfilePost } from "./types";
 import { renderAvatarMarkup, type AvatarOptions } from "../../utils/avatar";
 import { formatPersonName } from "../../utils/display-name";
 import { t } from "../../state/i18n";
@@ -77,6 +77,13 @@ export function hasVisibleValue(value?: string): boolean {
 
   const trimmed = value.trim();
   return trimmed !== "" && trimmed !== "Не указано";
+}
+
+const POST_EDIT_WINDOW_MS = 10 * 60 * 1000;
+
+export function canEditProfilePost(post: ProfilePost): boolean {
+  const createdAt = new Date(post.timeRaw).getTime();
+  return Number.isFinite(createdAt) && Date.now() - createdAt <= POST_EDIT_WINDOW_MS;
 }
 
 export function renderAvatar(

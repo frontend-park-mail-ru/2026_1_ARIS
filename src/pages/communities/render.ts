@@ -426,7 +426,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
                           class="profile-post__menu-action profile-post__menu-action--danger"
                           data-community-post-delete="${escapeHtml(post.id)}"
                         >
-                          ${t("communities.delete")}
+                          ${t("profile.deletePost")}
                         </button>
                       `
                       : ""

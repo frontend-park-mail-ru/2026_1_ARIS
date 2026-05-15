@@ -692,7 +692,7 @@ export function renderProfilePosts(
                                     class="profile-post__menu-action profile-post__menu-action--danger"
                                     data-profile-post-delete="${escapeHtml(post.id)}"
                                   >
-                                    ${t("communities.delete")}
+                                    ${t("profile.deletePost")}
                                   </button>
                                 </div>
                               </div>

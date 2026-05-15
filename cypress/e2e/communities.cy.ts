@@ -232,7 +232,7 @@ describe("сообщества", () => {
     cy.contains("[data-community-post='401']", updatedText).should("be.visible");
   });
 
-  it("не показывает правый список участников без прав управления", () => {
+  it("показывает правый список участников без прав управления", () => {
     cy.mockAuthApi();
     cy.mockCommunitiesApi();
     cy.intercept("GET", "**/api/post/community/11?*", {
@@ -241,7 +241,10 @@ describe("сообщества", () => {
 
     cy.visitApp({ path: "/communities/11", authenticated: true });
     cy.contains(".community-right-rail .community-side-card h2", "Описание").should("be.visible");
-    cy.get(".community-right-rail .community-members-card").should("not.exist");
+    cy.get(".community-right-rail .community-members-card").should("be.visible");
+    cy.contains(".community-right-rail .community-members-card", "Мария Соколова").should(
+      "be.visible",
+    );
     cy.get(".community-right-rail [data-community-members-open]").should("not.exist");
   });
 
@@ -258,7 +261,9 @@ describe("сообщества", () => {
     }).as("changeMemberRole");
 
     cy.visitApp({ path: "/communities/10", authenticated: true });
-    cy.get("[data-community-members-open='10']").last().click();
+    cy.get("[data-community-menu-toggle='10']").click();
+    cy.get("[data-community-menu='10']").should("be.visible");
+    cy.get("[data-community-menu='10'] [data-community-members-open='10']").click();
     cy.get("[data-community-members-modal]").should("be.visible");
     cy.get('[data-community-member-role-toggle="2"]').click();
     cy.get('[data-community-member-role="2"][data-community-member-role-value="moderator"]')

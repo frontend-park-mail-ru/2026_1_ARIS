@@ -825,22 +825,57 @@ function positionCommunityMenu(menu: HTMLElement, toggle: HTMLButtonElement): vo
 function positionCommunityMemberRoleMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
   const rect = toggle.getBoundingClientRect();
   const viewportMargin = 12;
+  const gap = 6;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
   const menuWidth = Math.min(
-    Math.max(rect.width, 190),
-    Math.max(190, window.innerWidth - viewportMargin * 2),
+    Math.max(rect.width, menu.offsetWidth || rect.width),
+    viewportWidth - viewportMargin * 2,
   );
+  const desiredMenuHeight = menu.scrollHeight || menu.offsetHeight || 220;
+  const belowSpace = viewportHeight - rect.bottom - gap - viewportMargin;
+  const aboveSpace = rect.top - gap - viewportMargin;
+  const shouldOpenUp = belowSpace < desiredMenuHeight && aboveSpace > belowSpace;
+  const menuHeight = Math.min(desiredMenuHeight, viewportHeight - viewportMargin * 2);
   const left = Math.min(
-    Math.max(viewportMargin, rect.right - menuWidth),
-    window.innerWidth - menuWidth - viewportMargin,
+    Math.max(viewportMargin, rect.left),
+    viewportWidth - viewportMargin - menuWidth,
   );
-  const availableHeight = window.innerHeight - rect.bottom - viewportMargin;
-  const maxHeight = Math.max(160, Math.min(220, availableHeight));
+  const unclampedTop = shouldOpenUp ? rect.top - gap - menuHeight : rect.bottom + gap;
+  const top = Math.min(
+    Math.max(viewportMargin, unclampedTop),
+    viewportHeight - viewportMargin - menuHeight,
+  );
 
-  menu.style.top = `${rect.bottom + 6}px`;
+  menu.style.top = `${top}px`;
   menu.style.left = `${left}px`;
   menu.style.right = "auto";
   menu.style.width = `${menuWidth}px`;
-  menu.style.maxHeight = `${maxHeight}px`;
+  menu.style.maxHeight = "";
+}
+
+function repositionOpenCommunityMemberRoleMenu(root: Document | HTMLElement): void {
+  const openRoleMenu = document.querySelector<HTMLElement>(
+    "[data-community-member-role-menu]:not([hidden])",
+  );
+  if (!openRoleMenu) return;
+
+  const profileId = openRoleMenu.getAttribute("data-community-member-role-menu");
+  const roleToggle = profileId
+    ? root.querySelector<HTMLButtonElement>(`[data-community-member-role-toggle="${profileId}"]`)
+    : null;
+  if (!roleToggle || !roleToggle.isConnected) {
+    closeCommunityMemberRoleMenus(root);
+    return;
+  }
+
+  const rect = roleToggle.getBoundingClientRect();
+  if (rect.bottom < 0 || rect.top > window.innerHeight) {
+    closeCommunityMemberRoleMenus(root);
+    return;
+  }
+
+  positionCommunityMemberRoleMenu(openRoleMenu, roleToggle);
 }
 
 function bindFloatingCommunityMenuActions(
@@ -1149,6 +1184,17 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     cancelCommunityMediaDrag("avatar", root);
     cancelCommunityMediaDrag("cover", root);
   });
+
+  root.addEventListener(
+    "scroll",
+    (event: Event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-community-members-modal]")) {
+        repositionOpenCommunityMemberRoleMenu(root);
+      }
+    },
+    { capture: true, passive: true },
+  );
 
   root.addEventListener("keydown", (event: Event) => {
     if (!(event instanceof KeyboardEvent)) return;
@@ -1587,10 +1633,10 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       closeCommunityMemberRoleMenus(root);
 
       if (menu && !isExpanded) {
-        positionCommunityMemberRoleMenu(menu, memberRoleToggle);
         document.body.appendChild(menu);
-        bindFloatingCommunityMemberRoleMenuActions(menu, root);
         menu.hidden = false;
+        positionCommunityMemberRoleMenu(menu, memberRoleToggle);
+        bindFloatingCommunityMemberRoleMenuActions(menu, root);
         memberRoleToggle.setAttribute("aria-expanded", "true");
       }
       return;
@@ -2074,21 +2120,14 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         }
       }
 
-      const openRoleMenu = document.querySelector<HTMLElement>(
-        "[data-community-member-role-menu]:not([hidden])",
-      );
-      if (!openRoleMenu) return;
-      const profileId = openRoleMenu.getAttribute("data-community-member-role-menu");
-      const roleToggle = profileId
-        ? root.querySelector<HTMLButtonElement>(
-            `[data-community-member-role-toggle="${profileId}"]`,
-          )
-        : null;
-      if (!roleToggle) return;
-      positionCommunityMemberRoleMenu(openRoleMenu, roleToggle);
+      repositionOpenCommunityMemberRoleMenu(root);
     },
     { passive: true },
   );
+
+  window.addEventListener("resize", () => repositionOpenCommunityMemberRoleMenu(root), {
+    passive: true,
+  });
 
   syncCommunityMediaEditorsUi(root);
 }

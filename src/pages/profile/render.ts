@@ -70,81 +70,85 @@ function renderProfileFriendActionsContent(profile: ProfileFriendActionsModel): 
     return "";
   }
 
+  const profileId = escapeHtml(profile.id);
   const messageButton = `
     <button
       type="button"
-      class="profile-friend-action profile-friend-action--secondary"
-      data-profile-open-chat="${escapeHtml(profile.id)}"
+      class="profile-friend-menu__item"
+      data-profile-open-chat="${profileId}"
     >
-      ${t("chats.message")}
+      ${t("friends.sendMessage")}
     </button>
   `;
+  let items = "";
 
   if (profile.friendRelation === "friend") {
-    return `
-      <div class="profile-friend-actions">
+    items = `
         ${messageButton}
         <button
           type="button"
-          class="profile-friend-action profile-friend-action--danger"
-          data-profile-delete-friend="${escapeHtml(profile.id)}"
+          class="profile-friend-menu__item profile-friend-menu__item--danger"
+          data-profile-delete-friend="${profileId}"
         >
           ${t("profile.removeFriend")}
         </button>
-      </div>
     `;
-  }
-
-  if (profile.friendRelation === "incoming") {
-    return `
-      <div class="profile-friend-actions">
+  } else if (profile.friendRelation === "incoming") {
+    items = `
         ${messageButton}
         <button
           type="button"
-          class="profile-friend-action profile-friend-action--primary"
-          data-profile-accept-friend="${escapeHtml(profile.id)}"
+          class="profile-friend-menu__item"
+          data-profile-accept-friend="${profileId}"
         >
-          ${t("friends.accept")}
+          ${t("friends.acceptRequest")}
         </button>
         <button
           type="button"
-          class="profile-friend-action profile-friend-action--danger"
-          data-profile-decline-friend="${escapeHtml(profile.id)}"
+          class="profile-friend-menu__item profile-friend-menu__item--danger"
+          data-profile-decline-friend="${profileId}"
         >
-          ${t("friends.decline")}
+          ${t("friends.declineRequest")}
         </button>
-      </div>
     `;
-  }
-
-  if (profile.friendRelation === "outgoing") {
-    return `
-      <div class="profile-friend-actions">
+  } else if (profile.friendRelation === "outgoing") {
+    items = `
         ${messageButton}
-        <div class="profile-friend-request-state">
-          <span>${t("profile.requestSent")}</span>
-          <button
-            type="button"
-            class="profile-friend-request-cancel"
-            data-profile-revoke-friend="${escapeHtml(profile.id)}"
-          >
-            ${t("friends.cancel")}
-          </button>
-        </div>
-      </div>
+        <button
+          type="button"
+          class="profile-friend-menu__item profile-friend-menu__item--danger"
+          data-profile-revoke-friend="${profileId}"
+        >
+          ${t("friends.revokeRequest")}
+        </button>
+    `;
+  } else {
+    items = `
+        ${messageButton}
+        <button
+          type="button"
+          class="profile-friend-menu__item"
+          data-profile-request-friend="${profileId}"
+        >
+          ${t("profile.addFriend")}
+        </button>
     `;
   }
 
   return `
     <div class="profile-friend-actions">
-      ${messageButton}
       <button
         type="button"
-        class="profile-friend-action profile-friend-action--primary"
-        data-profile-request-friend="${escapeHtml(profile.id)}"
+        class="profile-friend-menu__toggle"
+        data-profile-friend-menu-toggle="${profileId}"
+        aria-label="${t("profile.actionsAria")}"
+        aria-expanded="false"
       >
-        ${t("profile.addFriend")}
+        <span></span><span></span><span></span>
       </button>
+      <div class="profile-friend-menu" data-profile-friend-menu="${profileId}" hidden>
+        ${items}
+      </div>
     </div>
   `;
 }
@@ -410,7 +414,7 @@ export function renderPersonal(profile: DisplayProfile): string {
 
 export function renderFriends(profile: DisplayProfile): string {
   const friends = profile.friends;
-  const previewCount = 6;
+  const previewCount = 5;
   const hasMoreFriends = friends.length > previewCount;
   const title = profile.isOwnProfile ? t("profile.friends") : t("profile.friendsOfUser");
   const countMarkup =
@@ -435,11 +439,7 @@ export function renderFriends(profile: DisplayProfile): string {
                 .slice(0, previewCount)
                 .map(
                   (friend) => `
-                    <a
-                      href="/id${encodeURIComponent(friend.profileId)}"
-                      data-link
-                      class="profile-friend"
-                    >
+                    <div class="profile-friend">
                       ${renderAvatarMarkup(
                         "profile-friend__avatar",
                         formatPersonName(friend.firstName, friend.lastName, friend.username),
@@ -447,11 +447,17 @@ export function renderFriends(profile: DisplayProfile): string {
                         { width: 44, height: 44 },
                       )}
                       <div class="profile-friend__content">
-                        <strong>${escapeHtml(
-                          formatPersonName(friend.firstName, friend.lastName, friend.username),
-                        )}</strong>
+                        <a
+                          href="/id${encodeURIComponent(friend.profileId)}"
+                          data-link
+                          class="profile-friend__name"
+                        >
+                          ${escapeHtml(
+                            formatPersonName(friend.firstName, friend.lastName, friend.username),
+                          )}
+                        </a>
                       </div>
-                    </a>
+                    </div>
                   `,
                 )
                 .join("")}
@@ -576,7 +582,7 @@ export function renderProfilePosts(
     : `/profile/${encodeURIComponent(profile.id)}`;
 
   return `
-    <section class="profile-posts" id="profile-posts">
+    <section class="profile-posts${isOwnProfile ? "" : " profile-posts--foreign"}" id="profile-posts">
       ${
         isOwnProfile
           ? `
@@ -620,10 +626,6 @@ export function renderProfilePosts(
           `
           : ""
       }
-
-      <header class="profile-posts__header content-card"${isOwnProfile ? " hidden" : ""}>
-        ${isOwnProfile ? "" : `<h2>${t("profile.posts")}</h2>`}
-      </header>
 
       <div class="profile-posts__list" data-profile-post-list>
         ${
@@ -762,7 +764,7 @@ export function renderProfilePosts(
             `
             : `
                 <div class="profile-posts__empty content-card">
-                  <p class="profile-empty-copy">${t("common.emptyList")}</p>
+                  <p class="profile-empty-copy">${t("profile.postsEmpty")}</p>
                 </div>
               `
         }

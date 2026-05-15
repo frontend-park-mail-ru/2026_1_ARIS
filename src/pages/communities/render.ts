@@ -27,6 +27,8 @@ import {
 } from "./helpers";
 import type { CommunityFormStep } from "./types";
 
+const COMMUNITY_MEMBERS_PREVIEW_COUNT = 5;
+
 function renderCommunityAvatar(bundle: CommunityBundle, className: string): string {
   return renderAvatarMarkup(
     className,
@@ -267,24 +269,14 @@ function renderCommunityDescription(bundle: CommunityBundle): string {
   `;
 }
 
-function renderCommunityMeta(bundle: CommunityBundle): string {
-  return `
-    <section class="community-side-card">
-      <h2>${t("communities.communityFallback")}</h2>
-      <dl class="community-meta">
-        <div>
-          <dt>${t("community.address")}</dt>
-          <dd>@${escapeHtml(bundle.community.username || String(bundle.community.id))}</dd>
-        </div>
-      </dl>
-    </section>
-  `;
-}
-
 function renderCommunityMembersCard(bundle: CommunityBundle): string {
-  const visibleMembers = communitiesState.activeMembers
-    .filter((member) => !member.blocked)
-    .slice(0, 6);
+  const canManageMembers = bundle.permissions.canManageMembers || bundle.permissions.canChangeRoles;
+  if (!canManageMembers) {
+    return "";
+  }
+
+  const visibleMembers = communitiesState.activeMembers.filter((member) => !member.blocked);
+  const previewMembers = visibleMembers.slice(0, COMMUNITY_MEMBERS_PREVIEW_COUNT);
   const isLoadingMembers =
     communitiesState.membershipLoading ||
     (communitiesState.membersLoading && !communitiesState.membersLoaded);
@@ -292,20 +284,22 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
   return `
     <section class="community-side-card">
       <div class="community-side-card__header">
-        <h2>${t("communities.membersShort")}</h2>
-        ${
-          isLoadingMembers
-            ? '<span class="skeleton community-members-card__count-skeleton"></span>'
-            : `<span>${visibleMembers.length}</span>`
-        }
+        <h2>
+          ${t("communities.membersShort")}
+          ${
+            isLoadingMembers
+              ? '<span class="skeleton community-members-card__count-skeleton"></span>'
+              : `<span class="community-side-card__count">(${visibleMembers.length})</span>`
+          }
+        </h2>
       </div>
       ${
         isLoadingMembers
           ? renderCommunityMembersCardSkeleton()
-          : visibleMembers.length
+          : previewMembers.length
             ? `
             <div class="community-members-card">
-              ${visibleMembers
+              ${previewMembers
                 .map(
                   (member) => `
                     <a class="community-members-card__item" href="/id${member.profileId}" data-link>
@@ -327,15 +321,9 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
           `
             : `<p class="community-members-card__empty">${t("common.emptyList")}</p>`
       }
-      ${
-        bundle.permissions.canManageMembers || bundle.permissions.canChangeRoles
-          ? `
-            <button type="button" class="community-side-card__button" data-community-members-open="${bundle.community.id}">
-              ${t("communities.manageMembers")}
-            </button>
-          `
-          : ""
-      }
+      <button type="button" class="community-side-card__button" data-community-members-open="${bundle.community.id}">
+        ${t("profile.moreFriends")}
+      </button>
     </section>
   `;
 }
@@ -454,7 +442,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
                           class="profile-post__menu-action profile-post__menu-action--danger"
                           data-community-post-delete="${escapeHtml(post.id)}"
                         >
-                          ${t("profile.deletePost")}
+                          ${t("communities.removePost")}
                         </button>
                       `
                       : ""
@@ -758,7 +746,6 @@ export function renderCommunityRightRail(): string {
   return `
     <div class="profile-right-rail community-right-rail">
       ${renderCommunityDescription(bundle)}
-      ${renderCommunityMeta(bundle)}
       ${renderCommunityMembersCard(bundle)}
     </div>
   `;

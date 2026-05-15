@@ -11,6 +11,7 @@ describe("друзья", () => {
     cy.contains("[data-friend-id='3']", "Илья Петров").should("be.visible");
 
     cy.get("[data-friends-search]").type("илья");
+    cy.wait("@friendsSearch").its("request.url").should("include", "q=%D0%B8%D0%BB%D1%8C%D1%8F");
     cy.contains("[data-friend-id='3']", "Илья Петров").should("be.visible");
     cy.contains("[data-friend-id='2']", "Аня Орлова").should("not.exist");
   });
@@ -29,22 +30,41 @@ describe("друзья", () => {
     cy.visitApp({ path: "/friends", authenticated: true });
     cy.get('[data-friends-tab="incoming"]').click();
     cy.contains("[data-friend-id='4']", "Олег Заявкин").should("be.visible");
+    cy.get('[data-friend-menu-toggle="4"]').click();
     cy.get('[data-friend-accept="4"]').click();
 
+    cy.get("[data-app-toast]")
+      .should("have.class", "profile-toast--visible")
+      .and("contain", "Заявка в друзья принята.");
     cy.wait("@acceptFriend");
     cy.contains("[data-friend-id='4']", "Олег Заявкин").should("not.exist");
   });
 
-  it("открывает подтверждение удаления для принятого друга", () => {
+  it("удаляет принятого друга с подтверждением и уведомлением", () => {
+    let accepted = [...friends.accepted];
     cy.mockAuthApi();
+    cy.intercept("GET", "**/api/friends/accepted", (req) => {
+      req.reply({ body: { friends: accepted } });
+    }).as("acceptedMutable");
+    cy.intercept("DELETE", "**/api/friends/2", (req) => {
+      accepted = accepted.filter((friend) => friend.id !== 2);
+      req.reply({ body: {} });
+    }).as("deleteFriend");
 
     cy.visitApp({ path: "/friends", authenticated: true });
+    cy.get('[data-friend-menu-toggle="2"]').click();
     cy.get('[data-friend-open-delete="2"]').click();
 
     cy.get("[data-friends-modal-backdrop]").should("be.visible");
     cy.contains(".friends-modal__name", "Аня Орлова").should("be.visible");
-    cy.get("[data-friends-modal-close]").last().click();
+    cy.get('[data-friend-confirm-delete="2"]').click();
+
+    cy.get("[data-app-toast]")
+      .should("have.class", "profile-toast--visible")
+      .and("contain", "Пользователь удалён из друзей.");
+    cy.wait("@deleteFriend");
     cy.get("[data-friends-modal-backdrop]").should("not.exist");
+    cy.contains("[data-friend-id='2']", "Аня Орлова").should("not.exist");
   });
 
   it("открывает личный чат из карточки друга", () => {
@@ -52,6 +72,7 @@ describe("друзья", () => {
     cy.mockChatsApi();
 
     cy.visitApp({ path: "/friends", authenticated: true });
+    cy.get('[data-friend-menu-toggle="2"]').click();
     cy.get('[data-friend-open-chat="2"]').click();
 
     cy.wait("@createPrivateChat");

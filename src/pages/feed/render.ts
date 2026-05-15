@@ -46,7 +46,7 @@ export function renderEmptyFriendsFeed(): string {
     <section class="app-layout__center">
       ${renderFeedModeMobileSwitcher()}
       <section class="feed-empty-state content-card">
-        <h2 class="feed-empty-state__title">${t("common.emptyList")}</h2>
+        <h2 class="feed-empty-state__title">${t("feed.emptyTitle")}</h2>
         <p class="feed-empty-state__text">
           ${t("feed.emptyFriendsDescription")}
         </p>
@@ -65,7 +65,7 @@ export function renderEmptyPublicFeed(): string {
     <section class="app-layout__center">
       ${renderFeedModeMobileSwitcher()}
       <section class="feed-empty-state content-card">
-        <h2 class="feed-empty-state__title">${t("common.emptyList")}</h2>
+        <h2 class="feed-empty-state__title">${t("feed.emptyTitle")}</h2>
         <p class="feed-empty-state__text">
           ${t("feed.emptyPublicDescription")}
         </p>

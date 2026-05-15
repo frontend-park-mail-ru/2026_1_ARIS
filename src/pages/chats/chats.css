@@ -129,7 +129,7 @@
     display: grid;
     min-width: 0;
     grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
+    align-items: baseline;
     gap: 8px;
   }
 
@@ -159,8 +159,6 @@
   }
 
   .chat-thread__time {
-    align-self: start;
-    padding-top: 1px;
     color: var(--color-text-muted);
     font-size: var(--text-size-caption);
     line-height: var(--line-height-tight);
@@ -563,7 +561,7 @@
     color: var(--color-text-on-primary);
     cursor: pointer;
     font: inherit;
-    font-weight: 700;
+    font-weight: var(--font-weight-regular);
     transition:
       background-color var(--transition-control),
       box-shadow var(--transition-control),

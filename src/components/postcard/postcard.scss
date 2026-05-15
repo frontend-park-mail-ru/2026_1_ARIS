@@ -9,7 +9,7 @@
     --postcard-stats-gap: 20px; // расстояние между группами статистики внизу карточки
     --postcard-stat-gap: 6px; // расстояние между иконкой и числом внутри stat-элемента
     --postcard-stat-padding: 4px; // внутренний отступ у stat-элемента, чтобы увеличить кликабельную область
-    --postcard-stat-icon-size: 16px; // размер иконок статистики
+    --postcard-stat-icon-size: 18px; // размер иконок статистики
     --postcard-expand-offset: 4px; // отступ сверху у кнопки "читать полностью"
 
     container-type: inline-size;
@@ -309,7 +309,7 @@
 
       &-count {
         color: var(--color-text-meta);
-        font-size: var(--text-size-meta);
+        font-size: var(--text-size-main);
         font-weight: var(--font-weight-medium);
         line-height: var(--line-height-base);
       }

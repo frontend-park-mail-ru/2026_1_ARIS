@@ -330,7 +330,6 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
                       )}
                       <div class="community-members-card__copy">
                         <strong>${escapeHtml(getMemberDisplayName(member))}</strong>
-                        <span>@${escapeHtml(member.username)}</span>
                       </div>
                     </a>
                   `,

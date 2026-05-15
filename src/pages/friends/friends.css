@@ -435,4 +435,36 @@
       height: 64px;
     }
   }
+
+  :root[data-theme="dark"] {
+    .friends-card__menu {
+      border-color: var(--color-border-default);
+      background: var(--color-surface-glass-strong);
+      box-shadow: var(--shadow-card-elevated);
+    }
+
+    .friends-card__menu-item {
+      color: var(--color-text-main);
+    }
+
+    .friends-card__menu-item:hover {
+      background: var(--color-interactive-hover);
+      color: var(--color-interactive-primary);
+    }
+
+    .friends-card__menu-item--danger {
+      color: var(--color-text-error);
+    }
+
+    .friends-card__menu-item--danger:hover {
+      background: rgb(197 48 78 / 14%);
+      color: var(--color-text-error);
+    }
+
+    .friends-card__menu-item:disabled,
+    .friends-card__menu-item:disabled:hover {
+      background: transparent;
+      color: var(--color-text-muted);
+    }
+  }
 }

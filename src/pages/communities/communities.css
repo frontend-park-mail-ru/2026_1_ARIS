@@ -767,15 +767,16 @@
   .community-form__progress {
     display: flex;
     align-items: flex-start;
+    justify-content: center;
     margin-top: 14px;
   }
 
   .community-form__progress-segment {
     display: flex;
+    flex: 0 0 auto;
     align-items: flex-start;
     gap: 8px;
     min-width: 0;
-    flex: 1 1 0;
   }
 
   .community-form__progress-item {
@@ -858,7 +859,7 @@
   }
 
   .community-form__progress-line {
-    flex: 1 1 auto;
+    flex: 0 0 36px;
     height: 1px;
     margin-top: 15px;
     background: var(--color-border-default);
@@ -1657,6 +1658,36 @@
   }
 
   :root[data-theme="dark"] {
+    .community-side-card {
+      border-color: var(--color-border-glass);
+      background: var(--color-surface-content-card);
+      box-shadow: var(--shadow-card);
+    }
+
+    .community-actions__menu {
+      border-color: var(--color-border-default);
+      background: var(--color-surface-glass-strong);
+      box-shadow: var(--shadow-card-elevated);
+    }
+
+    .community-actions__item {
+      color: var(--color-text-main);
+    }
+
+    .community-actions__item:hover {
+      background: var(--color-interactive-hover);
+      color: var(--color-interactive-primary);
+    }
+
+    .community-actions__item--danger {
+      color: var(--color-text-error);
+    }
+
+    .community-actions__item--danger:hover {
+      background: rgb(197 48 78 / 14%);
+      color: var(--color-text-error);
+    }
+
     .community-posts__feed-switcher {
       border-color: var(--color-border-default);
       background: rgb(12 18 32 / 62%);
@@ -1683,11 +1714,30 @@
     .community-form__field textarea,
     .community-form__field select,
     .community-form__type-option,
-    .community-members-manager__role-current,
-    .community-members-manager__role-menu {
+    .community-members-manager__role-current {
       border-color: var(--color-border-default);
       background: var(--color-surface-input);
       color: var(--color-text-main);
+    }
+
+    .community-members-manager__role-menu {
+      border-color: var(--color-border-default);
+      background: var(--color-surface-glass-strong);
+      color: var(--color-text-main);
+      box-shadow: var(--shadow-card-elevated);
+    }
+
+    .community-members-manager__role-option {
+      color: var(--color-text-main);
+    }
+
+    .community-members-manager__role-option:hover {
+      background: var(--color-interactive-hover);
+      color: var(--color-interactive-primary);
+    }
+
+    .community-members-manager__role-option:disabled {
+      color: var(--color-text-muted);
     }
 
     .community-form__field input::placeholder,

@@ -81,6 +81,7 @@ import {
   refreshCommunitiesList,
   refreshCommunitiesPage,
   renderCommunitiesListContent,
+  renderCommunityMembersManagerList,
   renderCommunityDetailContent,
   renderCommunityRightRail,
 } from "./render";
@@ -1403,18 +1404,41 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       communitiesState.membersManager.loadingMore = false;
       communitiesState.membersLoading = true;
       communitiesState.membersLoaded = false;
-      refreshCommunitiesPage(root);
-      void loadCommunityMembers(bundle.community.id, target.checked, undefined, {
+      const errorNode = root.querySelector<HTMLElement>("[data-community-members-error]");
+      if (errorNode) {
+        errorNode.textContent = "\u00a0";
+        errorNode.classList.add("community-modal__error--hidden");
+      }
+      const list = root.querySelector<HTMLElement>("[data-community-members-list]");
+      if (list) {
+        list.innerHTML = renderCommunityMembersManagerList(bundle);
+      }
+      const includeBlocked = target.checked;
+      void loadCommunityMembers(bundle.community.id, includeBlocked, undefined, {
         limit: COMMUNITY_MEMBERS_PAGE_SIZE,
         offset: 0,
       })
         .then(() => {
-          refreshCommunitiesPage(root);
+          if (communitiesState.membersManager.includeBlocked !== includeBlocked) return;
+          const nextList = root.querySelector<HTMLElement>("[data-community-members-list]");
+          if (nextList) {
+            nextList.innerHTML = renderCommunityMembersManagerList(bundle);
+          }
         })
         .catch((error: unknown) => {
+          if (communitiesState.membersManager.includeBlocked !== includeBlocked) return;
           communitiesState.membersManager.errorMessage =
             error instanceof Error ? error.message : t("communities.membersLoadError");
-          refreshCommunitiesPage(root);
+          communitiesState.membersLoading = false;
+          const nextErrorNode = root.querySelector<HTMLElement>("[data-community-members-error]");
+          if (nextErrorNode) {
+            nextErrorNode.textContent = communitiesState.membersManager.errorMessage;
+            nextErrorNode.classList.remove("community-modal__error--hidden");
+          }
+          const nextList = root.querySelector<HTMLElement>("[data-community-members-list]");
+          if (nextList) {
+            nextList.innerHTML = renderCommunityMembersManagerList(bundle);
+          }
         });
       return;
     }

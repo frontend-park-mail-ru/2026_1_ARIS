@@ -705,7 +705,7 @@ function renderCommunityComposerActions(bundle: CommunityBundle): string {
 
   return `
     <div class="community-posts__composer-row">
-      <button type="button" class="profile-composer" data-community-post-open>
+      <button type="button" class="profile-composer community-posts__composer-link" data-community-post-open>
         <span class="profile-composer__icon" aria-hidden="true">+</span>
         <span class="profile-composer__label">${t("communities.writePost")}</span>
       </button>
@@ -1230,7 +1230,7 @@ export function renderCommunityPostModal(): string {
   `;
 }
 
-function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
+export function renderCommunityMembersManagerList(bundle: CommunityBundle): string {
   const manager = communitiesState.membersManager;
   const members = getVisibleCommunityMembers();
   const canManageMembers = bundle.permissions.canManageMembers || bundle.permissions.canChangeRoles;
@@ -1261,7 +1261,6 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
             </a>
             <div class="community-members-manager__copy">
               <a href="${profileHref}" data-link>${escapeHtml(getMemberDisplayName(member))}</a>
-              <span>@${escapeHtml(member.username)}</span>
             </div>
           </div>
 
@@ -1349,6 +1348,27 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
     .join("");
 
   return `
+    ${
+      communitiesState.membersLoading
+        ? `<p class="communities-page__empty">${t("communities.membersLoading")}</p>`
+        : members.length
+          ? `${memberItems}${
+              manager.loadingMore
+                ? `<p class="communities-page__empty">${t("communities.membersLoadingMore")}</p>`
+                : ""
+            }`
+          : `<p class="communities-page__empty">${
+              manager.query.trim() ? t("friends.noneFound") : t("common.emptyList")
+            }</p>`
+    }
+  `;
+}
+
+function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
+  const manager = communitiesState.membersManager;
+  const canManageMembers = bundle.permissions.canManageMembers || bundle.permissions.canChangeRoles;
+
+  return `
     <div class="community-modal" data-community-members-modal ${manager.open ? "" : "hidden"}>
       <section class="community-modal__dialog community-modal__dialog--members" role="dialog" aria-modal="true" aria-label="${t("communities.members")}">
         <header class="community-modal__header">
@@ -1383,26 +1403,15 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
           }
         </div>
 
-        ${
-          manager.errorMessage
-            ? `<p class="community-modal__error">${escapeHtml(manager.errorMessage)}</p>`
-            : ""
-        }
+        <p
+          class="community-modal__error${manager.errorMessage ? "" : " community-modal__error--hidden"}"
+          data-community-members-error
+        >
+          ${manager.errorMessage ? escapeHtml(manager.errorMessage) : "&nbsp;"}
+        </p>
 
         <div class="community-members-manager__list" data-community-members-list>
-          ${
-            communitiesState.membersLoading
-              ? `<p class="communities-page__empty">${t("communities.membersLoading")}</p>`
-              : members.length
-                ? `${memberItems}${
-                    manager.loadingMore
-                      ? `<p class="communities-page__empty">${t("communities.membersLoadingMore")}</p>`
-                      : ""
-                  }`
-                : `<p class="communities-page__empty">${
-                    manager.query.trim() ? t("friends.noneFound") : t("common.emptyList")
-                  }</p>`
-          }
+          ${renderCommunityMembersManagerList(bundle)}
         </div>
       </section>
     </div>

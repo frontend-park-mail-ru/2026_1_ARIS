@@ -317,7 +317,8 @@
   .community-hero__copy p {
     margin: 8px 0 0;
     color: var(--color-text-main);
-    font-size: var(--text-size-caption);
+    font-size: var(--text-size-main);
+    line-height: var(--line-height-base);
   }
 
   .community-hero__cta {
@@ -430,7 +431,6 @@
 
   .community-posts__search-toggle:hover,
   .community-posts__search-close:hover {
-    background: rgb(63 83 116 / 6%);
     color: rgb(82 98 122);
   }
 
@@ -593,6 +593,30 @@
   .community-posts__composer-row .profile-composer {
     width: auto;
     justify-content: center;
+  }
+
+  .community-posts__composer-link {
+    min-height: auto;
+    padding: 0;
+    border-radius: 0;
+    color: var(--color-text-link);
+    background: transparent;
+  }
+
+  .community-posts__composer-link:hover {
+    background: transparent;
+    color: var(--color-interactive-primary);
+    text-decoration: underline;
+  }
+
+  .community-posts__composer-link:focus-visible {
+    border-radius: 6px;
+  }
+
+  .community-posts__composer-link .profile-composer__icon,
+  .community-posts__composer-link .profile-composer__label {
+    color: inherit;
+    font-weight: var(--font-weight-regular);
   }
 
   .community-posts__feed-switcher {
@@ -1267,7 +1291,7 @@
     align-items: center;
     gap: 8px;
     color: var(--color-text-main);
-    font-size: var(--text-size-caption);
+    font-size: var(--text-size-main);
   }
 
   .community-members-manager__list {
@@ -1365,10 +1389,9 @@
     box-shadow: var(--control-focus-ring);
   }
 
-  .community-members-manager__copy span,
   .community-members-manager__role {
     color: var(--color-text-meta);
-    font-size: var(--text-size-caption);
+    font-size: var(--text-size-main);
   }
 
   .community-members-manager__controls {
@@ -1686,6 +1709,12 @@
     .community-actions__item--danger:hover {
       background: rgb(197 48 78 / 14%);
       color: var(--color-text-error);
+    }
+
+    .community-hero__avatar,
+    .community-skeleton__hero-avatar {
+      border-color: rgb(143 161 255 / 26%);
+      box-shadow: 0 10px 22px rgb(0 0 0 / 22%);
     }
 
     .community-posts__feed-switcher {

@@ -848,7 +848,7 @@
   }
 
   .profile-posts__search-toggle:hover {
-    background: rgb(63 83 116 / 6%);
+    opacity: 0.82;
   }
 
   .profile-posts__search-toggle:focus-visible {
@@ -900,7 +900,6 @@
   }
 
   .profile-posts__search-close:hover {
-    background: rgb(63 83 116 / 6%);
     color: rgb(82 98 122);
   }
 
@@ -1404,8 +1403,8 @@
     position: absolute;
     display: inline-flex;
     top: 50%;
-    width: 46px;
-    height: 46px;
+    width: 56px;
+    height: 56px;
     align-items: center;
     justify-content: center;
     border: 1px solid rgb(255 255 255 / 30%);
@@ -1414,7 +1413,7 @@
     color: rgb(17 24 39);
     cursor: pointer;
     font: inherit;
-    font-size: var(--text-size-heading-md);
+    font-size: 28px;
     font-weight: 700;
     line-height: 1;
     box-shadow: 0 12px 28px rgb(0 0 0 / 22%);
@@ -1422,8 +1421,8 @@
   }
 
   .image-viewer__close {
-    --modal-close-size: 45px;
-    --modal-close-font-size: var(--text-size-heading-md);
+    --modal-close-size: 52px;
+    --modal-close-font-size: 24px;
 
     position: absolute;
     top: -18px;
@@ -1432,23 +1431,26 @@
   }
 
   .image-viewer__nav--prev {
-    left: -62px;
+    left: -72px;
   }
 
   .image-viewer__nav--next {
-    right: -62px;
+    right: -72px;
   }
 
   .image-viewer__counter {
     position: absolute;
-    bottom: -34px;
+    bottom: -42px;
     left: 50%;
-    padding: 5px 10px;
+    min-width: 52px;
+    padding: 7px 14px;
     border-radius: 999px;
     background: rgb(17 24 39 / 72%);
     color: white;
-    font-size: var(--text-size-caption);
-    font-weight: 600;
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-solid);
+    text-align: center;
     transform: translateX(-50%);
   }
 
@@ -2399,6 +2401,9 @@
     }
 
     .image-viewer__close {
+      --modal-close-size: 48px;
+      --modal-close-font-size: 22px;
+
       top: 10px;
       right: 10px;
     }
@@ -2406,6 +2411,9 @@
     .image-viewer__nav {
       top: auto;
       bottom: 16px;
+      width: 52px;
+      height: 52px;
+      font-size: 26px;
       transform: none;
     }
 
@@ -2418,7 +2426,9 @@
     }
 
     .image-viewer__counter {
-      bottom: 22px;
+      bottom: 26px;
+      min-width: 56px;
+      padding: 8px 14px;
     }
 
     .profile-post__stats {

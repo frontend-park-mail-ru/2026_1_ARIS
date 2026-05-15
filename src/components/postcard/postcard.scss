@@ -199,6 +199,7 @@
       overflow: hidden; // обрезаем выступающие края
       border-radius: var(--radius-input); // скругляем углы изображения
       object-fit: cover; // изображение заполняет контейнер без искажений
+      cursor: zoom-in;
     }
 
     &__media-overlay {
@@ -223,6 +224,7 @@
       font-size: var(--text-size-title);
       font-weight: var(--font-weight-bold);
       line-height: var(--line-height-base);
+      pointer-events: none;
     }
 
     &__footer {

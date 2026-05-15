@@ -214,7 +214,7 @@ function renderPostcardStat({ icon, count, action, isLiked }: PostcardStatOption
 }
 
 function renderPostcardMediaImage(src: string, prioritize = false): string {
-  return `<img class="postcard__media-item" loading="${prioritize ? "eager" : "lazy"}"${prioritize ? ' fetchpriority="high"' : ""} decoding="async" src="${resolveMediaSrc(src)}" alt="">`;
+  return `<img class="postcard__media-item" loading="${prioritize ? "eager" : "lazy"}"${prioritize ? ' fetchpriority="high"' : ""} decoding="async" src="${resolveMediaSrc(src)}" alt="" data-post-image-open>`;
 }
 
 /**

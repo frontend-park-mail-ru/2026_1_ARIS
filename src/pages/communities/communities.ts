@@ -539,6 +539,10 @@ async function saveCommunityPost(root: ParentNode): Promise<void> {
         ? await updatePost(communitiesState.postComposer.editingPostId, {
             ...(text ? { text } : {}),
             media,
+            communityId: bundle.community.id,
+            ...(communitiesState.postComposer.authorMode === "community"
+              ? { authorProfileId: bundle.community.profileId }
+              : {}),
           })
         : await createPost({
             ...(text ? { text } : {}),

@@ -274,16 +274,29 @@ export function mapPostToCommunityPost(
 
 const POST_EDIT_WINDOW_MS = 10 * 60 * 1000;
 
+function isWithinPostEditWindow(post: ProfilePost): boolean {
+  const createdAt = new Date(post.timeRaw).getTime();
+  return Number.isFinite(createdAt) && Date.now() - createdAt <= POST_EDIT_WINDOW_MS;
+}
+
 export function canEditCommunityPost(
   post: ProfilePost,
-  _bundle: CommunityBundle,
+  bundle: CommunityBundle,
   viewerProfileId: number | null,
 ): boolean {
+  const isOfficialPost = Number(post.authorId) === bundle.community.profileId;
+  if (isOfficialPost) {
+    return (
+      bundle.permissions.canPost &&
+      bundle.permissions.canPostAsCommunity &&
+      isWithinPostEditWindow(post)
+    );
+  }
+
   if (viewerProfileId === null || Number(post.authorId) !== viewerProfileId) {
     return false;
   }
-  const createdAt = new Date(post.timeRaw).getTime();
-  return Date.now() - createdAt <= POST_EDIT_WINDOW_MS;
+  return isWithinPostEditWindow(post);
 }
 
 export function canDeleteCommunityPost(

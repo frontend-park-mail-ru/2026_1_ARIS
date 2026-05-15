@@ -184,8 +184,9 @@ export async function hydrateFriendAvatarLinks<T extends Friend>(
 }
 
 async function resolveFriendEducationLabel(friend: Friend): Promise<string> {
-  const cached = friendEducationCache.get(friend.profileId);
-  if (cached) return cached;
+  if (friendEducationCache.has(friend.profileId)) {
+    return friendEducationCache.get(friend.profileId) ?? "";
+  }
 
   try {
     const profile = await getProfileById(friend.profileId);
@@ -198,12 +199,11 @@ async function resolveFriendEducationLabel(friend: Friend): Promise<string> {
       return institution;
     }
   } catch {
-    // Переходим к резервному варианту с логином пользователя.
+    // Не подставляем логин вместо отсутствующего вуза.
   }
 
-  const fallback = friend.username ? `@${friend.username}` : "Пользователь ARIS";
-  friendEducationCache.set(friend.profileId, fallback);
-  return fallback;
+  friendEducationCache.set(friend.profileId, "");
+  return "";
 }
 
 async function mapFriendToDisplay(friend: Friend): Promise<DisplayFriend> {
@@ -233,8 +233,7 @@ function mapSearchUserToDisplayFriend(
     status: existingFriend?.status ?? "accepted",
     ...(avatarLink ? { avatarLink } : {}),
     ...(existingFriend?.createdAt ? { createdAt: existingFriend.createdAt } : {}),
-    educationLabel:
-      existingFriend?.educationLabel ?? (user.username ? `@${user.username}` : "Пользователь ARIS"),
+    educationLabel: existingFriend?.educationLabel ?? "",
   };
 }
 

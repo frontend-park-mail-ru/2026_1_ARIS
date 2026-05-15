@@ -367,7 +367,7 @@ export function renderPostcardInner(
     </div>
   `;
   const displayName =
-    formatPersonName(post.firstName, post.lastName, post.author) || t("widgetbar.userFallback");
+    formatPersonName(post.firstName, post.lastName) || t("widgetbar.userFallback");
   const displayTime = formatPostRelativeTime(post.timeRaw, post.time);
   const exactTime = formatPostExactTime(post.timeRaw);
   const profilePath = resolveProfilePath({

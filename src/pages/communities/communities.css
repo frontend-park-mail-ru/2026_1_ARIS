@@ -91,10 +91,6 @@
     text-decoration: none;
   }
 
-  .community-list-card__title:hover {
-    text-decoration: underline;
-  }
-
   .community-list-card__meta {
     margin: 5px 0 0;
     color: var(--color-text-meta);
@@ -606,7 +602,6 @@
   .community-posts__composer-link:hover {
     background: transparent;
     color: var(--color-interactive-primary);
-    text-decoration: underline;
   }
 
   .community-posts__composer-link:focus-visible {

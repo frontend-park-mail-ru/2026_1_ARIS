@@ -81,8 +81,7 @@ export function renderAvatar(
 ): string {
   const label = profile.isMissingProfile
     ? t("profile.profile")
-    : formatPersonName(profile.firstName, profile.lastName, profile.username) ||
-      t("widgetbar.userFallback");
+    : formatPersonName(profile.firstName, profile.lastName) || t("widgetbar.userFallback");
 
   return renderAvatarMarkup(className, label, profile.avatarLink, options);
 }

@@ -89,7 +89,6 @@
         font-weight: var(--font-weight-medium);
 
         &:hover {
-          text-decoration: underline;
         }
       }
     }
@@ -107,7 +106,6 @@
 
       &:hover {
         color: var(--color-text-main);
-        text-decoration: underline;
       }
 
       &--hidden {

@@ -19,7 +19,7 @@ export function getCommunityUrl(community: Community): string {
 }
 
 export function getCommunityName(community: Community): string {
-  return community.title.trim() || community.username.trim() || t("communities.communityFallback");
+  return community.title.trim() || t("communities.communityFallback");
 }
 
 export function getMembersLabel(count: number): string {
@@ -107,17 +107,11 @@ export function canRemoveCommunityMember(
 }
 
 export function getMemberDisplayName(member: CommunityMember): string {
-  return (
-    formatPersonName(member.firstName, member.lastName, member.username) ||
-    t("widgetbar.userFallback")
-  );
+  return formatPersonName(member.firstName, member.lastName) || t("widgetbar.userFallback");
 }
 
 export function getPostAuthorDisplayName(post: ProfilePost): string {
-  return (
-    formatPersonName(post.authorFirstName, post.authorLastName, post.authorUsername) ||
-    t("widgetbar.userFallback")
-  );
+  return formatPersonName(post.authorFirstName, post.authorLastName) || t("widgetbar.userFallback");
 }
 
 export function slugifyCommunityTitle(value: string): string {

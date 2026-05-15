@@ -19,9 +19,7 @@ import {
 } from "../../api/search";
 
 function getUserDisplayName(user: SearchUser): string {
-  return (
-    `${user.firstName} ${user.lastName}`.trim() || user.username || t("widgetbar.userFallback")
-  );
+  return `${user.firstName} ${user.lastName}`.trim() || t("widgetbar.userFallback");
 }
 
 function formatSearchTitle(query: string): string {
@@ -39,14 +37,13 @@ function renderUserCard(user: SearchUser): string {
       </a>
       <div class="search-result-card__body">
         <a href="${profilePath}" data-link class="search-result-card__name">${escapeHtml(name)}</a>
-        <p class="search-result-card__meta">@${escapeHtml(user.username)}</p>
       </div>
     </article>
   `;
 }
 
 function renderCommunityCard(community: SearchCommunity): string {
-  const name = community.title || community.username;
+  const name = community.title || t("search.communityFallback");
   const communityPath = `/communities/${encodeURIComponent(String(community.id))}`;
 
   return `

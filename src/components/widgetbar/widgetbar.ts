@@ -133,12 +133,20 @@ function renderProfileLink(
  * @returns {string} HTML-разметка аватара.
  */
 function renderWidgetbarAvatar(user: WidgetbarUser): string {
-  const label =
-    formatPersonName(user.firstName, user.lastName, user.username) || t("widgetbar.userFallback");
+  const label = formatPersonName(user.firstName, user.lastName) || t("widgetbar.userFallback");
   return renderAvatarMarkup("widgetbar-person__avatar", label, user.avatarLink, {
     width: 32,
     height: 32,
   });
+}
+
+function renderWidgetbarAvatarLink(user: WidgetbarUser, isAuthorised: boolean): string {
+  return renderProfileLink(
+    renderWidgetbarAvatar(user),
+    user,
+    "widgetbar-person__avatar-link",
+    isAuthorised,
+  );
 }
 
 function getUserKey(user: WidgetbarUser): string {
@@ -251,9 +259,9 @@ async function renderPopularUsersWidget(): Promise<string> {
         .map(
           (user) => `
             <div class="widgetbar-person">
-              ${renderWidgetbarAvatar(user)}
+              ${renderWidgetbarAvatarLink(user, false)}
               ${renderProfileLink(
-                formatPersonName(user.firstName, user.lastName, user.username),
+                formatPersonName(user.firstName, user.lastName) || t("widgetbar.userFallback"),
                 user,
                 "widgetbar-card__username",
                 false,
@@ -313,9 +321,9 @@ async function renderKnownPeopleWidget(): Promise<string> {
           .map(
             (user) => `
             <div class="widgetbar-person">
-              ${renderWidgetbarAvatar(user)}
+              ${renderWidgetbarAvatarLink(user, true)}
               ${renderProfileLink(
-                formatPersonName(user.firstName, user.lastName, user.username),
+                formatPersonName(user.firstName, user.lastName) || t("widgetbar.userFallback"),
                 user,
                 "widgetbar-card__username",
                 true,
@@ -346,7 +354,7 @@ async function renderEventsWidget(): Promise<string> {
           ${items
             .map((user) => {
               const userLink = renderProfileLink(
-                formatPersonName(user.firstName, user.lastName, user.username),
+                formatPersonName(user.firstName, user.lastName) || t("widgetbar.userFallback"),
                 user,
                 "widgetbar-card__username",
                 false,

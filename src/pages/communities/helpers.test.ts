@@ -72,7 +72,7 @@ describe("communities helpers", () => {
     expect(escapeHtml(`<b title="x&y">'`)).toBe("&lt;b title=&quot;x&amp;y&quot;&gt;&#39;");
     expect(getCommunityUrl(createBundle().community)).toBe("/communities/10");
     expect(getCommunityName({ ...createBundle().community, title: "", username: "aris" })).toBe(
-      "aris",
+      "Сообщество",
     );
   });
 

@@ -472,7 +472,10 @@ export async function renderProfile(
 
                 <div class="profile-card__hero-copy">
                   <h1>
-                    ${escapeHtml(formatPersonName(profile.firstName, profile.lastName, profile.username))}
+                    ${escapeHtml(
+                      formatPersonName(profile.firstName, profile.lastName) ||
+                        t("widgetbar.userFallback"),
+                    )}
                     ${
                       profile.isOwnProfile
                         ? `<span class="profile-card__self-mark">${t("profile.selfMark")}</span>`

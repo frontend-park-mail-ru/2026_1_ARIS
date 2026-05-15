@@ -21,10 +21,7 @@ function escapeHtml(value: string): string {
 }
 
 function getFriendName(friend: DisplayFriend): string {
-  return (
-    formatPersonName(friend.firstName, friend.lastName, friend.username) ||
-    t("widgetbar.userFallback")
-  );
+  return formatPersonName(friend.firstName, friend.lastName) || t("widgetbar.userFallback");
 }
 
 function renderFriendAvatar(friend: DisplayFriend, className: string): string {
@@ -165,7 +162,7 @@ export function renderFriendsList(): string {
           </a>
           <div class="friends-card__body">
             <a href="${profilePath}" data-link class="friends-card__name">${escapeHtml(friendName)}</a>
-            <p class="friends-card__meta">${escapeHtml(friend.educationLabel)}</p>
+            ${friend.educationLabel ? `<p class="friends-card__meta">${escapeHtml(friend.educationLabel)}</p>` : ""}
           </div>
           ${renderFriendActions(friend)}
         </article>

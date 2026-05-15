@@ -175,7 +175,8 @@ export function renderDeleteFriendModal(profile: DisplayProfile): string {
     return "";
   }
 
-  const friendName = formatPersonName(profile.firstName, profile.lastName, profile.username);
+  const friendName =
+    formatPersonName(profile.firstName, profile.lastName) || t("widgetbar.userFallback");
   const friendshipDate = formatFriendshipDateLocal(profile.friendshipCreatedAt);
   const friendshipCopy = friendshipDate ? `${t("friends.modalHint")} ${friendshipDate}` : "";
 
@@ -440,12 +441,19 @@ export function renderFriends(profile: DisplayProfile): string {
                 .map(
                   (friend) => `
                     <div class="profile-friend">
-                      ${renderAvatarMarkup(
-                        "profile-friend__avatar",
-                        formatPersonName(friend.firstName, friend.lastName, friend.username),
-                        friend.avatarLink,
-                        { width: 44, height: 44 },
-                      )}
+                      <a
+                        href="/id${encodeURIComponent(friend.profileId)}"
+                        data-link
+                        class="profile-friend__avatar-link"
+                      >
+                        ${renderAvatarMarkup(
+                          "profile-friend__avatar",
+                          formatPersonName(friend.firstName, friend.lastName) ||
+                            t("widgetbar.userFallback"),
+                          friend.avatarLink,
+                          { width: 44, height: 44 },
+                        )}
+                      </a>
                       <div class="profile-friend__content">
                         <a
                           href="/id${encodeURIComponent(friend.profileId)}"
@@ -453,7 +461,8 @@ export function renderFriends(profile: DisplayProfile): string {
                           class="profile-friend__name"
                         >
                           ${escapeHtml(
-                            formatPersonName(friend.firstName, friend.lastName, friend.username),
+                            formatPersonName(friend.firstName, friend.lastName) ||
+                              t("widgetbar.userFallback"),
                           )}
                         </a>
                       </div>
@@ -661,22 +670,16 @@ export function renderProfilePosts(
                         >
                           ${renderAvatarMarkup(
                             "profile-post__avatar",
-                            formatPersonName(
-                              post.authorFirstName,
-                              post.authorLastName,
-                              post.authorUsername,
-                            ),
+                            formatPersonName(post.authorFirstName, post.authorLastName) ||
+                              t("widgetbar.userFallback"),
                             post.authorAvatarLink,
                             { width: 44, height: 44 },
                           )}
 
                           <div class="profile-post__meta">
                             <strong>${escapeHtml(
-                              formatPersonName(
-                                post.authorFirstName,
-                                post.authorLastName,
-                                post.authorUsername,
-                              ),
+                              formatPersonName(post.authorFirstName, post.authorLastName) ||
+                                t("widgetbar.userFallback"),
                             )}</strong>
                           </div>
                         </a>

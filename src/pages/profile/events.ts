@@ -643,7 +643,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     if (savePostButton instanceof HTMLButtonElement) {
       const trimmedText = postComposerState.text.trim();
       if (!trimmedText && postComposerState.mediaItems.length === 0) {
-        postComposerState.errorMessage = "Добавьте текст или изображение.";
+        postComposerState.errorMessage = t("profile.postContentRequired");
         syncPostComposerUi(root);
         return;
       }
@@ -679,9 +679,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
                   (item) => !item.isUploaded || item.mediaID == null,
                 )
               ) {
-                throw new Error(
-                  "Не получилось обновить изображения поста. Перезагрузите страницу и попробуйте снова.",
-                );
+                throw new Error(t("profile.postImagesSyncError"));
               }
 
               return updatePost(
@@ -745,7 +743,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
                 normaliseAvatarLink(savedPost.avatarURL) ?? currentProfile.avatarLink ?? "",
               isOwnPost: true,
               text: typeof savedPost.text === "string" ? savedPost.text : "",
-              time: existingPost?.time ?? "только что",
+              time: existingPost?.time ?? t("postcard.justNow"),
               timeRaw: createdAt,
               ...(savedPost.updatedAt ? { updatedAtRaw: savedPost.updatedAt } : {}),
               likes: savedPost.likes ?? 0,
@@ -780,12 +778,12 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           postComposerState.text = composerSnapshot.text;
           postComposerState.mediaItems = composerSnapshot.mediaItems;
           postComposerState.errorMessage = isOutboxQueuedError(error)
-            ? "Публикация сохранена и отправится при восстановлении сети."
+            ? t("profile.postSaveQueued")
             : isOfflineNetworkError(error)
-              ? "Нет соединения с интернетом."
+              ? t("feed.noInternet")
               : error instanceof Error
                 ? error.message
-                : "Не получилось сохранить публикацию.";
+                : t("profile.postSaveError");
           syncPostComposerUi(root);
         });
       return;
@@ -1050,12 +1048,12 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           postComposerState.isSaving = false;
           postComposerState.deleteConfirmPostId = postId;
           postComposerState.errorMessage = isOutboxQueuedError(error)
-            ? "Удаление сохранено и выполнится при восстановлении сети."
+            ? t("profile.postDeleteQueued")
             : isOfflineNetworkError(error)
-              ? "Нет соединения с интернетом."
+              ? t("feed.noInternet")
               : error instanceof Error
                 ? error.message
-                : "Не получилось удалить публикацию.";
+                : t("profile.postDeleteError");
           syncPostComposerUi(root);
           rerenderProfilePostsSection(root);
         });
@@ -1286,7 +1284,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       void handlePostImagesSelected(target.files)
         .catch((error: unknown) => {
           postComposerState.errorMessage =
-            error instanceof Error ? error.message : "Не получилось подготовить изображения.";
+            error instanceof Error ? error.message : t("profile.postImagesPrepareError");
         })
         .finally(() => {
           syncPostComposerUi(root);

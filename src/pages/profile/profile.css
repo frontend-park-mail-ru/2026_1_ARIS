@@ -395,7 +395,6 @@
 
   .profile-section__action-button:hover {
     color: var(--color-text-main);
-    text-decoration: underline;
   }
 
   .profile-section__body {
@@ -430,7 +429,6 @@
 
   .profile-card__toggle:hover {
     color: var(--color-text-main);
-    text-decoration: underline;
   }
 
   .profile-editor {
@@ -951,7 +949,6 @@
     max-height: calc(100vh - 48px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-gutter: stable;
   }
 
   .profile-post-delete-modal__dialog {
@@ -1690,6 +1687,19 @@
     object-fit: cover;
   }
 
+  .profile-friend__avatar-link {
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    text-decoration: none;
+  }
+
+  .profile-friend__avatar-link:focus-visible {
+    outline: none;
+    box-shadow: var(--control-focus-ring);
+  }
+
   .profile-friend__content {
     display: flex;
     min-width: 0;
@@ -1703,14 +1713,6 @@
     font-weight: 500;
     line-height: var(--line-height-base);
     text-decoration: none;
-  }
-
-  .profile-friend__name:hover {
-    text-decoration: underline;
-  }
-
-  .profile-post__author:hover .profile-post__meta strong {
-    text-decoration: underline;
   }
 
   .profile-friend__content span {

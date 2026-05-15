@@ -83,10 +83,6 @@
     text-decoration: none;
   }
 
-  .search-result-card__name:hover {
-    text-decoration: underline;
-  }
-
   .search-result-card__meta {
     margin: 4px 0 0;
     font-size: var(--text-size-meta);

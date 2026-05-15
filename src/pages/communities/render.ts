@@ -117,7 +117,7 @@ function renderCommunityListItem(bundle: CommunityBundle): string {
 }
 
 function renderCommunitiesList(): string {
-  if (communitiesState.loading) {
+  if (communitiesState.loading || communitiesState.searchLoading) {
     return Array.from(
       { length: 3 },
       () => `

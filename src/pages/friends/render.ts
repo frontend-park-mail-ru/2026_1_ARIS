@@ -104,7 +104,7 @@ function renderFriendActions(friend: DisplayFriend): string {
 export function renderFriendsList(): string {
   const visibleFriends = getVisibleFriends();
 
-  if (friendsState.loading) {
+  if (friendsState.loading || friendsState.searchLoading) {
     return Array.from(
       { length: 4 },
       () => `

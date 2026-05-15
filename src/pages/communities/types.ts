@@ -89,6 +89,8 @@ export type CommunitiesState = {
   loading: boolean;
   errorMessage: string;
   query: string;
+  searchLoading: boolean;
+  searchResults: CommunityBundle[] | null;
   items: CommunityBundle[];
   activeCommunity: CommunityBundle | null;
   activeMembers: CommunityMember[];

@@ -19,6 +19,7 @@ import {
   type CommunityPayload,
   type CommunityRole,
 } from "../../api/communities";
+import { searchUsersAndCommunities, type SearchCommunity } from "../../api/search";
 import {
   createPost,
   deletePost,
@@ -97,6 +98,116 @@ type CommunitiesRoot = (Document | HTMLElement) & {
 const COMMUNITY_TITLE_MIN_LENGTH = 3;
 const COMMUNITY_BIO_MAX_LENGTH = 2047;
 const COMMUNITY_TITLE_MAX_LENGTH = 64;
+const COMMUNITIES_SEARCH_DEBOUNCE_MS = 250;
+
+let communitiesSearchTimerId: number | null = null;
+let communitiesSearchAbortController: AbortController | null = null;
+let communitiesSearchRequestId = 0;
+
+function clearCommunitiesSearchRequest(): void {
+  if (communitiesSearchTimerId !== null) {
+    window.clearTimeout(communitiesSearchTimerId);
+    communitiesSearchTimerId = null;
+  }
+
+  communitiesSearchAbortController?.abort();
+  communitiesSearchAbortController = null;
+}
+
+function mapSearchCommunityToBundle(result: SearchCommunity): CommunityBundle {
+  const existing = findCommunityById(result.id);
+  if (existing) {
+    return {
+      ...existing,
+      community: {
+        ...existing.community,
+        title: result.title || existing.community.title,
+        username: result.username || existing.community.username,
+        ...(typeof result.bio === "string" ? { bio: result.bio } : {}),
+        ...(result.avatarUrl ? { avatarUrl: result.avatarUrl } : {}),
+        ...(result.coverUrl ? { coverUrl: result.coverUrl } : {}),
+      },
+    };
+  }
+
+  return {
+    community: {
+      id: result.id,
+      uid: "",
+      profileId: result.profileId,
+      username: result.username,
+      title: result.title,
+      ...(typeof result.bio === "string" ? { bio: result.bio } : {}),
+      type: result.type === "private" ? "private" : "public",
+      ...(result.avatarId ? { avatarId: result.avatarId } : {}),
+      ...(result.avatarUrl ? { avatarUrl: result.avatarUrl } : {}),
+      ...(result.coverId ? { coverId: result.coverId } : {}),
+      ...(result.coverUrl ? { coverUrl: result.coverUrl } : {}),
+      isActive: true,
+      createdAt: "",
+      updatedAt: "",
+    },
+    membership: {
+      isMember: false,
+      role: "",
+      blocked: false,
+    },
+    permissions: {
+      canEditCommunity: false,
+      canDeleteCommunity: false,
+      canPost: false,
+      canPostAsCommunity: false,
+      canPostAsMember: false,
+      canManageMembers: false,
+      canChangeRoles: false,
+    },
+  };
+}
+
+function scheduleCommunitiesBackendSearch(root: ParentNode): void {
+  const query = communitiesState.query.trim();
+  const requestId = ++communitiesSearchRequestId;
+
+  clearCommunitiesSearchRequest();
+
+  if (!query) {
+    communitiesState.searchLoading = false;
+    communitiesState.searchResults = null;
+    refreshCommunitiesList(root);
+    return;
+  }
+
+  communitiesState.searchLoading = true;
+  communitiesState.searchResults = null;
+  refreshCommunitiesList(root);
+
+  communitiesSearchTimerId = window.setTimeout(() => {
+    communitiesSearchTimerId = null;
+    const controller = new AbortController();
+    communitiesSearchAbortController = controller;
+
+    void searchUsersAndCommunities(query, controller.signal)
+      .then((results) => {
+        if (requestId !== communitiesSearchRequestId || communitiesState.query.trim() !== query) {
+          return;
+        }
+        communitiesState.searchResults = results.communities.map(mapSearchCommunityToBundle);
+        communitiesState.errorMessage = "";
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        if (requestId !== communitiesSearchRequestId) return;
+        communitiesState.searchResults = [];
+        communitiesState.errorMessage =
+          error instanceof Error ? error.message : "Не удалось выполнить поиск сообществ.";
+      })
+      .finally(() => {
+        if (requestId !== communitiesSearchRequestId) return;
+        communitiesState.searchLoading = false;
+        refreshCommunitiesList(root);
+      });
+  }, COMMUNITIES_SEARCH_DEBOUNCE_MS);
+}
 
 function syncCommunityBundle(bundle: CommunityBundle): void {
   if (communitiesState.activeCommunity?.community.id === bundle.community.id) {
@@ -1060,7 +1171,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     if (target instanceof HTMLInputElement && target.matches("[data-communities-search]")) {
       communitiesState.query = target.value;
-      refreshCommunitiesList(root);
+      scheduleCommunitiesBackendSearch(root);
       return;
     }
 

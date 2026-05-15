@@ -33,7 +33,7 @@ import "./pages/settings/settings.css";
 import "./components/postcard/postcard-element";
 import { createRouter, type Route } from "./router/router";
 import { registerPrefetch, prefetchRoute } from "./prefetch/prefetch";
-import { initSession, getSessionUser } from "./state/session";
+import { initSession, getSessionUser, redirectPendingVkIdOauthCallback } from "./state/session";
 import { initHeader } from "./components/header/header";
 import { initSidebar, refreshSidebar } from "./components/sidebar/sidebar";
 import { clearWidgetbarCache } from "./components/widgetbar/widgetbar";
@@ -362,6 +362,10 @@ document.addEventListener(
 
 void (async () => {
   markAppRendering();
+
+  if (redirectPendingVkIdOauthCallback()) {
+    return;
+  }
 
   try {
     await initSession();

@@ -1,7 +1,7 @@
 @layer components {
   .modal-close-button {
     --modal-close-size: 45px;
-    --modal-close-font-size: 28px;
+    --modal-close-font-size: var(--text-size-heading-md);
 
     flex: 0 0 auto;
     width: var(--modal-close-size);

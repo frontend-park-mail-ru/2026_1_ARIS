@@ -408,7 +408,7 @@
   }
 
   .community-posts__search-close {
-    font-size: 28px;
+    font-size: var(--text-size-heading-md);
     font-weight: var(--font-weight-regular);
     line-height: 1;
   }
@@ -825,7 +825,7 @@
   .community-form__progress-label {
     width: 100%;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--text-size-caption);
     font-weight: var(--font-weight-medium);
     line-height: 1.15;
     overflow-wrap: normal;
@@ -1462,7 +1462,7 @@
     }
 
     .community-form__progress-label {
-      font-size: 11px;
+      font-size: var(--text-size-caption);
     }
 
     .community-hero__body {

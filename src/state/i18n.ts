@@ -130,7 +130,7 @@ const MESSAGES = {
     "profile.closePostSearch": "Закрыть поиск по публикациям",
     "profile.createPost": "Создать запись",
     "profile.deletePost": "Удалить",
-    "profile.edit": "Редактировать",
+    "profile.edit": "редактировать",
     "profile.education": "Образование",
     "profile.email": "Email",
     "profile.female": "Женский",

@@ -128,7 +128,7 @@
 
   .friends-card__avatar.avatar-fallback {
     display: inline-flex !important;
-    font-size: 24px;
+    font-size: var(--text-size-heading-md);
     letter-spacing: 0;
   }
 
@@ -323,7 +323,7 @@
     }
 
     .friends-card__avatar.avatar-fallback {
-      font-size: 22px;
+      font-size: var(--text-size-heading-md);
     }
 
     .friends-card__actions {

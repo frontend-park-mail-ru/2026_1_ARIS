@@ -52,6 +52,10 @@ describe("сообщества", () => {
 
     cy.get("[data-community-title]").type("Cypress клуб");
     cy.get("[data-community-form-next]").click();
+    cy.wait("@checkCommunityExists").its("request.body").should("deep.include", {
+      title: "Cypress клуб",
+      username: "cypress-klub",
+    });
     cy.get("[data-community-bio]").type("Сообщество создано из e2e.");
     cy.get("[data-community-form-next]").click();
     cy.get("[data-community-form-next]").click();
@@ -64,6 +68,22 @@ describe("сообщества", () => {
     });
     cy.location("pathname").should("eq", "/communities/77");
     cy.contains("h1", "Cypress клуб").should("be.visible");
+  });
+
+  it("обрабатывает Enter на первом шаге как Next, а не как создание", () => {
+    cy.mockAuthApi();
+    cy.mockCommunitiesApi();
+
+    cy.visitApp({ path: "/communities", authenticated: true });
+    cy.get("[data-community-create-open]").click();
+    cy.get("[data-community-title]").type("Enter клуб{enter}");
+
+    cy.wait("@checkCommunityExists").its("request.body").should("deep.include", {
+      title: "Enter клуб",
+      username: "enter-klub",
+    });
+    cy.get("[data-community-bio]").should("be.visible");
+    cy.get("@createCommunity.all").should("have.length", 0);
   });
 
   it("отображает детали сообщества и фильтрует посты", () => {

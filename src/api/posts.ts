@@ -17,9 +17,14 @@ import { rememberPostLikeState, resolvePostLikeState } from "../utils/post-like-
 
 export { ApiError };
 
+export type AttachmentPayload = {
+  mediaID: number;
+};
+
 export type PostPayload = {
   text?: string;
-  media?: UploadedMedia[];
+  media?: AttachmentPayload[];
+  files?: AttachmentPayload[];
   authorProfileId?: number;
   communityId?: number;
 };
@@ -28,6 +33,8 @@ export type PostMedia = {
   mediaID: number;
   mediaURL: string;
 };
+
+export type PostFile = PostMedia;
 
 export type PostAuthor = {
   profileID: number;
@@ -43,6 +50,7 @@ export type PostResponse = {
   profileID: number;
   communityId?: number;
   media?: PostMedia[];
+  files?: PostFile[];
   mediaURL?: string[];
   text?: string;
   firstName?: string;
@@ -118,6 +126,7 @@ type RawPost = {
   profileId?: number | string;
   communityId?: number | string | null;
   media?: RawPostMedia[];
+  files?: RawPostMedia[];
   mediaURL?: string[];
   mediaUrl?: string[];
   text?: string | null;
@@ -158,6 +167,42 @@ type UploadedMediaPayload =
 
 type UploadMediaResponse = {
   media?: UploadedMediaPayload[];
+  errors?: Array<{ index?: number; error?: string }>;
+};
+
+export type PostCommentPayload = {
+  text: string;
+  parentCommentId?: number;
+};
+
+export type PostComment = {
+  id: string;
+  uid: string;
+  text: string;
+  postId: string;
+  parentCommentId?: string;
+  author: PostAuthor;
+  createdAt: string;
+  updatedAt: string;
+  repliesCount: number;
+};
+
+type RawPostComment = {
+  id?: number | string;
+  uid?: string;
+  text?: string | null;
+  postId?: number | string;
+  parentCommentId?: number | string | null;
+  author?: RawPostAuthor;
+  createdAt?: string;
+  updatedAt?: string;
+  repliesCount?: number | string;
+};
+
+type CommentListOptions = {
+  limit?: number;
+  offset?: number;
+  signal?: AbortSignal;
 };
 
 function mapUploadedMedia(raw: UploadedMediaPayload | null | undefined): UploadedMedia | null {
@@ -189,6 +234,22 @@ function mapPostMedia(raw: RawPostMedia | null | undefined): PostMedia | null {
   return mapUploadedMedia(raw);
 }
 
+function mapAttachmentPayload(
+  item: AttachmentPayload | UploadedMediaPayload,
+): AttachmentPayload | null {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const mediaID = Number(
+    item.mediaID ??
+      ("mediaId" in item ? item.mediaId : undefined) ??
+      ("media_id" in item ? item.media_id : undefined),
+  );
+
+  return Number.isFinite(mediaID) && mediaID > 0 ? { mediaID } : null;
+}
+
 function mapPostAuthor(raw: RawPostAuthor | null | undefined): PostAuthor | undefined {
   if (!raw || typeof raw !== "object") {
     return undefined;
@@ -218,6 +279,9 @@ function mapPost(raw: RawPost): PostResponse {
   const media = Array.isArray(raw.media)
     ? raw.media.map((item) => mapPostMedia(item)).filter((item): item is PostMedia => Boolean(item))
     : [];
+  const files = Array.isArray(raw.files)
+    ? raw.files.map((item) => mapPostMedia(item)).filter((item): item is PostFile => Boolean(item))
+    : [];
   const legacyMediaUrls = Array.isArray(raw.mediaURL)
     ? raw.mediaURL
     : Array.isArray(raw.mediaUrl)
@@ -239,6 +303,7 @@ function mapPost(raw: RawPost): PostResponse {
     profileID: Number(raw.profileID ?? raw.profileId ?? author?.profileID ?? 0),
     ...(Number.isFinite(communityId) && communityId > 0 ? { communityId } : {}),
     ...(media.length ? { media } : {}),
+    ...(files.length ? { files } : {}),
     ...(legacyMediaUrls.length ? { mediaURL: legacyMediaUrls.filter(Boolean) } : {}),
     ...(typeof raw.text === "string" ? { text: raw.text } : {}),
     ...(raw.firstName || author?.firstName
@@ -261,6 +326,60 @@ function mapPost(raw: RawPost): PostResponse {
   };
 }
 
+function normalisePostPayload(payload: PostPayload): PostPayload {
+  const media = Array.isArray(payload.media)
+    ? payload.media
+        .map((item) => mapAttachmentPayload(item))
+        .filter((item): item is AttachmentPayload => Boolean(item))
+    : undefined;
+  const files = Array.isArray(payload.files)
+    ? payload.files
+        .map((item) => mapAttachmentPayload(item))
+        .filter((item): item is AttachmentPayload => Boolean(item))
+    : undefined;
+
+  return {
+    ...(typeof payload.text === "string" ? { text: payload.text } : {}),
+    ...(media ? { media } : {}),
+    ...(files ? { files } : {}),
+    ...(typeof payload.authorProfileId === "number"
+      ? { authorProfileId: payload.authorProfileId }
+      : {}),
+    ...(typeof payload.communityId === "number" ? { communityId: payload.communityId } : {}),
+  };
+}
+
+function mapPostComment(raw: RawPostComment): PostComment | null {
+  const id = String(raw.id ?? "").trim();
+  const author = mapPostAuthor(raw.author);
+  if (!id || !author) {
+    return null;
+  }
+
+  const parentCommentId =
+    raw.parentCommentId === undefined || raw.parentCommentId === null
+      ? ""
+      : String(raw.parentCommentId);
+
+  return {
+    id,
+    uid: String(raw.uid ?? ""),
+    text: String(raw.text ?? ""),
+    postId: String(raw.postId ?? ""),
+    ...(parentCommentId ? { parentCommentId } : {}),
+    author,
+    createdAt: String(raw.createdAt ?? ""),
+    updatedAt: String(raw.updatedAt ?? ""),
+    repliesCount: parseNumericCount(raw.repliesCount) ?? 0,
+  };
+}
+
+function mapPostComments(data: RawPostComment[] | null | undefined): PostComment[] {
+  return Array.isArray(data)
+    ? data.map(mapPostComment).filter((comment): comment is PostComment => Boolean(comment))
+    : [];
+}
+
 function mapPostsApiResponse(data: PostsApiResponse): PostResponse[] {
   if (Array.isArray(data)) {
     return data.map(mapPost).filter((post) => post.id > 0);
@@ -274,12 +393,14 @@ async function mutatePost(
   method: "POST" | "PATCH" | "DELETE",
   payload?: PostPayload,
 ): Promise<PostResponse | void> {
+  const requestPayload = payload && method !== "DELETE" ? normalisePostPayload(payload) : undefined;
+
   try {
     const data = await apiRequest<RawPost | null>(
       path,
       {
         method,
-        ...(payload && method !== "DELETE" ? { body: payload } : {}),
+        ...(requestPayload ? { body: requestPayload } : {}),
       },
       null,
     );
@@ -289,7 +410,7 @@ async function mutatePost(
       throw error;
     }
 
-    const body = payload && method !== "DELETE" ? JSON.stringify(payload) : undefined;
+    const body = requestPayload ? JSON.stringify(requestPayload) : undefined;
     await enqueueRequest({
       url: path,
       method,
@@ -372,6 +493,81 @@ export async function getPostById(
   }
 
   return mapPost(data);
+}
+
+function buildCommentListQuery(options: CommentListOptions = {}): string {
+  const params = new URLSearchParams();
+  if (typeof options.limit === "number") params.set("limit", String(options.limit));
+  if (typeof options.offset === "number") params.set("offset", String(options.offset));
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+export async function getPostComments(
+  postId: string | number,
+  options: CommentListOptions = {},
+): Promise<PostComment[]> {
+  const data = await apiRequest<RawPostComment[]>(
+    `/api/post/${encodeURIComponent(String(postId))}/comments${buildCommentListQuery(options)}`,
+    { ...(options.signal ? { signal: options.signal } : {}) },
+    [],
+  );
+
+  return mapPostComments(data);
+}
+
+export async function getPostCommentReplies(
+  postId: string | number,
+  commentId: string | number,
+  options: CommentListOptions = {},
+): Promise<PostComment[]> {
+  const data = await apiRequest<RawPostComment[]>(
+    `/api/post/${encodeURIComponent(String(postId))}/comments/${encodeURIComponent(String(commentId))}/replies${buildCommentListQuery(options)}`,
+    { ...(options.signal ? { signal: options.signal } : {}) },
+    [],
+  );
+
+  return mapPostComments(data);
+}
+
+export async function createPostComment(
+  postId: string | number,
+  payload: PostCommentPayload,
+): Promise<PostComment> {
+  const data = await apiRequest<RawPostComment>(
+    `/api/post/${encodeURIComponent(String(postId))}/comments`,
+    { method: "POST", body: payload },
+    {},
+  );
+  const comment = mapPostComment(data);
+  if (!comment) throw new Error("Не удалось создать комментарий.");
+  return comment;
+}
+
+export async function updatePostComment(
+  postId: string | number,
+  commentId: string | number,
+  text: string,
+): Promise<PostComment> {
+  const data = await apiRequest<RawPostComment>(
+    `/api/post/${encodeURIComponent(String(postId))}/comments/${encodeURIComponent(String(commentId))}`,
+    { method: "PATCH", body: { text } },
+    {},
+  );
+  const comment = mapPostComment(data);
+  if (!comment) throw new Error("Не удалось обновить комментарий.");
+  return comment;
+}
+
+export async function deletePostComment(
+  postId: string | number,
+  commentId: string | number,
+): Promise<void> {
+  await apiRequest<null>(
+    `/api/post/${encodeURIComponent(String(postId))}/comments/${encodeURIComponent(String(commentId))}`,
+    { method: "DELETE" },
+    null,
+  );
 }
 
 export async function createPost(payload: PostPayload): Promise<PostResponse> {

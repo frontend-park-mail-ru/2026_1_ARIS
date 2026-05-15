@@ -5,6 +5,7 @@ import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import {
   changeCommunityMemberRole,
+  checkCommunityExists,
   createCommunity,
   deleteCommunity,
   getCommunities,
@@ -103,10 +104,14 @@ const COMMUNITY_TITLE_MIN_LENGTH = 3;
 const COMMUNITY_BIO_MAX_LENGTH = 2047;
 const COMMUNITY_TITLE_MAX_LENGTH = 64;
 const COMMUNITIES_SEARCH_DEBOUNCE_MS = 250;
+const COMMUNITY_NAME_CHECK_DEBOUNCE_MS = 350;
 
 let communitiesSearchTimerId: number | null = null;
 let communitiesSearchAbortController: AbortController | null = null;
 let communitiesSearchRequestId = 0;
+let communityNameCheckTimerId: number | null = null;
+let communityNameCheckAbortController: AbortController | null = null;
+let communityNameCheckRequestId = 0;
 
 function formatCommunityMessage(message: string, values: Record<string, string | number>): string {
   return Object.entries(values).reduce(
@@ -123,6 +128,25 @@ function clearCommunitiesSearchRequest(): void {
 
   communitiesSearchAbortController?.abort();
   communitiesSearchAbortController = null;
+}
+
+function clearCommunityNameCheckRequest(): void {
+  if (communityNameCheckTimerId !== null) {
+    window.clearTimeout(communityNameCheckTimerId);
+    communityNameCheckTimerId = null;
+  }
+
+  communityNameCheckAbortController?.abort();
+  communityNameCheckAbortController = null;
+}
+
+function resetCommunityNameCheckState(): void {
+  clearCommunityNameCheckRequest();
+  communityNameCheckRequestId += 1;
+  communitiesState.form.nameCheckStatus = "idle";
+  communitiesState.form.nameCheckTitle = "";
+  communitiesState.form.nameCheckUsername = "";
+  communitiesState.form.nameCheckMessage = "";
 }
 
 function mapSearchCommunityToBundle(result: SearchCommunity): CommunityBundle {
@@ -469,6 +493,180 @@ function validateCommunityPayload(payload: CommunityPayload): string {
   return "";
 }
 
+function validateCommunityNamePayload(payload: CommunityPayload): string {
+  const username = payload.username?.trim().toLowerCase() ?? "";
+  const titleError = validateCommunityTitle(payload.title ?? "");
+
+  if (titleError) return titleError;
+
+  if (username.length < 3 || username.length > 20) {
+    return t("communities.formUsernameLengthError");
+  }
+
+  return "";
+}
+
+function getCommunityNameUnavailableMessage(
+  payload: CommunityPayload,
+  result: {
+    titleExists: boolean;
+    usernameExists: boolean;
+  },
+): string {
+  if (result.titleExists) {
+    return t("communities.formTitleTakenError");
+  }
+
+  if (result.usernameExists) {
+    return formatCommunityMessage(t("communities.formUsernameTakenError"), {
+      username: payload.username ?? "",
+    });
+  }
+
+  return "";
+}
+
+function syncCommunityFormErrorNode(root: ParentNode, message: string): void {
+  const errorNode = root.querySelector<HTMLElement>("[data-community-form-error]");
+  if (!errorNode) return;
+
+  errorNode.textContent = message || "\u00a0";
+  errorNode.classList.toggle("community-modal__error--hidden", !message);
+}
+
+async function ensureCommunityNameAvailable(
+  root: ParentNode,
+  options: {
+    refresh?: boolean;
+    signal?: AbortSignal;
+    showRequestErrors?: boolean;
+    force?: boolean;
+  } = {},
+): Promise<string> {
+  const payload = buildCommunityPayload();
+  const validationError = validateCommunityNamePayload(payload);
+
+  if (validationError) {
+    resetCommunityNameCheckState();
+    communitiesState.form.errorMessage = validationError;
+    if (options.refresh) {
+      refreshCommunitiesPage(root);
+    } else {
+      syncCommunityFormErrorNode(root, validationError);
+    }
+    return validationError;
+  }
+
+  if (communitiesState.form.mode !== "create") {
+    communitiesState.form.nameCheckStatus = "available";
+    communitiesState.form.nameCheckTitle = payload.title ?? "";
+    communitiesState.form.nameCheckUsername = payload.username ?? "";
+    communitiesState.form.nameCheckMessage = "";
+    return "";
+  }
+
+  const title = payload.title ?? "";
+  const username = payload.username ?? "";
+  if (
+    !options.force &&
+    communitiesState.form.nameCheckStatus === "available" &&
+    communitiesState.form.nameCheckTitle === title &&
+    communitiesState.form.nameCheckUsername === username
+  ) {
+    return "";
+  }
+
+  if (options.signal) {
+    if (communityNameCheckTimerId !== null) {
+      window.clearTimeout(communityNameCheckTimerId);
+      communityNameCheckTimerId = null;
+    }
+  } else {
+    clearCommunityNameCheckRequest();
+  }
+  const requestId = ++communityNameCheckRequestId;
+  communitiesState.form.nameCheckStatus = "checking";
+  communitiesState.form.nameCheckTitle = title;
+  communitiesState.form.nameCheckUsername = username;
+  communitiesState.form.nameCheckMessage = "";
+  if (options.refresh) {
+    refreshCommunitiesPage(root);
+  }
+
+  try {
+    const result = await checkCommunityExists(
+      { title, username },
+      options.signal ?? communityNameCheckAbortController?.signal,
+    );
+    if (requestId !== communityNameCheckRequestId) {
+      return "";
+    }
+
+    const unavailableMessage = result.exists
+      ? getCommunityNameUnavailableMessage(payload, result)
+      : "";
+
+    communitiesState.form.nameCheckStatus = unavailableMessage ? "unavailable" : "available";
+    communitiesState.form.nameCheckMessage = unavailableMessage;
+    communitiesState.form.errorMessage = unavailableMessage;
+
+    if (options.refresh) {
+      refreshCommunitiesPage(root);
+    } else {
+      syncCommunityFormErrorNode(root, unavailableMessage);
+    }
+
+    return unavailableMessage;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return "";
+    }
+
+    const message = error instanceof Error ? error.message : t("communities.formNameCheckError");
+    if (options.showRequestErrors === false) {
+      communitiesState.form.nameCheckStatus = "idle";
+      communitiesState.form.nameCheckMessage = message;
+      return "";
+    }
+
+    communitiesState.form.nameCheckStatus = "error";
+    communitiesState.form.nameCheckMessage = message;
+    communitiesState.form.errorMessage = message;
+
+    if (options.refresh) {
+      refreshCommunitiesPage(root);
+    } else {
+      syncCommunityFormErrorNode(root, message);
+    }
+
+    return message;
+  }
+}
+
+function scheduleCommunityNameAvailabilityCheck(root: ParentNode): void {
+  clearCommunityNameCheckRequest();
+
+  const payload = buildCommunityPayload();
+  const validationError = validateCommunityNamePayload(payload);
+  if (validationError || communitiesState.form.mode !== "create") {
+    communitiesState.form.nameCheckStatus = "idle";
+    communitiesState.form.nameCheckTitle = "";
+    communitiesState.form.nameCheckUsername = "";
+    communitiesState.form.nameCheckMessage = "";
+    return;
+  }
+
+  const controller = new AbortController();
+  communityNameCheckAbortController = controller;
+  communityNameCheckTimerId = window.setTimeout(() => {
+    communityNameCheckTimerId = null;
+    void ensureCommunityNameAvailable(root, {
+      signal: controller.signal,
+      showRequestErrors: false,
+    });
+  }, COMMUNITY_NAME_CHECK_DEBOUNCE_MS);
+}
+
 function getInvalidCommunityFormStep(payload: CommunityPayload): 1 | 2 | 3 | null {
   if (validateCommunityTitle(payload.title ?? "")) {
     return 1;
@@ -497,6 +695,17 @@ async function saveCommunityForm(root: ParentNode): Promise<void> {
       communitiesState.form.step = invalidStep;
     }
     communitiesState.form.errorMessage = validationError;
+    refreshCommunitiesPage(root);
+    return;
+  }
+
+  const nameAvailabilityError =
+    communitiesState.form.mode === "create"
+      ? await ensureCommunityNameAvailable(root, { refresh: true, force: true })
+      : "";
+  if (nameAvailabilityError) {
+    communitiesState.form.step = 1;
+    communitiesState.form.errorMessage = nameAvailabilityError;
     refreshCommunitiesPage(root);
     return;
   }
@@ -563,7 +772,7 @@ function validateCommunityFormStep(): string {
   return "";
 }
 
-function goToNextCommunityFormStep(root: ParentNode): void {
+async function goToNextCommunityFormStep(root: ParentNode): Promise<void> {
   syncCommunityFormFromDom(root);
   const errorMessage = validateCommunityFormStep();
 
@@ -571,6 +780,18 @@ function goToNextCommunityFormStep(root: ParentNode): void {
     communitiesState.form.errorMessage = errorMessage;
     refreshCommunitiesPage(root);
     return;
+  }
+
+  if (communitiesState.form.step === 1) {
+    const nameAvailabilityError = await ensureCommunityNameAvailable(root, {
+      refresh: true,
+      force: true,
+    });
+    if (nameAvailabilityError) {
+      communitiesState.form.errorMessage = nameAvailabilityError;
+      refreshCommunitiesPage(root);
+      return;
+    }
   }
 
   communitiesState.form.errorMessage = "";
@@ -934,6 +1155,7 @@ function bindFloatingCommunityMenuActions(
   if (editButton && bundle) {
     editButton.onclick = () => {
       closeCommunityMenus(root);
+      resetCommunityNameCheckState();
       openEditCommunityForm(bundle, 1);
       refreshCommunitiesPage(root);
     };
@@ -1129,6 +1351,7 @@ export async function renderCommunities(
     return (await import("../feed/feed")).renderFeed(undefined, signal);
   }
 
+  clearCommunityNameCheckRequest();
   resetCommunitiesState();
 
   if (params.id) {
@@ -1337,8 +1560,19 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     if (target instanceof HTMLInputElement && target.matches("[data-community-title]")) {
       communitiesState.form.title = target.value;
-      communitiesState.form.errorMessage =
+      const errorMessage =
         communitiesState.form.step === 1 ? validateCommunityTitle(target.value) : "";
+      communitiesState.form.errorMessage = errorMessage;
+      communitiesState.form.nameCheckStatus = "idle";
+      communitiesState.form.nameCheckTitle = "";
+      communitiesState.form.nameCheckUsername = "";
+      communitiesState.form.nameCheckMessage = "";
+      syncCommunityFormErrorNode(root, errorMessage);
+      if (errorMessage) {
+        clearCommunityNameCheckRequest();
+      } else {
+        scheduleCommunityNameAvailabilityCheck(root);
+      }
       return;
     }
 
@@ -1450,7 +1684,11 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     if (target.matches("[data-community-form]")) {
       event.preventDefault();
-      void saveCommunityForm(root);
+      if (communitiesState.form.step < 4) {
+        void goToNextCommunityFormStep(root);
+      } else {
+        void saveCommunityForm(root);
+      }
       return;
     }
 
@@ -1479,6 +1717,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     const createButton = target.closest("[data-community-create-open]");
     if (createButton instanceof HTMLButtonElement) {
+      resetCommunityNameCheckState();
       openCreateCommunityForm();
       refreshCommunitiesPage(root);
       return;
@@ -1581,6 +1820,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const id = editButton.getAttribute("data-community-edit");
       const bundle = id ? findCommunityById(id) : null;
       if (bundle) {
+        resetCommunityNameCheckState();
         openEditCommunityForm(bundle, 1);
         closeCommunityMenus(root);
         refreshCommunitiesPage(root);
@@ -1595,6 +1835,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       (formBackdrop === target && bindableRoot.__communityFormBackdropPressStarted)
     ) {
       bindableRoot.__communityFormBackdropPressStarted = false;
+      resetCommunityNameCheckState();
       resetCommunityFormState();
       refreshCommunitiesPage(root);
       return;
@@ -1670,7 +1911,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     const nextStepButton = target.closest("[data-community-form-next]");
     if (nextStepButton instanceof HTMLButtonElement) {
-      goToNextCommunityFormStep(root);
+      void goToNextCommunityFormStep(root);
       return;
     }
 

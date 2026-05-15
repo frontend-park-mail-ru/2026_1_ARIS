@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "./core/client";
 import {
   changeCommunityMemberRole,
+  checkCommunityExists,
   createCommunity,
   deleteCommunity,
   getCommunities,
@@ -134,6 +135,26 @@ describe("communities api", () => {
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/communities/10/members?includeBlocked=false&ts=1777896000000&limit=30&offset=60",
       {},
+      {},
+    );
+  });
+
+  it("проверяет занятость названия и адреса сообщества", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({
+      exists: true,
+      titleExists: true,
+      usernameExists: false,
+    });
+
+    await expect(checkCommunityExists({ title: "ARIS", username: "aris" })).resolves.toEqual({
+      exists: true,
+      titleExists: true,
+      usernameExists: false,
+    });
+
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/communities/check-exists",
+      { method: "POST", body: { title: "ARIS", username: "aris" } },
       {},
     );
   });

@@ -38,6 +38,8 @@ export type PostcardModel = {
   reposts: number;
   /** Ссылки на изображения поста. */
   images: string[];
+  /** Ссылки на файловые вложения поста. */
+  files: string[];
 };
 
 function parseNumericCount(value: unknown): number | undefined {
@@ -88,6 +90,8 @@ type FeedAuthor = {
 };
 
 type FeedMedia = {
+  id?: string;
+  mimeType?: string;
   mediaLink?: string;
 };
 
@@ -103,6 +107,8 @@ type FeedItem = {
   comments?: number;
   reposts?: number;
   medias?: FeedMedia[];
+  media?: FeedMedia[];
+  files?: FeedMedia[];
 };
 
 type FeedResponse = {
@@ -160,6 +166,12 @@ export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
     rememberPostLikeState(postId, rawIsLiked);
   }
 
+  const medias = Array.isArray(item.medias)
+    ? item.medias
+    : Array.isArray(item.media)
+      ? item.media
+      : [];
+
   return {
     id: postId,
     authorId: item.author?.id ?? "",
@@ -174,8 +186,9 @@ export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
     isLiked,
     comments: item.comments ?? 0,
     reposts: item.reposts ?? 0,
-    images: Array.isArray(item.medias)
-      ? item.medias.map((m) => m.mediaLink ?? "").filter(Boolean)
+    images: medias.map((m) => m.mediaLink ?? "").filter(Boolean),
+    files: Array.isArray(item.files)
+      ? item.files.map((m) => m.mediaLink ?? "").filter(Boolean)
       : [],
   };
 }

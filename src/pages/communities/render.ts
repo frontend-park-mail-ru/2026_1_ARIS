@@ -799,6 +799,7 @@ export function renderCommunityFormModal(): string {
   const form = communitiesState.form;
   const title =
     form.mode === "edit" ? t("communities.formEditTitle") : t("communities.formCreateTitle");
+  const isCheckingName = form.step === 1 && form.nameCheckStatus === "checking";
 
   return `
     <div class="community-modal" data-community-form-modal ${form.open ? "" : "hidden"}>
@@ -816,7 +817,7 @@ export function renderCommunityFormModal(): string {
         <form class="community-form" data-community-form>
           ${renderCommunityFormStepContent(form.step)}
 
-          <p class="community-modal__error${form.errorMessage ? "" : " community-modal__error--hidden"}">
+          <p class="community-modal__error${form.errorMessage ? "" : " community-modal__error--hidden"}" data-community-form-error>
             ${form.errorMessage ? escapeHtml(form.errorMessage) : "&nbsp;"}
           </p>
 
@@ -837,7 +838,7 @@ export function renderCommunityFormModal(): string {
             ${
               form.step < 4
                 ? `
-                  <button type="button" class="community-modal__button community-modal__button--primary" data-community-form-next>
+                  <button type="button" class="community-modal__button community-modal__button--primary" data-community-form-next ${isCheckingName ? 'aria-busy="true"' : ""}>
                     ${t("communities.formNext")}
                   </button>
                 `
@@ -928,7 +929,7 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
           <input
             name="title"
             value="${escapeHtml(form.title)}"
-            maxlength="120"
+            maxlength="64"
             required
             data-community-title
             placeholder="${t("communities.formPickTitle")}"
@@ -947,7 +948,7 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
           <textarea
             name="bio"
             rows="5"
-            maxlength="500"
+            maxlength="2047"
             data-community-bio
             placeholder="${t("communities.formDescriptionPlaceholder")}"
           >${escapeHtml(form.bio)}</textarea>

@@ -6,10 +6,15 @@ import { apiRequest } from "./core/client";
 import {
   createOrResolvePrivateChatId,
   createPrivateChat,
+  deleteMessageReaction,
   getChatMessages,
   getChats,
+  getStickerPacks,
+  getStickersByPack,
   sendChatMessage,
+  setMessageReaction,
   subscribeToChatMessages,
+  updateChatMessageText,
 } from "./chat";
 import { getSessionUser } from "../state/session";
 
@@ -94,7 +99,18 @@ describe("chat api", () => {
   it("нормализует сообщения и отправляет новое сообщение", async () => {
     vi.mocked(apiRequest)
       .mockResolvedValueOnce([
-        { ID: 1, Text: "Привет", AuthorName: "Софья", AuthorID: 7, CreatedAt: "2026-05-04" },
+        {
+          ID: 1,
+          uid: "msg-uid",
+          Text: "Привет",
+          AuthorName: "Софья",
+          AuthorID: 7,
+          CreatedAt: "2026-05-04",
+          media: [{ id: "9", uid: "media-uid", mimeType: "image/png", url: "/media/9" }],
+          files: [{ id: "10", uid: "file-uid", mimeType: "application/pdf", url: "/media/10" }],
+          reactions: [{ type: "👍", count: "2" }],
+          myReaction: "👍",
+        },
         { text: "empty id" },
       ])
       .mockResolvedValueOnce({ id: 2, text: "Ответ", authorId: 8 });
@@ -105,13 +121,24 @@ describe("chat api", () => {
         text: "Привет",
         authorName: "Софья",
         authorId: "7",
+        uid: "msg-uid",
+        media: [{ id: "9", uid: "media-uid", mimeType: "image/png", url: "/media/9" }],
+        files: [{ id: "10", uid: "file-uid", mimeType: "application/pdf", url: "/media/10" }],
+        reactions: [{ type: "👍", count: 2 }],
+        myReaction: "👍",
+        isActive: true,
         createdAt: "2026-05-04",
+        updatedAt: undefined,
       },
     ]);
     await expect(sendChatMessage("chat id", { text: "Ответ" })).resolves.toMatchObject({
       id: "2",
       text: "Ответ",
       authorId: "8",
+      media: [],
+      files: [],
+      reactions: [],
+      isActive: true,
     });
 
     expect(apiRequest).toHaveBeenNthCalledWith(1, "/api/chats/chat%20id/messages", {}, []);
@@ -162,7 +189,12 @@ describe("chat api", () => {
       text: "Новое",
       authorName: undefined,
       authorId: "7",
+      media: [],
+      files: [],
+      reactions: [],
+      isActive: true,
       createdAt: undefined,
+      updatedAt: undefined,
     });
     expect(subscription.isOpen()).toBe(true);
     expect(subscription.send({ text: "ok" })).toBe(true);
@@ -170,5 +202,67 @@ describe("chat api", () => {
 
     subscription.close();
     expect(socket?.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("поддерживает новый контракт сообщений, стикеров и реакций", async () => {
+    vi.mocked(apiRequest)
+      .mockResolvedValueOnce({ id: 3, text: "edited", authorId: 7 })
+      .mockResolvedValueOnce([{ id: "1", uid: "pack-uid", title: "ARIS demo stickers" }])
+      .mockResolvedValueOnce([
+        {
+          id: "5",
+          uid: "sticker-uid",
+          packId: "1",
+          mediaId: "99",
+          mimeType: "image/svg+xml",
+          url: "/media/99",
+        },
+      ])
+      .mockResolvedValueOnce({ id: 3, text: "reacted", authorId: 7, myReaction: "❤️" })
+      .mockResolvedValueOnce({ id: 3, text: "reacted", authorId: 7 });
+
+    await updateChatMessageText("7", 3, "edited");
+    await expect(getStickerPacks({ limit: 10, offset: 5 })).resolves.toEqual([
+      {
+        id: "1",
+        uid: "pack-uid",
+        title: "ARIS demo stickers",
+      },
+    ]);
+    await expect(getStickersByPack(1)).resolves.toEqual([
+      {
+        id: "5",
+        uid: "sticker-uid",
+        packId: "1",
+        mediaId: "99",
+        mimeType: "image/svg+xml",
+        url: "/media/99",
+      },
+    ]);
+    await expect(setMessageReaction("7", 3, "❤️")).resolves.toMatchObject({
+      myReaction: "❤️",
+    });
+    await expect(deleteMessageReaction("7", 3)).resolves.toMatchObject({ id: "3" });
+
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      1,
+      "/api/chats/7/messages/3",
+      { method: "PUT", body: { text: "edited" } },
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(2, "/api/sticker-packs?limit=10&offset=5", {}, []);
+    expect(apiRequest).toHaveBeenNthCalledWith(3, "/api/sticker-packs/1/stickers", {}, []);
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      4,
+      "/api/chats/7/messages/3/reaction",
+      { method: "PUT", body: { type: "❤️" } },
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      5,
+      "/api/chats/7/messages/3/reaction",
+      { method: "DELETE" },
+      {},
+    );
   });
 });

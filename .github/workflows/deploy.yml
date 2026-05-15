@@ -3,7 +3,8 @@ name: Deploy Production
 on:
   push:
     branches:
-      - main
+      # ВРЕМЕННО: деплоим прод из dev, пока не вернем релизную ветку на main.
+      - dev
 
 jobs:
   quality-gate:
@@ -28,7 +29,7 @@ jobs:
 
             cd ${{ secrets.DEPLOY_PATH }}
             git fetch origin
-            git reset --hard origin/main
+            git reset --hard origin/dev
 
             NODE_ENV=development npm ci
 

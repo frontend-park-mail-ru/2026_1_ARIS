@@ -471,15 +471,17 @@ export async function renderProfile(
                 </div>
 
                 <div class="profile-card__hero-copy">
-                  ${
-                    profile.isOwnProfile
-                      ? `<div class="profile-card__eyebrow">${t("profile.myProfile")}</div>`
-                      : ""
-                  }
-                  <h1>${escapeHtml(formatPersonName(profile.firstName, profile.lastName, profile.username))}</h1>
+                  <h1>
+                    ${escapeHtml(formatPersonName(profile.firstName, profile.lastName, profile.username))}
+                    ${
+                      profile.isOwnProfile
+                        ? `<span class="profile-card__self-mark">${t("profile.selfMark")}</span>`
+                        : ""
+                    }
+                  </h1>
                   ${hasVisibleValue(profile.status) ? `<p>${escapeHtml(profile.status)}</p>` : ""}
-                  ${renderProfileFriendActions(profile)}
                 </div>
+                ${renderProfileFriendActions(profile)}
               </header>
 
               <div class="profile-card__details">

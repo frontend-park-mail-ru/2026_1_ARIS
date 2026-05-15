@@ -14,7 +14,6 @@
     --header-logout-size: var(--font-size-md);
     --header-logout-color: var(--color-text-meta);
     --header-avatar-size: 56px;
-
     --header-grid-gap: var(--layout-column-gap);
     --header-columns: var(--layout-sidebar-width) var(--layout-content-width)
       var(--layout-widgets-width);
@@ -138,8 +137,7 @@
       transform: scale(0.96);
     }
 
-    &__voice-search.is-listening img,
-    :root[data-theme="dark"] &__voice-search.is-listening img {
+    &__voice-search.is-listening img {
       filter: brightness(0) invert(1);
       opacity: 1;
     }
@@ -147,6 +145,10 @@
     :root[data-theme="dark"] &__voice-search img {
       filter: brightness(0) invert(1);
       opacity: 0.86;
+    }
+
+    :root[data-theme="dark"] &__voice-search.is-listening img {
+      opacity: 1;
     }
 
     &__voice-status {
@@ -191,8 +193,7 @@
       align-items: center;
       justify-self: stretch;
       width: 100%;
-      column-gap: var(--header-user-gap);
-      row-gap: 4px;
+      gap: 4px var(--header-user-gap);
       min-width: 0;
       padding-left: var(--layout-widgets-inner-padding-left);
       box-sizing: border-box;
@@ -256,8 +257,12 @@
       top: calc(100% + 8px);
       right: 0;
       z-index: 2000;
-      min-width: 132px;
+      display: flex;
+      width: max-content;
+      max-width: calc(100vw - 32px);
       padding: 8px;
+      flex-direction: column;
+      gap: 4px;
       border: 1px solid var(--color-border-default);
       border-radius: 12px;
       background: var(--color-surface-glass-strong);
@@ -277,7 +282,6 @@
     }
 
     &__user-menu-item {
-      width: 100%;
       min-height: 34px;
       padding: 0 12px;
       border: 0;
@@ -288,6 +292,7 @@
       font: inherit;
       font-size: var(--header-logout-size);
       text-align: left;
+      white-space: nowrap;
     }
 
     &__user-menu-item:hover {

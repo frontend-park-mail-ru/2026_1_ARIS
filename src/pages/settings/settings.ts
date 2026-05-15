@@ -27,20 +27,26 @@ function isLanguageMode(value: unknown): value is LanguageMode {
   return value === "RU" || value === "EN";
 }
 
-function renderLanguageOption(
-  language: LanguageMode,
+function isThemeMode(value: unknown): value is ThemeMode {
+  return value === "light" || value === "dark";
+}
+
+function renderSegmentedOption(
+  name: string,
+  value: string,
   label: string,
-  currentLanguage: LanguageMode,
+  currentValue: string,
+  dataAttribute: string,
 ): string {
   return `
     <label class="settings-segmented__option">
       <input
         type="radio"
         class="settings-segmented__input"
-        name="settings-language"
-        value="${language}"
-        data-language-option
-        ${currentLanguage === language ? "checked" : ""}
+        name="${name}"
+        value="${value}"
+        ${dataAttribute}
+        ${currentValue === value ? "checked" : ""}
         aria-label="${label}"
       />
       <span class="settings-segmented__text">${label}</span>
@@ -49,7 +55,7 @@ function renderLanguageOption(
 }
 
 function renderSettingsPanel(loadError = ""): string {
-  const isDark = getThemeMode() === "dark";
+  const currentTheme = getThemeMode();
   const currentLanguage = getLanguageMode();
 
   return `
@@ -64,21 +70,24 @@ function renderSettingsPanel(loadError = ""): string {
             <h2 class="settings-section__title" id="settings-appearance-title">${t(
               "settings.appearance",
             )}</h2>
-            <span class="settings-section__label">${t("settings.darkTheme")}</span>
           </div>
 
-          <label class="settings-switch">
-            <input
-              type="checkbox"
-              class="settings-switch__input"
-              data-theme-toggle
-              ${isDark ? "checked" : ""}
-              aria-label="${t("settings.darkTheme")}"
-            />
-            <span class="settings-switch__track" aria-hidden="true">
-              <span class="settings-switch__thumb"></span>
-            </span>
-          </label>
+          <fieldset class="settings-segmented" aria-labelledby="settings-appearance-title">
+            ${renderSegmentedOption(
+              "settings-theme",
+              "light",
+              t("settings.lightTheme"),
+              currentTheme,
+              "data-theme-option",
+            )}
+            ${renderSegmentedOption(
+              "settings-theme",
+              "dark",
+              t("settings.darkTheme"),
+              currentTheme,
+              "data-theme-option",
+            )}
+          </fieldset>
         </section>
 
         <section class="settings-section" aria-labelledby="settings-language-title">
@@ -90,8 +99,20 @@ function renderSettingsPanel(loadError = ""): string {
           </div>
 
           <fieldset class="settings-segmented" aria-labelledby="settings-language-title">
-            ${renderLanguageOption("RU", t("settings.russian"), currentLanguage)}
-            ${renderLanguageOption("EN", t("settings.english"), currentLanguage)}
+            ${renderSegmentedOption(
+              "settings-language",
+              "RU",
+              t("settings.russian"),
+              currentLanguage,
+              "data-language-option",
+            )}
+            ${renderSegmentedOption(
+              "settings-language",
+              "EN",
+              t("settings.english"),
+              currentLanguage,
+              "data-language-option",
+            )}
           </fieldset>
         </section>
 
@@ -108,7 +129,7 @@ function renderSettingsPanel(loadError = ""): string {
 
 function setSettingsSaving(root: Document | HTMLElement, saving: boolean): void {
   root
-    .querySelectorAll<HTMLInputElement>("[data-theme-toggle], [data-language-option]")
+    .querySelectorAll<HTMLInputElement>("[data-theme-option], [data-language-option]")
     .forEach((input) => {
       input.disabled = saving;
     });
@@ -122,10 +143,10 @@ function setSettingsMessage(root: Document | HTMLElement, message: string): void
   messageEl.classList.toggle("settings-panel__message--hidden", !message);
 }
 
-function syncToggleState(root: Document | HTMLElement): void {
-  const isDark = getThemeMode() === "dark";
-  root.querySelectorAll<HTMLInputElement>("[data-theme-toggle]").forEach((input) => {
-    input.checked = isDark;
+function syncThemeState(root: Document | HTMLElement): void {
+  const theme = getThemeMode();
+  root.querySelectorAll<HTMLInputElement>("[data-theme-option]").forEach((input) => {
+    input.checked = input.value === theme;
   });
 }
 
@@ -181,25 +202,27 @@ export function initSettings(root: Document | HTMLElement = document): void {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
 
-    if (target.matches("[data-theme-toggle]")) {
+    if (target.matches("[data-theme-option]")) {
+      const nextTheme = target.value;
+      if (!isThemeMode(nextTheme)) return;
+
       const previousTheme = getThemeMode();
-      const nextTheme: ThemeMode = target.checked ? "dark" : "light";
       if (previousTheme === nextTheme) return;
 
       setSettingsMessage(root, "");
       setSettingsSaving(root, true);
       applyTheme(nextTheme);
-      syncToggleState(root);
+      syncThemeState(root);
 
       void saveThemeToServer(nextTheme)
         .then(() => {
-          syncToggleState(root);
+          syncThemeState(root);
         })
         .catch((error) => {
           if (isAbortError(error)) return;
 
           applyTheme(previousTheme);
-          syncToggleState(root);
+          syncThemeState(root);
           setSettingsMessage(root, t("settings.saveThemeError"));
         })
         .finally(() => {

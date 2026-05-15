@@ -57,7 +57,7 @@ describe("поиск, настройки и поддержка", () => {
       "@friendsIncoming",
       "@friendsOutgoing",
     ]);
-    cy.get("[data-theme-toggle]").check({ force: true });
+    cy.get("[data-theme-option][value='dark']").check({ force: true });
 
     cy.wait("@saveSettings").its("request.body").should("deep.equal", {
       theme: "dark",

@@ -127,6 +127,17 @@ describe("communities api", () => {
     );
   });
 
+  it("передаёт параметры пагинации при загрузке участников", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({ items: [] });
+
+    await expect(getCommunityMembers(10, false, undefined, 30, 60)).resolves.toEqual([]);
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/communities/10/members?includeBlocked=false&ts=1777896000000&limit=30&offset=60",
+      {},
+      {},
+    );
+  });
+
   it("вызывает endpoints членства и CRUD сообщества", async () => {
     vi.mocked(apiRequest).mockResolvedValue({ profileId: 7, userAccountId: 3, role: "member" });
 

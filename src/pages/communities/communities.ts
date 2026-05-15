@@ -32,6 +32,7 @@ import {
 } from "../../api/posts";
 import { getMyProfile, uploadProfileAvatar } from "../../api/profile";
 import { getSessionUser } from "../../state/session";
+import { t } from "../../state/i18n";
 import { clearFeedCache } from "../feed/cache";
 import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
 import { prepareAvatarLinks } from "../../utils/avatar";
@@ -94,6 +95,8 @@ type CommunitiesRoot = (Document | HTMLElement) & {
   __communityPostBackdropPressStarted?: boolean;
   __communityPostDeleteBackdropPressStarted?: boolean;
 };
+
+const COMMUNITY_MEMBERS_PAGE_SIZE = 30;
 
 const COMMUNITY_TITLE_MIN_LENGTH = 3;
 const COMMUNITY_BIO_MAX_LENGTH = 2047;
@@ -291,13 +294,39 @@ async function loadCommunityMembers(
   communityId: number,
   includeBlocked = false,
   signal?: AbortSignal,
+  options: { append?: boolean; limit?: number; offset?: number } = {},
 ): Promise<CommunityMember[]> {
   try {
-    const members = await getCommunityMembers(communityId, includeBlocked, signal);
-    setActiveMembers(members);
-    return members;
+    const members = await getCommunityMembers(
+      communityId,
+      includeBlocked,
+      signal,
+      options.limit,
+      options.offset,
+    );
+    const existingMembers = options.append ? communitiesState.activeMembers : [];
+    const existingIds = new Set(existingMembers.map((member) => member.profileId));
+    const newMembers = members.filter((member) => !existingIds.has(member.profileId));
+    const nextMembers = options.append ? [...existingMembers, ...newMembers] : members;
+
+    setActiveMembers(nextMembers);
+
+    if (typeof options.limit === "number") {
+      communitiesState.membersManager.offset = (options.offset ?? 0) + members.length;
+      communitiesState.membersManager.hasMore =
+        members.length >= options.limit && (!options.append || newMembers.length > 0);
+    } else {
+      communitiesState.membersManager.offset = nextMembers.length;
+      communitiesState.membersManager.hasMore = false;
+    }
+
+    return nextMembers;
   } finally {
-    communitiesState.membersLoading = false;
+    if (options.append) {
+      communitiesState.membersManager.loadingMore = false;
+    } else {
+      communitiesState.membersLoading = false;
+    }
   }
 }
 
@@ -543,7 +572,7 @@ async function readFilesAsPreviews(files: File[]): Promise<ComposerMediaItem[]> 
           const reader = new FileReader();
           reader.onload = () => {
             if (typeof reader.result !== "string") {
-              reject(new Error("Не получилось прочитать изображение."));
+              reject(new Error(t("communities.imageReadError")));
               return;
             }
 
@@ -553,7 +582,7 @@ async function readFilesAsPreviews(files: File[]): Promise<ComposerMediaItem[]> 
               isUploaded: false,
             });
           };
-          reader.onerror = () => reject(new Error("Не получилось прочитать изображение."));
+          reader.onerror = () => reject(new Error(t("communities.imageReadError")));
           reader.readAsDataURL(file);
         }),
     ),
@@ -618,7 +647,7 @@ async function saveCommunityPost(root: ParentNode): Promise<void> {
 
   const text = communitiesState.postComposer.text.trim();
   if (!text && communitiesState.postComposer.mediaItems.length === 0) {
-    communitiesState.postComposer.errorMessage = "Добавьте текст или изображение.";
+    communitiesState.postComposer.errorMessage = t("communities.addTextOrImage");
     refreshCommunitiesPage(root);
     return;
   }
@@ -929,21 +958,62 @@ function bindFloatingCommunityMenuActions(
 }
 
 function openCommunityMembersManager(root: Document | HTMLElement, bundle: CommunityBundle): void {
+  const canManageMembers = bundle.permissions.canManageMembers || bundle.permissions.canChangeRoles;
   closeCommunityMenus(root);
   closeCommunityMemberRoleMenus(root);
   setActiveCommunity(bundle);
   communitiesState.membersManager.open = true;
   communitiesState.membersManager.errorMessage = "";
   communitiesState.membersManager.query = "";
+  communitiesState.membersManager.includeBlocked = canManageMembers
+    ? communitiesState.membersManager.includeBlocked
+    : false;
+  communitiesState.membersManager.offset = 0;
+  communitiesState.membersManager.hasMore = true;
+  communitiesState.membersManager.loadingMore = false;
   communitiesState.membersLoading = true;
+  communitiesState.membersLoaded = false;
   refreshCommunitiesPage(root);
-  void loadCommunityMembers(bundle.community.id, communitiesState.membersManager.includeBlocked)
+  void loadCommunityMembers(
+    bundle.community.id,
+    communitiesState.membersManager.includeBlocked,
+    undefined,
+    {
+      limit: COMMUNITY_MEMBERS_PAGE_SIZE,
+      offset: 0,
+    },
+  )
     .then(() => {
       refreshCommunitiesPage(root);
     })
     .catch((error: unknown) => {
       communitiesState.membersManager.errorMessage =
-        error instanceof Error ? error.message : "Не удалось загрузить участников.";
+        error instanceof Error ? error.message : t("communities.membersLoadError");
+      refreshCommunitiesPage(root);
+    });
+}
+
+function loadMoreCommunityMembers(root: Document | HTMLElement): void {
+  const bundle = communitiesState.activeCommunity;
+  const manager = communitiesState.membersManager;
+  if (!bundle || communitiesState.membersLoading || manager.loadingMore || !manager.hasMore) {
+    return;
+  }
+
+  manager.loadingMore = true;
+  refreshCommunitiesPage(root);
+  void loadCommunityMembers(bundle.community.id, manager.includeBlocked, undefined, {
+    append: true,
+    limit: COMMUNITY_MEMBERS_PAGE_SIZE,
+    offset: manager.offset,
+  })
+    .then(() => {
+      refreshCommunitiesPage(root);
+    })
+    .catch((error: unknown) => {
+      manager.errorMessage =
+        error instanceof Error ? error.message : t("communities.membersLoadError");
+      manager.loadingMore = false;
       refreshCommunitiesPage(root);
     });
 }
@@ -1192,6 +1262,12 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       if (target instanceof Element && target.closest("[data-community-members-modal]")) {
         repositionOpenCommunityMemberRoleMenu(root);
       }
+      if (target instanceof HTMLElement && target.matches("[data-community-members-list]")) {
+        const remaining = target.scrollHeight - target.scrollTop - target.clientHeight;
+        if (remaining < 120) {
+          loadMoreCommunityMembers(root);
+        }
+      }
     },
     { capture: true, passive: true },
   );
@@ -1294,7 +1370,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     if (target instanceof HTMLInputElement && target.matches("[data-community-post-image-input]")) {
       void handleCommunityPostImages(target.files, root).catch((error: unknown) => {
         communitiesState.postComposer.errorMessage =
-          error instanceof Error ? error.message : "Не получилось подготовить изображения.";
+          error instanceof Error ? error.message : t("communities.imagePrepareError");
         refreshCommunitiesPage(root);
       });
       return;
@@ -1309,15 +1385,22 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
       communitiesState.membersManager.includeBlocked = target.checked;
       communitiesState.membersManager.errorMessage = "";
+      communitiesState.membersManager.offset = 0;
+      communitiesState.membersManager.hasMore = true;
+      communitiesState.membersManager.loadingMore = false;
       communitiesState.membersLoading = true;
+      communitiesState.membersLoaded = false;
       refreshCommunitiesPage(root);
-      void loadCommunityMembers(bundle.community.id, target.checked)
+      void loadCommunityMembers(bundle.community.id, target.checked, undefined, {
+        limit: COMMUNITY_MEMBERS_PAGE_SIZE,
+        offset: 0,
+      })
         .then(() => {
           refreshCommunitiesPage(root);
         })
         .catch((error: unknown) => {
           communitiesState.membersManager.errorMessage =
-            error instanceof Error ? error.message : "Не удалось обновить список участников.";
+            error instanceof Error ? error.message : t("communities.membersLoadError");
           refreshCommunitiesPage(root);
         });
       return;

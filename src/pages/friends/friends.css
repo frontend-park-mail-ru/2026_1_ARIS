@@ -86,7 +86,7 @@
   .friends-page__error,
   .friends-page__empty {
     margin: 22px 0 0;
-    font-size: var(--text-size-meta);
+    font-size: var(--text-size-main);
     color: var(--color-text-meta);
   }
 

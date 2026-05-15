@@ -69,9 +69,12 @@ function createInitialMembersManagerState() {
   return {
     open: false,
     loading: false,
+    loadingMore: false,
     errorMessage: "",
     query: "",
     includeBlocked: false,
+    offset: 0,
+    hasMore: false,
     changingRoleProfileId: null,
     removingProfileId: null,
     confirmAction: null,

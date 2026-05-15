@@ -329,7 +329,7 @@
     color: var(--color-interactive-primary);
     font: inherit;
     font-size: var(--text-size-main);
-    font-weight: 600;
+    font-weight: 400;
     cursor: pointer;
     white-space: nowrap;
   }
@@ -366,6 +366,11 @@
     text-align: center;
   }
 
+  .community-posts__header:has(.community-posts__search--inline) {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
   .community-posts__header h2 {
     width: 100%;
     margin: 0;
@@ -386,6 +391,13 @@
     width: 100%;
     min-height: 44px;
     padding-right: 52px;
+  }
+
+  .community-posts__search--inline {
+    display: flex;
+    flex: 1 1 auto;
+    max-width: none;
+    padding-right: 16px;
   }
 
   .community-posts__search-toggle,
@@ -540,6 +552,10 @@
     color: var(--color-text-meta);
     font-size: var(--text-size-meta);
     line-height: var(--line-height-base);
+  }
+
+  .community-side-card .community-members-card__empty {
+    color: var(--color-text-meta);
   }
 
   .community-members-card__count-skeleton {
@@ -724,6 +740,21 @@
     border-color: rgb(87 105 240 / 18%);
     background: rgb(87 105 240 / 10%);
     color: var(--color-interactive-primary);
+  }
+
+  .profile-post-modal.community-post-modal .profile-post-modal__previews,
+  .profile-post-modal.community-post-modal .profile-post-modal__previews--single,
+  .profile-post-modal.community-post-modal .profile-post-modal__previews--double,
+  .profile-post-modal.community-post-modal .profile-post-modal__previews--triple,
+  .profile-post-modal.community-post-modal .profile-post-modal__previews--quad,
+  .profile-post-modal.community-post-modal .profile-post-modal__previews--five {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 128px));
+    justify-content: start;
+  }
+
+  .profile-post-modal.community-post-modal .profile-post-modal__preview {
+    width: 128px;
+    max-width: 100%;
   }
 
   .community-form {
@@ -1266,6 +1297,10 @@
   .community-members-manager__item--processing {
     opacity: 0.45;
     pointer-events: none;
+  }
+
+  .community-members-manager__item--readonly {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .community-modal__identity-meta {

@@ -40,12 +40,21 @@ function renderCommunityAvatar(bundle: CommunityBundle, className: string): stri
 
 function renderCommunityMenu(bundle: CommunityBundle): string {
   const { community, permissions } = bundle;
+  const canShowLeaveAction =
+    bundle.membership.isMember &&
+    !bundle.membership.blocked &&
+    bundle.membership.role !== "owner" &&
+    (permissions.canEditCommunity ||
+      permissions.canDeleteCommunity ||
+      permissions.canManageMembers ||
+      permissions.canChangeRoles);
 
   if (
     !permissions.canEditCommunity &&
     !permissions.canDeleteCommunity &&
     !permissions.canManageMembers &&
-    !permissions.canChangeRoles
+    !permissions.canChangeRoles &&
+    !canShowLeaveAction
   ) {
     return "";
   }
@@ -89,6 +98,15 @@ function renderCommunityMenu(bundle: CommunityBundle): string {
             `
             : ""
         }
+        ${
+          canShowLeaveAction
+            ? `
+              <button type="button" class="community-actions__item community-actions__item--danger" data-community-leave="${community.id}">
+                ${t("communities.leave")}
+              </button>
+            `
+            : ""
+        }
       </div>
     </div>
   `;
@@ -124,7 +142,7 @@ function renderCommunitiesList(): string {
       { length: 3 },
       () => `
         <article class="community-list-card" aria-hidden="true">
-          <span class="community-list-card__avatar skeleton"></span>
+          <span class="avatar-skeleton community-skeleton__list-avatar"></span>
           <div class="community-list-card__body">
             <span class="skeleton" style="display:block;width:180px;height:16px"></span>
             <span class="skeleton" style="display:block;width:112px;height:13px;margin-top:7px"></span>
@@ -249,7 +267,13 @@ function renderCommunityPrimaryAction(bundle: CommunityBundle): string {
     `;
   }
 
-  if (bundle.membership.role !== "owner") {
+  const hasManagementMenu =
+    bundle.permissions.canEditCommunity ||
+    bundle.permissions.canDeleteCommunity ||
+    bundle.permissions.canManageMembers ||
+    bundle.permissions.canChangeRoles;
+
+  if (bundle.membership.role !== "owner" && !hasManagementMenu) {
     return `
       <button type="button" class="community-hero__cta community-hero__cta--muted" data-community-leave="${bundle.community.id}">
         ${t("communities.leave")}
@@ -270,11 +294,6 @@ function renderCommunityDescription(bundle: CommunityBundle): string {
 }
 
 function renderCommunityMembersCard(bundle: CommunityBundle): string {
-  const canManageMembers = bundle.permissions.canManageMembers || bundle.permissions.canChangeRoles;
-  if (!canManageMembers) {
-    return "";
-  }
-
   const visibleMembers = communitiesState.activeMembers.filter((member) => !member.blocked);
   const previewMembers = visibleMembers.slice(0, COMMUNITY_MEMBERS_PREVIEW_COUNT);
   const isLoadingMembers =
@@ -311,7 +330,7 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
                       )}
                       <div class="community-members-card__copy">
                         <strong>${escapeHtml(getMemberDisplayName(member))}</strong>
-                        <span>${escapeHtml(getRoleLabel(member.role))}</span>
+                        <span>@${escapeHtml(member.username)}</span>
                       </div>
                     </a>
                   `,
@@ -321,9 +340,15 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
           `
             : `<p class="community-members-card__empty">${t("common.emptyList")}</p>`
       }
-      <button type="button" class="community-side-card__button" data-community-members-open="${bundle.community.id}">
-        ${t("profile.moreFriends")}
-      </button>
+      ${
+        visibleMembers.length > COMMUNITY_MEMBERS_PREVIEW_COUNT
+          ? `
+            <button type="button" class="community-side-card__button" data-community-members-open="${bundle.community.id}">
+              ${t("profile.moreFriends")}
+            </button>
+          `
+          : ""
+      }
     </section>
   `;
 }
@@ -581,7 +606,7 @@ function renderCommunityPosts(bundle: CommunityBundle, posts: ProfilePost[]): st
             : `
               <div class="profile-posts__empty content-card">
                 <p class="profile-empty-copy">${
-                  searchQuery ? t("friends.noneFound") : t("common.emptyList")
+                  searchQuery ? t("friends.noneFound") : t("communities.postsEmpty")
                 }</p>
               </div>
             `
@@ -605,6 +630,7 @@ function getCommunityPostSearchableText(post: ProfilePost): string {
 }
 
 function renderCommunityPostsControls(bundle: CommunityBundle): string {
+  const composerActions = renderCommunityComposerActions(bundle);
   return `
     <div class="community-posts__controls content-card">
       ${
@@ -633,15 +659,34 @@ function renderCommunityPostsControls(bundle: CommunityBundle): string {
           `
           : `
             <header class="community-posts__header">
-              ${renderCommunityComposerActions(bundle)}
-              <button
-                type="button"
-                class="community-posts__search-toggle"
-                data-community-post-search-open
-                aria-label="${t("profile.openPostSearch")}"
-              >
-                <img src="/assets/img/icons/search.svg" alt="">
-              </button>
+              ${
+                composerActions
+                  ? `
+                    ${composerActions}
+                    <button
+                      type="button"
+                      class="community-posts__search-toggle"
+                      data-community-post-search-open
+                      aria-label="${t("profile.openPostSearch")}"
+                    >
+                      <img src="/assets/img/icons/search.svg" alt="">
+                    </button>
+                  `
+                  : `
+                    <label class="community-posts__search community-posts__search--inline search-field" aria-label="${t("communities.postSearch")}">
+                      <span class="community-posts__search-icon search-field__icon" aria-hidden="true">
+                        <img src="/assets/img/icons/search.svg" alt="">
+                      </span>
+                      <input
+                        type="search"
+                        class="community-posts__search-input search-field__input"
+                        placeholder="${t("header.search")}"
+                        value="${escapeHtml(communitiesState.postSearchQuery)}"
+                        data-community-post-search
+                      >
+                    </label>
+                  `
+              }
             </header>
           `
       }
@@ -1038,8 +1083,10 @@ function renderCommunityMediaEditor(kind: "avatar" | "cover"): string {
 export function renderCommunityPostModal(): string {
   const composer = communitiesState.postComposer;
   const bundle = communitiesState.activeCommunity;
-  const title = composer.mode === "edit" ? "Редактировать публикацию" : "Новая публикация";
-  const submitLabel = composer.mode === "edit" ? "Сохранить" : "Опубликовать";
+  const title =
+    composer.mode === "edit" ? t("communities.editPostTitle") : t("communities.newPostTitle");
+  const submitLabel =
+    composer.mode === "edit" ? t("communities.savePost") : t("communities.publishPost");
   const canPostAsCommunity = Boolean(
     bundle?.permissions.canPost && bundle.permissions.canPostAsCommunity,
   );
@@ -1050,11 +1097,11 @@ export function renderCommunityPostModal(): string {
     composer.authorMode === "community"
       ? bundle
         ? getCommunityName(bundle.community)
-        : "Сообщество"
-      : "Ваш профиль";
+        : t("communities.communityFallback")
+      : t("communities.yourProfile");
 
   return `
-    <div class="profile-post-modal" data-community-post-modal ${composer.open ? "" : "hidden"}>
+    <div class="profile-post-modal community-post-modal" data-community-post-modal ${composer.open ? "" : "hidden"}>
       <section class="profile-post-modal__dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
         <header class="profile-post-modal__header">
           <h2 class="profile-post-modal__title">${escapeHtml(title)}</h2>
@@ -1067,7 +1114,7 @@ export function renderCommunityPostModal(): string {
           composer.mode === "create"
             ? `
               <div class="community-post-modal__author">
-                <div class="community-post-modal__author-options${canPostAsCommunity && canPostAsMember ? "" : " community-post-modal__author-options--single"}" role="group" aria-label="Выбор автора публикации">
+                <div class="community-post-modal__author-options${canPostAsCommunity && canPostAsMember ? "" : " community-post-modal__author-options--single"}" role="group" aria-label="${t("communities.postAuthorAria")}">
                   ${
                     canPostAsCommunity
                       ? `
@@ -1077,7 +1124,7 @@ export function renderCommunityPostModal(): string {
                           data-community-post-author-mode="community"
                           aria-pressed="${composer.authorMode === "community" ? "true" : "false"}"
                         >
-                          От имени сообщества
+                          ${t("communities.postAsCommunityAuthor")}
                         </button>
                       `
                       : ""
@@ -1091,7 +1138,7 @@ export function renderCommunityPostModal(): string {
                           data-community-post-author-mode="member"
                           aria-pressed="${composer.authorMode === "member" ? "true" : "false"}"
                         >
-                          От своего имени
+                          ${t("communities.postAsMemberAuthor")}
                         </button>
                       `
                       : ""
@@ -1101,7 +1148,7 @@ export function renderCommunityPostModal(): string {
             `
             : `
               <p class="profile-post-modal__scope">
-                Вы редактируете публикацию от имени:
+                ${t("communities.editPostScope")}
                 <strong>${escapeHtml(authorLabel)}</strong>
               </p>
             `
@@ -1114,7 +1161,7 @@ export function renderCommunityPostModal(): string {
             data-community-post-text
             rows="8"
             maxlength="5000"
-            placeholder="${composer.mode === "edit" ? "Обновите публикацию" : "Что нового в сообществе?"}"
+            placeholder="${composer.mode === "edit" ? t("communities.updatePostPlaceholder") : t("communities.newPostPlaceholder")}"
           >${escapeHtml(composer.text)}</textarea>
 
           <input
@@ -1134,7 +1181,7 @@ export function renderCommunityPostModal(): string {
               data-community-post-pick-image
               ${composer.isSaving || composer.mediaItems.length >= 5 ? "disabled" : ""}
             >
-              ${composer.mediaItems.length >= 5 ? "Достигнут лимит 5 изображений" : "+ Изображения"}
+              ${composer.mediaItems.length >= 5 ? t("communities.imagesLimit") : t("communities.addImages")}
             </button>
           </div>
 
@@ -1143,8 +1190,8 @@ export function renderCommunityPostModal(): string {
               .map(
                 (item, index) => `
                   <div class="profile-post-modal__preview">
-                    <img src="${escapeHtml(item.mediaURL)}" alt="Изображение ${index + 1}">
-                    <button type="button" class="profile-post-modal__preview-remove" data-community-post-remove-image="${index}" aria-label="Удалить изображение">×</button>
+                    <img src="${escapeHtml(item.mediaURL)}" alt="${t("communities.imageAlt")} ${index + 1}">
+                    <button type="button" class="profile-post-modal__preview-remove" data-community-post-remove-image="${index}" aria-label="${t("communities.removeImage")}">×</button>
                   </div>
                 `,
               )
@@ -1164,7 +1211,7 @@ export function renderCommunityPostModal(): string {
               ${submitLabel}
             </button>
             <button type="button" class="profile-post-modal__button" data-community-post-close>
-              Отмена
+              ${t("friends.cancel")}
             </button>
           </div>
         </form>
@@ -1176,6 +1223,120 @@ export function renderCommunityPostModal(): string {
 function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
   const manager = communitiesState.membersManager;
   const members = getVisibleCommunityMembers();
+  const canManageMembers = bundle.permissions.canManageMembers || bundle.permissions.canChangeRoles;
+  const memberItems = members
+    .map((member) => {
+      const canChange =
+        canManageMembers &&
+        canManageCommunityMemberRole(bundle, member, communitiesState.viewerProfileId);
+      const canRemove =
+        canManageMembers &&
+        canRemoveCommunityMember(bundle, member, communitiesState.viewerProfileId);
+      const isProcessing =
+        manager.changingRoleProfileId === member.profileId ||
+        manager.removingProfileId === member.profileId;
+      const profileHref = `/id${member.profileId}`;
+      const roleOptions = ["admin", "moderator", "member", "blocked"];
+
+      return `
+        <article class="community-members-manager__item${isProcessing ? " community-members-manager__item--processing" : ""}${canManageMembers ? "" : " community-members-manager__item--readonly"}">
+          <div class="community-members-manager__identity">
+            <a class="community-members-manager__avatar-link" href="${profileHref}" data-link>
+              ${renderAvatarMarkup(
+                "community-members-manager__avatar",
+                getMemberDisplayName(member),
+                member.avatarUrl,
+                { width: 48, height: 48 },
+              )}
+            </a>
+            <div class="community-members-manager__copy">
+              <a href="${profileHref}" data-link>${escapeHtml(getMemberDisplayName(member))}</a>
+              <span>@${escapeHtml(member.username)}</span>
+            </div>
+          </div>
+
+          ${
+            canManageMembers
+              ? `
+              <div class="community-members-manager__controls">
+                ${
+                  member.blocked
+                    ? `<span class="community-members-manager__role">${escapeHtml(getRoleLabel("blocked"))}</span>`
+                    : canChange
+                      ? `
+                      <div class="community-members-manager__role-select" data-community-member-role-select="${member.profileId}">
+                        <button
+                          type="button"
+                          class="community-members-manager__role-current"
+                          data-community-member-role-toggle="${member.profileId}"
+                          aria-haspopup="listbox"
+                          aria-expanded="false"
+                          ${isProcessing ? "disabled" : ""}
+                        >
+                          <span>${escapeHtml(getRoleLabel(member.role))}</span>
+                        </button>
+                        <div
+                          class="community-members-manager__role-menu"
+                          data-community-member-role-menu="${member.profileId}"
+                          role="listbox"
+                          aria-label="${t("communities.memberRoleAria")}"
+                          hidden
+                        >
+                          ${roleOptions
+                            .map(
+                              (role) => `
+                              <button
+                                type="button"
+                                class="community-members-manager__role-option${member.role === role ? " community-members-manager__role-option--active" : ""}"
+                                data-community-member-role="${member.profileId}"
+                                data-community-member-role-value="${role}"
+                                role="option"
+                                aria-selected="${member.role === role ? "true" : "false"}"
+                                ${isProcessing || member.role === role ? "disabled" : ""}
+                              >
+                                ${escapeHtml(getRoleLabel(role))}
+                              </button>
+                            `,
+                            )
+                            .join("")}
+                        </div>
+                      </div>
+                    `
+                      : `<span class="community-members-manager__role">${escapeHtml(getRoleLabel(member.role))}</span>`
+                }
+                ${
+                  member.blocked && canRemove
+                    ? `
+                      <button
+                        type="button"
+                        class="community-members-manager__remove"
+                        data-community-member-unblock="${member.profileId}"
+                        ${isProcessing ? "disabled" : ""}
+                      >
+                        ${isProcessing ? t("communities.wait") : t("communities.removeFromBlocked")}
+                      </button>
+                    `
+                    : !member.blocked && canRemove
+                      ? `
+                      <button
+                        type="button"
+                        class="community-members-manager__remove"
+                        data-community-member-remove="${member.profileId}"
+                        ${isProcessing ? "disabled" : ""}
+                      >
+                        ${isProcessing ? t("communities.wait") : t("communities.remove")}
+                      </button>
+                    `
+                      : ""
+                }
+              </div>
+            `
+              : ""
+          }
+        </article>
+      `;
+    })
+    .join("");
 
   return `
     <div class="community-modal" data-community-members-modal ${manager.open ? "" : "hidden"}>
@@ -1200,10 +1361,16 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
             >
           </label>
 
-          <label class="community-members-manager__toggle">
-            <input type="checkbox" ${manager.includeBlocked ? "checked" : ""} data-community-members-include-blocked>
-            <span>${t("communities.showBlocked")}</span>
-          </label>
+          ${
+            canManageMembers
+              ? `
+                <label class="community-members-manager__toggle">
+                  <input type="checkbox" ${manager.includeBlocked ? "checked" : ""} data-community-members-include-blocked>
+                  <span>${t("communities.showBlocked")}</span>
+                </label>
+              `
+              : ""
+          }
         </div>
 
         ${
@@ -1212,122 +1379,16 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
             : ""
         }
 
-        <div class="community-members-manager__list">
+        <div class="community-members-manager__list" data-community-members-list>
           ${
             communitiesState.membersLoading
               ? `<p class="communities-page__empty">${t("communities.membersLoading")}</p>`
               : members.length
-                ? members
-                    .map((member) => {
-                      const canChange = canManageCommunityMemberRole(
-                        bundle,
-                        member,
-                        communitiesState.viewerProfileId,
-                      );
-                      const canRemove = canRemoveCommunityMember(
-                        bundle,
-                        member,
-                        communitiesState.viewerProfileId,
-                      );
-                      const isProcessing =
-                        manager.changingRoleProfileId === member.profileId ||
-                        manager.removingProfileId === member.profileId;
-                      const profileHref = `/id${member.profileId}`;
-                      const roleOptions = ["admin", "moderator", "member", "blocked"];
-
-                      return `
-                        <article class="community-members-manager__item${isProcessing ? " community-members-manager__item--processing" : ""}">
-                          <div class="community-members-manager__identity">
-                            <a class="community-members-manager__avatar-link" href="${profileHref}" data-link>
-                              ${renderAvatarMarkup(
-                                "community-members-manager__avatar",
-                                getMemberDisplayName(member),
-                                member.avatarUrl,
-                                { width: 48, height: 48 },
-                              )}
-                            </a>
-                            <div class="community-members-manager__copy">
-                              <a href="${profileHref}" data-link>${escapeHtml(getMemberDisplayName(member))}</a>
-                              <span>@${escapeHtml(member.username)}</span>
-                            </div>
-                          </div>
-
-                          <div class="community-members-manager__controls">
-                            ${
-                              member.blocked
-                                ? `<span class="community-members-manager__role">${escapeHtml(getRoleLabel("blocked"))}</span>`
-                                : canChange
-                                  ? `
-                                  <div class="community-members-manager__role-select" data-community-member-role-select="${member.profileId}">
-                                    <button
-                                      type="button"
-                                      class="community-members-manager__role-current"
-                                      data-community-member-role-toggle="${member.profileId}"
-                                      aria-haspopup="listbox"
-                                      aria-expanded="false"
-                                      ${isProcessing ? "disabled" : ""}
-                                    >
-                                      <span>${escapeHtml(getRoleLabel(member.role))}</span>
-                                    </button>
-                                    <div
-                                      class="community-members-manager__role-menu"
-                                      data-community-member-role-menu="${member.profileId}"
-                                      role="listbox"
-                                      aria-label="${t("communities.memberRoleAria")}"
-                                      hidden
-                                    >
-                                      ${roleOptions
-                                        .map(
-                                          (role) => `
-                                          <button
-                                            type="button"
-                                            class="community-members-manager__role-option${member.role === role ? " community-members-manager__role-option--active" : ""}"
-                                            data-community-member-role="${member.profileId}"
-                                            data-community-member-role-value="${role}"
-                                            role="option"
-                                            aria-selected="${member.role === role ? "true" : "false"}"
-                                            ${isProcessing || member.role === role ? "disabled" : ""}
-                                          >
-                                            ${escapeHtml(getRoleLabel(role))}
-                                          </button>
-                                        `,
-                                        )
-                                        .join("")}
-                                    </div>
-                                  </div>
-                                `
-                                  : `<span class="community-members-manager__role">${escapeHtml(getRoleLabel(member.role))}</span>`
-                            }
-                            ${
-                              member.blocked && canRemove
-                                ? `
-                                  <button
-                                    type="button"
-                                    class="community-members-manager__remove"
-                                    data-community-member-unblock="${member.profileId}"
-                                    ${isProcessing ? "disabled" : ""}
-                                  >
-                                    ${isProcessing ? t("communities.wait") : t("communities.removeFromBlocked")}
-                                  </button>
-                                `
-                                : !member.blocked && canRemove
-                                  ? `
-                                  <button
-                                    type="button"
-                                    class="community-members-manager__remove"
-                                    data-community-member-remove="${member.profileId}"
-                                    ${isProcessing ? "disabled" : ""}
-                                  >
-                                    ${isProcessing ? t("communities.wait") : t("communities.remove")}
-                                  </button>
-                                `
-                                  : ""
-                            }
-                          </div>
-                        </article>
-                      `;
-                    })
-                    .join("")
+                ? `${memberItems}${
+                    manager.loadingMore
+                      ? `<p class="communities-page__empty">${t("communities.membersLoadingMore")}</p>`
+                      : ""
+                  }`
                 : `<p class="communities-page__empty">${
                     manager.query.trim() ? t("friends.noneFound") : t("common.emptyList")
                   }</p>`
@@ -1345,10 +1406,10 @@ export function renderCommunityPostDeleteModal(): string {
         class="profile-post-delete-modal__dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Удалить публикацию"
+        aria-label="${t("communities.deletePostTitle")}"
       >
         <header class="profile-post-delete-modal__header">
-          <h2 class="profile-post-delete-modal__title">Удалить публикацию</h2>
+          <h2 class="profile-post-delete-modal__title">${t("communities.deletePostTitle")}</h2>
           ${renderModalCloseButton({
             className: "profile-post-delete-modal__close",
             attributes: "data-community-post-delete-close",
@@ -1356,7 +1417,7 @@ export function renderCommunityPostDeleteModal(): string {
         </header>
 
         <p class="profile-post-delete-modal__text">
-          Вы действительно хотите удалить этот пост?
+          ${t("communities.deletePostText")}
         </p>
 
         <div class="profile-post-delete-modal__actions">
@@ -1365,14 +1426,14 @@ export function renderCommunityPostDeleteModal(): string {
             class="profile-post-delete-modal__button profile-post-delete-modal__button--primary"
             data-community-post-delete-confirm
           >
-            Удалить пост
+            ${t("communities.removePost")}
           </button>
           <button
             type="button"
             class="profile-post-delete-modal__button"
             data-community-post-delete-close
           >
-            Отмена
+            ${t("friends.cancel")}
           </button>
         </div>
       </section>
@@ -1394,17 +1455,17 @@ export function renderMemberConfirmModal(): string {
   let title: string;
   let text: string;
   if (action.type === "remove" && member.blocked) {
-    title = "Разблокировать участника";
-    text = `Вы действительно хотите удалить этого пользователя из чёрного списка? Пользователь сможет сам вступить в сообщество.`;
+    title = t("communities.unblockMemberTitle");
+    text = t("communities.unblockMemberText");
   } else if (action.type === "remove") {
-    title = "Удалить участника";
-    text = `Вы действительно хотите удалить этого пользователя из сообщества?`;
+    title = t("communities.removeMemberTitle");
+    text = t("communities.removeMemberText");
   } else if (action.newRole === "blocked") {
-    title = "Заблокировать участника";
-    text = `Вы действительно хотите заблокировать этого пользователя?`;
+    title = t("communities.blockMemberTitle");
+    text = t("communities.blockMemberText");
   } else {
-    title = "Изменить роль";
-    text = `Вы действительно хотите назначить этому пользователю роль «${escapeHtml(getRoleLabel(action.newRole))}»?`;
+    title = t("communities.changeRoleTitle");
+    text = `${t("communities.changeRoleText")} «${escapeHtml(getRoleLabel(action.newRole))}»?`;
   }
 
   return `
@@ -1436,10 +1497,10 @@ export function renderMemberConfirmModal(): string {
 
         <div class="community-modal__actions">
           <button type="button" class="community-modal__button community-modal__button--primary" data-member-confirm-ok>
-            Подтвердить
+            ${t("communities.confirm")}
           </button>
           <button type="button" class="community-modal__button" data-member-confirm-close>
-            Отмена
+            ${t("friends.cancel")}
           </button>
         </div>
       </section>
@@ -1460,9 +1521,9 @@ export function renderCommunityLeaveModal(): string {
 
   return `
     <div class="community-modal" data-community-leave-modal>
-      <section class="community-modal__dialog community-modal__dialog--small" role="dialog" aria-modal="true" aria-label="Покинуть сообщество">
+      <section class="community-modal__dialog community-modal__dialog--small" role="dialog" aria-modal="true" aria-label="${t("communities.leaveTitle")}">
         <header class="community-modal__header">
-          <h2 class="community-modal__title">Покинуть сообщество</h2>
+          <h2 class="community-modal__title">${t("communities.leaveTitle")}</h2>
           ${renderModalCloseButton({
             className: "community-modal__close",
             attributes: "data-community-leave-close",
@@ -1475,16 +1536,16 @@ export function renderCommunityLeaveModal(): string {
         </div>
 
         <p class="community-modal__text">
-          ${joinedDate ? `Вы состоите в этом сообществе с ${escapeHtml(joinedDate)}.<br>` : ""}
-          Вы действительно хотите покинуть его?
+          ${joinedDate ? `${t("communities.leaveJoinedPrefix")} ${escapeHtml(joinedDate)}.<br>` : ""}
+          ${t("communities.leaveText")}
         </p>
 
         <div class="community-modal__actions">
           <button type="button" class="community-modal__button community-modal__button--primary" data-community-leave-confirm="${id}">
-            Подтвердить
+            ${t("communities.confirm")}
           </button>
           <button type="button" class="community-modal__button" data-community-leave-close>
-            Отмена
+            ${t("friends.cancel")}
           </button>
         </div>
       </section>
@@ -1502,9 +1563,9 @@ export function renderCommunityDeleteModal(): string {
 
   return `
     <div class="community-modal" data-community-delete-modal>
-      <section class="community-modal__dialog community-modal__dialog--small" role="dialog" aria-modal="true" aria-label="Удалить сообщество">
+      <section class="community-modal__dialog community-modal__dialog--small" role="dialog" aria-modal="true" aria-label="${t("communities.delete")}">
         <header class="community-modal__header">
-          <h2 class="community-modal__title">Удалить сообщество</h2>
+          <h2 class="community-modal__title">${t("communities.delete")}</h2>
           ${renderModalCloseButton({
             className: "community-modal__close",
             attributes: "data-community-delete-close",
@@ -1516,14 +1577,14 @@ export function renderCommunityDeleteModal(): string {
           <p>${escapeHtml(getCommunityName(bundle.community))}</p>
         </div>
 
-        <p class="community-modal__text">Вы действительно хотите удалить это сообщество?</p>
+        <p class="community-modal__text">${t("communities.deleteText")}</p>
 
         <div class="community-modal__actions">
           <button type="button" class="community-modal__button community-modal__button--primary" data-community-delete-confirm="${id}">
-            Удалить сообщество
+            ${t("communities.delete")}
           </button>
           <button type="button" class="community-modal__button" data-community-delete-close>
-            Отмена
+            ${t("friends.cancel")}
           </button>
         </div>
       </section>

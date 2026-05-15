@@ -220,7 +220,7 @@ export function renderFriendsContent(): string {
           <p class="friends-panel__summary">
             ${
               totalCount === 0
-                ? t("common.emptyList")
+                ? t("friends.emptySummary")
                 : t("friends.summary").replace("{count}", getFriendsCountLabel(totalCount))
             }
           </p>

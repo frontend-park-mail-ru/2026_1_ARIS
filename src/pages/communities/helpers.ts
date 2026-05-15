@@ -170,13 +170,13 @@ export function formatMemberJoinDate(iso?: string): string {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("ru-RU", {
+  const isEnglish = getLanguageMode() === "EN";
+  const formatted = new Intl.DateTimeFormat(isEnglish ? "en-US" : "ru-RU", {
     day: "numeric",
     month: "long",
     year: "numeric",
-  })
-    .format(date)
-    .replace(" г.", " года");
+  }).format(date);
+  return isEnglish ? formatted : formatted.replace(" г.", " года");
 }
 
 export function formatPostRelativeTime(iso?: string): string {

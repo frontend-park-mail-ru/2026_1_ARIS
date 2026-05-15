@@ -272,11 +272,19 @@ export async function getCommunityMembers(
   id: string | number,
   includeBlocked = false,
   signal?: AbortSignal,
+  limit?: number,
+  offset?: number,
 ): Promise<CommunityMember[]> {
   const params = new URLSearchParams({
     includeBlocked: includeBlocked ? "true" : "false",
     ts: String(Date.now()),
   });
+  if (typeof limit === "number") {
+    params.set("limit", String(limit));
+  }
+  if (typeof offset === "number") {
+    params.set("offset", String(offset));
+  }
   const data = await apiRequest<CommunityMembersResponse>(
     `/api/communities/${encodeURIComponent(String(id))}/members?${params.toString()}`,
     { ...(signal ? { signal } : {}) },

@@ -74,9 +74,12 @@ export type MemberConfirmAction =
 export type CommunityMembersManagerState = {
   open: boolean;
   loading: boolean;
+  loadingMore: boolean;
   errorMessage: string;
   query: string;
   includeBlocked: boolean;
+  offset: number;
+  hasMore: boolean;
   changingRoleProfileId: number | null;
   removingProfileId: number | null;
   confirmAction: MemberConfirmAction | null;

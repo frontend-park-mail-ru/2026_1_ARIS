@@ -46,14 +46,12 @@ describe("profile helpers", () => {
     expect(getAvatarImageSrc()).toBe("/assets/img/default-avatar.png");
     expect(getAvatarImageSrc("data:image/png;base64,a")).toBe("data:image/png;base64,a");
     expect(getAvatarImageSrc("https://cdn.example/a.png")).toBe("https://cdn.example/a.png");
-    expect(getAvatarImageSrc("/media/a.png")).toBe("/image-proxy?url=%2Fmedia%2Fa.png");
+    expect(getAvatarImageSrc("/media/a.png")).toBe("http://localhost:8080/media/a.png");
   });
 
-  it("оставляет backend media path для редактора и proxy для внешних ссылок", () => {
+  it("оставляет backend media path для редактора и не заворачивает внешние ссылки в proxy", () => {
     expect(getAvatarEditorSrc("http://localhost:8080/media/a.png")).toBe("/media/a.png");
-    expect(getAvatarEditorSrc("https://cdn.example/a.png")).toBe(
-      "/image-proxy?url=https%3A%2F%2Fcdn.example%2Fa.png",
-    );
+    expect(getAvatarEditorSrc("https://cdn.example/a.png")).toBe("https://cdn.example/a.png");
   });
 
   it("определяет видимые значения профиля", () => {

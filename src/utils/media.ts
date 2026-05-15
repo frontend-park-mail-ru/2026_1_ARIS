@@ -7,6 +7,18 @@ import { API_BASE_URL } from "../api/config";
 
 const EMPTY_MEDIA_VALUES = new Set(["", "null", "undefined", "none"]);
 
+function getImageProxyTarget(value: string): string {
+  if (!value.startsWith("/image-proxy?url=")) {
+    return "";
+  }
+
+  try {
+    return new URL(value, window.location.origin).searchParams.get("url")?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Возвращает итоговый URL медиафайла для интерфейса.
  *
@@ -21,11 +33,12 @@ export function resolveMediaUrl(rawValue?: string | null): string {
     return "";
   }
 
-  if (
-    value.startsWith("data:") ||
-    value.startsWith("blob:") ||
-    value.startsWith("/image-proxy?url=")
-  ) {
+  const imageProxyTarget = getImageProxyTarget(value);
+  if (imageProxyTarget && imageProxyTarget !== value) {
+    return resolveMediaUrl(imageProxyTarget);
+  }
+
+  if (value.startsWith("data:") || value.startsWith("blob:")) {
     return value;
   }
 

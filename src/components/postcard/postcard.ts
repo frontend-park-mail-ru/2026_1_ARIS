@@ -403,13 +403,13 @@ export function renderPostcardInner(
       <footer class="postcard__footer">
         ${statsMarkup}
 
-        <button
-          type="button"
+        <time
           class="postcard__time"
           ${exactTime ? `data-tooltip="${escapeHtml(exactTime)}"` : ""}
-          ${post.timeRaw ? 'data-postcard-time="true"' : ""}
+          ${exactTime ? `title="${escapeHtml(exactTime.replace(/\n/g, " "))}"` : ""}
+          ${post.timeRaw ? `datetime="${escapeHtml(post.timeRaw)}"` : ""}
           aria-label="${exactTime ? `${t("postcard.exactDateAria")} ${escapeHtml(exactTime.replace(/\n/g, ", "))}` : escapeHtml(displayTime)}"
-        >${displayTime}</button>
+        >${escapeHtml(displayTime)}</time>
       </footer>
     </article>
   `;
@@ -459,20 +459,6 @@ export function initPostcardExpand(root: Document | HTMLElement = document): voi
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
-
-    const timeButton = target.closest("[data-postcard-time]");
-    if (timeButton instanceof HTMLElement) {
-      const shouldOpen = !timeButton.classList.contains("postcard__time--tooltip-open");
-      root.querySelectorAll<HTMLElement>(".postcard__time--tooltip-open").forEach((node) => {
-        node.classList.remove("postcard__time--tooltip-open");
-      });
-      timeButton.classList.toggle("postcard__time--tooltip-open", shouldOpen);
-      return;
-    }
-
-    root.querySelectorAll<HTMLElement>(".postcard__time--tooltip-open").forEach((node) => {
-      node.classList.remove("postcard__time--tooltip-open");
-    });
 
     const button = target.closest(".postcard__expand");
     if (!button) return;

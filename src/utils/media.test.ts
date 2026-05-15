@@ -12,12 +12,18 @@ describe("media url helpers", () => {
     expect(resolveMediaUrl("none")).toBe("");
   });
 
-  it("оставляет абсолютные, data, blob и proxy-ссылки без изменений", () => {
+  it("оставляет абсолютные, data и blob-ссылки без изменений", () => {
     expect(resolveMediaUrl("https://cdn.example/image.png")).toBe("https://cdn.example/image.png");
     expect(resolveMediaUrl("data:image/png;base64,a")).toBe("data:image/png;base64,a");
     expect(resolveMediaUrl("blob:http://localhost/id")).toBe("blob:http://localhost/id");
+  });
+
+  it("разворачивает старые image-proxy ссылки в реальные адреса", () => {
     expect(resolveMediaUrl("/image-proxy?url=%2Fmedia%2F1.png")).toBe(
-      "/image-proxy?url=%2Fmedia%2F1.png",
+      "http://localhost:8080/media/1.png",
+    );
+    expect(resolveMediaUrl("/image-proxy?url=https%3A%2F%2Fcdn.example%2Fimage.png")).toBe(
+      "https://cdn.example/image.png",
     );
   });
 

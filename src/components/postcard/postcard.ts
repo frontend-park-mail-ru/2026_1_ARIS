@@ -360,7 +360,7 @@ export function renderPostcardInner(
         action: "repost",
       })}
       ${renderPostcardStat({
-        icon: "/assets/img/icons/comment.svg",
+        icon: "/assets/img/icons/chat.svg",
         count: post.comments,
         action: "comment",
       })}

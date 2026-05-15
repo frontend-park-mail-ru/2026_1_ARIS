@@ -107,6 +107,13 @@ let communitiesSearchTimerId: number | null = null;
 let communitiesSearchAbortController: AbortController | null = null;
 let communitiesSearchRequestId = 0;
 
+function formatCommunityMessage(message: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replace(`{${key}}`, String(value)),
+    message,
+  );
+}
+
 function clearCommunitiesSearchRequest(): void {
   if (communitiesSearchTimerId !== null) {
     window.clearTimeout(communitiesSearchTimerId);
@@ -416,15 +423,19 @@ function validateCommunityTitle(value: string): string {
   const title = value.trim();
 
   if (!title) {
-    return "Введите название сообщества.";
+    return t("communities.formTitleRequired");
   }
 
   if (title.length < COMMUNITY_TITLE_MIN_LENGTH) {
-    return `Название сообщества должно содержать минимум ${COMMUNITY_TITLE_MIN_LENGTH} символа.`;
+    return formatCommunityMessage(t("communities.formTitleMinError"), {
+      count: COMMUNITY_TITLE_MIN_LENGTH,
+    });
   }
 
   if (title.length > COMMUNITY_TITLE_MAX_LENGTH) {
-    return `Название сообщества должно быть не длиннее ${COMMUNITY_TITLE_MAX_LENGTH} символов.`;
+    return formatCommunityMessage(t("communities.formTitleMaxError"), {
+      count: COMMUNITY_TITLE_MAX_LENGTH,
+    });
   }
 
   return "";
@@ -434,7 +445,9 @@ function validateCommunityBio(value: string): string {
   const bio = value.trim();
 
   if (bio.length > COMMUNITY_BIO_MAX_LENGTH) {
-    return `Описание сообщества должно быть не длиннее ${COMMUNITY_BIO_MAX_LENGTH} символов.`;
+    return formatCommunityMessage(t("communities.formBioMaxError"), {
+      count: COMMUNITY_BIO_MAX_LENGTH,
+    });
   }
 
   return "";
@@ -449,7 +462,7 @@ function validateCommunityPayload(payload: CommunityPayload): string {
   if (bioError) return bioError;
 
   if (username.length < 3 || username.length > 20) {
-    return "Адрес сообщества должен содержать от 3 до 20 символов.";
+    return t("communities.formUsernameLengthError");
   }
 
   return "";
@@ -532,7 +545,7 @@ async function saveCommunityForm(root: ParentNode): Promise<void> {
   } catch (error) {
     communitiesState.form.isSaving = false;
     communitiesState.form.errorMessage =
-      error instanceof Error ? error.message : "Не удалось сохранить сообщество.";
+      error instanceof Error ? error.message : t("communities.formSaveError");
     refreshCommunitiesPage(root);
   }
 }

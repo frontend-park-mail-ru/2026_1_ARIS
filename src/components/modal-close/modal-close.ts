@@ -2,6 +2,7 @@
  * Кнопка закрытия модальных окон.
  */
 import { renderButton } from "../button/button";
+import { t } from "../../state/i18n";
 
 type RenderModalCloseButtonOptions = {
   className?: string;
@@ -16,7 +17,9 @@ export function renderModalCloseButton({
   attributes = "",
 }: RenderModalCloseButtonOptions = {}): string {
   const classes = ["modal-close-button", className].filter(Boolean).join(" ");
-  const extraAttributes = ['aria-label="Закрыть"', attributes].filter(Boolean).join(" ");
+  const extraAttributes = [`aria-label="${t("common.close")}"`, attributes]
+    .filter(Boolean)
+    .join(" ");
 
   return renderButton({
     text: "×",

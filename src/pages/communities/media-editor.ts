@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../../api/config";
+import { t } from "../../state/i18n";
 import { getAvatarInitials, resolveAvatarSrc } from "../../utils/avatar";
 import { resolveMediaUrl } from "../../utils/media";
 import { communitiesState } from "./state";
@@ -219,16 +220,16 @@ export async function loadCommunityMediaFile(
           return;
         }
 
-        reject(new Error("Не получилось прочитать изображение."));
+        reject(new Error(t("communities.formReadImageError")));
       };
-      reader.onerror = () => reject(new Error("Не получилось прочитать изображение."));
+      reader.onerror = () => reject(new Error(t("communities.formReadImageError")));
       reader.readAsDataURL(file);
     });
 
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
       const previewImage = new Image();
       previewImage.onload = () => resolve(previewImage);
-      previewImage.onerror = () => reject(new Error("Не получилось прочитать изображение."));
+      previewImage.onerror = () => reject(new Error(t("communities.formReadImageError")));
       previewImage.src = dataUrl;
     });
 
@@ -236,7 +237,7 @@ export async function loadCommunityMediaFile(
   } catch (error) {
     setCommunityMediaError(
       kind,
-      error instanceof Error ? error.message : "Не получилось подготовить изображение.",
+      error instanceof Error ? error.message : t("communities.formPrepareImageError"),
     );
   }
 
@@ -259,8 +260,7 @@ export async function loadCommunityMediaFromUrl(
       const previewImage = new Image();
       previewImage.crossOrigin = "anonymous";
       previewImage.onload = () => resolve(previewImage);
-      previewImage.onerror = () =>
-        reject(new Error("Не получилось загрузить текущее изображение."));
+      previewImage.onerror = () => reject(new Error(t("communities.formReadCurrentImageError")));
       previewImage.src = src;
     });
 
@@ -268,7 +268,7 @@ export async function loadCommunityMediaFromUrl(
   } catch (error) {
     setCommunityMediaError(
       kind,
-      error instanceof Error ? error.message : "Не получилось загрузить текущее изображение.",
+      error instanceof Error ? error.message : t("communities.formReadCurrentImageError"),
     );
   }
 
@@ -356,7 +356,7 @@ export async function buildCommunityMediaFile(
   const editor = getCommunityMediaEditor(kind);
 
   if (!editor.objectUrl || !editor.naturalWidth || !editor.naturalHeight) {
-    throw new Error("Сначала выберите изображение.");
+    throw new Error(t("communities.formSelectImageError"));
   }
 
   const stageSize = getCommunityMediaStageSize(root, kind);
@@ -374,14 +374,14 @@ export async function buildCommunityMediaFile(
     const previewImage = new Image();
     previewImage.crossOrigin = "anonymous";
     previewImage.onload = () => resolve(previewImage);
-    previewImage.onerror = () => reject(new Error("Не получилось подготовить изображение."));
+    previewImage.onerror = () => reject(new Error(t("communities.formPrepareImageError")));
     previewImage.src = editor.objectUrl!;
   });
 
   const rotatedCanvas = document.createElement("canvas");
   const rotatedContext = rotatedCanvas.getContext("2d");
   if (!rotatedContext) {
-    throw new Error("Не получилось подготовить изображение.");
+    throw new Error(t("communities.formPrepareImageError"));
   }
 
   rotatedCanvas.width = rotatedSize.width;
@@ -396,7 +396,7 @@ export async function buildCommunityMediaFile(
 
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error("Не получилось подготовить изображение.");
+    throw new Error(t("communities.formPrepareImageError"));
   }
 
   context.drawImage(
@@ -419,7 +419,7 @@ export async function buildCommunityMediaFile(
           return;
         }
 
-        reject(new Error("Не получилось подготовить изображение."));
+        reject(new Error(t("communities.formPrepareImageError")));
       },
       "image/jpeg",
       0.92,
@@ -511,14 +511,18 @@ function syncSingleCommunityMediaEditor(root: ParentNode, kind: CommunityMediaEd
   if (pickButton instanceof HTMLButtonElement) {
     pickButton.disabled = editor.loading;
     pickButton.textContent =
-      hasEditorImage || hasCurrentImage ? "Заменить изображение" : "Выбрать изображение";
+      hasEditorImage || hasCurrentImage
+        ? t("communities.formReplaceImage")
+        : t("communities.formChooseImage");
   }
 
   if (deleteButton instanceof HTMLButtonElement) {
     deleteButton.hidden = !canResetChanges && !canDeleteSavedImage;
     deleteButton.disabled = editor.loading;
     deleteButton.textContent =
-      canResetChanges && !canDeleteSavedImage ? "Сбросить изменения" : "Удалить изображение";
+      canResetChanges && !canDeleteSavedImage
+        ? t("communities.formResetChanges")
+        : t("communities.formRemoveImage");
   }
 
   rotateButtons.forEach((button) => {

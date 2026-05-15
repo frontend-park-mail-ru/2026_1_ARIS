@@ -797,7 +797,8 @@ export function renderCommunityRightRail(): string {
 
 export function renderCommunityFormModal(): string {
   const form = communitiesState.form;
-  const title = form.mode === "edit" ? "Изменить сообщество" : "Создать сообщество";
+  const title =
+    form.mode === "edit" ? t("communities.formEditTitle") : t("communities.formCreateTitle");
 
   return `
     <div class="community-modal" data-community-form-modal ${form.open ? "" : "hidden"}>
@@ -824,12 +825,12 @@ export function renderCommunityFormModal(): string {
               form.step > 1
                 ? `
                   <button type="button" class="community-modal__button" data-community-form-prev>
-                    Назад
+                    ${t("communities.formBack")}
                   </button>
                 `
                 : `
                   <button type="button" class="community-modal__button" data-community-form-close>
-                    Отмена
+                    ${t("communities.formCancel")}
                   </button>
                 `
             }
@@ -837,12 +838,18 @@ export function renderCommunityFormModal(): string {
               form.step < 4
                 ? `
                   <button type="button" class="community-modal__button community-modal__button--primary" data-community-form-next>
-                    Далее
+                    ${t("communities.formNext")}
                   </button>
                 `
                 : `
                   <button type="submit" class="community-modal__button community-modal__button--primary" ${form.isSaving ? "disabled" : ""}>
-                    ${form.isSaving ? "Сохраняем..." : form.mode === "edit" ? "Применить" : "Создать"}
+                    ${
+                      form.isSaving
+                        ? t("communities.formSaving")
+                        : form.mode === "edit"
+                          ? t("communities.formApply")
+                          : t("communities.formCreate")
+                    }
                   </button>
                 `
             }
@@ -856,14 +863,14 @@ export function renderCommunityFormModal(): string {
 function renderCommunityFormProgress(step: CommunityFormStep): string {
   const isEditableNavigation = communitiesState.form.mode === "edit";
   const items: Array<{ step: CommunityFormStep; label: string }> = [
-    { step: 1, label: "Название" },
-    { step: 2, label: "Описание" },
-    { step: 3, label: "Аватар" },
-    { step: 4, label: "Обложка" },
+    { step: 1, label: t("communities.formName") },
+    { step: 2, label: t("communities.description") },
+    { step: 3, label: t("communities.formAvatar") },
+    { step: 4, label: t("communities.formCover") },
   ];
 
   return `
-    <div class="community-form__progress" aria-label="${isEditableNavigation ? "Шаги редактирования сообщества" : "Шаги создания сообщества"}">
+    <div class="community-form__progress" aria-label="${isEditableNavigation ? t("communities.formEditAria") : t("communities.formCreateAria")}">
       ${items
         .map((item, index) => {
           const modifier =
@@ -915,16 +922,16 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
   if (step === 1) {
     return `
       <div class="community-form__step">
-        <p class="community-form__step-title">Выберите название сообщества</p>
+        <p class="community-form__step-title">${t("communities.formChooseTitle")}</p>
         <label class="community-form__field">
-          <span>Название</span>
+          <span>${t("communities.formName")}</span>
           <input
             name="title"
             value="${escapeHtml(form.title)}"
             maxlength="120"
             required
             data-community-title
-            placeholder="Например, Клуб настольных игр"
+            placeholder="${t("communities.formPickTitle")}"
           >
         </label>
       </div>
@@ -934,15 +941,15 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
   if (step === 2) {
     return `
       <div class="community-form__step">
-        <p class="community-form__step-title">Сформулируйте краткое описание</p>
+        <p class="community-form__step-title">${t("communities.formShortDescription")}</p>
         <label class="community-form__field">
-          <span>Описание</span>
+          <span>${t("communities.description")}</span>
           <textarea
             name="bio"
             rows="5"
             maxlength="500"
             data-community-bio
-            placeholder="Расскажите, для кого это сообщество и о чём оно."
+            placeholder="${t("communities.formDescriptionPlaceholder")}"
           >${escapeHtml(form.bio)}</textarea>
         </label>
       </div>
@@ -952,7 +959,7 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
   if (step === 3) {
     return `
       <div class="community-form__step">
-        <p class="community-form__step-title">Выберите аватар для сообщества</p>
+        <p class="community-form__step-title">${t("communities.formChooseAvatar")}</p>
         ${renderCommunityMediaEditor("avatar")}
       </div>
     `;
@@ -960,7 +967,7 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
 
   return `
     <div class="community-form__step">
-      <p class="community-form__step-title">Выберите обложку для сообщества</p>
+      <p class="community-form__step-title">${t("communities.formChooseCover")}</p>
       ${renderCommunityMediaEditor("cover")}
     </div>
   `;
@@ -976,7 +983,7 @@ function renderCommunityMediaEditor(kind: "avatar" | "cover"): string {
       : resolveMediaUrl(communitiesState.form.currentCoverUrl);
   const hasCurrentImage = Boolean(currentSrc);
   const canResetChanges = editor.dirty;
-  const editorLabel = isAvatar ? "Аватар сообщества" : "Обложка сообщества";
+  const editorLabel = isAvatar ? t("communities.formAvatarLabel") : t("communities.formCoverLabel");
   const currentImageMarkup = hasCurrentImage
     ? `
         <div
@@ -1034,14 +1041,14 @@ function renderCommunityMediaEditor(kind: "avatar" | "cover"): string {
             class="community-media-editor__button community-media-editor__button--secondary community-media-editor__tool-button"
             data-community-media-rotate-left="${kind}"
           >
-            Повернуть влево
+            ${t("communities.formRotateLeft")}
           </button>
           <button
             type="button"
             class="community-media-editor__button community-media-editor__button--secondary community-media-editor__tool-button"
             data-community-media-rotate-right="${kind}"
           >
-            Повернуть вправо
+            ${t("communities.formRotateRight")}
           </button>
         </div>
 
@@ -1050,7 +1057,11 @@ function renderCommunityMediaEditor(kind: "avatar" | "cover"): string {
           class="community-media-editor__button community-media-editor__button--secondary community-media-editor__button--full"
           data-community-media-pick="${kind}"
         >
-          ${hasCurrentImage || editor.objectUrl ? "Заменить изображение" : "Выбрать изображение"}
+          ${
+            hasCurrentImage || editor.objectUrl
+              ? t("communities.formReplaceImage")
+              : t("communities.formChooseImage")
+          }
         </button>
 
         <button
@@ -1059,10 +1070,10 @@ function renderCommunityMediaEditor(kind: "avatar" | "cover"): string {
           data-community-media-delete="${kind}"
           ${canResetChanges ? "" : "hidden"}
         >
-          ${hasCurrentImage ? "Сбросить изменения" : "Удалить изображение"}
+          ${hasCurrentImage ? t("communities.formResetChanges") : t("communities.formRemoveImage")}
         </button>
 
-        <span class="community-media-editor__zoom-label">Масштаб</span>
+        <span class="community-media-editor__zoom-label">${t("communities.formZoom")}</span>
         <input
           type="range"
           class="community-media-editor__zoom-input"

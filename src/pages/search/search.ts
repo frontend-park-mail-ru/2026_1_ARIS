@@ -8,6 +8,7 @@
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
+import { t } from "../../state/i18n";
 import { getSessionUser } from "../../state/session";
 import { renderAvatarMarkup, escapeHtml, prepareAvatarLinks } from "../../utils/avatar";
 import {
@@ -18,7 +19,13 @@ import {
 } from "../../api/search";
 
 function getUserDisplayName(user: SearchUser): string {
-  return `${user.firstName} ${user.lastName}`.trim() || user.username || "Пользователь";
+  return (
+    `${user.firstName} ${user.lastName}`.trim() || user.username || t("widgetbar.userFallback")
+  );
+}
+
+function formatSearchTitle(query: string): string {
+  return t("search.resultsTitle").replace("{query}", query);
 }
 
 function renderUserCard(user: SearchUser): string {
@@ -49,7 +56,7 @@ function renderCommunityCard(community: SearchCommunity): string {
       </a>
       <div class="search-result-card__body">
         <a href="${communityPath}" data-link class="search-result-card__name">${escapeHtml(name)}</a>
-        <p class="search-result-card__meta">${community.bio ? escapeHtml(community.bio) : "Сообщество"}</p>
+        <p class="search-result-card__meta">${community.bio ? escapeHtml(community.bio) : t("search.communityFallback")}</p>
       </div>
     </article>
   `;
@@ -57,7 +64,7 @@ function renderCommunityCard(community: SearchCommunity): string {
 
 function renderSearchResults(query: string, results: SearchResponse | null, error: string): string {
   if (!query.trim()) {
-    return `<p class="search-page__hint">Введите запрос, чтобы найти людей и сообщества.</p>`;
+    return `<p class="search-page__hint">${t("search.emptyHint")}</p>`;
   }
 
   if (error) {
@@ -67,13 +74,13 @@ function renderSearchResults(query: string, results: SearchResponse | null, erro
   if (!results) return "";
 
   if (!results.users.length && !results.communities.length) {
-    return `<p class="search-page__empty">Ничего не найдено.</p>`;
+    return `<p class="search-page__empty">${t("friends.noneFound")}</p>`;
   }
 
   const usersSection = results.users.length
     ? `
       <section class="search-section">
-        <h2 class="search-section__heading">Люди</h2>
+        <h2 class="search-section__heading">${t("search.people")}</h2>
         <div class="search-results-list">${results.users.map(renderUserCard).join("")}</div>
       </section>
     `
@@ -82,7 +89,7 @@ function renderSearchResults(query: string, results: SearchResponse | null, erro
   const communitiesSection = results.communities.length
     ? `
       <section class="search-section">
-        <h2 class="search-section__heading">Сообщества</h2>
+        <h2 class="search-section__heading">${t("search.communities")}</h2>
         <div class="search-results-list">${results.communities.map(renderCommunityCard).join("")}</div>
       </section>
     `
@@ -114,7 +121,7 @@ export async function renderSearch(
       ]);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") throw err;
-      error = "Не удалось загрузить результаты поиска.";
+      error = t("search.loadError");
     }
   }
 
@@ -129,7 +136,7 @@ export async function renderSearch(
           <section class="search-page" data-search-page>
             <section class="search-panel content-card">
               <h1 class="search-panel__title">
-                ${query ? `Результаты поиска: «${escapeHtml(query)}»` : "Поиск"}
+                ${query ? escapeHtml(formatSearchTitle(query)) : t("search.title")}
               </h1>
               ${renderSearchResults(query, results, error)}
             </section>

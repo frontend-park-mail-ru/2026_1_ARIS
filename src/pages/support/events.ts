@@ -16,6 +16,7 @@ import {
   type TicketMessage,
 } from "../../api/support";
 import { getMyProfile } from "../../api/profile";
+import { t } from "../../state/i18n";
 import { getSessionUser } from "../../state/session";
 import { hideError, showError } from "./helpers";
 import {
@@ -99,13 +100,13 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
     if (!file || !errorEl) return;
 
     if (!file.type.startsWith("image/")) {
-      showError(errorEl, "Можно прикрепить только изображение.");
+      showError(errorEl, t("support.imageOnlyError"));
       fileInput.value = "";
       return;
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      showError(errorEl, "Файл слишком большой. Максимум — 5 МБ.");
+      showError(errorEl, t("support.fileTooLargeError"));
       fileInput.value = "";
       return;
     }
@@ -159,7 +160,7 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
     activeTicketMessageIds = new Set(messages.map((message) => message.id));
     messagesEl.innerHTML = messages.length
       ? messages.map((message) => renderChatMessage(message, user.id)).join("")
-      : `<p class="sw-empty sw-empty--compact" data-sw-chat-empty>Список пуст.</p>`;
+      : `<p class="sw-empty sw-empty--compact" data-sw-chat-empty>${t("common.emptyList")}</p>`;
     messagesEl.scrollTop = messagesEl.scrollHeight;
   };
 
@@ -197,7 +198,7 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
           }
         } catch (error) {
           if (messageEl) {
-            messageEl.textContent = "Не удалось сохранить оценку.";
+            messageEl.textContent = t("support.ratingSaveError");
             messageEl.hidden = false;
           }
           button
@@ -228,7 +229,7 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
         appendTicketMessage({ ...message, ticketId: message.ticketId || ticket.id });
         chatInput.value = "";
       } catch (error) {
-        setChatStatus("Не удалось отправить.");
+        setChatStatus(t("support.sendFailed"));
         console.error("[support] send message failed", error);
       } finally {
         chatSubmit.disabled = false;
@@ -248,7 +249,7 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
       ticketModalBody.innerHTML = renderTicketDetails(cachedTicket);
       bindTicketModalControls(cachedTicket);
     } else {
-      ticketModalBody.innerHTML = `<p class="sw-loading">Загрузка…</p>`;
+      ticketModalBody.innerHTML = `<p class="sw-loading">${t("support.ticketsLoading")}</p>`;
     }
     ticketModal.hidden = false;
 
@@ -265,7 +266,7 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
         bindTicketModalControls(freshTicket);
       } catch (error) {
         ticketModalBody.innerHTML = `
-          <p class="sw-empty">Не удалось загрузить детали обращения.</p>
+          <p class="sw-empty">${t("support.ticketDetailsLoadError")}</p>
         `;
         console.error("[support] load ticket failed", error);
         return;
@@ -282,7 +283,7 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
       renderTicketMessages(messages);
     } catch (error) {
       renderTicketMessages([]);
-      setChatStatus("История недоступна.");
+      setChatStatus(t("support.messagesUnavailable"));
       console.error("[support] load messages failed", error);
     }
 
@@ -348,27 +349,27 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
     const description = ((formData.get("description") as string) ?? "").trim();
 
     if (!login) {
-      showError(errorEl, "Укажите логин.");
+      showError(errorEl, t("support.loginRequired"));
       return;
     }
 
     if (!email) {
-      showError(errorEl, "Укажите контактный e-mail.");
+      showError(errorEl, t("support.emailRequired"));
       return;
     }
 
     if (!title || title.length < 3) {
-      showError(errorEl, "Заголовок должен содержать не менее 3 символов.");
+      showError(errorEl, t("support.titleRequired"));
       return;
     }
 
     if (!description || description.length < 10) {
-      showError(errorEl, "Описание должно содержать не менее 10 символов.");
+      showError(errorEl, t("support.descriptionRequired"));
       return;
     }
 
     submitBtn.disabled = true;
-    submitBtn.textContent = "Отправка…";
+    submitBtn.textContent = t("support.submitting");
     hideError(errorEl);
 
     try {
@@ -386,11 +387,11 @@ export async function initSupport(root: Document | HTMLElement): Promise<void> {
       form.hidden = true;
       successEl.hidden = false;
     } catch (err) {
-      showError(errorEl, "Не удалось отправить обращение. Попробуйте ещё раз.");
+      showError(errorEl, t("support.createError"));
       console.error("[support] create failed", err);
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Отправить";
+      submitBtn.textContent = t("support.submit");
     }
   });
 
@@ -409,14 +410,14 @@ async function loadMyTickets(
   const wrap = root.querySelector<HTMLElement>("[data-sw-tickets]");
   if (!wrap) return;
 
-  wrap.innerHTML = `<p class="sw-loading">Загрузка…</p>`;
+  wrap.innerHTML = `<p class="sw-loading">${t("support.ticketsLoading")}</p>`;
 
   try {
     const tickets = await getMyTickets();
     onLoaded?.(tickets);
     wrap.innerHTML = renderTicketsList(tickets);
   } catch (err) {
-    wrap.innerHTML = `<p class="sw-empty">Не удалось загрузить обращения.</p>`;
+    wrap.innerHTML = `<p class="sw-empty">${t("support.ticketsLoadError")}</p>`;
     console.error("[support] load tickets failed", err);
   }
 }

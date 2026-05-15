@@ -285,17 +285,23 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
   const visibleMembers = communitiesState.activeMembers
     .filter((member) => !member.blocked)
     .slice(0, 6);
+  const isLoadingMembers =
+    communitiesState.membershipLoading ||
+    (communitiesState.membersLoading && !communitiesState.membersLoaded);
 
   return `
     <section class="community-side-card">
       <div class="community-side-card__header">
         <h2>${t("communities.membersShort")}</h2>
-        <span>${visibleMembers.length}</span>
+        ${
+          isLoadingMembers
+            ? '<span class="skeleton community-members-card__count-skeleton"></span>'
+            : `<span>${visibleMembers.length}</span>`
+        }
       </div>
       ${
-        communitiesState.membershipLoading ||
-        (communitiesState.membersLoading && !communitiesState.membersLoaded)
-          ? `<p class="community-members-card__empty">${t("chats.loadingMessages")}</p>`
+        isLoadingMembers
+          ? renderCommunityMembersCardSkeleton()
           : visibleMembers.length
             ? `
             <div class="community-members-card">
@@ -331,6 +337,25 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
           : ""
       }
     </section>
+  `;
+}
+
+function renderCommunityMembersCardSkeleton(): string {
+  return `
+    <div class="community-members-card" aria-hidden="true">
+      ${Array.from(
+        { length: 3 },
+        (_, index) => `
+          <div class="community-members-card__item">
+            <span class="avatar-skeleton community-members-card__avatar"></span>
+            <div class="community-members-card__copy">
+              <span class="skeleton community-members-card__line-skeleton${index === 1 ? " community-members-card__line-skeleton--short" : ""}"></span>
+              <span class="skeleton community-members-card__meta-skeleton"></span>
+            </div>
+          </div>
+        `,
+      ).join("")}
+    </div>
   `;
 }
 
@@ -1513,7 +1538,32 @@ export function refreshCommunitiesPage(root: ParentNode = document): void {
   const next = template.content.firstElementChild;
   if (!(next instanceof HTMLElement)) return;
   container.replaceWith(next);
+  if (isDetail) {
+    refreshCommunityRightRail(root);
+  }
   syncCommunityMediaEditorsUi(document);
+}
+
+function refreshCommunityRightRail(root: ParentNode): void {
+  const railContainer =
+    root instanceof HTMLElement && root.matches(".app-layout__right--rail")
+      ? root
+      : (root.querySelector(".app-layout__right--rail") ??
+        (root === document ? null : document.querySelector(".app-layout__right--rail")));
+  if (!(railContainer instanceof HTMLElement)) return;
+
+  const template = document.createElement("template");
+  template.innerHTML = renderCommunityRightRail().trim();
+  const next = template.content.firstElementChild;
+  if (!(next instanceof HTMLElement)) return;
+
+  const currentRail = railContainer.querySelector(".profile-right-rail");
+  if (currentRail instanceof HTMLElement) {
+    currentRail.replaceWith(next);
+    return;
+  }
+
+  railContainer.appendChild(next);
 }
 
 export function refreshCommunitiesList(root: ParentNode = document): void {

@@ -123,6 +123,44 @@ function updateCommunityPostLikeState(postId: string, likes: number, isLiked: bo
   );
 }
 
+function syncActiveCommunity(bundle: CommunityBundle): void {
+  syncCommunityBundle(bundle);
+  setActiveCommunity(bundle);
+}
+
+function syncActiveCommunityMembership(
+  membership: CommunityBundle["membership"],
+  permissions?: CommunityBundle["permissions"],
+): void {
+  const bundle = communitiesState.activeCommunity;
+  if (!bundle) return;
+
+  syncActiveCommunity({
+    ...bundle,
+    membership,
+    ...(permissions ? { permissions } : {}),
+  });
+}
+
+function upsertActiveMember(member: CommunityMember): void {
+  const shouldKeepMember =
+    !member.blocked || communitiesState.membersManager.includeBlocked || member.isSelf;
+  if (!shouldKeepMember) {
+    setActiveMembers(
+      communitiesState.activeMembers.filter((item) => item.profileId !== member.profileId),
+    );
+    return;
+  }
+
+  setActiveMembers(
+    communitiesState.activeMembers.some((item) => item.profileId === member.profileId)
+      ? communitiesState.activeMembers.map((item) =>
+          item.profileId === member.profileId ? member : item,
+        )
+      : [member, ...communitiesState.activeMembers],
+  );
+}
+
 async function ensureViewerProfileId(signal?: AbortSignal): Promise<void> {
   if (
     typeof communitiesState.viewerProfileId === "number" &&
@@ -1378,10 +1416,23 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       refreshCommunitiesPage(root);
       void (async () => {
         try {
-          await Promise.all([joinCommunity(bundle.community.id), waitMinimumSkeletonTime(800)]);
+          const [joinedMember] = await Promise.all([
+            joinCommunity(bundle.community.id),
+            waitMinimumSkeletonTime(800),
+          ]);
+          upsertActiveMember(joinedMember);
+          communitiesState.viewerProfileId = joinedMember.profileId;
+          communitiesState.membershipLoading = false;
+          communitiesState.membersLoading = false;
+          syncActiveCommunityMembership({
+            isMember: true,
+            role: joinedMember.blocked ? "blocked" : joinedMember.role,
+            blocked: joinedMember.blocked,
+          });
+          refreshCommunitiesPage(root);
+
           const freshBundle = await getCommunityById(bundle.community.id);
-          syncCommunityBundle(freshBundle);
-          setActiveCommunity(freshBundle);
+          syncActiveCommunity(freshBundle);
           await Promise.all([
             loadCommunityMembers(
               freshBundle.community.id,
@@ -1427,6 +1478,35 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       void (async () => {
         try {
           await Promise.all([leaveCommunity(bundle.community.id), waitMinimumSkeletonTime(800)]);
+          const selfProfileId =
+            communitiesState.viewerProfileId ??
+            communitiesState.activeMembers.find((item) => item.isSelf)?.profileId ??
+            null;
+          if (selfProfileId !== null) {
+            setActiveMembers(
+              communitiesState.activeMembers.filter((member) => member.profileId !== selfProfileId),
+            );
+          }
+          communitiesState.membershipLoading = false;
+          communitiesState.membersLoading = false;
+          syncActiveCommunityMembership(
+            {
+              isMember: false,
+              role: "",
+              blocked: false,
+            },
+            {
+              canEditCommunity: false,
+              canDeleteCommunity: false,
+              canPost: false,
+              canPostAsCommunity: false,
+              canPostAsMember: false,
+              canManageMembers: false,
+              canChangeRoles: false,
+            },
+          );
+          refreshCommunitiesPage(root);
+
           const freshBundle = await getCommunityById(bundle.community.id);
           syncCommunityBundle(freshBundle);
           if (communitiesState.activeCommunity?.community.id === bundle.community.id) {
@@ -1567,16 +1647,13 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         refreshCommunitiesPage(root);
         void (async () => {
           try {
-            await Promise.all([
-              removeCommunityMember(bundle.community.id, action.profileId),
-              waitMinimumSkeletonTime(600),
-            ]);
+            await removeCommunityMember(bundle.community.id, action.profileId);
             setActiveMembers(
               communitiesState.activeMembers.filter((m) => m.profileId !== action.profileId),
             );
+            refreshCommunitiesPage(root);
             const freshBundle = await getCommunityById(bundle.community.id);
-            syncCommunityBundle(freshBundle);
-            setActiveCommunity(freshBundle);
+            syncActiveCommunity(freshBundle);
           } catch (error) {
             communitiesState.membersManager.errorMessage =
               error instanceof Error ? error.message : "Не удалось удалить участника.";
@@ -1590,15 +1667,12 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         refreshCommunitiesPage(root);
         void (async () => {
           try {
-            const [updatedMember] = await Promise.all([
-              changeCommunityMemberRole(bundle.community.id, action.profileId, action.newRole),
-              waitMinimumSkeletonTime(600),
-            ]);
-            setActiveMembers(
-              communitiesState.activeMembers.map((m) =>
-                m.profileId === action.profileId ? updatedMember : m,
-              ),
+            const updatedMember = await changeCommunityMemberRole(
+              bundle.community.id,
+              action.profileId,
+              action.newRole,
             );
+            upsertActiveMember(updatedMember);
             if (updatedMember.isSelf && communitiesState.activeCommunity) {
               syncCommunityBundle({
                 ...communitiesState.activeCommunity,
@@ -1609,6 +1683,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
                 },
               });
             }
+            refreshCommunitiesPage(root);
           } catch (error) {
             communitiesState.membersManager.errorMessage =
               error instanceof Error ? error.message : "Не удалось изменить роль участника.";

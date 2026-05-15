@@ -554,6 +554,32 @@
     line-height: var(--line-height-base);
   }
 
+  .community-members-card__count-skeleton {
+    display: inline-block;
+    width: 18px;
+    height: 12px;
+    border-radius: 4px;
+  }
+
+  .community-members-card__line-skeleton {
+    display: block;
+    width: min(100%, 118px);
+    height: 12px;
+    border-radius: 4px;
+  }
+
+  .community-members-card__line-skeleton--short {
+    width: min(100%, 92px);
+  }
+
+  .community-members-card__meta-skeleton {
+    display: block;
+    width: 64px;
+    height: 10px;
+    margin-top: 4px;
+    border-radius: 4px;
+  }
+
   .community-posts__composer-row {
     display: flex;
     flex-direction: column;

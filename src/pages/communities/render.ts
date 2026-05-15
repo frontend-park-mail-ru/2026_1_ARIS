@@ -117,7 +117,7 @@ function renderCommunityListItem(bundle: CommunityBundle): string {
 }
 
 function renderCommunitiesList(): string {
-  if (communitiesState.loading) {
+  if (communitiesState.loading || communitiesState.searchLoading) {
     return Array.from(
       { length: 3 },
       () => `
@@ -285,17 +285,23 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
   const visibleMembers = communitiesState.activeMembers
     .filter((member) => !member.blocked)
     .slice(0, 6);
+  const isLoadingMembers =
+    communitiesState.membershipLoading ||
+    (communitiesState.membersLoading && !communitiesState.membersLoaded);
 
   return `
     <section class="community-side-card">
       <div class="community-side-card__header">
         <h2>${t("communities.membersShort")}</h2>
-        <span>${visibleMembers.length}</span>
+        ${
+          isLoadingMembers
+            ? '<span class="skeleton community-members-card__count-skeleton"></span>'
+            : `<span>${visibleMembers.length}</span>`
+        }
       </div>
       ${
-        communitiesState.membershipLoading ||
-        (communitiesState.membersLoading && !communitiesState.membersLoaded)
-          ? `<p class="community-members-card__empty">${t("chats.loadingMessages")}</p>`
+        isLoadingMembers
+          ? renderCommunityMembersCardSkeleton()
           : visibleMembers.length
             ? `
             <div class="community-members-card">
@@ -334,6 +340,25 @@ function renderCommunityMembersCard(bundle: CommunityBundle): string {
   `;
 }
 
+function renderCommunityMembersCardSkeleton(): string {
+  return `
+    <div class="community-members-card" aria-hidden="true">
+      ${Array.from(
+        { length: 3 },
+        (_, index) => `
+          <div class="community-members-card__item">
+            <span class="avatar-skeleton community-members-card__avatar"></span>
+            <div class="community-members-card__copy">
+              <span class="skeleton community-members-card__line-skeleton${index === 1 ? " community-members-card__line-skeleton--short" : ""}"></span>
+              <span class="skeleton community-members-card__meta-skeleton"></span>
+            </div>
+          </div>
+        `,
+      ).join("")}
+    </div>
+  `;
+}
+
 function renderPostImages(images: string[]): string {
   if (!images.length) return "";
 
@@ -358,6 +383,9 @@ function renderPostImages(images: string[]): string {
               class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
               src="${escapeHtml(image)}"
               alt="${t("profile.imageAlt")}"
+              role="button"
+              tabindex="0"
+              data-post-image-open
             >
           `,
         )
@@ -426,7 +454,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
                           class="profile-post__menu-action profile-post__menu-action--danger"
                           data-community-post-delete="${escapeHtml(post.id)}"
                         >
-                          ${t("communities.delete")}
+                          ${t("profile.deletePost")}
                         </button>
                       `
                       : ""
@@ -1113,18 +1141,23 @@ export function renderCommunityPostModal(): string {
           >
 
           <div class="profile-post-modal__toolbar">
-            <button type="button" class="profile-post-modal__button profile-post-modal__button--secondary" data-community-post-pick-image>
+            <button
+              type="button"
+              class="profile-post-modal__button profile-post-modal__button--secondary"
+              data-community-post-pick-image
+              ${composer.isSaving || composer.mediaItems.length >= 5 ? "disabled" : ""}
+            >
               ${composer.mediaItems.length >= 5 ? "Достигнут лимит 5 изображений" : "+ Изображения"}
             </button>
           </div>
 
-          <div class="profile-post-modal__previews" ${composer.mediaItems.length ? "" : "hidden"}>
+          <div class="profile-post-modal__previews ${["", "profile-post-modal__previews--single", "profile-post-modal__previews--double", "profile-post-modal__previews--triple", "profile-post-modal__previews--quad", "profile-post-modal__previews--five"][Math.min(composer.mediaItems.length, 5)] ?? ""}" ${composer.mediaItems.length ? "" : "hidden"}>
             ${composer.mediaItems
               .map(
                 (item, index) => `
                   <div class="profile-post-modal__preview">
                     <img src="${escapeHtml(item.mediaURL)}" alt="Изображение ${index + 1}">
-                    <button type="button" class="profile-post-modal__preview-remove" data-community-post-remove-image="${index}" aria-label="Удалить изображение">[X]</button>
+                    <button type="button" class="profile-post-modal__preview-remove" data-community-post-remove-image="${index}" aria-label="Удалить изображение">×</button>
                   </div>
                 `,
               )
@@ -1238,11 +1271,24 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
                                 ? `<span class="community-members-manager__role">${escapeHtml(getRoleLabel("blocked"))}</span>`
                                 : canChange
                                   ? `
-                                  <details class="community-members-manager__role-select">
-                                    <summary class="community-members-manager__role-current">
+                                  <div class="community-members-manager__role-select" data-community-member-role-select="${member.profileId}">
+                                    <button
+                                      type="button"
+                                      class="community-members-manager__role-current"
+                                      data-community-member-role-toggle="${member.profileId}"
+                                      aria-haspopup="listbox"
+                                      aria-expanded="false"
+                                      ${isProcessing ? "disabled" : ""}
+                                    >
                                       <span>${escapeHtml(getRoleLabel(member.role))}</span>
-                                    </summary>
-                                    <div class="community-members-manager__role-menu" role="listbox" aria-label="${t("communities.memberRoleAria")}">
+                                    </button>
+                                    <div
+                                      class="community-members-manager__role-menu"
+                                      data-community-member-role-menu="${member.profileId}"
+                                      role="listbox"
+                                      aria-label="${t("communities.memberRoleAria")}"
+                                      hidden
+                                    >
                                       ${roleOptions
                                         .map(
                                           (role) => `
@@ -1261,7 +1307,7 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
                                         )
                                         .join("")}
                                     </div>
-                                  </details>
+                                  </div>
                                 `
                                   : `<span class="community-members-manager__role">${escapeHtml(getRoleLabel(member.role))}</span>`
                             }
@@ -1513,7 +1559,32 @@ export function refreshCommunitiesPage(root: ParentNode = document): void {
   const next = template.content.firstElementChild;
   if (!(next instanceof HTMLElement)) return;
   container.replaceWith(next);
+  if (isDetail) {
+    refreshCommunityRightRail(root);
+  }
   syncCommunityMediaEditorsUi(document);
+}
+
+function refreshCommunityRightRail(root: ParentNode): void {
+  const railContainer =
+    root instanceof HTMLElement && root.matches(".app-layout__right--rail")
+      ? root
+      : (root.querySelector(".app-layout__right--rail") ??
+        (root === document ? null : document.querySelector(".app-layout__right--rail")));
+  if (!(railContainer instanceof HTMLElement)) return;
+
+  const template = document.createElement("template");
+  template.innerHTML = renderCommunityRightRail().trim();
+  const next = template.content.firstElementChild;
+  if (!(next instanceof HTMLElement)) return;
+
+  const currentRail = railContainer.querySelector(".profile-right-rail");
+  if (currentRail instanceof HTMLElement) {
+    currentRail.replaceWith(next);
+    return;
+  }
+
+  railContainer.appendChild(next);
 }
 
 export function refreshCommunitiesList(root: ParentNode = document): void {

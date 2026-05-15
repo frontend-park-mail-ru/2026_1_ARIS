@@ -17,8 +17,8 @@
     --auth-form-logo-offset-top: -62px;
     --auth-form-logo-offset-left: -72px;
     --auth-form-register-header-min-height: 60px;
-    --auth-form-title-size: 24px;
-    --auth-form-subtitle-size: 15px;
+    --auth-form-title-size: var(--text-size-heading-md);
+    --auth-form-subtitle-size: var(--text-size-main);
     --auth-form-error-size: var(--font-size-sm);
     --auth-form-field-error-size: var(--font-size-sm);
     --auth-form-select-arrow-size: 10px;

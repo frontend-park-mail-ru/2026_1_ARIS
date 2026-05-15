@@ -183,6 +183,22 @@ export function syncPostComposerUi(root: ParentNode): void {
   }
 
   if (previewWrap) {
+    const mediaCount = postComposerState.mediaItems.length;
+    const previewCountModifiers = [
+      "",
+      "profile-post-modal__previews--single",
+      "profile-post-modal__previews--double",
+      "profile-post-modal__previews--triple",
+      "profile-post-modal__previews--quad",
+      "profile-post-modal__previews--five",
+    ];
+    previewWrap.className = [
+      "profile-post-modal__previews",
+      previewCountModifiers[Math.min(mediaCount, 5)] ?? "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     previewWrap.innerHTML = postComposerState.mediaItems
       .map(
         (item, index) => `
@@ -194,7 +210,7 @@ export function syncPostComposerUi(root: ParentNode): void {
               data-profile-post-remove-image="${index}"
               aria-label="Удалить изображение"
             >
-              [X]
+              ×
             </button>
           </div>
         `,

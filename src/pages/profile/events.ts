@@ -78,7 +78,9 @@ import {
   initProfilePostListLayout,
   openProfilePostSearch,
 } from "./post-list";
+import { canEditProfilePost } from "./helpers";
 import type { DisplayProfile } from "./types";
+import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 
 function updateOwnProfileCacheAvatar(avatarLink?: string): void {
   const cachedProfile = readJsonStorage<DisplayProfile>(OWN_PROFILE_CACHE_KEY);
@@ -188,6 +190,12 @@ function bindFloatingPostMenuActions(
   const editButton = menu.querySelector<HTMLButtonElement>(`[data-profile-post-edit="${postId}"]`);
   if (editButton) {
     editButton.onclick = () => {
+      const post = currentProfilePosts.find((item) => item.id === postId);
+      if (!post || !canEditProfilePost(post)) {
+        closeProfilePostMenus(root);
+        return;
+      }
+
       closeProfilePostMenus(root);
       openEditPostComposer(postId);
       syncPostComposerUi(root);
@@ -229,6 +237,11 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    if (target.closest("[data-post-image-open]")) {
+      closeProfilePostMenus(root);
+      if (openPostImageViewerFromTarget(target)) return;
+    }
 
     const postSearchOpenButton = target.closest("[data-profile-post-search-open]");
     if (postSearchOpenButton instanceof HTMLButtonElement) {
@@ -308,6 +321,12 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     if (editPostButton instanceof HTMLButtonElement) {
       const postId = editPostButton.getAttribute("data-profile-post-edit");
       if (postId) {
+        const post = currentProfilePosts.find((item) => item.id === postId);
+        if (!post || !canEditProfilePost(post)) {
+          closeProfilePostMenus(root);
+          return;
+        }
+
         closeProfilePostMenus(root);
         openEditPostComposer(postId);
         syncPostComposerUi(root);
@@ -347,6 +366,10 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
     const pickPostImageButton = target.closest("[data-profile-post-pick-image]");
     if (pickPostImageButton instanceof HTMLButtonElement) {
+      if (pickPostImageButton.disabled || postComposerState.mediaItems.length >= 5) {
+        return;
+      }
+
       const imageInput = root.querySelector<HTMLInputElement>("[data-profile-post-image-input]");
       if (imageInput) {
         imageInput.value = "";
@@ -457,6 +480,11 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           clearFeedCache();
           clearWidgetbarCache();
           if (currentProfile) {
+            const existingPost = composerSnapshot.editingPostId
+              ? currentProfilePosts.find((post) => post.id === composerSnapshot.editingPostId)
+              : undefined;
+            const createdAt =
+              savedPost.createdAt ?? existingPost?.timeRaw ?? new Date().toISOString();
             const nextPost = {
               id: String(savedPost.id),
               authorId: String(savedPost.profileID ?? currentProfile.id),
@@ -467,8 +495,8 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
                 normaliseAvatarLink(savedPost.avatarURL) ?? currentProfile.avatarLink ?? "",
               isOwnPost: true,
               text: typeof savedPost.text === "string" ? savedPost.text : "",
-              time: "только что",
-              timeRaw: savedPost.createdAt ?? "",
+              time: existingPost?.time ?? "только что",
+              timeRaw: createdAt,
               ...(savedPost.updatedAt ? { updatedAtRaw: savedPost.updatedAt } : {}),
               likes: savedPost.likes ?? 0,
               isLiked: savedPost.isLiked ?? false,
@@ -1067,6 +1095,17 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
   root.addEventListener("keydown", (event: Event) => {
     if (!(event instanceof KeyboardEvent)) {
+      return;
+    }
+
+    if (
+      (event.key === "Enter" || event.key === " ") &&
+      event.target instanceof Element &&
+      event.target.closest("[data-post-image-open]")
+    ) {
+      closeProfilePostMenus(root);
+      openPostImageViewerFromTarget(event.target);
+      event.preventDefault();
       return;
     }
 

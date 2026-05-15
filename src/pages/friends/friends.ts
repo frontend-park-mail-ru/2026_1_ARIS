@@ -32,12 +32,71 @@ import {
   hydrateDisplayFriendAvatarLinks,
   findFriendById,
   getFriendsErrorMessage,
+  searchFriendsFromBackend,
 } from "./state";
 import { renderFriendsContent, refreshFriendsPage, refreshFriendsSearchResults } from "./render";
 
 type FriendsRoot = (Document | HTMLElement) & {
   __friendsBound?: boolean;
 };
+
+const FRIENDS_SEARCH_DEBOUNCE_MS = 250;
+
+let friendsSearchTimerId: number | null = null;
+let friendsSearchAbortController: AbortController | null = null;
+let friendsSearchRequestId = 0;
+
+function clearFriendsSearchRequest(): void {
+  if (friendsSearchTimerId !== null) {
+    window.clearTimeout(friendsSearchTimerId);
+    friendsSearchTimerId = null;
+  }
+
+  friendsSearchAbortController?.abort();
+  friendsSearchAbortController = null;
+}
+
+function scheduleFriendsBackendSearch(root: ParentNode): void {
+  const query = friendsState.query.trim();
+  const requestId = ++friendsSearchRequestId;
+
+  clearFriendsSearchRequest();
+
+  if (!query) {
+    friendsState.searchLoading = false;
+    friendsState.searchResults = null;
+    refreshFriendsSearchResults(root);
+    return;
+  }
+
+  friendsState.searchLoading = true;
+  friendsState.searchResults = null;
+  refreshFriendsSearchResults(root);
+
+  friendsSearchTimerId = window.setTimeout(() => {
+    friendsSearchTimerId = null;
+    const controller = new AbortController();
+    friendsSearchAbortController = controller;
+
+    void searchFriendsFromBackend(query, controller.signal)
+      .then((results) => {
+        if (requestId !== friendsSearchRequestId || friendsState.query.trim() !== query) return;
+        friendsState.searchResults = results;
+        friendsState.errorMessage = "";
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        if (requestId !== friendsSearchRequestId) return;
+        friendsState.searchResults = [];
+        friendsState.errorMessage = getFriendsErrorMessage(error, t("friends.loadError"));
+      })
+      .finally(() => {
+        if (requestId !== friendsSearchRequestId) return;
+        friendsState.searchLoading = false;
+        refreshFriendsSearchResults(root);
+      });
+  }, FRIENDS_SEARCH_DEBOUNCE_MS);
+}
 
 /**
  * Переводит пользователя на страницу чатов с выбранным диалогом.
@@ -171,7 +230,7 @@ export function initFriends(root: Document | HTMLElement = document): void {
     const target = event.target;
     if (!(target instanceof HTMLInputElement) || !target.matches("[data-friends-search]")) return;
     friendsState.query = target.value;
-    refreshFriendsSearchResults(root);
+    scheduleFriendsBackendSearch(root);
   });
 
   root.addEventListener("click", (event: Event) => {
@@ -185,7 +244,10 @@ export function initFriends(root: Document | HTMLElement = document): void {
         friendsState.activeTab = nextTab;
         persistFriendsActiveTab(friendsState.loadedForUserId);
         friendsState.query = "";
+        friendsState.searchLoading = false;
+        friendsState.searchResults = null;
         friendsState.deleteModalFriend = null;
+        clearFriendsSearchRequest();
         refreshFriendsPage(root);
       }
       return;

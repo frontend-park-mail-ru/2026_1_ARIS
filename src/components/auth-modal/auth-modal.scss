@@ -5,7 +5,7 @@
     --auth-modal-content-padding: 24px 16px;
     --auth-modal-close-offset: 16px;
     --auth-modal-close-size: 45px;
-    --auth-modal-close-font-size: 28px;
+    --auth-modal-close-font-size: var(--text-size-heading-md);
     --auth-modal-panel-width: 400px;
 
     /* Reset <dialog> browser defaults */
@@ -39,6 +39,6 @@
     right: var(--auth-modal-close-offset, 16px);
     z-index: 2;
     --modal-close-size: var(--auth-modal-close-size, 45px);
-    --modal-close-font-size: var(--auth-modal-close-font-size, 28px);
+    --modal-close-font-size: var(--auth-modal-close-font-size, var(--text-size-heading-md));
   }
 }

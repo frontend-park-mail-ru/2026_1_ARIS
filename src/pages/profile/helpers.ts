@@ -4,9 +4,10 @@
  * Содержит локальные утилиты, используемые модулями страницы.
  */
 import { API_BASE_URL } from "../../api/config";
-import type { DisplayProfile } from "./types";
+import type { DisplayProfile, ProfilePost } from "./types";
 import { renderAvatarMarkup, type AvatarOptions } from "../../utils/avatar";
 import { formatPersonName } from "../../utils/display-name";
+import { resolveMediaUrl } from "../../utils/media";
 import { t } from "../../state/i18n";
 
 export function escapeHtml(value: string): string {
@@ -23,20 +24,7 @@ export function getInitials(firstName: string, lastName: string): string {
 }
 
 export function getAvatarImageSrc(avatarLink?: string): string {
-  if (!avatarLink) {
-    return "/assets/img/default-avatar.png";
-  }
-
-  if (
-    avatarLink.startsWith("/image-proxy?url=") ||
-    avatarLink.startsWith("data:") ||
-    avatarLink.startsWith("blob:") ||
-    /^https?:\/\//i.test(avatarLink)
-  ) {
-    return avatarLink;
-  }
-
-  return `/image-proxy?url=${encodeURIComponent(avatarLink)}`;
+  return resolveMediaUrl(avatarLink) || "/assets/img/default-avatar.png";
 }
 
 export function getAvatarEditorSrc(avatarLink?: string): string {
@@ -67,7 +55,7 @@ export function getAvatarEditorSrc(avatarLink?: string): string {
     // Ниже останется безопасный fallback.
   }
 
-  return `/image-proxy?url=${encodeURIComponent(imageSrc)}`;
+  return imageSrc;
 }
 
 export function hasVisibleValue(value?: string): boolean {
@@ -77,6 +65,13 @@ export function hasVisibleValue(value?: string): boolean {
 
   const trimmed = value.trim();
   return trimmed !== "" && trimmed !== "Не указано";
+}
+
+const POST_EDIT_WINDOW_MS = 10 * 60 * 1000;
+
+export function canEditProfilePost(post: ProfilePost): boolean {
+  const createdAt = new Date(post.timeRaw).getTime();
+  return Number.isFinite(createdAt) && Date.now() - createdAt <= POST_EDIT_WINDOW_MS;
 }
 
 export function renderAvatar(

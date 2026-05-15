@@ -84,6 +84,8 @@ function createInitialState(): CommunitiesState {
     loading: false,
     errorMessage: "",
     query: "",
+    searchLoading: false,
+    searchResults: null,
     items: [],
     activeCommunity: null,
     activeMembers: [],
@@ -215,6 +217,8 @@ export function findCommunityById(id: string | number): CommunityBundle | null {
 
 export function getVisibleCommunities(): CommunityBundle[] {
   const query = communitiesState.query.trim().toLowerCase();
+  if (query && communitiesState.searchResults) return communitiesState.searchResults;
+
   const memberItems = communitiesState.items.filter((item) => item.membership.isMember);
 
   if (!query) return memberItems;

@@ -9,7 +9,7 @@
     --widgetbar-weather-row-gap: 8px;
     --widgetbar-avatar-size: 32px;
     --widgetbar-weather-icon-width: 18px;
-    --widgetbar-weather-icon-size: 14px;
+    --widgetbar-weather-icon-size: var(--text-size-main);
     --widgetbar-event-min-height: 44px;
 
     display: flex; // контейнер правой колонки с виджетами

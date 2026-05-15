@@ -40,9 +40,10 @@
     }
 
     &__author {
-      display: flex; // блок автора — flex-контейнер
+      display: inline-flex; // ссылка занимает только область текста автора
       min-width: 0; // позволяет тексту автора не ломать layout при длинном имени
-      flex: 1 1 auto; // блок автора занимает всё оставшееся место
+      max-width: 100%; // длинное имя не выходит за пределы шапки
+      flex: 0 1 auto; // не растягиваем ссылку на всё свободное место
       flex-direction: column; // если строк будет несколько, они пойдут вертикально
       justify-content: center; // содержимое автора центрируется по вертикали
       margin: 0; // убираем дефолтные внешние отступы
@@ -318,17 +319,13 @@
       margin: 0;
       position: relative;
       padding: 0;
-      border: 0;
-      background: transparent;
       white-space: nowrap;
       text-align: right;
       color: var(--color-text-meta);
-      cursor: pointer;
       font: inherit;
       font-size: var(--text-size-meta);
-      font-weight: var(--font-weight-medium);
+      font-weight: var(--font-weight-regular);
       line-height: var(--line-height-base);
-      -webkit-tap-highlight-color: transparent;
 
       &[data-tooltip]::before,
       &[data-tooltip]::after {

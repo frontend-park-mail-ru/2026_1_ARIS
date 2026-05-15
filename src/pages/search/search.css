@@ -67,7 +67,7 @@
     display: inline-flex !important;
     width: 64px;
     height: 64px;
-    font-size: 18px;
+    font-size: var(--text-size-heading-md);
     letter-spacing: 0;
   }
 

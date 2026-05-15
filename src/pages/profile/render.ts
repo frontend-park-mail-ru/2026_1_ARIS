@@ -5,7 +5,13 @@
  */
 import type { DisplayProfile, ProfilePost } from "./types";
 import { pendingProfilePostState } from "./state";
-import { escapeHtml, getAvatarImageSrc, hasVisibleValue, renderAvatar } from "./helpers";
+import {
+  canEditProfilePost,
+  escapeHtml,
+  getAvatarImageSrc,
+  hasVisibleValue,
+  renderAvatar,
+} from "./helpers";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderAvatarMarkup } from "../../utils/avatar";
 import { formatPersonName } from "../../utils/display-name";
@@ -500,6 +506,9 @@ function renderProfilePostImages(images: string[]): string {
               class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
               src="${escapeHtml(getAvatarImageSrc(image))}"
               alt="${t("profile.imageAlt")}"
+              role="button"
+              tabindex="0"
+              data-post-image-open
             >
           `,
         )
@@ -622,10 +631,14 @@ export function renderProfilePosts(
             ? `
               ${isSavingCreate ? renderProfilePostSkeleton() : ""}
               ${renderedPosts
-                .map((post, index) =>
-                  post.text === "__PROFILE_SKELETON__"
-                    ? renderProfilePostSkeleton()
-                    : `
+                .map((post, index) => {
+                  if (post.text === "__PROFILE_SKELETON__") {
+                    return renderProfilePostSkeleton();
+                  }
+
+                  const canEditPost = canEditProfilePost(post);
+
+                  return `
                     <article
                       class="profile-post content-card${index === 0 ? " profile-post--first-visible" : ""}"
                       data-profile-post-card
@@ -680,19 +693,25 @@ export function renderProfilePosts(
                                   <span></span><span></span><span></span>
                                 </button>
                                 <div class="profile-post__menu" data-profile-post-menu="${escapeHtml(post.id)}" hidden>
-                                  <button
-                                    type="button"
-                                    class="profile-post__menu-action"
-                                    data-profile-post-edit="${escapeHtml(post.id)}"
-                                  >
-                                    ${t("profile.edit")}
-                                  </button>
+                                  ${
+                                    canEditPost
+                                      ? `
+                                        <button
+                                          type="button"
+                                          class="profile-post__menu-action"
+                                          data-profile-post-edit="${escapeHtml(post.id)}"
+                                        >
+                                          ${t("profile.edit")}
+                                        </button>
+                                      `
+                                      : ""
+                                  }
                                   <button
                                     type="button"
                                     class="profile-post__menu-action profile-post__menu-action--danger"
                                     data-profile-post-delete="${escapeHtml(post.id)}"
                                   >
-                                    ${t("communities.delete")}
+                                    ${t("profile.deletePost")}
                                   </button>
                                 </div>
                               </div>
@@ -737,8 +756,8 @@ export function renderProfilePosts(
                         >${escapeHtml(formatProfilePostRelativeTime(post.timeRaw, post.time))}</time>
                       </footer>
                     </article>
-                  `,
-                )
+                  `;
+                })
                 .join("")}
             `
             : `

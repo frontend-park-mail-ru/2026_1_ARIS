@@ -139,4 +139,32 @@ describe("communities helpers", () => {
     expect(canDeleteCommunityPost(mapped, bundle, 7)).toBe(true);
     expect(canDeleteCommunityPost(mapped, createBundle("moderator"), 1)).toBe(true);
   });
+
+  it("разрешает редактировать официальный пост при праве писать от имени сообщества", () => {
+    const bundle = createBundle("admin");
+    const officialPost = mapPostToCommunityPost(
+      {
+        id: 56,
+        profileID: bundle.community.profileId,
+        text: "Официальная новость",
+        createdAt: "2026-05-04T11:55:00.000Z",
+      },
+      bundle,
+      7,
+    );
+    const withoutCommunityAuthorPermission: CommunityBundle = {
+      ...bundle,
+      permissions: {
+        ...bundle.permissions,
+        canPostAsCommunity: false,
+      },
+    };
+
+    expect(officialPost.authorId).toBe(String(bundle.community.profileId));
+    expect(canEditCommunityPost(officialPost, bundle, 7)).toBe(true);
+    expect(canEditCommunityPost(officialPost, withoutCommunityAuthorPermission, 7)).toBe(false);
+    expect(
+      canEditCommunityPost({ ...officialPost, timeRaw: "2026-05-04T11:49:00.000Z" }, bundle, 7),
+    ).toBe(false);
+  });
 });

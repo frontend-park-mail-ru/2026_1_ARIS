@@ -71,7 +71,7 @@
   }
 
   .ss-card__value {
-    font-size: 36px;
+    font-size: var(--text-size-heading-md);
     font-weight: 800;
     line-height: 1;
     color: var(--color-text-main);

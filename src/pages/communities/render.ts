@@ -383,6 +383,9 @@ function renderPostImages(images: string[]): string {
               class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
               src="${escapeHtml(image)}"
               alt="${t("profile.imageAlt")}"
+              role="button"
+              tabindex="0"
+              data-post-image-open
             >
           `,
         )
@@ -1138,18 +1141,23 @@ export function renderCommunityPostModal(): string {
           >
 
           <div class="profile-post-modal__toolbar">
-            <button type="button" class="profile-post-modal__button profile-post-modal__button--secondary" data-community-post-pick-image>
+            <button
+              type="button"
+              class="profile-post-modal__button profile-post-modal__button--secondary"
+              data-community-post-pick-image
+              ${composer.isSaving || composer.mediaItems.length >= 5 ? "disabled" : ""}
+            >
               ${composer.mediaItems.length >= 5 ? "Достигнут лимит 5 изображений" : "+ Изображения"}
             </button>
           </div>
 
-          <div class="profile-post-modal__previews" ${composer.mediaItems.length ? "" : "hidden"}>
+          <div class="profile-post-modal__previews ${["", "profile-post-modal__previews--single", "profile-post-modal__previews--double", "profile-post-modal__previews--triple", "profile-post-modal__previews--quad", "profile-post-modal__previews--five"][Math.min(composer.mediaItems.length, 5)] ?? ""}" ${composer.mediaItems.length ? "" : "hidden"}>
             ${composer.mediaItems
               .map(
                 (item, index) => `
                   <div class="profile-post-modal__preview">
                     <img src="${escapeHtml(item.mediaURL)}" alt="Изображение ${index + 1}">
-                    <button type="button" class="profile-post-modal__preview-remove" data-community-post-remove-image="${index}" aria-label="Удалить изображение">[X]</button>
+                    <button type="button" class="profile-post-modal__preview-remove" data-community-post-remove-image="${index}" aria-label="Удалить изображение">×</button>
                   </div>
                 `,
               )
@@ -1263,11 +1271,24 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
                                 ? `<span class="community-members-manager__role">${escapeHtml(getRoleLabel("blocked"))}</span>`
                                 : canChange
                                   ? `
-                                  <details class="community-members-manager__role-select">
-                                    <summary class="community-members-manager__role-current">
+                                  <div class="community-members-manager__role-select" data-community-member-role-select="${member.profileId}">
+                                    <button
+                                      type="button"
+                                      class="community-members-manager__role-current"
+                                      data-community-member-role-toggle="${member.profileId}"
+                                      aria-haspopup="listbox"
+                                      aria-expanded="false"
+                                      ${isProcessing ? "disabled" : ""}
+                                    >
                                       <span>${escapeHtml(getRoleLabel(member.role))}</span>
-                                    </summary>
-                                    <div class="community-members-manager__role-menu" role="listbox" aria-label="${t("communities.memberRoleAria")}">
+                                    </button>
+                                    <div
+                                      class="community-members-manager__role-menu"
+                                      data-community-member-role-menu="${member.profileId}"
+                                      role="listbox"
+                                      aria-label="${t("communities.memberRoleAria")}"
+                                      hidden
+                                    >
                                       ${roleOptions
                                         .map(
                                           (role) => `
@@ -1286,7 +1307,7 @@ function renderCommunityMembersManagerModal(bundle: CommunityBundle): string {
                                         )
                                         .join("")}
                                     </div>
-                                  </details>
+                                  </div>
                                 `
                                   : `<span class="community-members-manager__role">${escapeHtml(getRoleLabel(member.role))}</span>`
                             }

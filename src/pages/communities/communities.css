@@ -690,7 +690,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin: 0 0 14px;
+    margin: 12px 0 14px;
   }
 
   .community-post-modal__author-label {
@@ -1350,6 +1350,7 @@
 
   .community-members-manager__role-current {
     display: flex;
+    width: 100%;
     min-height: 38px;
     align-items: center;
     justify-content: space-between;
@@ -1363,10 +1364,6 @@
     font: inherit;
     list-style: none;
     -webkit-tap-highlight-color: transparent;
-  }
-
-  .community-members-manager__role-current::-webkit-details-marker {
-    display: none;
   }
 
   .community-members-manager__role-current::after {
@@ -1384,17 +1381,15 @@
     box-shadow: var(--control-focus-ring);
   }
 
-  .community-members-manager__role-select[open] .community-members-manager__role-current {
+  .community-members-manager__role-current[aria-expanded="true"] {
     border-color: rgb(87 105 240 / 34%);
     border-radius: 12px 12px 8px 8px;
     box-shadow: 0 0 0 3px rgb(87 105 240 / 10%);
   }
 
   .community-members-manager__role-menu {
-    position: absolute;
-    z-index: 20;
-    top: calc(100% + 6px);
-    right: 0;
+    position: fixed;
+    z-index: 9000;
     display: grid;
     width: 100%;
     min-width: 190px;
@@ -1405,6 +1400,10 @@
     background: rgb(255 255 255 / 98%);
     box-shadow: 0 16px 34px rgb(31 42 95 / 18%);
     overflow: auto;
+  }
+
+  .community-members-manager__role-menu[hidden] {
+    display: none !important;
   }
 
   .community-members-manager__role-option {
@@ -1620,11 +1619,7 @@
     }
 
     .community-members-manager__role-menu {
-      position: static;
-      width: 100%;
       min-width: 0;
-      max-height: none;
-      margin-top: 6px;
       box-shadow: 0 8px 18px rgb(31 42 95 / 10%);
     }
   }
@@ -1691,7 +1686,7 @@
       border-color: var(--color-text-meta);
     }
 
-    .community-members-manager__role-select[open] .community-members-manager__role-current {
+    .community-members-manager__role-current[aria-expanded="true"] {
       border-color: var(--color-border-strong);
       box-shadow: var(--control-focus-ring);
     }

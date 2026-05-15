@@ -500,6 +500,9 @@ function renderProfilePostImages(images: string[]): string {
               class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
               src="${escapeHtml(getAvatarImageSrc(image))}"
               alt="${t("profile.imageAlt")}"
+              role="button"
+              tabindex="0"
+              data-post-image-open
             >
           `,
         )

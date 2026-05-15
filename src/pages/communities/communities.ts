@@ -17,6 +17,7 @@ import {
   type CommunityBundle,
   type CommunityMember,
   type CommunityPayload,
+  type CommunityRole,
 } from "../../api/communities";
 import {
   createPost,
@@ -33,6 +34,7 @@ import { getSessionUser } from "../../state/session";
 import { clearFeedCache } from "../feed/cache";
 import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
 import { prepareAvatarLinks } from "../../utils/avatar";
+import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 import type { ComposerMediaItem } from "../profile/types";
 import type { CommunitiesParams } from "./types";
 import {
@@ -685,11 +687,49 @@ function closeCommunityPostMenus(root: Document | HTMLElement): void {
     });
 }
 
+function closeCommunityMemberRoleMenus(root: Document | HTMLElement): void {
+  document.querySelectorAll<HTMLElement>("[data-community-member-role-menu]").forEach((menu) => {
+    menu.hidden = true;
+    menu.style.top = "";
+    menu.style.right = "";
+    menu.style.left = "";
+    menu.style.width = "";
+    menu.style.maxHeight = "";
+  });
+
+  root
+    .querySelectorAll<HTMLButtonElement>("[data-community-member-role-toggle]")
+    .forEach((button) => {
+      button.setAttribute("aria-expanded", "false");
+    });
+}
+
 function positionCommunityMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
   const rect = toggle.getBoundingClientRect();
   menu.style.top = `${rect.bottom + 8}px`;
   menu.style.right = `${window.innerWidth - rect.right}px`;
   menu.style.left = "auto";
+}
+
+function positionCommunityMemberRoleMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
+  const rect = toggle.getBoundingClientRect();
+  const viewportMargin = 12;
+  const menuWidth = Math.min(
+    Math.max(rect.width, 190),
+    Math.max(190, window.innerWidth - viewportMargin * 2),
+  );
+  const left = Math.min(
+    Math.max(viewportMargin, rect.right - menuWidth),
+    window.innerWidth - menuWidth - viewportMargin,
+  );
+  const availableHeight = window.innerHeight - rect.bottom - viewportMargin;
+  const maxHeight = Math.max(160, Math.min(220, availableHeight));
+
+  menu.style.top = `${rect.bottom + 6}px`;
+  menu.style.left = `${left}px`;
+  menu.style.right = "auto";
+  menu.style.width = `${menuWidth}px`;
+  menu.style.maxHeight = `${maxHeight}px`;
 }
 
 function bindFloatingCommunityMenuActions(
@@ -744,6 +784,7 @@ function bindFloatingCommunityMenuActions(
 
 function openCommunityMembersManager(root: Document | HTMLElement, bundle: CommunityBundle): void {
   closeCommunityMenus(root);
+  closeCommunityMemberRoleMenus(root);
   setActiveCommunity(bundle);
   communitiesState.membersManager.open = true;
   communitiesState.membersManager.errorMessage = "";
@@ -759,6 +800,52 @@ function openCommunityMembersManager(root: Document | HTMLElement, bundle: Commu
         error instanceof Error ? error.message : "Не удалось загрузить участников.";
       refreshCommunitiesPage(root);
     });
+}
+
+function isCommunityMemberRole(value: string | null): value is Exclude<CommunityRole, "owner"> {
+  return value === "admin" || value === "moderator" || value === "member" || value === "blocked";
+}
+
+function handleCommunityMemberRoleChoice(
+  root: Document | HTMLElement,
+  profileId: number,
+  nextRole: string | null,
+): void {
+  const bundle = communitiesState.activeCommunity;
+  if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
+  if (!isCommunityMemberRole(nextRole)) return;
+
+  const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
+  if (
+    !member ||
+    member.role === nextRole ||
+    !canManageCommunityMemberRole(bundle, member, communitiesState.viewerProfileId)
+  ) {
+    closeCommunityMemberRoleMenus(root);
+    refreshCommunitiesPage(root);
+    return;
+  }
+
+  closeCommunityMemberRoleMenus(root);
+  communitiesState.membersManager.confirmAction = {
+    type: "role",
+    profileId,
+    newRole: nextRole,
+  };
+  refreshCommunitiesPage(root);
+}
+
+function bindFloatingCommunityMemberRoleMenuActions(
+  menu: HTMLElement,
+  root: Document | HTMLElement,
+): void {
+  menu.querySelectorAll<HTMLButtonElement>("[data-community-member-role]").forEach((button) => {
+    button.onclick = () => {
+      const profileId = Number(button.getAttribute("data-community-member-role"));
+      const nextRole = button.getAttribute("data-community-member-role-value");
+      handleCommunityMemberRoleChoice(root, profileId, nextRole);
+    };
+  });
 }
 
 function positionCommunityPostMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
@@ -885,6 +972,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
   closeCommunityMenus(root);
   closeCommunityPostMenus(root);
+  closeCommunityMemberRoleMenus(root);
 
   root.addEventListener("pointerdown", (event: Event) => {
     if (event instanceof PointerEvent) {
@@ -949,6 +1037,22 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     cancelCommunityMediaDrag("avatar", root);
     cancelCommunityMediaDrag("cover", root);
+  });
+
+  root.addEventListener("keydown", (event: Event) => {
+    if (!(event instanceof KeyboardEvent)) return;
+
+    if (
+      (event.key === "Enter" || event.key === " ") &&
+      event.target instanceof Element &&
+      event.target.closest("[data-post-image-open]")
+    ) {
+      closeCommunityMenus(root);
+      closeCommunityPostMenus(root);
+      closeCommunityMemberRoleMenus(root);
+      openPostImageViewerFromTarget(event.target);
+      event.preventDefault();
+    }
   });
 
   root.addEventListener("input", (event: Event) => {
@@ -1083,6 +1187,13 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
+    if (target.closest("[data-post-image-open]")) {
+      closeCommunityMenus(root);
+      closeCommunityPostMenus(root);
+      closeCommunityMemberRoleMenus(root);
+      if (openPostImageViewerFromTarget(target)) return;
+    }
+
     if (target.closest("[data-member-confirm-modal] a[data-link]")) {
       communitiesState.membersManager.confirmAction = null;
       refreshCommunitiesPage(root);
@@ -1107,6 +1218,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const isExpanded = menuToggle.getAttribute("aria-expanded") === "true";
       closeCommunityMenus(root);
       closeCommunityPostMenus(root);
+      closeCommunityMemberRoleMenus(root);
 
       if (menu && !isExpanded) {
         positionCommunityMenu(menu, menuToggle);
@@ -1130,6 +1242,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const menu = document.querySelector<HTMLElement>(`[data-community-post-menu="${postId}"]`);
       const isExpanded = postMenuToggle.getAttribute("aria-expanded") === "true";
       closeCommunityPostMenus(root);
+      closeCommunityMemberRoleMenus(root);
 
       if (menu && !isExpanded) {
         positionCommunityPostMenu(menu, postMenuToggle);
@@ -1351,48 +1464,40 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       return;
     }
 
-    const memberRoleButton = target.closest("[data-community-member-role]");
-    if (memberRoleButton instanceof HTMLButtonElement) {
-      const bundle = communitiesState.activeCommunity;
-      const profileId = Number(memberRoleButton.getAttribute("data-community-member-role"));
-      const nextRole = memberRoleButton.getAttribute("data-community-member-role-value");
-      if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
-      if (
-        nextRole !== "admin" &&
-        nextRole !== "moderator" &&
-        nextRole !== "member" &&
-        nextRole !== "blocked"
-      ) {
-        return;
-      }
+    const memberRoleToggle = target.closest("[data-community-member-role-toggle]");
+    if (memberRoleToggle instanceof HTMLButtonElement) {
+      const profileId = memberRoleToggle.getAttribute("data-community-member-role-toggle");
+      if (!profileId) return;
 
-      const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
-      if (
-        !member ||
-        member.role === nextRole ||
-        !canManageCommunityMemberRole(bundle, member, communitiesState.viewerProfileId)
-      ) {
-        refreshCommunitiesPage(root);
-        return;
-      }
+      const menu = document.querySelector<HTMLElement>(
+        `[data-community-member-role-menu="${profileId}"]`,
+      );
+      const isExpanded = memberRoleToggle.getAttribute("aria-expanded") === "true";
+      closeCommunityMemberRoleMenus(root);
 
-      communitiesState.membersManager.confirmAction = {
-        type: "role",
-        profileId,
-        newRole: nextRole,
-      };
-      refreshCommunitiesPage(root);
+      if (menu && !isExpanded) {
+        positionCommunityMemberRoleMenu(menu, memberRoleToggle);
+        document.body.appendChild(menu);
+        bindFloatingCommunityMemberRoleMenuActions(menu, root);
+        menu.hidden = false;
+        memberRoleToggle.setAttribute("aria-expanded", "true");
+      }
       return;
     }
 
-    const roleSelect = target.closest(".community-members-manager__role-select");
-    if (roleSelect instanceof HTMLDetailsElement) {
-      root
-        .querySelectorAll<HTMLDetailsElement>(".community-members-manager__role-select[open]")
-        .forEach((details) => {
-          if (details !== roleSelect) details.open = false;
-        });
+    const memberRoleButton = target.closest("[data-community-member-role]");
+    if (memberRoleButton instanceof HTMLButtonElement) {
+      const profileId = Number(memberRoleButton.getAttribute("data-community-member-role"));
+      const nextRole = memberRoleButton.getAttribute("data-community-member-role-value");
+      handleCommunityMemberRoleChoice(root, profileId, nextRole);
       return;
+    }
+
+    if (
+      !target.closest("[data-community-member-role-select]") &&
+      !target.closest("[data-community-member-role-menu]")
+    ) {
+      closeCommunityMemberRoleMenus(root);
     }
 
     const membersCloseButton = target.closest("[data-community-members-close]");
@@ -1404,6 +1509,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       bindableRoot.__communityMembersBackdropPressStarted = false;
       communitiesState.membersManager.open = false;
       communitiesState.membersManager.errorMessage = "";
+      closeCommunityMemberRoleMenus(root);
       refreshCommunitiesPage(root);
       return;
     }
@@ -1802,6 +1908,10 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     const pickPostImageButton = target.closest("[data-community-post-pick-image]");
     if (pickPostImageButton instanceof HTMLButtonElement) {
+      if (pickPostImageButton.disabled || communitiesState.postComposer.mediaItems.length >= 5) {
+        return;
+      }
+
       const input = root.querySelector<HTMLInputElement>("[data-community-post-image-input]");
       if (input) {
         input.value = "";
@@ -1843,14 +1953,28 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const openPostMenu = document.querySelector<HTMLElement>(
         "[data-community-post-menu]:not([hidden])",
       );
-      if (!openPostMenu) return;
-      const postId = openPostMenu.getAttribute("data-community-post-menu");
-      if (!postId) return;
-      const postToggle = root.querySelector<HTMLButtonElement>(
-        `[data-community-post-menu-toggle="${postId}"]`,
+      if (openPostMenu) {
+        const postId = openPostMenu.getAttribute("data-community-post-menu");
+        const postToggle = postId
+          ? root.querySelector<HTMLButtonElement>(`[data-community-post-menu-toggle="${postId}"]`)
+          : null;
+        if (postToggle) {
+          positionCommunityPostMenu(openPostMenu, postToggle);
+        }
+      }
+
+      const openRoleMenu = document.querySelector<HTMLElement>(
+        "[data-community-member-role-menu]:not([hidden])",
       );
-      if (!postToggle) return;
-      positionCommunityPostMenu(openPostMenu, postToggle);
+      if (!openRoleMenu) return;
+      const profileId = openRoleMenu.getAttribute("data-community-member-role-menu");
+      const roleToggle = profileId
+        ? root.querySelector<HTMLButtonElement>(
+            `[data-community-member-role-toggle="${profileId}"]`,
+          )
+        : null;
+      if (!roleToggle) return;
+      positionCommunityMemberRoleMenu(openRoleMenu, roleToggle);
     },
     { passive: true },
   );

@@ -79,6 +79,7 @@ import {
   openProfilePostSearch,
 } from "./post-list";
 import type { DisplayProfile } from "./types";
+import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 
 function updateOwnProfileCacheAvatar(avatarLink?: string): void {
   const cachedProfile = readJsonStorage<DisplayProfile>(OWN_PROFILE_CACHE_KEY);
@@ -230,6 +231,11 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
+    if (target.closest("[data-post-image-open]")) {
+      closeProfilePostMenus(root);
+      if (openPostImageViewerFromTarget(target)) return;
+    }
+
     const postSearchOpenButton = target.closest("[data-profile-post-search-open]");
     if (postSearchOpenButton instanceof HTMLButtonElement) {
       openProfilePostSearch(root);
@@ -347,6 +353,10 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
     const pickPostImageButton = target.closest("[data-profile-post-pick-image]");
     if (pickPostImageButton instanceof HTMLButtonElement) {
+      if (pickPostImageButton.disabled || postComposerState.mediaItems.length >= 5) {
+        return;
+      }
+
       const imageInput = root.querySelector<HTMLInputElement>("[data-profile-post-image-input]");
       if (imageInput) {
         imageInput.value = "";
@@ -1067,6 +1077,17 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
   root.addEventListener("keydown", (event: Event) => {
     if (!(event instanceof KeyboardEvent)) {
+      return;
+    }
+
+    if (
+      (event.key === "Enter" || event.key === " ") &&
+      event.target instanceof Element &&
+      event.target.closest("[data-post-image-open]")
+    ) {
+      closeProfilePostMenus(root);
+      openPostImageViewerFromTarget(event.target);
+      event.preventDefault();
       return;
     }
 

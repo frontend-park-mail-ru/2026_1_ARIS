@@ -1,4 +1,4 @@
-const CACHE_VERSION = "aris-v6";
+const CACHE_VERSION = "aris-v7";
 const STATIC_CACHE = `${CACHE_VERSION}:static`;
 const API_CACHE = `${CACHE_VERSION}:api`;
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
@@ -315,6 +315,19 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
 
+  if (url.origin === self.location.origin && url.pathname.startsWith("/api/auth/vkid/")) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (
+    url.origin === self.location.origin &&
+    (url.pathname.startsWith("/api/") || url.pathname.startsWith("/image-proxy"))
+  ) {
+    event.respondWith(networkFirst(request, API_CACHE));
+    return;
+  }
+
   if (request.mode === "navigate") {
     event.respondWith(networkFirst(request, STATIC_CACHE, ["/index.html", "/offline.html"]));
     return;
@@ -326,11 +339,6 @@ self.addEventListener("fetch", (event) => {
 
   if (url.searchParams.has("healthcheck")) {
     event.respondWith(fetch(request));
-    return;
-  }
-
-  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/image-proxy")) {
-    event.respondWith(networkFirst(request, API_CACHE));
     return;
   }
 

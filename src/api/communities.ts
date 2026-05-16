@@ -65,6 +65,7 @@ export type CommunityExistenceResult = {
   exists: boolean;
   titleExists: boolean;
   usernameExists: boolean;
+  suggestedUsername: string;
 };
 
 export type CommunityMember = {
@@ -149,6 +150,7 @@ type RawCommunityExistenceResult = {
   exists?: boolean;
   titleExists?: boolean;
   usernameExists?: boolean;
+  suggestedUsername?: string;
 };
 
 function isCommunityType(value: unknown): value is CommunityType {
@@ -377,6 +379,7 @@ export async function checkCommunityExists(
     exists: data.exists === true,
     titleExists: data.titleExists === true,
     usernameExists: data.usernameExists === true,
+    suggestedUsername: String(data.suggestedUsername ?? ""),
   };
 }
 

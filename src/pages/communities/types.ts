@@ -28,6 +28,7 @@ export type CommunityMediaEditorState = {
   dragStartY: number;
   dragStartOffsetX: number;
   dragStartOffsetY: number;
+  dragMoved: boolean;
   dirty: boolean;
   removed: boolean;
   loading: boolean;

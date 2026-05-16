@@ -25,6 +25,7 @@ function createInitialMediaEditorState(): CommunityMediaEditorState {
     dragStartY: 0,
     dragStartOffsetX: 0,
     dragStartOffsetY: 0,
+    dragMoved: false,
     dirty: false,
     removed: false,
     loading: false,

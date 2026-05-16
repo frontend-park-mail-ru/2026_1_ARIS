@@ -58,8 +58,8 @@ describe("auth api", () => {
     );
   });
 
-  it("registerUser возвращает пустого пользователя при некорректном payload", async () => {
-    vi.mocked(apiRequest).mockResolvedValue({ id: 0 });
+  it("registerUser получает 400 ответ", async () => {
+    vi.mocked(apiRequest).mockRejectedValue(new Error("400 Bad Request"));
 
     await expect(
       registerUser({
@@ -71,7 +71,7 @@ describe("auth api", () => {
         password1: "secret",
         password2: "secret",
       }),
-    ).resolves.toEqual({ id: "", firstName: "", lastName: "" });
+    ).rejects.toThrow("400 Bad Request");
   });
 
   it("loginUser считает пользователя авторизованным при id и login без имени", async () => {

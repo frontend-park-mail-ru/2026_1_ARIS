@@ -74,6 +74,20 @@ describe("auth api", () => {
     ).resolves.toEqual({ id: "", firstName: "", lastName: "" });
   });
 
+  it("loginUser считает пользователя авторизованным при id и login без имени", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({
+      profileID: 9,
+      login: "demo",
+    });
+
+    await expect(loginUser({ login: "demo", password: "secret" })).resolves.toEqual({
+      id: "9",
+      firstName: "demo",
+      lastName: "",
+      login: "demo",
+    });
+  });
+
   it("getCurrentUser возвращает null на ApiError и пробрасывает неизвестные ошибки", async () => {
     vi.mocked(apiRequest).mockRejectedValueOnce(new ApiError("unauthorized", 401, {}));
 

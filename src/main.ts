@@ -29,6 +29,7 @@ import "./pages/support-admin/support-admin.scss";
 import "./pages/support-stats/support-stats.scss";
 import "./pages/search/search.css";
 import "./pages/settings/settings.css";
+import "./pages/games/games.css";
 
 import "./components/postcard/postcard-element";
 import { createRouter, type Route } from "./router/router";
@@ -58,6 +59,7 @@ const NOINDEX_PATH_PREFIXES = [
   "/communities",
   "/profile",
   "/id",
+  "/games",
   "/support/admin",
   "/support/stats",
 ];
@@ -83,6 +85,7 @@ const loadSupportStats = () =>
 const loadSearch = () => import(/* webpackChunkName: "page-search" */ "./pages/search/search");
 const loadSettings = () =>
   import(/* webpackChunkName: "page-settings" */ "./pages/settings/settings");
+const loadGames = () => import(/* webpackChunkName: "page-games" */ "./pages/games/games");
 
 function normalisePathname(pathname: string): string {
   return pathname.replace(/\/+$/g, "") || "/";
@@ -180,6 +183,10 @@ function matchesRoutePath(pathname: string, routePath: string): boolean {
     return /^\/communities\/[^/]+$/i.test(normalisedPathname);
   }
 
+  if (normalisedRoutePath === "/games/:roomId") {
+    return /^\/games\/[^/]+$/i.test(normalisedPathname);
+  }
+
   return false;
 }
 
@@ -271,6 +278,16 @@ const routes: Route[] = [
     render: async (p, s) => (await loadSettings()).renderSettings(p, s),
   },
   {
+    path: "/games",
+    title: "ARISNET — Games",
+    render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
+    path: "/games/:roomId",
+    title: "ARISNET — Game Room",
+    render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
     path: "/support",
     title: "ARISNET — Support",
     render: async () => (await loadSupport()).renderSupportWidget(),
@@ -315,6 +332,7 @@ const chunkMap: Record<string, () => Promise<unknown>> = {
   "/login": loadLogin,
   "/register": loadRegister,
   "/settings": loadSettings,
+  "/games": loadGames,
   "/support/admin": loadSupportAdmin,
 };
 

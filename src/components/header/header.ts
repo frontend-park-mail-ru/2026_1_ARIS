@@ -453,6 +453,24 @@ export function renderHeader(): string {
 }
 
 /**
+ * Перерисовывает шапку по актуальному состоянию сессии.
+ *
+ * Нужен для публичных маршрутов, где во время перехода может оказаться
+ * гостевой shell, хотя пользователь уже восстановлен из persistent-сессии.
+ */
+export function refreshHeader(): void {
+  const header = document.querySelector<HTMLElement>(".header");
+  if (!header) return;
+
+  const template = document.createElement("template");
+  template.innerHTML = renderHeader().trim();
+  const nextHeader = template.content.firstElementChild;
+  if (!(nextHeader instanceof HTMLElement)) return;
+
+  header.replaceWith(nextHeader);
+}
+
+/**
  * Инициализирует интерактивное поведение header.
  *
  * @param {Document | HTMLElement} [root=document] Корень, внутри которого живёт header.

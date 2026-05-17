@@ -219,6 +219,14 @@ Cypress.Commands.add("mockCommunitiesApi", () => {
   cy.intercept("GET", apiPattern("/api/post/community/77*"), {
     body: { posts: [] },
   }).as("createdCommunityPosts");
+  cy.intercept("POST", apiPattern("/api/communities/check-exists"), {
+    body: {
+      exists: false,
+      titleExists: false,
+      usernameExists: false,
+      suggestedUsername: "cypress-club",
+    },
+  }).as("checkCommunityExists");
   cy.intercept("POST", apiPattern("/api/communities"), {
     body: {
       ...communityBundle,

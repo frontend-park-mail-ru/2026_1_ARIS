@@ -56,6 +56,18 @@ export type CommunityPayload = {
   removeCover?: boolean;
 };
 
+export type CommunityExistencePayload = {
+  title: string;
+  username: string;
+};
+
+export type CommunityExistenceResult = {
+  exists: boolean;
+  titleExists: boolean;
+  usernameExists: boolean;
+  suggestedUsername: string;
+};
+
 export type CommunityMember = {
   profileId: number;
   userAccountId: number;
@@ -132,6 +144,13 @@ type RawCommunityMember = {
 
 type CommunityMembersResponse = {
   items?: RawCommunityMember[];
+};
+
+type RawCommunityExistenceResult = {
+  exists?: boolean;
+  titleExists?: boolean;
+  usernameExists?: boolean;
+  suggestedUsername?: string;
 };
 
 function isCommunityType(value: unknown): value is CommunityType {
@@ -344,6 +363,24 @@ export async function createCommunity(payload: CommunityPayload): Promise<Commun
     {},
   );
   return mapBundle(data);
+}
+
+export async function checkCommunityExists(
+  payload: CommunityExistencePayload,
+  signal?: AbortSignal,
+): Promise<CommunityExistenceResult> {
+  const data = await apiRequest<RawCommunityExistenceResult>(
+    "/api/communities/check-exists",
+    { method: "POST", body: payload, ...(signal ? { signal } : {}) },
+    {},
+  );
+
+  return {
+    exists: data.exists === true,
+    titleExists: data.titleExists === true,
+    usernameExists: data.usernameExists === true,
+    suggestedUsername: String(data.suggestedUsername ?? ""),
+  };
 }
 
 export async function updateCommunity(

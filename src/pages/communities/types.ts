@@ -7,6 +7,7 @@ export type CommunitiesParams = {
 
 export type CommunityFormMode = "create" | "edit";
 export type CommunityFormStep = 1 | 2 | 3 | 4;
+export type CommunityNameCheckStatus = "idle" | "checking" | "available" | "unavailable" | "error";
 export type CommunityPostFeedMode = "all" | "official";
 export type CommunityPostAuthorMode = "community" | "member";
 
@@ -27,6 +28,7 @@ export type CommunityMediaEditorState = {
   dragStartY: number;
   dragStartOffsetX: number;
   dragStartOffsetY: number;
+  dragMoved: boolean;
   dirty: boolean;
   removed: boolean;
   loading: boolean;
@@ -40,6 +42,10 @@ export type CommunityFormState = {
   communityId: number | null;
   isSaving: boolean;
   errorMessage: string;
+  nameCheckStatus: CommunityNameCheckStatus;
+  nameCheckTitle: string;
+  nameCheckUsername: string;
+  nameCheckMessage: string;
   title: string;
   username: string;
   bio: string;

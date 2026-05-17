@@ -42,14 +42,55 @@ type RawChat = {
 type RawMessage = {
   id?: number | string;
   ID?: number | string;
+  uid?: string;
   text?: string | null;
   Text?: string | null;
   authorName?: string;
   AuthorName?: string;
+  parentMessage?: number | string | null;
+  parentMessageId?: number | string | null;
+  chat?: number | string;
   authorId?: number | string;
   AuthorID?: number | string;
+  sticker?: number | string | null;
+  stickerData?: RawSticker | null;
+  media?: RawMessageAttachment[];
+  files?: RawMessageAttachment[];
+  reactions?: RawMessageReaction[];
+  myReaction?: string | null;
+  isActive?: boolean;
   createdAt?: string;
   CreatedAt?: string;
+  updatedAt?: string;
+};
+
+type RawMessageAttachment = {
+  id?: number | string;
+  uid?: string;
+  mimeType?: string;
+  url?: string;
+};
+
+type RawMessageReaction = {
+  type?: string;
+  count?: number | string;
+};
+
+type RawStickerPack = {
+  id?: number | string;
+  uid?: string;
+  title?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type RawSticker = {
+  id?: number | string;
+  uid?: string;
+  packId?: number | string | null;
+  mediaId?: number | string | null;
+  mimeType?: string | null;
+  url?: string | null;
 };
 
 /**
@@ -74,22 +115,100 @@ export type ChatSummary = {
 export type ChatMessage = {
   /** Уникальный идентификатор сообщения. */
   id: string;
+  /** UUID сообщения, если сервер его вернул. */
+  uid?: string | undefined;
   /** Текст сообщения без дополнительной разметки. */
   text: string;
   /** Отображаемое имя автора сообщения. */
   authorName?: string | undefined;
+  /** Сообщение, на которое отвечает текущая запись. */
+  parentMessageId?: string | undefined;
+  /** Идентификатор чата из ответа сервера. */
+  chatId?: string | undefined;
   /** Идентификатор автора в строковом виде. */
   authorId: string;
+  /** Идентификатор стикера, если сообщение стикерное. */
+  stickerId?: string | undefined;
+  /** Данные стикера для отображения. */
+  stickerData?: Sticker | undefined;
+  /** Фото и видео вложения сообщения. */
+  media: MessageAttachment[];
+  /** Остальные файловые вложения сообщения. */
+  files: MessageAttachment[];
+  /** Сводка emoji-реакций. */
+  reactions: MessageReaction[];
+  /** Реакция текущего пользователя. */
+  myReaction?: string | undefined;
+  /** Активно ли сообщение. */
+  isActive: boolean;
   /** Дата создания сообщения в формате ISO. */
   createdAt?: string | undefined;
+  /** Дата обновления сообщения в формате ISO. */
+  updatedAt?: string | undefined;
 };
+
+export type AttachmentPayload = {
+  mediaID: number;
+};
+
+export type MessageAttachment = {
+  id: string;
+  uid: string;
+  mimeType: string;
+  url: string;
+};
+
+export type StickerPack = {
+  id: string;
+  uid: string;
+  title: string;
+  createdAt?: string | undefined;
+  updatedAt?: string | undefined;
+};
+
+export type Sticker = {
+  id: string;
+  uid: string;
+  packId?: string | undefined;
+  mediaId?: string | undefined;
+  mimeType?: string | undefined;
+  url?: string | undefined;
+};
+
+export type MessageReaction = {
+  type: string;
+  count: number;
+};
+
+export type MessageReactionType = "👍" | "❤️" | "😂" | "😢" | "😡";
 
 /**
  * Тело запроса на отправку сообщения.
  */
 export type SendMessagePayload = {
   /** Текст сообщения, который нужно отправить в чат. */
-  text: string;
+  text?: string;
+  /** ID сообщения, на которое отвечают. */
+  parentMessageId?: number;
+  /** ID стикера для отдельного стикерного сообщения. */
+  stickerId?: number;
+  /** Фото и видео вложения. */
+  media?: AttachmentPayload[];
+  /** Остальные файловые вложения. */
+  files?: AttachmentPayload[];
+};
+
+type GetMessagesOptions = {
+  limit?: number;
+  offset?: number;
+  after?: number | string;
+  signal?: AbortSignal;
+};
+
+type ListOptions = {
+  limit?: number;
+  offset?: number;
+  signal?: AbortSignal;
 };
 
 /**
@@ -140,17 +259,163 @@ function mapChat(raw: RawChat): ChatSummary {
   };
 }
 
+function parseNumericCount(value: unknown): number {
+  const numeric =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : Number.NaN;
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function mapAttachment(raw: RawMessageAttachment | null | undefined): MessageAttachment | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const id = String(raw.id ?? "").trim();
+  const url = String(raw.url ?? "").trim();
+  if (!id || !url) {
+    return null;
+  }
+
+  return {
+    id,
+    uid: String(raw.uid ?? ""),
+    mimeType: String(raw.mimeType ?? ""),
+    url,
+  };
+}
+
+function mapSticker(raw: RawSticker | null | undefined): Sticker | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+
+  const id = String(raw.id ?? "").trim();
+  if (!id) {
+    return undefined;
+  }
+
+  const packId = raw.packId === undefined || raw.packId === null ? "" : String(raw.packId);
+  const mediaId = raw.mediaId === undefined || raw.mediaId === null ? "" : String(raw.mediaId);
+  const mimeType = raw.mimeType ? String(raw.mimeType) : "";
+  const url = raw.url ? String(raw.url) : "";
+
+  return {
+    id,
+    uid: String(raw.uid ?? ""),
+    ...(packId ? { packId } : {}),
+    ...(mediaId ? { mediaId } : {}),
+    ...(mimeType ? { mimeType } : {}),
+    ...(url ? { url } : {}),
+  };
+}
+
+function mapStickerPack(raw: RawStickerPack): StickerPack | null {
+  const id = String(raw.id ?? "").trim();
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    uid: String(raw.uid ?? ""),
+    title: String(raw.title ?? ""),
+    ...(raw.createdAt ? { createdAt: raw.createdAt } : {}),
+    ...(raw.updatedAt ? { updatedAt: raw.updatedAt } : {}),
+  };
+}
+
 function mapMessage(raw: RawMessage): ChatMessage {
+  const parentMessageId = raw.parentMessage ?? raw.parentMessageId;
+  const stickerId = raw.sticker;
+  const stickerData = mapSticker(raw.stickerData);
+  const media = Array.isArray(raw.media)
+    ? raw.media.map(mapAttachment).filter((item): item is MessageAttachment => Boolean(item))
+    : [];
+  const files = Array.isArray(raw.files)
+    ? raw.files.map(mapAttachment).filter((item): item is MessageAttachment => Boolean(item))
+    : [];
+  const reactions = Array.isArray(raw.reactions)
+    ? raw.reactions
+        .map((item) => ({ type: String(item.type ?? ""), count: parseNumericCount(item.count) }))
+        .filter((item) => item.type)
+    : [];
+
   return {
     id: String(raw.id ?? raw.ID ?? ""),
+    ...(raw.uid ? { uid: String(raw.uid) } : {}),
     text: String(raw.text ?? raw.Text ?? ""),
     authorName:
       typeof (raw.authorName ?? raw.AuthorName) === "string"
         ? String(raw.authorName ?? raw.AuthorName)
         : undefined,
+    ...(parentMessageId !== undefined && parentMessageId !== null
+      ? { parentMessageId: String(parentMessageId) }
+      : {}),
+    ...(raw.chat !== undefined && raw.chat !== null ? { chatId: String(raw.chat) } : {}),
     authorId: String(raw.authorId ?? raw.AuthorID ?? ""),
+    ...(stickerId !== undefined && stickerId !== null ? { stickerId: String(stickerId) } : {}),
+    ...(stickerData ? { stickerData } : {}),
+    media,
+    files,
+    reactions,
+    ...(raw.myReaction ? { myReaction: String(raw.myReaction) } : {}),
+    isActive: raw.isActive !== false,
     createdAt: raw.createdAt ?? raw.CreatedAt,
+    updatedAt: raw.updatedAt,
   };
+}
+
+function normaliseSendMessagePayload(payload: SendMessagePayload): SendMessagePayload {
+  const media = Array.isArray(payload.media)
+    ? payload.media
+        .map((item) => Number(item.mediaID))
+        .filter((mediaID) => Number.isFinite(mediaID) && mediaID > 0)
+        .map((mediaID) => ({ mediaID }))
+    : undefined;
+  const files = Array.isArray(payload.files)
+    ? payload.files
+        .map((item) => Number(item.mediaID))
+        .filter((mediaID) => Number.isFinite(mediaID) && mediaID > 0)
+        .map((mediaID) => ({ mediaID }))
+    : undefined;
+
+  return {
+    ...(typeof payload.text === "string" ? { text: payload.text } : {}),
+    ...(typeof payload.parentMessageId === "number"
+      ? { parentMessageId: payload.parentMessageId }
+      : {}),
+    ...(typeof payload.stickerId === "number" ? { stickerId: payload.stickerId } : {}),
+    ...(media ? { media } : {}),
+    ...(files ? { files } : {}),
+  };
+}
+
+function buildListQuery(options: ListOptions & { after?: number | string } = {}): string {
+  const params = new URLSearchParams();
+  if (typeof options.limit === "number") params.set("limit", String(options.limit));
+  if (typeof options.offset === "number") params.set("offset", String(options.offset));
+  if (options.after !== undefined && options.after !== "")
+    params.set("after", String(options.after));
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function normaliseMessageOptions(
+  signalOrOptions?: AbortSignal | GetMessagesOptions,
+): GetMessagesOptions {
+  if (!signalOrOptions) {
+    return {};
+  }
+
+  if ("aborted" in signalOrOptions) {
+    return { signal: signalOrOptions };
+  }
+
+  return signalOrOptions;
 }
 
 function normaliseChatTitle(value: string): string {
@@ -277,11 +542,12 @@ export async function createOrResolvePrivateChatId(
  */
 export async function getChatMessages(
   chatId: string,
-  signal?: AbortSignal,
+  signalOrOptions?: AbortSignal | GetMessagesOptions,
 ): Promise<ChatMessage[]> {
+  const options = normaliseMessageOptions(signalOrOptions);
   const data = await apiRequest<RawMessage[]>(
-    `/api/chats/${encodeURIComponent(chatId)}/messages`,
-    { ...(signal ? { signal } : {}) },
+    `/api/chats/${encodeURIComponent(chatId)}/messages${buildListQuery(options)}`,
+    { ...(options.signal ? { signal: options.signal } : {}) },
     [],
   );
 
@@ -310,7 +576,75 @@ export async function sendChatMessage(
 ): Promise<ChatMessage> {
   const data = await apiRequest<RawMessage>(
     `/api/chats/${encodeURIComponent(chatId)}/messages`,
-    { method: "POST", body: payload },
+    { method: "POST", body: normaliseSendMessagePayload(payload) },
+    {},
+  );
+
+  return mapMessage(data);
+}
+
+export async function updateChatMessageText(
+  chatId: string,
+  messageId: string | number,
+  text: string,
+): Promise<ChatMessage> {
+  const data = await apiRequest<RawMessage>(
+    `/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(String(messageId))}`,
+    { method: "PUT", body: { text } },
+    {},
+  );
+
+  return mapMessage(data);
+}
+
+export async function getStickerPacks(options: ListOptions = {}): Promise<StickerPack[]> {
+  const data = await apiRequest<RawStickerPack[]>(
+    `/api/sticker-packs${buildListQuery(options)}`,
+    { ...(options.signal ? { signal: options.signal } : {}) },
+    [],
+  );
+
+  return Array.isArray(data)
+    ? data.map(mapStickerPack).filter((item): item is StickerPack => Boolean(item))
+    : [];
+}
+
+export async function getStickersByPack(
+  packId: string | number,
+  options: ListOptions = {},
+): Promise<Sticker[]> {
+  const data = await apiRequest<RawSticker[]>(
+    `/api/sticker-packs/${encodeURIComponent(String(packId))}/stickers${buildListQuery(options)}`,
+    { ...(options.signal ? { signal: options.signal } : {}) },
+    [],
+  );
+
+  return Array.isArray(data)
+    ? data.map(mapSticker).filter((item): item is Sticker => Boolean(item))
+    : [];
+}
+
+export async function setMessageReaction(
+  chatId: string,
+  messageId: string | number,
+  type: MessageReactionType | string,
+): Promise<ChatMessage> {
+  const data = await apiRequest<RawMessage>(
+    `/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(String(messageId))}/reaction`,
+    { method: "PUT", body: { type } },
+    {},
+  );
+
+  return mapMessage(data);
+}
+
+export async function deleteMessageReaction(
+  chatId: string,
+  messageId: string | number,
+): Promise<ChatMessage> {
+  const data = await apiRequest<RawMessage>(
+    `/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(String(messageId))}/reaction`,
+    { method: "DELETE" },
     {},
   );
 
@@ -401,7 +735,7 @@ export function subscribeToChatMessages(
         return false;
       }
 
-      socket.send(JSON.stringify(payload));
+      socket.send(JSON.stringify(normaliseSendMessagePayload(payload)));
       return true;
     },
     isOpen: (): boolean => Boolean(socket && socket.readyState === WebSocket.OPEN),

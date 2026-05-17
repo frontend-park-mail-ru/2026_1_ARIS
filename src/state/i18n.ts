@@ -190,7 +190,7 @@ const MESSAGES = {
     "communities.removePost": "Удалить пост",
     "communities.savePost": "Сохранить",
     "communities.searchMembers": "Поиск по участникам",
-    "communities.showBlocked": "Показывать заблокированных",
+    "communities.showBlocked": "Показать заблокированных",
     "communities.notFound": "Сообщество не найдено.",
     "communities.postAsCommunity": "Посты сообщества",
     "communities.postSearch": "Поиск по публикациям сообщества",

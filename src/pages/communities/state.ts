@@ -240,12 +240,17 @@ export function getVisibleCommunities(): CommunityBundle[] {
 }
 
 export function getVisibleCommunityMembers(): CommunityMember[] {
-  const query = communitiesState.membersManager.query.trim().toLowerCase();
+  const manager = communitiesState.membersManager;
+  const query = manager.query.trim().toLowerCase();
+  const members = communitiesState.activeMembers.filter((member) =>
+    manager.includeBlocked ? member.blocked : !member.blocked,
+  );
+
   if (!query) {
-    return communitiesState.activeMembers;
+    return members;
   }
 
-  return communitiesState.activeMembers.filter((member) =>
+  return members.filter((member) =>
     [member.firstName, member.lastName, member.username].join(" ").toLowerCase().includes(query),
   );
 }

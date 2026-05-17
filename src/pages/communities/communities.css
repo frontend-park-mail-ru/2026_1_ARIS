@@ -1516,11 +1516,14 @@
   .community-members-manager__copy {
     min-width: 0;
     display: flex;
+    align-items: flex-start;
     flex-direction: column;
     gap: 4px;
   }
 
   .community-members-manager__copy a {
+    display: inline-block;
+    max-width: 100%;
     color: var(--color-text-name);
     font-size: var(--text-size-main);
     font-weight: var(--font-weight-medium);

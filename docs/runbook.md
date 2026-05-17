@@ -32,7 +32,7 @@ TLS терминируется nginx (из репозитория бэкенда
 | `PM2_NAME`           | Имя процесса PM2 (если используется) | `arisfront`                        |
 | `SYSTEMD_SERVICE`    | systemd-юнит для перезапуска         | `arisfront`                        |
 | `RESTART_CMD`        | Произвольная команда перезапуска     | `sudo systemctl restart arisfront` |
-| `BASE_URL`           | Публичный URL для smoke-проверок     | `https://aris.example.com`         |
+| `BASE_URL`           | Публичный URL для smoke-проверок     | `https://arisnet.ru`               |
 | `BUILD_COMMIT`       | SHA релиза для `/health`             | `a1b2c3d`                          |
 | `BUILD_VERSION`      | Версия релиза для `/health`          | `1.0.0`                            |
 | `SENTRY_DSN`         | (опционально) Sentry DSN             |                                    |
@@ -89,12 +89,22 @@ HTML-отчёт покрытия пишется в `coverage/`.
 
 ## Стандартный деплой
 
+### VK ID
+
+В VK-бизнес для production должны быть указаны только боевые значения:
+
+- Базовый домен: `arisnet.ru`
+- Доверенный Redirect URL: `https://arisnet.ru/api/auth/vkid/callback`
+
+На сервере auth-service использует тот же callback через переменную
+`VKID_REDIRECT_URI=https://arisnet.ru/api/auth/vkid/callback`.
+
 ```bash
 # На сервере, из корня репозитория:
 git pull origin main
 
 INSTALL_STATIC=true \
-  BASE_URL=https://aris.example.com \
+  BASE_URL=https://arisnet.ru \
   BUILD_COMMIT=$(git rev-parse --short HEAD) \
   NODE_ENV=production \
   bash scripts/deploy.sh
@@ -114,7 +124,7 @@ INSTALL_STATIC=true \
 
 ```bash
 INSTALL_STATIC=true \
-  BASE_URL=https://aris.example.com \
+  BASE_URL=https://arisnet.ru \
   SENTRY_DSN=https://... \
   SENTRY_ENVIRONMENT=production \
   SENTRY_RELEASE=arisfront@$(node -p "require('./package.json').version") \
@@ -129,7 +139,7 @@ INSTALL_STATIC=true \
 Откат к предыдущему релизу (резервная копия создаётся при каждом деплое):
 
 ```bash
-BASE_URL=https://aris.example.com bash scripts/deploy.sh --rollback
+BASE_URL=https://arisnet.ru bash scripts/deploy.sh --rollback
 ```
 
 Скрипт восстанавливает `$APP_ROOT.prev` → `$APP_ROOT`, перезапускает сервер
@@ -143,7 +153,7 @@ BASE_URL=https://aris.example.com bash scripts/deploy.sh --rollback
 ## Проверка здоровья
 
 ```bash
-curl -s https://aris.example.com/health | python3 -m json.tool
+curl -s https://arisnet.ru/health | python3 -m json.tool
 ```
 
 Ожидаемый ответ:
@@ -167,7 +177,7 @@ curl -s https://aris.example.com/health | python3 -m json.tool
 Запустить вручную после любого деплоя или изменения конфигурации:
 
 ```bash
-BASE_URL=https://aris.example.com bash scripts/smoke.sh
+BASE_URL=https://arisnet.ru bash scripts/smoke.sh
 ```
 
 Выполняемые проверки:

@@ -1,4 +1,6 @@
 import express, { NextFunction, Request, Response } from "express";
+import http from "http";
+import https from "https";
 import morgan from "morgan";
 import path from "path";
 
@@ -45,6 +47,38 @@ app.get("/health", (_req: Request, res: Response) => {
     version: process.env.npm_package_version || "unknown",
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get(/^\/api\/auth\/vkid\//, async (req: Request, res: Response) => {
+  const targetUrl = new URL(req.originalUrl, backendUrl);
+  const transport = targetUrl.protocol === "https:" ? https : http;
+
+  const proxyReq = transport.request(
+    targetUrl,
+    {
+      method: "GET",
+      headers: {
+        ...req.headers,
+        host: targetUrl.host,
+        "x-forwarded-host": req.headers.host || "",
+        "x-forwarded-proto": req.headers["x-forwarded-proto"]?.toString() || req.protocol,
+      },
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode || 502, proxyRes.statusMessage, proxyRes.headers);
+      proxyRes.pipe(res);
+    },
+  );
+
+  proxyReq.on("error", () => {
+    if (!res.headersSent) {
+      res.status(502).send("VK ID proxy error");
+    } else {
+      res.end();
+    }
+  });
+
+  proxyReq.end();
 });
 
 app.get("/image-proxy", async (req: Request, res: Response) => {

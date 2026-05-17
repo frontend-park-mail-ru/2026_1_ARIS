@@ -161,6 +161,60 @@ function normalizePathname(pathname: string): string {
   return normalized || "/";
 }
 
+function hasSuccessfulVkIdOauthMarker(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get("oauth") === "vkid" && !params.has("error");
+}
+
+export function getPendingVkIdOauthCallbackUrl(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const isVkIdCodeCallback =
+    params.has("code") &&
+    params.has("state") &&
+    (params.get("type") === "code_v2" || params.has("device_id"));
+
+  if (!isVkIdCodeCallback || normalizePathname(window.location.pathname).startsWith("/api/")) {
+    return null;
+  }
+
+  const callbackUrl = new URL("/api/auth/vkid/callback", window.location.origin);
+  callbackUrl.search = window.location.search;
+  return callbackUrl.toString();
+}
+
+export function redirectPendingVkIdOauthCallback(): boolean {
+  const callbackUrl = getPendingVkIdOauthCallbackUrl();
+  if (!callbackUrl) {
+    return false;
+  }
+
+  window.location.replace(callbackUrl);
+  return true;
+}
+
+function clearSuccessfulVkIdOauthMarker(): void {
+  if (typeof window === "undefined" || !hasSuccessfulVkIdOauthMarker()) {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete("oauth");
+  const nextPath = `${url.pathname}${url.search}${url.hash}`;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (nextPath !== currentPath) {
+    window.history.replaceState({}, "", nextPath);
+  }
+}
+
 /**
  * Определяет, нужно ли делать auth-probe на backend при старте приложения.
  *
@@ -181,6 +235,10 @@ function shouldProbeBackendSession(savedUser: User | null): boolean {
   }
 
   if (typeof window === "undefined") {
+    return true;
+  }
+
+  if (hasSuccessfulVkIdOauthMarker()) {
     return true;
   }
 
@@ -343,4 +401,5 @@ export async function initSession(): Promise<void> {
   }
 
   emitSessionChange("init");
+  clearSuccessfulVkIdOauthMarker();
 }

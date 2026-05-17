@@ -26,6 +26,26 @@ describe("авторизация и регистрация", () => {
     cy.get('[name="login"]').closest(".input").should("have.class", "input--error");
   });
 
+  it("показывает ссылку входа через VK ID с backend returnTo", () => {
+    cy.visitApp("/login");
+
+    cy.contains("[data-auth-vkid-link]", "Войти через VK ID")
+      .should("have.attr", "href")
+      .and("include", "/api/auth/vkid/login?returnTo=%2Ffeed%3Foauth%3Dvkid");
+
+    cy.visitApp("/register");
+
+    cy.contains("[data-auth-vkid-link]", "Войти через VK ID")
+      .should("have.attr", "href")
+      .and("include", "/api/auth/vkid/login?returnTo=%2Ffeed%3Foauth%3Dvkid");
+  });
+
+  it("показывает ошибку VK ID callback на странице входа", () => {
+    cy.visitApp("/login?oauth=vkid&error=access_denied");
+
+    cy.contains(".auth-form__error", "Не удалось войти через VK ID").should("be.visible");
+  });
+
   it("авторизует пользователя и открывает ленту", () => {
     cy.mockAuthApi();
     cy.intercept("POST", "**/api/auth/login", {

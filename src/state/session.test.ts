@@ -8,6 +8,7 @@ import { createMemoryStorage } from "../test-utils/storage";
 import { isNetworkUnavailableError } from "./network-status";
 import {
   clearSessionUser,
+  getPendingVkIdOauthCallbackUrl,
   getFeedMode,
   getSessionUser,
   initSession,
@@ -107,6 +108,37 @@ describe("session state", () => {
     });
 
     window.removeEventListener("sessionchange", listener);
+  });
+
+  it("проверяет backend-сессию после успешного VK ID redirect на публичную страницу", async () => {
+    window.history.replaceState({}, "", "/feed?oauth=vkid");
+    vi.mocked(getCurrentUser).mockResolvedValue(user);
+    vi.mocked(getMyProfile).mockResolvedValue({ firstName: "Софья", lastName: "Ситниченко" });
+
+    await initSession();
+
+    expect(getCurrentUser).toHaveBeenCalledTimes(1);
+    expect(getSessionUser()).toEqual(user);
+    expect(window.location.pathname).toBe("/feed");
+    expect(window.location.search).toBe("");
+  });
+
+  it("строит backend callback для VK ID code redirect на SPA-страницу", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/feed?code=vk2.test&expires_in=600&device_id=device-1&state=state-1&type=code_v2",
+    );
+
+    const callbackUrl = getPendingVkIdOauthCallbackUrl();
+
+    expect(callbackUrl).not.toBeNull();
+    const url = new URL(callbackUrl!);
+    expect(url.pathname).toBe("/api/auth/vkid/callback");
+    expect(url.searchParams.get("code")).toBe("vk2.test");
+    expect(url.searchParams.get("device_id")).toBe("device-1");
+    expect(url.searchParams.get("state")).toBe("state-1");
+    expect(url.searchParams.get("type")).toBe("code_v2");
   });
 
   it("восстанавливает сессию и дополняет аватар из профиля", async () => {

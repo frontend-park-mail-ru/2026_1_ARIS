@@ -32,6 +32,11 @@
     --auth-form-progress-line-height: 2px;
     --auth-form-error-max-width: 420px;
     --auth-form-secondary-link-top-gap: 0px;
+    --auth-form-oauth-gap: 12px;
+    --auth-form-oauth-divider-gap: 12px;
+    --auth-form-oauth-divider-line: rgb(0 0 0 / 12%);
+    --auth-form-vkid-bg: #0077ff;
+    --auth-form-vkid-size: 28px;
 
     width: 100%;
     max-width: 100%;
@@ -150,7 +155,8 @@
     &__fields,
     &__input-control,
     &__submit,
-    &__secondary-link {
+    &__secondary-link,
+    &__oauth-button {
       width: 100%;
     }
 
@@ -295,6 +301,51 @@
     }
     &__actions {
       width: 100%;
+    }
+
+    &__oauth {
+      display: flex;
+      width: 100%;
+      flex-direction: column;
+      gap: var(--auth-form-oauth-gap);
+    }
+
+    &__oauth-divider {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: var(--auth-form-oauth-divider-gap);
+      color: var(--color-text-meta);
+      font-size: var(--text-size-meta);
+      line-height: var(--line-height-base);
+
+      &::before,
+      &::after {
+        content: "";
+        height: var(--border-width);
+        background: var(--auth-form-oauth-divider-line);
+      }
+    }
+
+    &__oauth-button {
+      gap: 10px;
+      color: var(--color-text-main);
+      font-weight: var(--font-weight-medium);
+    }
+
+    &__vkid-mark {
+      display: inline-flex;
+      width: var(--auth-form-vkid-size);
+      height: var(--auth-form-vkid-size);
+      flex: 0 0 var(--auth-form-vkid-size);
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-small);
+      background: var(--auth-form-vkid-bg);
+      color: #fff;
+      font-size: var(--text-size-meta);
+      font-weight: var(--font-weight-bold);
+      line-height: 1;
     }
 
     &__select {

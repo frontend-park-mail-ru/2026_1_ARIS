@@ -46,23 +46,41 @@ describe("сообщества", () => {
     cy.visitApp({ path: "/communities", authenticated: true });
     cy.get("[data-community-create-open]").click();
     cy.get("[data-community-form-modal]").should("be.visible");
+    cy.get("[data-community-form-hint]").first().as("titleHint").trigger("mouseover");
+    cy.get("@titleHint").should(($button) => {
+      expect(getComputedStyle($button[0], "::before").opacity).to.eq("0");
+    });
+    cy.get("@titleHint").click();
+    cy.get("@titleHint").should(($button) => {
+      expect(getComputedStyle($button[0], "::before").opacity).to.eq("1");
+    });
+    cy.get("[data-community-title]").click();
+    cy.get("@titleHint").should(($button) => {
+      expect(getComputedStyle($button[0], "::before").opacity).to.eq("0");
+    });
 
     cy.get("[data-community-form-next]").click();
     cy.contains(".community-modal__error", "Введите название сообщества.").should("be.visible");
 
     cy.get("[data-community-title]").type("Cypress клуб");
+    cy.get("[data-community-username]").type("cypress-club");
     cy.get("[data-community-form-next]").click();
     cy.wait("@checkCommunityExists").its("request.body").should("deep.include", {
       title: "Cypress клуб",
-      username: "cypress-klub",
+      username: "cypress-club",
     });
     cy.get("[data-community-bio]").type("Сообщество создано из e2e.");
     cy.get("[data-community-form-next]").click();
+    cy.get('[data-community-media-rotate-left="avatar"]').should("not.be.visible");
+    cy.get('[data-community-media-rotate-right="avatar"]').should("not.be.visible");
     cy.get("[data-community-form-next]").click();
+    cy.get('[data-community-media-rotate-left="cover"]').should("not.be.visible");
+    cy.get('[data-community-media-rotate-right="cover"]').should("not.be.visible");
     cy.get("[data-community-form]").submit();
 
     cy.wait("@createCommunity").its("request.body").should("deep.include", {
       title: "Cypress клуб",
+      username: "cypress-club",
       bio: "Сообщество создано из e2e.",
       type: "public",
     });
@@ -76,14 +94,56 @@ describe("сообщества", () => {
 
     cy.visitApp({ path: "/communities", authenticated: true });
     cy.get("[data-community-create-open]").click();
-    cy.get("[data-community-title]").type("Enter клуб{enter}");
+    cy.get("[data-community-title]").type("Enter клуб");
+    cy.get("[data-community-username]").type("enter-club{enter}");
 
     cy.wait("@checkCommunityExists").its("request.body").should("deep.include", {
       title: "Enter клуб",
-      username: "enter-klub",
+      username: "enter-club",
     });
     cy.get("[data-community-bio]").should("be.visible");
     cy.get("@createCommunity.all").should("have.length", 0);
+  });
+
+  it("не сдвигает нижние кнопки при загрузке аватара и обложки", () => {
+    cy.mockAuthApi();
+    cy.mockCommunitiesApi();
+
+    cy.visitApp({ path: "/communities", authenticated: true });
+    cy.get("[data-community-create-open]").click();
+    cy.get("[data-community-title]").type("Layout клуб");
+    cy.get("[data-community-username]").type("layout-club");
+    cy.get("[data-community-form-next]").click();
+    cy.wait("@checkCommunityExists");
+    cy.get("[data-community-bio]").type("Проверяем стабильность нижних кнопок.");
+    cy.get("[data-community-form-next]").click();
+
+    let avatarNextTop = 0;
+    cy.get("[data-community-form-next]").then(($button) => {
+      avatarNextTop = $button[0].getBoundingClientRect().top;
+    });
+    cy.get("[data-community-avatar-input]").selectFile("public/assets/img/pwa-192.png", {
+      force: true,
+    });
+    cy.get('[data-community-media-rotate-left="avatar"]').should("be.visible");
+    cy.get("[data-community-form-next]").should(($button) => {
+      expect(Math.abs($button[0].getBoundingClientRect().top - avatarNextTop)).to.be.lessThan(1);
+    });
+
+    cy.get("[data-community-form-next]").click();
+    cy.get('[data-community-media-rotate-left="cover"]').should("not.be.visible");
+
+    let coverNextTop = 0;
+    cy.get('[data-community-form] button[type="submit"]').then(($button) => {
+      coverNextTop = $button[0].getBoundingClientRect().top;
+    });
+    cy.get("[data-community-cover-input]").selectFile("public/assets/img/pwa-192.png", {
+      force: true,
+    });
+    cy.get('[data-community-media-rotate-left="cover"]').should("be.visible");
+    cy.get('[data-community-form] button[type="submit"]').should(($button) => {
+      expect(Math.abs($button[0].getBoundingClientRect().top - coverNextTop)).to.be.lessThan(1);
+    });
   });
 
   it("отображает детали сообщества и фильтрует посты", () => {

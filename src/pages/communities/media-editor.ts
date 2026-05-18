@@ -145,6 +145,7 @@ function applyCommunityMediaSource(
   editor.rotation = 0;
   editor.offsetX = 0;
   editor.offsetY = 0;
+  editor.dragMoved = false;
   editor.dirty = dirty;
   editor.removed = false;
   editor.loading = false;
@@ -182,6 +183,7 @@ export function clearCommunityMediaSelection(kind: CommunityMediaEditorKind): vo
   editor.dragStartY = 0;
   editor.dragStartOffsetX = 0;
   editor.dragStartOffsetY = 0;
+  editor.dragMoved = false;
   editor.dirty = false;
   editor.removed = false;
   editor.loading = false;
@@ -448,9 +450,6 @@ function syncSingleCommunityMediaEditor(root: ParentNode, kind: CommunityMediaEd
   const zoomInput = wrapper.querySelector<HTMLInputElement>(
     `[data-community-media-zoom="${kind}"]`,
   );
-  const pickButton = wrapper.querySelector<HTMLButtonElement>(
-    `[data-community-media-pick="${kind}"]`,
-  );
   const deleteButton = wrapper.querySelector<HTMLButtonElement>(
     `[data-community-media-delete="${kind}"]`,
   );
@@ -508,19 +507,11 @@ function syncSingleCommunityMediaEditor(root: ParentNode, kind: CommunityMediaEd
     zoomInput.disabled = !hasEditorImage || editor.loading;
   }
 
-  if (pickButton instanceof HTMLButtonElement) {
-    pickButton.disabled = editor.loading;
-    pickButton.textContent =
-      hasEditorImage || hasCurrentImage
-        ? t("communities.formReplaceImage")
-        : t("communities.formChooseImage");
-  }
-
   if (deleteButton instanceof HTMLButtonElement) {
     deleteButton.hidden = !canResetChanges && !canDeleteSavedImage;
     deleteButton.disabled = editor.loading;
     deleteButton.textContent =
-      canResetChanges && !canDeleteSavedImage
+      canResetChanges && canDeleteSavedImage
         ? t("communities.formResetChanges")
         : t("communities.formRemoveImage");
   }
@@ -560,6 +551,7 @@ export function startCommunityMediaDrag(
   editor.dragStartY = event.clientY;
   editor.dragStartOffsetX = editor.offsetX;
   editor.dragStartOffsetY = editor.offsetY;
+  editor.dragMoved = false;
   stage.setPointerCapture(event.pointerId);
   stage.classList.add("is-dragging");
 }
@@ -574,6 +566,7 @@ export function moveCommunityMediaDrag(
     return;
   }
 
+  editor.dragMoved = true;
   editor.offsetX = editor.dragStartOffsetX + (event.clientX - editor.dragStartX);
   editor.offsetY = editor.dragStartOffsetY + (event.clientY - editor.dragStartY);
   editor.dirty = true;
@@ -604,6 +597,7 @@ export function endCommunityMediaDrag(
 export function cancelCommunityMediaDrag(kind: CommunityMediaEditorKind, root: ParentNode): void {
   const editor = getCommunityMediaEditor(kind);
   editor.dragPointerId = null;
+  editor.dragMoved = false;
   getCommunityMediaStage(root, kind)?.classList.remove("is-dragging");
 }
 

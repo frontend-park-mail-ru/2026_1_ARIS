@@ -144,12 +144,14 @@ describe("communities api", () => {
       exists: true,
       titleExists: true,
       usernameExists: false,
+      suggestedUsername: "aris-2",
     });
 
     await expect(checkCommunityExists({ title: "ARIS", username: "aris" })).resolves.toEqual({
       exists: true,
       titleExists: true,
       usernameExists: false,
+      suggestedUsername: "aris-2",
     });
 
     expect(apiRequest).toHaveBeenCalledWith(

@@ -29,6 +29,21 @@ import type { CommunityFormStep } from "./types";
 
 const COMMUNITY_MEMBERS_PREVIEW_COUNT = 5;
 
+function renderCommunityFormHelpTooltip(text: string, align: "left" | "right" = "left"): string {
+  return `
+    <button
+      type="button"
+      class="community-form__hint-button community-form__hint-button--${align}"
+      data-community-form-hint
+      data-tooltip="${escapeHtml(text)}"
+      aria-label="${escapeHtml(text)}"
+      aria-expanded="false"
+    >
+      ?
+    </button>
+  `;
+}
+
 function renderCommunityAvatar(bundle: CommunityBundle, className: string): string {
   return renderAvatarMarkup(
     className,
@@ -803,7 +818,7 @@ export function renderCommunityFormModal(): string {
 
   return `
     <div class="community-modal" data-community-form-modal ${form.open ? "" : "hidden"}>
-      <section class="community-modal__dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
+      <section class="community-modal__dialog community-modal__dialog--form" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
         <header class="community-modal__header">
           <h2 class="community-modal__title">${escapeHtml(title)}</h2>
           ${renderModalCloseButton({
@@ -815,7 +830,9 @@ export function renderCommunityFormModal(): string {
         ${renderCommunityFormProgress(form.step)}
 
         <form class="community-form" data-community-form>
-          ${renderCommunityFormStepContent(form.step)}
+          <div class="community-form__body">
+            ${renderCommunityFormStepContent(form.step)}
+          </div>
 
           <p class="community-modal__error${form.errorMessage ? "" : " community-modal__error--hidden"}" data-community-form-error>
             ${form.errorMessage ? escapeHtml(form.errorMessage) : "&nbsp;"}
@@ -923,9 +940,11 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
   if (step === 1) {
     return `
       <div class="community-form__step">
-        <p class="community-form__step-title">${t("communities.formChooseTitle")}</p>
         <label class="community-form__field">
-          <span>${t("communities.formName")}</span>
+          <span class="community-form__field-label">
+            ${t("communities.formName")}
+            ${renderCommunityFormHelpTooltip(t("communities.formTitleHint"))}
+          </span>
           <input
             name="title"
             value="${escapeHtml(form.title)}"
@@ -935,6 +954,29 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
             placeholder="${t("communities.formPickTitle")}"
           >
         </label>
+        <label class="community-form__field">
+          <span class="community-form__field-label">
+            ${t("communities.formUsername")}
+            ${renderCommunityFormHelpTooltip(t("communities.formUsernameHint"), "right")}
+          </span>
+          <input
+            name="username"
+            value="${escapeHtml(form.username)}"
+            maxlength="20"
+            required
+            autocapitalize="off"
+            autocomplete="off"
+            spellcheck="false"
+            data-community-username
+            placeholder="${t("communities.formUsernamePlaceholder")}"
+          >
+        </label>
+        <p class="community-form__helper${form.username ? "" : " community-form__helper--hidden"}" data-community-form-address-preview>
+          ${form.username ? t("communities.formAddressPreview").replace("{username}", escapeHtml(form.username)) : "&nbsp;"}
+        </p>
+        <p class="community-form__helper${form.nameCheckMessage ? "" : " community-form__helper--hidden"}">
+          ${form.nameCheckMessage ? escapeHtml(form.nameCheckMessage) : "&nbsp;"}
+        </p>
       </div>
     `;
   }
@@ -944,7 +986,6 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
       <div class="community-form__step">
         <p class="community-form__step-title">${t("communities.formShortDescription")}</p>
         <label class="community-form__field">
-          <span>${t("communities.description")}</span>
           <textarea
             name="bio"
             rows="5"
@@ -960,7 +1001,14 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
   if (step === 3) {
     return `
       <div class="community-form__step">
-        <p class="community-form__step-title">${t("communities.formChooseAvatar")}</p>
+        <p class="community-form__step-title">
+          ${t("communities.formChooseAvatar")}
+          ${
+            form.mode === "create"
+              ? renderCommunityFormHelpTooltip(t("communities.formMediaLaterHint"), "right")
+              : ""
+          }
+        </p>
         ${renderCommunityMediaEditor("avatar")}
       </div>
     `;
@@ -968,7 +1016,14 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
 
   return `
     <div class="community-form__step">
-      <p class="community-form__step-title">${t("communities.formChooseCover")}</p>
+      <p class="community-form__step-title">
+        ${t("communities.formChooseCover")}
+        ${
+          form.mode === "create"
+            ? renderCommunityFormHelpTooltip(t("communities.formMediaLaterHint"), "right")
+            : ""
+        }
+      </p>
       ${renderCommunityMediaEditor("cover")}
     </div>
   `;
@@ -1016,7 +1071,14 @@ function renderCommunityMediaEditor(kind: "avatar" | "cover"): string {
   return `
     <div class="community-media-editor${isAvatar ? " community-media-editor--avatar" : " community-media-editor--cover"}" data-community-media-editor="${kind}">
       <div class="community-media-editor__preview">
-        <div class="community-media-editor__crop-stage community-media-editor__crop-stage--${kind}" data-community-media-stage="${kind}">
+        <div
+          class="community-media-editor__crop-stage community-media-editor__crop-stage--${kind}"
+          data-community-media-stage="${kind}"
+          data-community-media-pick-target="${kind}"
+          role="button"
+          tabindex="0"
+          aria-label="${escapeHtml(t("communities.formChooseImage"))}"
+        >
           <div
             class="community-media-editor__crop-image"
             data-community-media-crop-image="${kind}"
@@ -1052,18 +1114,6 @@ function renderCommunityMediaEditor(kind: "avatar" | "cover"): string {
             ${t("communities.formRotateRight")}
           </button>
         </div>
-
-        <button
-          type="button"
-          class="community-media-editor__button community-media-editor__button--secondary community-media-editor__button--full"
-          data-community-media-pick="${kind}"
-        >
-          ${
-            hasCurrentImage || editor.objectUrl
-              ? t("communities.formReplaceImage")
-              : t("communities.formChooseImage")
-          }
-        </button>
 
         <button
           type="button"

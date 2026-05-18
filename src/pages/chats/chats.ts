@@ -198,12 +198,26 @@ function ensureChatsPollingStarted(): void {
  */
 async function doLoadChats(): Promise<void> {
   const preferredChatId = getRequestedChatId() || chatsState.selectedChatId || "";
+  let loadedChatListFromApi = false;
 
   try {
     await ensureKnownChatContactsLoaded();
+    const persistedById = new Map(readPersistedChatsData().map((thread) => [thread.id, thread]));
     const chats = await getChats();
+    loadedChatListFromApi = true;
     chatsState.source = "api";
-    chatsState.threads = mapApiChatsToThreads(chats);
+    chatsState.threads = mapApiChatsToThreads(chats).map((thread) => {
+      const persisted = persistedById.get(thread.id);
+      return persisted?.messages?.length
+        ? {
+            ...thread,
+            messages: persisted.messages,
+            preview: persisted.preview || thread.preview,
+            previewIsOwn: persisted.previewIsOwn,
+            timeLabel: persisted.timeLabel || thread.timeLabel,
+          }
+        : thread;
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     const persisted = readPersistedChatsData();
@@ -224,7 +238,9 @@ async function doLoadChats(): Promise<void> {
   chatsState.threads.forEach((thread) => ensureChatSocketSubscribed(thread.id));
 
   await Promise.all(
-    chatsState.threads.map((thread) => ensureMessagesLoaded(thread.id, { background: true })),
+    chatsState.threads.map((thread) =>
+      ensureMessagesLoaded(thread.id, { background: true, force: loadedChatListFromApi }),
+    ),
   );
 
   applyThreadVisibilityRules(preferredChatId);

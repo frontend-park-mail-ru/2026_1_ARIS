@@ -7,6 +7,7 @@ import { sortMessagesByCreatedAt } from "./helpers";
 import type {
   ChatViewMessage,
   ChatViewThread,
+  ChatVoiceAttachment,
   PersistedChatsData,
   PersistedChatsUiState,
 } from "./types";
@@ -57,6 +58,26 @@ function sanitisePersistedMessage(value: unknown): ChatViewMessage | null {
   const authorName = String(message.authorName ?? "");
   if (!id || !authorName) return null;
 
+  let voice: ChatVoiceAttachment | undefined;
+  if (message.voice && typeof message.voice === "object") {
+    const rawVoice = message.voice as Partial<ChatVoiceAttachment>;
+    const voiceUrl = typeof rawVoice.url === "string" ? rawVoice.url : "";
+    const waveform = Array.isArray(rawVoice.waveform)
+      ? rawVoice.waveform
+          .map((height) => Number(height))
+          .filter((height) => Number.isFinite(height) && height > 0)
+      : undefined;
+    if (voiceUrl && !voiceUrl.startsWith("blob:")) {
+      voice = {
+        url: voiceUrl,
+        mimeType: String(rawVoice.mimeType ?? "audio/mpeg"),
+        mediaID: typeof rawVoice.mediaID === "number" ? rawVoice.mediaID : undefined,
+        durationMs: typeof rawVoice.durationMs === "number" ? rawVoice.durationMs : undefined,
+        waveform: waveform?.length ? waveform : undefined,
+      };
+    }
+  }
+
   return {
     id,
     text: String(message.text ?? ""),
@@ -66,6 +87,7 @@ function sanitisePersistedMessage(value: unknown): ChatViewMessage | null {
     createdAt: typeof message.createdAt === "string" ? message.createdAt : undefined,
     avatarLink: typeof message.avatarLink === "string" ? message.avatarLink : undefined,
     profilePath: typeof message.profilePath === "string" ? message.profilePath : undefined,
+    voice,
   };
 }
 

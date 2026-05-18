@@ -31,6 +31,23 @@ export type ChatViewMessage = {
   avatarLink?: string | undefined;
   /** Путь к профилю автора для перехода по имени. */
   profilePath?: string | undefined;
+  /** Голосовое аудио-вложение сообщения. */
+  voice?: ChatVoiceAttachment | undefined;
+};
+
+export type ChatVoiceAttachment = {
+  /** Идентификатор media на сервере, если он уже известен. */
+  mediaID?: number | undefined;
+  /** URL аудиофайла для воспроизведения. */
+  url: string;
+  /** MIME-тип аудио. */
+  mimeType: string;
+  /** Длительность записи в миллисекундах, если известна локально. */
+  durationMs?: number | undefined;
+  /** Высоты столбиков реальной волны аудио. */
+  waveform?: number[] | undefined;
+  /** Локальный Blob нужен для повтора отправки после временной ошибки. */
+  blob?: Blob | undefined;
 };
 
 /**
@@ -156,8 +173,46 @@ export type ChatsState = {
       localId: string;
       /** Текст сообщения. */
       text: string;
+      /** Голосовое вложение, если отправляется аудиосообщение. */
+      voice?: ChatVoiceAttachment | undefined;
       /** Время создания локального сообщения в формате ISO. */
       createdAt?: string | undefined;
     }>
   >;
+  /** Активная запись голосового сообщения. */
+  voiceRecording?: ChatVoiceRecordingState | undefined;
+  /** Готовая голосовая запись, ожидающая отправки. */
+  voiceDraft?: ChatVoiceDraftState | undefined;
+};
+
+export type ChatVoiceDraftState = {
+  /** Чат, для которого подготовлена запись. */
+  chatId: string;
+  /** Локальный аудио Blob. */
+  blob: Blob;
+  /** URL для локального предпросмотра. */
+  localUrl: string;
+  /** MIME-тип аудио. */
+  mimeType: string;
+  /** Длительность записи в миллисекундах. */
+  durationMs: number;
+};
+
+export type ChatVoiceRecordingState = {
+  /** Чат, для которого идёт запись. */
+  chatId: string;
+  /** MediaRecorder текущей записи. */
+  recorder: MediaRecorder;
+  /** Поток микрофона, который нужно остановить после записи. */
+  stream: MediaStream;
+  /** Собранные фрагменты аудио. */
+  chunks: Blob[];
+  /** MIME-тип, выбранный для записи. */
+  mimeType: string;
+  /** Время начала записи. */
+  startedAt: number;
+  /** Текущее прошедшее время в миллисекундах. */
+  elapsedMs: number;
+  /** Таймер обновления интерфейса записи. */
+  timerId: number;
 };

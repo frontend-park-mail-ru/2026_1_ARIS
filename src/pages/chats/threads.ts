@@ -14,7 +14,12 @@ import {
 } from "./helpers";
 import { knownChatContactsByName, acceptedFriendProfileIds } from "./contacts";
 import { chatsState } from "./state";
-import type { ChatViewThread } from "./types";
+import { t } from "../../state/i18n";
+import type { ChatViewMessage, ChatViewThread } from "./types";
+
+function getMessagePreviewText(message: ChatViewMessage): string {
+  return message.text || (message.voice ? t("chats.voiceMessage") : "");
+}
 
 /** Обновляет поля preview, timeLabel и updatedAt по последнему сообщению. */
 export function updateThreadPreview(thread: ChatViewThread): void {
@@ -22,7 +27,7 @@ export function updateThreadPreview(thread: ChatViewThread): void {
   const lastMessage = messages[messages.length - 1];
   if (!lastMessage) return;
 
-  thread.preview = lastMessage.text;
+  thread.preview = getMessagePreviewText(lastMessage);
   thread.previewIsOwn = lastMessage.isOwn;
   thread.timeLabel = formatMessageTime(lastMessage.createdAt);
   thread.updatedAt = lastMessage.createdAt ?? thread.updatedAt;
@@ -187,7 +192,7 @@ export function getFilteredThreads(): ChatViewThread[] {
   if (!query) return visibleThreads;
   return visibleThreads.filter((thread) => {
     const lastMessage = thread.messages?.[thread.messages.length - 1];
-    const preview = lastMessage?.text ?? thread.preview;
+    const preview = lastMessage ? getMessagePreviewText(lastMessage) : thread.preview;
     return [thread.title, preview].join(" ").toLowerCase().includes(query);
   });
 }
@@ -217,7 +222,7 @@ export function getThreadPreviewState(thread: ChatViewThread): {
   }
 
   return {
-    text: lastMessage.text,
+    text: getMessagePreviewText(lastMessage),
     isOwn: lastMessage.isOwn,
     timeLabel: formatChatTime(lastMessage.createdAt) || thread.timeLabel,
     timeTooltip: formatChatExactTime(lastMessage.createdAt),

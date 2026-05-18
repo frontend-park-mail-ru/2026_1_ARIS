@@ -15,6 +15,7 @@ import {
   setMessageReaction,
   subscribeToChatMessages,
   updateChatMessageText,
+  uploadChatVoice,
 } from "./chat";
 import { getSessionUser } from "../state/session";
 
@@ -146,6 +147,32 @@ describe("chat api", () => {
       2,
       "/api/chats/chat%20id/messages",
       { method: "POST", body: { text: "Ответ" } },
+      {},
+    );
+  });
+
+  it("загружает голосовое сообщение и отправляет audio media id", async () => {
+    const voiceBlob = new Blob(["voice"], { type: "audio/webm" });
+    vi.mocked(apiRequest)
+      .mockResolvedValueOnce({ media: [{ media_id: "42", url: "/media/voice.webm" }] })
+      .mockResolvedValueOnce({ id: 3, text: "", authorId: 7, media: [] });
+
+    await expect(uploadChatVoice(voiceBlob)).resolves.toEqual({
+      mediaID: 42,
+      mediaURL: "/media/voice.webm",
+    });
+    await sendChatMessage("7", { media: [{ mediaID: 42 }] });
+
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      1,
+      "/api/media/upload?for=chat",
+      { method: "POST", body: expect.any(FormData) },
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      2,
+      "/api/chats/7/messages",
+      { method: "POST", body: { media: [{ mediaID: 42 }] } },
       {},
     );
   });

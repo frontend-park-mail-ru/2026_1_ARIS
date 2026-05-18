@@ -1,10 +1,11 @@
 /**
  * Загрузка, отправка и синхронизация сообщений страницы чатов.
  */
-import { getChatMessages, sendChatMessage } from "../../api/chat";
-import type { ChatMessage } from "../../api/chat";
+import { getChatMessages, sendChatMessage, uploadChatVoice } from "../../api/chat";
+import type { ChatMessage, MessageAttachment, SendMessagePayload } from "../../api/chat";
 import { getProfileById } from "../../api/profile";
 import { getSessionUser } from "../../state/session";
+import { resolveMediaUrl } from "../../utils/media";
 import { chatsState } from "./state";
 import { persistChatsData } from "./storage";
 import {
@@ -30,6 +31,62 @@ import { chatsRoot } from "./state";
 import type { ChatViewMessage, ChatViewThread } from "./types";
 
 const chatAuthorAvatarLinkByProfileId = new Map<string, string | undefined>();
+
+function isAudioAttachment(attachment: MessageAttachment): boolean {
+  const mimeType = attachment.mimeType.trim().toLowerCase();
+  if (mimeType.startsWith("audio/")) return true;
+  return /\.(aac|aif|aiff|flac|m4a|mp3|oga|ogg|opus|wav|weba|webm)$/i.test(attachment.url);
+}
+
+function getMessageVoiceAttachment(message: ChatMessage): ChatViewMessage["voice"] {
+  const attachment = [...message.media, ...message.files].find(isAudioAttachment);
+  if (!attachment) return undefined;
+
+  const url = resolveMediaUrl(attachment.url);
+  if (!url) return undefined;
+
+  return {
+    mediaID: Number.isFinite(Number(attachment.id)) ? Number(attachment.id) : undefined,
+    url,
+    mimeType: attachment.mimeType || "audio/mpeg",
+  };
+}
+
+function isSameVoiceAttachment(
+  left: ChatViewMessage["voice"],
+  right: ChatViewMessage["voice"],
+): boolean {
+  if (!left || !right) return false;
+  if (left.mediaID && right.mediaID && left.mediaID === right.mediaID) return true;
+  return Boolean(left.url && right.url && left.url === right.url);
+}
+
+function mergeVoiceMetadataFromPrevious(
+  messages: ChatViewMessage[],
+  previousMessages: ChatViewMessage[],
+): ChatViewMessage[] {
+  if (!previousMessages.length) return messages;
+
+  return messages.map((message) => {
+    const voice = message.voice;
+    if (!voice || (voice.durationMs && voice.waveform?.length)) return message;
+
+    const previous = previousMessages.find(
+      (item) => item.id === message.id || isSameVoiceAttachment(item.voice, voice),
+    );
+    const previousVoice = previous?.voice;
+    if (!previousVoice) return message;
+
+    return {
+      ...message,
+      voice: {
+        ...voice,
+        durationMs: voice.durationMs ?? previousVoice.durationMs,
+        waveform: voice.waveform ?? previousVoice.waveform,
+      },
+    };
+  });
+}
 
 function syncThreadIdentityFromRawMessages(
   thread: ChatViewThread,
@@ -61,7 +118,9 @@ export function dedupeMessagesById(messages: ChatViewMessage[]): ChatViewMessage
 
 /** Возвращает стабильный отпечаток списка сообщений для определения изменений. */
 export function getMessagesFingerprint(messages: ChatViewMessage[] | undefined): string {
-  return (messages ?? []).map((m) => `${m.id}:${m.createdAt ?? ""}:${m.text}`).join("|");
+  return (messages ?? [])
+    .map((m) => `${m.id}:${m.createdAt ?? ""}:${m.text}:${m.voice?.url ?? ""}`)
+    .join("|");
 }
 
 /** Возвращает ключ дедупликации для входящего сообщения, используемый при отслеживании непрочитанных. */
@@ -92,7 +151,12 @@ export function mergeRetriableMessages(
 
 export function addPendingOutgoing(chatId: string, message: ChatViewMessage): void {
   const pending = chatsState.pendingOutgoingByChatId.get(chatId) ?? [];
-  pending.push({ localId: message.id, text: message.text, createdAt: message.createdAt });
+  pending.push({
+    localId: message.id,
+    text: message.text,
+    voice: message.voice,
+    createdAt: message.createdAt,
+  });
   chatsState.pendingOutgoingByChatId.set(chatId, pending);
 }
 
@@ -110,7 +174,12 @@ export function removePendingOutgoing(chatId: string, localId: string): void {
 export function queueOutgoingForRetry(chatId: string, message: ChatViewMessage): void {
   const pending = chatsState.pendingOutgoingByChatId.get(chatId) ?? [];
   const next = pending.filter((item) => item.localId !== message.id);
-  next.push({ localId: message.id, text: message.text, createdAt: message.createdAt });
+  next.push({
+    localId: message.id,
+    text: message.text,
+    voice: message.voice,
+    createdAt: message.createdAt,
+  });
   chatsState.pendingOutgoingByChatId.set(chatId, next);
 }
 
@@ -211,6 +280,7 @@ export function mapMessageToViewMessage(
     profilePath: own
       ? getCurrentUserProfilePath()
       : resolvePersonPath(message.authorName ?? thread.title, message.authorId || undefined),
+    voice: getMessageVoiceAttachment(message),
   };
 }
 
@@ -232,6 +302,7 @@ export function reconcilePendingOutgoing(
 
   const matchedPending = pending.find((item) => {
     if (item.text !== incomingMessage.text) return false;
+    if (Boolean(item.voice) !== Boolean(incomingMessage.voice)) return false;
     const pendingCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : 0;
     if (!incomingCreatedAt || !pendingCreatedAt) return true;
     return Math.abs(incomingCreatedAt - pendingCreatedAt) <= 15000;
@@ -251,6 +322,13 @@ export function reconcilePendingOutgoing(
               avatarLink: incomingMessage.avatarLink,
               isOwn: true,
               profilePath: getCurrentUserProfilePath(),
+              voice: incomingMessage.voice
+                ? {
+                    ...incomingMessage.voice,
+                    durationMs: incomingMessage.voice.durationMs ?? m.voice?.durationMs,
+                    waveform: incomingMessage.voice.waveform ?? m.voice?.waveform,
+                  }
+                : m.voice,
             }
           : m,
       ),
@@ -318,10 +396,13 @@ export async function ensureMessagesLoaded(
     syncThreadIdentityFromRawMessages(thread, rawMessages, authorAvatarLinks);
 
     const nextMessages = mergeRetriableMessages(
-      sortMessagesByCreatedAt(
-        dedupeMessagesById(
-          rawMessages.map((m) => mapMessageToViewMessage(m, thread, authorAvatarLinks)),
+      mergeVoiceMetadataFromPrevious(
+        sortMessagesByCreatedAt(
+          dedupeMessagesById(
+            rawMessages.map((m) => mapMessageToViewMessage(m, thread, authorAvatarLinks)),
+          ),
         ),
+        previousMessages,
       ),
       thread,
     );
@@ -399,15 +480,23 @@ export async function retryChatMessage(chatId: string, localMessageId: string): 
   refreshChatsPage(chatsRoot);
 
   try {
-    const sentMessage = await sendChatMessage(chatId, { text: message.text });
+    const payload = await buildRetryMessagePayload(message);
+    const sentMessage = await sendChatMessage(chatId, payload);
+    const sentViewMessage = mapMessageToViewMessage(sentMessage, thread);
     thread.messages = dedupeMessagesById(
       (thread.messages ?? []).map((m) =>
         m.id === localMessageId
           ? {
-              ...m,
-              id: sentMessage.id,
+              ...sentViewMessage,
               deliveryState: undefined,
               profilePath: getCurrentUserProfilePath(),
+              voice: sentViewMessage.voice
+                ? {
+                    ...sentViewMessage.voice,
+                    durationMs: sentViewMessage.voice.durationMs ?? m.voice?.durationMs,
+                    waveform: sentViewMessage.voice.waveform ?? m.voice?.waveform,
+                  }
+                : m.voice,
             }
           : m,
       ),
@@ -433,4 +522,22 @@ export async function retryChatMessage(chatId: string, localMessageId: string): 
     refreshChatsPage(chatsRoot);
     scheduleScrollChatToBottom(chatsRoot);
   }
+}
+
+async function buildRetryMessagePayload(message: ChatViewMessage): Promise<SendMessagePayload> {
+  if (!message.voice) {
+    return { text: message.text };
+  }
+
+  if (message.voice.mediaID && message.voice.mediaID > 0) {
+    return { media: [{ mediaID: message.voice.mediaID }] };
+  }
+
+  if (!message.voice.blob) {
+    throw new Error("Не получилось повторить голосовое сообщение.");
+  }
+
+  const uploaded = await uploadChatVoice(message.voice.blob);
+  message.voice.mediaID = uploaded.mediaID;
+  return { media: [{ mediaID: uploaded.mediaID }] };
 }

@@ -19,6 +19,7 @@ import { readPersistedChatsUiState, persistChatsUiState } from "./storage";
 import { hasHydratedPersistedChatsUiState, setHasHydratedPersistedChatsUiState } from "./state";
 import { t } from "../../state/i18n";
 import { formatDisplayName } from "../../utils/display-name";
+import { VOICE_WAVEFORM_BARS, getCachedVoiceWaveform } from "./voice-waveform";
 
 /** Возвращает количество непрочитанных входящих сообщений в чате. */
 function getUnreadIncomingCount(chatId: string): number {
@@ -294,7 +295,8 @@ function renderMessageBubble(message: ChatViewMessage): string {
             ${escapeHtml(formatDisplayName(message.authorName))}
           </a>
         </h3>
-        <p class="chat-bubble__text">${escapeHtml(message.text)}</p>
+        ${message.text ? `<p class="chat-bubble__text">${escapeHtml(message.text)}</p>` : ""}
+        ${renderVoiceAttachment(message)}
       </div>
       <div class="chat-bubble__meta">
         <time
@@ -315,6 +317,161 @@ function renderMessageBubble(message: ChatViewMessage): string {
         }
       </div>
     </article>
+  `;
+}
+
+function renderVoiceAttachment(message: ChatViewMessage): string {
+  if (!message.voice?.url) return "";
+  const label = t("chats.voiceMessage");
+  const waveform = message.voice.waveform ?? getCachedVoiceWaveform(message.voice.url);
+  const durationLabel = message.voice.durationMs
+    ? `0:00 / ${formatVoiceRecordingTime(message.voice.durationMs)}`
+    : "0:00 / 0:00";
+
+  return `
+    <div class="chat-voice" data-chat-voice-player data-voice-duration-ms="${escapeHtml(String(message.voice.durationMs ?? 0))}" style="--voice-progress: 0%;">
+      <div class="chat-voice__card">
+        <button
+          type="button"
+          class="chat-voice__play"
+          data-chat-voice-toggle
+          aria-label="${escapeHtml(label)}"
+          title="${escapeHtml(label)}"
+        >
+          <span class="chat-voice__play-icon" aria-hidden="true"></span>
+        </button>
+        <button
+          type="button"
+          class="chat-voice__waveform${waveform?.length ? " chat-voice__waveform--ready" : ""}"
+          data-chat-voice-seek
+          aria-label="${escapeHtml(label)}"
+        >
+          ${renderVoiceWaveform(waveform)}
+        </button>
+        <span class="chat-voice__time" data-chat-voice-time>${escapeHtml(durationLabel)}</span>
+        <audio
+          class="chat-voice__audio"
+          preload="metadata"
+          src="${escapeHtml(message.voice.url)}"
+          data-chat-voice-audio
+        ></audio>
+      </div>
+    </div>
+  `;
+}
+
+function renderVoiceWaveform(waveform?: number[]): string {
+  const heights = waveform?.length
+    ? waveform
+    : Array.from({ length: VOICE_WAVEFORM_BARS }, () => 8);
+  return heights
+    .map(
+      (height) =>
+        `<span class="chat-voice__bar" style="height: ${escapeHtml(String(height))}px;"></span>`,
+    )
+    .join("");
+}
+
+function formatVoiceRecordingTime(valueMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(valueMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatVoiceRecordingLiveTime(valueMs: number): string {
+  const safeMs = Math.max(0, Math.floor(valueMs));
+  const totalTenths = Math.floor(safeMs / 100);
+  const minutes = Math.floor(totalTenths / 600);
+  const seconds = Math.floor((totalTenths % 600) / 10);
+  const tenths = totalTenths % 10;
+  return `${minutes}:${String(seconds).padStart(2, "0")}.${tenths}`;
+}
+
+function renderCompose(selectedThread: ChatViewThread, composeDraft: string): string {
+  const recording =
+    chatsState.voiceRecording?.chatId === selectedThread.id ? chatsState.voiceRecording : undefined;
+  const voiceDraft =
+    chatsState.voiceDraft?.chatId === selectedThread.id ? chatsState.voiceDraft : undefined;
+
+  if (voiceDraft) {
+    return `
+      <div class="chat-compose chat-compose--recording">
+        <button
+          type="button"
+          class="chat-compose__voice-cancel"
+          data-chat-voice-draft-cancel
+          aria-label="${t("chats.voiceCancel")}"
+          title="${t("chats.voiceCancel")}"
+        >×</button>
+        <div class="chat-compose__recording" role="status" aria-live="polite">
+          <span class="chat-compose__record-dot chat-compose__record-dot--ready" aria-hidden="true"></span>
+          <span class="chat-compose__record-time">${escapeHtml(formatVoiceRecordingLiveTime(voiceDraft.durationMs))}</span>
+        </div>
+        <button
+          type="button"
+          class="chat-compose__send chat-compose__send--voice"
+          data-chat-voice-draft-send
+          aria-label="${t("chats.voiceSend")}"
+          title="${t("chats.voiceSend")}"
+        >${t("chats.send")}</button>
+      </div>
+    `;
+  }
+
+  if (recording) {
+    return `
+      <div class="chat-compose chat-compose--recording">
+        <button
+          type="button"
+          class="chat-compose__voice-cancel"
+          data-chat-voice-cancel
+          aria-label="${t("chats.voiceCancel")}"
+          title="${t("chats.voiceCancel")}"
+        >×</button>
+        <div class="chat-compose__recording" role="status" aria-live="polite">
+          <span class="chat-compose__record-dot" aria-hidden="true"></span>
+          <span class="chat-compose__record-time">${escapeHtml(formatVoiceRecordingLiveTime(recording.elapsedMs))}</span>
+        </div>
+        <button
+          type="button"
+          class="chat-compose__send chat-compose__send--voice"
+          data-chat-voice-send
+          aria-label="${t("chats.voiceSend")}"
+          title="${t("chats.voiceSend")}"
+        >${t("chats.send")}</button>
+      </div>
+    `;
+  }
+
+  return `
+    <form class="chat-compose" data-chat-compose-form>
+      <input
+        class="chat-compose__field"
+        type="text"
+        name="message"
+        value="${escapeHtml(composeDraft)}"
+        placeholder="${t("chats.typeMessage")}"
+        autocomplete="off"
+      >
+      <input
+        class="chat-compose__voice-file"
+        type="file"
+        accept="audio/*"
+        data-chat-voice-file
+        hidden
+      >
+      <button
+        type="button"
+        class="chat-compose__voice"
+        data-chat-voice-record
+        aria-label="${t("chats.voiceStart")}"
+        title="${t("chats.voiceStart")}"
+      >
+        <img src="/assets/img/icons/mic.svg" alt="">
+      </button>
+      <button type="submit" class="chat-compose__send">${t("chats.send")}</button>
+    </form>
   `;
 }
 
@@ -475,21 +632,7 @@ export function renderChatsContent(): string {
             : ""
         }
 
-        ${
-          selectedThread
-            ? `<form class="chat-compose" data-chat-compose-form>
-                 <input
-                   class="chat-compose__field"
-                   type="text"
-                   name="message"
-                   value="${escapeHtml(composeDraft)}"
-                   placeholder="${t("chats.typeMessage")}"
-                   autocomplete="off"
-                 >
-                 <button type="submit" class="chat-compose__send">${t("chats.send")}</button>
-               </form>`
-            : ""
-        }
+        ${selectedThread ? renderCompose(selectedThread, composeDraft) : ""}
       </section>
     </section>
   `;

@@ -77,6 +77,16 @@ export function setChatsPageMounted(value: boolean): void {
 /** Сбрасывает всё изменяемое состояние к начальным значениям. */
 export function resetChatsStateMutable(): void {
   chatsState.unsubscribeByChatId.forEach((subscription) => subscription.close());
+  if (chatsState.voiceRecording) {
+    window.clearInterval(chatsState.voiceRecording.timerId);
+    if (chatsState.voiceRecording.recorder.state !== "inactive") {
+      chatsState.voiceRecording.recorder.stop();
+    }
+    chatsState.voiceRecording.stream.getTracks().forEach((track) => track.stop());
+  }
+  if (chatsState.voiceDraft) {
+    URL.revokeObjectURL(chatsState.voiceDraft.localUrl);
+  }
   chatsStore.reset(createInitialChatsState());
   setHasHydratedPersistedChatsUiState(false);
   setChatsPageMounted(false);

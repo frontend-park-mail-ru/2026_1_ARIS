@@ -71,6 +71,20 @@ type RawMessageAttachment = {
   url?: string;
 };
 
+type RawUploadedChatMedia = {
+  mediaID?: number | string;
+  mediaId?: number | string;
+  media_id?: number | string;
+  mediaURL?: string;
+  mediaUrl?: string;
+  media_url?: string;
+  url?: string;
+};
+
+type UploadChatMediaResponse = {
+  media?: RawUploadedChatMedia[];
+};
+
 type RawMessageReaction = {
   type?: string;
   count?: number | string;
@@ -149,6 +163,11 @@ export type ChatMessage = {
 
 export type AttachmentPayload = {
   mediaID: number;
+};
+
+export type UploadedChatMedia = {
+  mediaID: number;
+  mediaURL: string;
 };
 
 export type MessageAttachment = {
@@ -286,6 +305,23 @@ function mapAttachment(raw: RawMessageAttachment | null | undefined): MessageAtt
     mimeType: String(raw.mimeType ?? ""),
     url,
   };
+}
+
+function mapUploadedChatMedia(
+  raw: RawUploadedChatMedia | null | undefined,
+): UploadedChatMedia | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const mediaID = Number(raw.mediaID ?? raw.mediaId ?? raw.media_id);
+  const mediaURL = String(raw.mediaURL ?? raw.mediaUrl ?? raw.media_url ?? raw.url ?? "").trim();
+
+  if (!Number.isFinite(mediaID) || mediaID <= 0 || !mediaURL) {
+    return null;
+  }
+
+  return { mediaID, mediaURL };
 }
 
 function mapSticker(raw: RawSticker | null | undefined): Sticker | undefined {
@@ -581,6 +617,28 @@ export async function sendChatMessage(
   );
 
   return mapMessage(data);
+}
+
+export async function uploadChatVoice(
+  blob: Blob,
+  filename = "voice-message.webm",
+): Promise<UploadedChatMedia> {
+  const formData = new FormData();
+  formData.append("files", blob, filename);
+
+  const data = await apiRequest<UploadChatMediaResponse>(
+    "/api/media/upload?for=chat",
+    { method: "POST", body: formData },
+    {},
+  );
+  const uploadedMedia = Array.isArray(data.media) ? data.media : [];
+  const uploadedFile = mapUploadedChatMedia(uploadedMedia[0]);
+
+  if (!uploadedFile) {
+    throw new ApiError("Не удалось загрузить голосовое сообщение.", 200, data);
+  }
+
+  return uploadedFile;
 }
 
 export async function updateChatMessageText(

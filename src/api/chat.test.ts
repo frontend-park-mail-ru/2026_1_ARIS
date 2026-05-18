@@ -72,6 +72,7 @@ describe("chat api", () => {
         id: "7",
         title: "Софья",
         avatarLink: "/media/a.png",
+        isOnline: false,
         updatedAt: "2026-05-04",
         createdAt: undefined,
       },

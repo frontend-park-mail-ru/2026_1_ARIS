@@ -46,6 +46,7 @@ import { captureAppException, initSentry, syncSentryUser } from "./utils/sentry"
 import { initSupportIframe } from "./utils/support-widget";
 import { applyLanguage, initLanguageFromStorage } from "./state/language";
 import { applyTheme, initThemeFromStorage } from "./state/theme";
+import { syncSitePresenceWithSession } from "./state/presence";
 import { resetUserSettingsSyncState, syncUserSettingsWithServer } from "./state/user-settings";
 
 const SITE_ORIGIN = "https://arisnet.ru";
@@ -387,6 +388,7 @@ void (async () => {
 
   try {
     await initSession();
+    await syncSitePresenceWithSession();
     await syncSettingsForSession("init-sync");
     syncSentryUser(getSessionUser());
   } catch (error) {
@@ -453,6 +455,8 @@ window.addEventListener("sessionchange", async (event: Event) => {
     if (detail?.key === "init") {
       return;
     }
+
+    await syncSitePresenceWithSession();
 
     if (detail?.key === "user") {
       markAppRendering();

@@ -34,6 +34,14 @@ type RawChat = {
   UpdatedAt?: string;
   createdAt?: string;
   CreatedAt?: string;
+  interlocutorProfileId?: number | string | null;
+  InterlocutorProfileID?: number | string | null;
+  interlocutorUserAccountId?: number | string | null;
+  InterlocutorUserAccountID?: number | string | null;
+  isOnline?: boolean;
+  IsOnline?: boolean;
+  lastSeenAt?: string | null;
+  LastSeenAt?: string | null;
 };
 
 /**
@@ -121,6 +129,14 @@ export type ChatSummary = {
   updatedAt?: string | undefined;
   /** Дата создания чата в формате ISO. */
   createdAt?: string | undefined;
+  /** Идентификатор профиля собеседника в приватном чате. */
+  interlocutorProfileId?: string | undefined;
+  /** Идентификатор аккаунта собеседника в приватном чате. */
+  interlocutorUserAccountId?: string | undefined;
+  /** Онлайн ли собеседник прямо сейчас. */
+  isOnline?: boolean | undefined;
+  /** Время последнего изменения онлайн-статуса. */
+  lastSeenAt?: string | undefined;
 };
 
 /**
@@ -269,12 +285,24 @@ type ResolvePrivateChatOptions = {
 };
 
 function mapChat(raw: RawChat): ChatSummary {
+  const interlocutorProfileId = raw.interlocutorProfileId ?? raw.InterlocutorProfileID;
+  const interlocutorUserAccountId = raw.interlocutorUserAccountId ?? raw.InterlocutorUserAccountID;
+  const lastSeenAt = raw.lastSeenAt ?? raw.LastSeenAt;
+
   return {
     id: String(raw.id ?? raw.ID ?? raw.uid ?? raw.Uid ?? ""),
     title: String(raw.title ?? raw.Title ?? "Чат"),
     avatarLink: raw.avatarLink,
     updatedAt: raw.updatedAt ?? raw.UpdatedAt,
     createdAt: raw.createdAt ?? raw.CreatedAt,
+    ...(interlocutorProfileId !== undefined && interlocutorProfileId !== null
+      ? { interlocutorProfileId: String(interlocutorProfileId) }
+      : {}),
+    ...(interlocutorUserAccountId !== undefined && interlocutorUserAccountId !== null
+      ? { interlocutorUserAccountId: String(interlocutorUserAccountId) }
+      : {}),
+    isOnline: raw.isOnline === true || raw.IsOnline === true,
+    ...(typeof lastSeenAt === "string" && lastSeenAt ? { lastSeenAt } : {}),
   };
 }
 

@@ -75,6 +75,22 @@ Cypress.Commands.add("mockAuthApi", () => {
   cy.intercept("POST", apiPattern("/api/auth/logout"), {
     body: {},
   }).as("logout");
+  cy.intercept("POST", apiPattern("/api/presence/online"), {
+    statusCode: 204,
+    body: "",
+  }).as("presenceOnline");
+  cy.intercept("POST", apiPattern("/api/presence/heartbeat"), {
+    statusCode: 204,
+    body: "",
+  }).as("presenceHeartbeat");
+  cy.intercept("POST", apiPattern("/api/presence/offline"), {
+    statusCode: 204,
+    body: "",
+  }).as("presenceOffline");
+  cy.intercept("POST", apiPattern("/api/presence/force-offline"), {
+    statusCode: 204,
+    body: "",
+  }).as("presenceForceOffline");
   cy.intercept("GET", apiPattern("/api/profile/me*"), {
     body: profileMe,
   }).as("profileMe");

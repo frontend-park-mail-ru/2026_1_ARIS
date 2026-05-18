@@ -45,8 +45,6 @@ export const sessionStore = new StateManager<SessionState>({
 });
 
 const SESSION_USER_STORAGE_KEY = "arisfront:session-user";
-const PUBLIC_GUEST_SESSION_PATHS = new Set(["/", "/feed", "/login", "/register", "/support"]);
-
 /**
  * Извлекает ссылку на аватар из произвольного payload профиля.
  *
@@ -239,20 +237,8 @@ function clearSuccessfulVkIdOauthMarker(): void {
  *   await getCurrentUser();
  * }
  */
-function shouldProbeBackendSession(savedUser: User | null): boolean {
-  if (savedUser) {
-    return true;
-  }
-
-  if (typeof window === "undefined") {
-    return true;
-  }
-
-  if (hasSuccessfulVkIdOauthMarker()) {
-    return true;
-  }
-
-  return !PUBLIC_GUEST_SESSION_PATHS.has(normalizePathname(window.location.pathname));
+function shouldProbeBackendSession(_savedUser: User | null): boolean {
+  return true;
 }
 
 /**

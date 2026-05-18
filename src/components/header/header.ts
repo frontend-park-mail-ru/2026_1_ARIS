@@ -11,6 +11,7 @@
 import { clearSessionUser, getSessionUser } from "../../state/session";
 import { renderButton } from "../button/button";
 import { logoutUser } from "../../api/auth";
+import { stopSitePresence } from "../../state/presence";
 import { renderAvatarMarkup, escapeHtml } from "../../utils/avatar";
 import { formatPersonName } from "../../utils/display-name";
 import { t } from "../../state/i18n";
@@ -571,6 +572,7 @@ export function initHeader(root: Document | HTMLElement = document): void {
     }
 
     try {
+      await stopSitePresence({ notifyBackend: true, force: true });
       await logoutUser();
       clearSessionUser();
       window.location.href = "/";

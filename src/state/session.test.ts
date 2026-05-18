@@ -115,13 +115,13 @@ describe("session state", () => {
     window.removeEventListener("sessionchange", listener);
   });
 
-  it("не делает auth-probe на публичной гостевой странице", async () => {
+  it("делает auth-probe на публичной странице, чтобы не терять cookie-сессию", async () => {
     const listener = vi.fn();
     window.addEventListener("sessionchange", listener);
 
     await initSession();
 
-    expect(getCurrentUser).not.toHaveBeenCalled();
+    expect(getCurrentUser).toHaveBeenCalledTimes(1);
     expect(listener).toHaveBeenCalledTimes(1);
     expect(listener.mock.calls[0]?.[0]).toMatchObject({
       detail: { key: "init", state: { user: null, feedMode: "by-time" } },

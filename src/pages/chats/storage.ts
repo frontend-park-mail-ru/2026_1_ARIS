@@ -97,6 +97,8 @@ function sanitisePersistedThread(value: unknown): ChatViewThread | null {
   const id = String(thread.id ?? "");
   const title = String(thread.title ?? "");
   if (!id || !title) return null;
+  const interlocutorProfileId =
+    typeof thread.interlocutorProfileId === "string" ? thread.interlocutorProfileId : undefined;
 
   const messages = Array.isArray(thread.messages)
     ? sortMessagesByCreatedAt(
@@ -109,9 +111,16 @@ function sanitisePersistedThread(value: unknown): ChatViewThread | null {
   return {
     id,
     title,
-    profileId: typeof thread.profileId === "string" ? thread.profileId : undefined,
+    profileId: interlocutorProfileId,
+    interlocutorProfileId,
+    interlocutorUserAccountId:
+      typeof thread.interlocutorUserAccountId === "string"
+        ? thread.interlocutorUserAccountId
+        : undefined,
     isFriend: Boolean(thread.isFriend),
     avatarLink: typeof thread.avatarLink === "string" ? thread.avatarLink : undefined,
+    isOnline: false,
+    lastSeenAt: typeof thread.lastSeenAt === "string" ? thread.lastSeenAt : undefined,
     preview: String(thread.preview ?? ""),
     previewIsOwn: Boolean(thread.previewIsOwn),
     timeLabel: String(thread.timeLabel ?? ""),

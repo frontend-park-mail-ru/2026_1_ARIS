@@ -82,6 +82,26 @@ describe("session state", () => {
     window.removeEventListener("sessionchange", listener);
   });
 
+  it("лениво восстанавливает пользователя из localStorage при чтении сессии", () => {
+    localStorage.setItem("arisfront:session-user", JSON.stringify(user));
+    sessionStore.patch({ user: null });
+
+    expect(getSessionUser()).toEqual(user);
+    expect(sessionStore.get().user).toEqual(user);
+  });
+
+  it("восстанавливает сохранённую сессию с id и login даже без имени", () => {
+    localStorage.setItem("arisfront:session-user", JSON.stringify({ profileID: 9, login: "demo" }));
+    sessionStore.patch({ user: null });
+
+    expect(getSessionUser()).toEqual({
+      id: "9",
+      firstName: "demo",
+      lastName: "",
+      login: "demo",
+    });
+  });
+
   it("сохраняет режим ленты", () => {
     const listener = vi.fn();
     window.addEventListener("sessionchange", listener);

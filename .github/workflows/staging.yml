@@ -28,7 +28,7 @@ jobs:
           script: |
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             git fetch --all
-            git switch -C dev origin/dev
+            git switch -f -C dev origin/dev
             NODE_ENV=development npm ci
             BUILD_COMMIT=${{ github.sha }}
             BUILD_VERSION=$(node -p "require('./package.json').version")

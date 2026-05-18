@@ -8,8 +8,8 @@
  * - мягкое обновление контента без полного rerender страницы
  */
 import { domPatch } from "../../vdom/patch";
-import { renderHeader } from "../../components/header/header";
-import { renderSidebar } from "../../components/sidebar/sidebar";
+import { renderHeader, refreshHeader } from "../../components/header/header";
+import { refreshSidebar, renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
 import { getFeed, getPublicFeed, mapFeedResponse, type PostcardModel } from "../../api/feed";
 import { ApiError } from "../../api/core/client";
@@ -486,6 +486,10 @@ window.addEventListener("apprender", () => {
   bindFeedLikeActions();
   bindFeedImageViewerActions();
   initFeedInfiniteScroll();
+  if (isFeedRouteActive()) {
+    refreshHeader();
+    refreshSidebar();
+  }
 });
 
 window.addEventListener("focus", () => {

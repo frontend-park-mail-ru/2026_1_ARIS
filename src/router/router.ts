@@ -132,6 +132,12 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
         );
         initSettings(nextRoot);
       }
+      if (nextRoot.querySelector("[data-games-page]")) {
+        const { initGames } = await import(
+          /* webpackChunkName: "page-games" */ "../pages/games/games"
+        );
+        initGames(nextRoot);
+      }
     },
   });
 }

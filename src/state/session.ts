@@ -95,23 +95,33 @@ function readPersistedSessionUser(): User | null {
       return null;
     }
 
-    const parsed = JSON.parse(raw) as User | null;
+    const parsed = JSON.parse(raw) as (User & Record<string, unknown>) | null;
     if (!parsed || typeof parsed !== "object") {
       return null;
     }
 
-    const nextUser: User = {
-      id: String(parsed.id ?? ""),
-      firstName: String(parsed.firstName ?? ""),
-      lastName: String(parsed.lastName ?? ""),
-    };
+    const id = String(parsed.id ?? parsed.profileId ?? parsed.profileID ?? "").trim();
+    const login = String(parsed.login ?? parsed.username ?? "").trim();
+    const email = String(parsed.email ?? "").trim();
+    const firstName = String(parsed.firstName ?? parsed.first_name ?? "").trim();
+    const lastName = String(parsed.lastName ?? parsed.last_name ?? "").trim();
 
-    if (typeof parsed.login === "string") {
-      nextUser.login = parsed.login;
+    if (!id) {
+      return null;
     }
 
-    if (typeof parsed.email === "string") {
-      nextUser.email = parsed.email;
+    const nextUser: User = {
+      id,
+      firstName: firstName || login || email || "Пользователь",
+      lastName,
+    };
+
+    if (login) {
+      nextUser.login = login;
+    }
+
+    if (email) {
+      nextUser.email = email;
     }
 
     if (typeof parsed.avatarLink === "string") {
@@ -274,7 +284,18 @@ export function getSessionState(): SessionState {
  * Возвращает текущего авторизованного пользователя.
  */
 export function getSessionUser(): User | null {
-  return sessionStore.get().user;
+  const user = sessionStore.get().user;
+  if (user) {
+    return user;
+  }
+
+  const persistedUser = readPersistedSessionUser();
+  if (!persistedUser) {
+    return null;
+  }
+
+  sessionStore.patch({ user: persistedUser });
+  return persistedUser;
 }
 
 /**

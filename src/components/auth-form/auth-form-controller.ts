@@ -4,6 +4,7 @@
 import { ApiError, loginUser, registerUser, validateRegisterStepOne } from "../../api/auth";
 import { getMyProfile } from "../../api/profile";
 import { setSessionUser } from "../../state/session";
+import { startSitePresence } from "../../state/presence";
 import { closeAuthModal } from "../auth-modal/auth-modal-controller";
 import { renderAuthForm } from "./auth-form";
 import {
@@ -912,6 +913,7 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
         login: values.login || "",
         avatarLink,
       });
+      await startSitePresence(user.id);
 
       closeAuthModal();
       navigate("/feed");
@@ -974,6 +976,7 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
       login: values.login,
       avatarLink: profile.avatarLink || "",
     });
+    await startSitePresence(profile.id);
 
     resetRegisterDraft();
     closeAuthModal();

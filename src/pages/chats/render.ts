@@ -502,6 +502,16 @@ function renderScrollControls(thread?: ChatViewThread): string {
   `;
 }
 
+function renderPresenceDot(thread: ChatViewThread, className: string): string {
+  const statusClass = thread.isOnline ? `${className}--online` : `${className}--offline`;
+  const label = thread.isOnline ? t("chats.online") : t("chats.offline");
+  return `<span class="${className} ${statusClass}" aria-label="${label}" title="${label}"></span>`;
+}
+
+function renderPresenceStatus(thread: ChatViewThread): string {
+  return thread.isOnline ? t("chats.online") : t("chats.offline");
+}
+
 function renderThreadsList(threads: ChatViewThread[]): string {
   if (!threads.length) {
     return `<p class="chats-list__empty">${chatsState.query.trim() ? t("friends.noneFound") : t("common.emptyList")}</p>`;
@@ -520,7 +530,10 @@ function renderThreadsList(threads: ChatViewThread[]): string {
           data-chat-select="${escapeHtml(thread.id)}"
           data-key="${escapeHtml(thread.id)}"
         >
-          ${renderAvatarElement("chat-thread__avatar", thread.title, thread.avatarLink)}
+          <span class="chat-thread__avatar-wrap">
+            ${renderAvatarElement("chat-thread__avatar", thread.title, thread.avatarLink)}
+            ${renderPresenceDot(thread, "chat-thread__presence")}
+          </span>
           <div class="chat-thread__content">
             <strong class="chat-thread__title">${escapeHtml(threadTitle)}</strong>
             <div class="chat-thread__meta">
@@ -591,11 +604,14 @@ export function renderChatsContent(): string {
                  >
                    ←
                  </button>
-                 ${renderAvatarElement(
-                   "chat-header__avatar",
-                   selectedThread.title,
-                   selectedThread.avatarLink,
-                 )}
+                 <span class="chat-header__avatar-wrap">
+                   ${renderAvatarElement(
+                     "chat-header__avatar",
+                     selectedThread.title,
+                     selectedThread.avatarLink,
+                   )}
+                   ${renderPresenceDot(selectedThread, "chat-header__presence")}
+                 </span>
                  <div>
                    <h2 class="chat-header__title">
                      <a
@@ -607,9 +623,11 @@ export function renderChatsContent(): string {
                      </a>
                    </h2>
                    ${
-                     chatsState.source === "mock"
-                       ? `<p class="chat-header__meta">${t("chats.demoMeta")}</p>`
-                       : ""
+                     chatsState.source === "api"
+                       ? `<p class="chat-header__meta">${renderPresenceStatus(selectedThread)}</p>`
+                       : chatsState.source === "mock"
+                         ? `<p class="chat-header__meta">${t("chats.demoMeta")}</p>`
+                         : ""
                    }
                  </div>
                </header>`

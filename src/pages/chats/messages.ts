@@ -12,6 +12,7 @@ import {
   sortMessagesByCreatedAt,
   isOfflineNetworkError,
   getCurrentUserProfilePath,
+  getCurrentUserFullName,
   isOwnMessage,
   resolvePersonPath,
 } from "./helpers";
@@ -93,18 +94,33 @@ function syncThreadIdentityFromRawMessages(
   messages: ChatMessage[],
   authorAvatarLinks?: ReadonlyMap<string, string | undefined>,
 ): void {
+  if (thread.interlocutorProfileId) return;
+
   const otherMessage = messages.find(
     (message) => !isOwnMessage(message.authorId, message.authorName),
   );
   if (!otherMessage) return;
 
   const otherProfileId = String(otherMessage.authorId ?? "").trim();
-  if (otherProfileId) {
+  const currentProfileId = String(getSessionUser()?.id ?? "").trim();
+  const threadPointsToCurrentUser = Boolean(
+    thread.profileId && currentProfileId && thread.profileId === currentProfileId,
+  );
+
+  if (otherMessage.authorName && thread.title.trim() === getCurrentUserFullName()) {
+    thread.title = otherMessage.authorName.trim();
+  }
+
+  if (otherProfileId && (!thread.profileId || threadPointsToCurrentUser)) {
     thread.profileId = otherProfileId;
     thread.profilePath = resolvePersonPath(otherMessage.authorName ?? thread.title, otherProfileId);
   }
 
-  if (otherProfileId && authorAvatarLinks?.has(otherProfileId)) {
+  if (
+    otherProfileId &&
+    (!thread.avatarLink || threadPointsToCurrentUser) &&
+    authorAvatarLinks?.has(otherProfileId)
+  ) {
     thread.avatarLink = authorAvatarLinks.get(otherProfileId) ?? undefined;
   }
 }

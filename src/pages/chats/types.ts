@@ -63,10 +63,18 @@ export type ChatViewThread = {
   title: string;
   /** Идентификатор профиля собеседника, если его удалось определить. */
   profileId?: string | undefined;
+  /** Идентификатор профиля собеседника, который явно вернул backend. */
+  interlocutorProfileId?: string | undefined;
+  /** Идентификатор аккаунта собеседника, если его вернул backend. */
+  interlocutorUserAccountId?: string | undefined;
   /** Признак подтверждённого друга для правил видимости и навигации. */
   isFriend?: boolean | undefined;
   /** Ссылка на аватар собеседника. */
   avatarLink?: string | undefined;
+  /** Онлайн ли собеседник в этом приватном чате. */
+  isOnline?: boolean | undefined;
+  /** Время последнего изменения онлайн-статуса собеседника. */
+  lastSeenAt?: string | undefined;
   /** Краткое превью последнего сообщения. */
   preview: string;
   /** Показывает, что превью относится к собственному сообщению. */

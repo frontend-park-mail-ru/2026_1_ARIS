@@ -21,6 +21,7 @@ import { createOrResolvePrivateChatId } from "../../api/chat";
 import { getSessionUser } from "../../state/session";
 import { t } from "../../state/i18n";
 import { prepareAvatarLinks } from "../../utils/avatar";
+import { showAppToast } from "../../utils/toast";
 import { rememberChatContactHint } from "../chats/contact-hints";
 
 import {
@@ -32,12 +33,91 @@ import {
   hydrateDisplayFriendAvatarLinks,
   findFriendById,
   getFriendsErrorMessage,
+  searchFriendsFromBackend,
 } from "./state";
 import { renderFriendsContent, refreshFriendsPage, refreshFriendsSearchResults } from "./render";
 
 type FriendsRoot = (Document | HTMLElement) & {
   __friendsBound?: boolean;
 };
+
+const FRIENDS_SEARCH_DEBOUNCE_MS = 250;
+
+let friendsSearchTimerId: number | null = null;
+let friendsSearchAbortController: AbortController | null = null;
+let friendsSearchRequestId = 0;
+
+function closeFriendMenus(root: Document | HTMLElement): void {
+  document.querySelectorAll<HTMLElement>("[data-friend-menu]").forEach((menu) => {
+    menu.hidden = true;
+    menu.style.top = "";
+    menu.style.right = "";
+    menu.style.left = "";
+  });
+
+  root.querySelectorAll<HTMLButtonElement>("[data-friend-menu-toggle]").forEach((button) => {
+    button.setAttribute("aria-expanded", "false");
+  });
+}
+
+function positionFriendMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
+  const rect = toggle.getBoundingClientRect();
+  menu.style.top = `${rect.bottom + 8}px`;
+  menu.style.right = `${window.innerWidth - rect.right}px`;
+  menu.style.left = "auto";
+}
+
+function clearFriendsSearchRequest(): void {
+  if (friendsSearchTimerId !== null) {
+    window.clearTimeout(friendsSearchTimerId);
+    friendsSearchTimerId = null;
+  }
+
+  friendsSearchAbortController?.abort();
+  friendsSearchAbortController = null;
+}
+
+function scheduleFriendsBackendSearch(root: ParentNode): void {
+  const query = friendsState.query.trim();
+  const requestId = ++friendsSearchRequestId;
+
+  clearFriendsSearchRequest();
+
+  if (!query) {
+    friendsState.searchLoading = false;
+    friendsState.searchResults = null;
+    refreshFriendsSearchResults(root);
+    return;
+  }
+
+  friendsState.searchLoading = true;
+  friendsState.searchResults = null;
+  refreshFriendsSearchResults(root);
+
+  friendsSearchTimerId = window.setTimeout(() => {
+    friendsSearchTimerId = null;
+    const controller = new AbortController();
+    friendsSearchAbortController = controller;
+
+    void searchFriendsFromBackend(query, controller.signal)
+      .then((results) => {
+        if (requestId !== friendsSearchRequestId || friendsState.query.trim() !== query) return;
+        friendsState.searchResults = results;
+        friendsState.errorMessage = "";
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        if (requestId !== friendsSearchRequestId) return;
+        friendsState.searchResults = [];
+        friendsState.errorMessage = getFriendsErrorMessage(error, t("friends.loadError"));
+      })
+      .finally(() => {
+        if (requestId !== friendsSearchRequestId) return;
+        friendsState.searchLoading = false;
+        refreshFriendsSearchResults(root);
+      });
+  }, FRIENDS_SEARCH_DEBOUNCE_MS);
+}
 
 /**
  * Переводит пользователя на страницу чатов с выбранным диалогом.
@@ -79,9 +159,16 @@ export function invalidateFriendsState(): void {
  *
  * @param {ParentNode} root Корень страницы друзей.
  * @param {() => Promise<void>} action Асинхронное действие.
+ * @param {string} successMessage Сообщение об успешном выполнении.
  * @returns {Promise<void>}
  */
-async function runFriendAction(root: ParentNode, action: () => Promise<void>): Promise<void> {
+async function runFriendAction(
+  root: ParentNode,
+  action: () => Promise<void>,
+  successMessage: string,
+): Promise<void> {
+  let shouldShowSuccessToast = false;
+
   friendsState.loading = true;
   friendsState.errorMessage = "";
   refreshFriendsPage(root);
@@ -90,11 +177,15 @@ async function runFriendAction(root: ParentNode, action: () => Promise<void>): P
     await action();
     await ensureFriendsLoaded(true);
     friendsState.deleteModalFriend = null;
+    shouldShowSuccessToast = true;
   } catch (error) {
     friendsState.errorMessage = getFriendsErrorMessage(error, t("friends.actionError"));
   } finally {
     friendsState.loading = false;
     refreshFriendsPage(root);
+    if (shouldShowSuccessToast) {
+      showAppToast(successMessage);
+    }
   }
 }
 
@@ -171,7 +262,7 @@ export function initFriends(root: Document | HTMLElement = document): void {
     const target = event.target;
     if (!(target instanceof HTMLInputElement) || !target.matches("[data-friends-search]")) return;
     friendsState.query = target.value;
-    refreshFriendsSearchResults(root);
+    scheduleFriendsBackendSearch(root);
   });
 
   root.addEventListener("click", (event: Event) => {
@@ -185,10 +276,34 @@ export function initFriends(root: Document | HTMLElement = document): void {
         friendsState.activeTab = nextTab;
         persistFriendsActiveTab(friendsState.loadedForUserId);
         friendsState.query = "";
+        friendsState.searchLoading = false;
+        friendsState.searchResults = null;
         friendsState.deleteModalFriend = null;
+        clearFriendsSearchRequest();
         refreshFriendsPage(root);
       }
       return;
+    }
+
+    const menuToggle = target.closest("[data-friend-menu-toggle]");
+    if (menuToggle instanceof HTMLButtonElement) {
+      const friendId = menuToggle.getAttribute("data-friend-menu-toggle");
+      if (!friendId) return;
+
+      const menu = root.querySelector<HTMLElement>(`[data-friend-menu="${friendId}"]`);
+      const isExpanded = menuToggle.getAttribute("aria-expanded") === "true";
+      closeFriendMenus(root);
+
+      if (menu && !isExpanded) {
+        positionFriendMenu(menu, menuToggle);
+        menu.hidden = false;
+        menuToggle.setAttribute("aria-expanded", "true");
+      }
+      return;
+    }
+
+    if (!target.closest(".friends-card__actions") && !target.closest("[data-friend-menu]")) {
+      closeFriendMenus(root);
     }
 
     const openDeleteButton = target.closest("[data-friend-open-delete]");
@@ -240,30 +355,58 @@ export function initFriends(root: Document | HTMLElement = document): void {
     const deleteButton = target.closest("[data-friend-confirm-delete]");
     if (deleteButton instanceof HTMLButtonElement) {
       const friendId = deleteButton.getAttribute("data-friend-confirm-delete") ?? "";
-      void runFriendAction(root, () => deleteFriend(friendId));
+      void runFriendAction(root, () => deleteFriend(friendId), t("profile.friendRemovedToast"));
       return;
     }
 
     const acceptButton = target.closest("[data-friend-accept]");
     if (acceptButton instanceof HTMLButtonElement) {
       const friendId = acceptButton.getAttribute("data-friend-accept") ?? "";
-      void runFriendAction(root, () => acceptFriendRequest(friendId));
+      void runFriendAction(
+        root,
+        () => acceptFriendRequest(friendId),
+        t("profile.friendRequestAcceptedToast"),
+      );
       return;
     }
 
     const declineButton = target.closest("[data-friend-decline]");
     if (declineButton instanceof HTMLButtonElement) {
       const friendId = declineButton.getAttribute("data-friend-decline") ?? "";
-      void runFriendAction(root, () => declineFriendRequest(friendId));
+      void runFriendAction(
+        root,
+        () => declineFriendRequest(friendId),
+        t("profile.friendRequestDeclinedToast"),
+      );
       return;
     }
 
     const revokeButton = target.closest("[data-friend-revoke]");
     if (revokeButton instanceof HTMLButtonElement) {
       const friendId = revokeButton.getAttribute("data-friend-revoke") ?? "";
-      void runFriendAction(root, () => revokeFriendRequest(friendId));
+      void runFriendAction(
+        root,
+        () => revokeFriendRequest(friendId),
+        t("profile.friendRequestRevokedToast"),
+      );
     }
   });
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      const openMenu = document.querySelector<HTMLElement>("[data-friend-menu]:not([hidden])");
+      if (!openMenu) return;
+      const friendId = openMenu.getAttribute("data-friend-menu");
+      if (!friendId) return;
+      const toggle = root.querySelector<HTMLButtonElement>(
+        `[data-friend-menu-toggle="${friendId}"]`,
+      );
+      if (!toggle) return;
+      positionFriendMenu(openMenu, toggle);
+    },
+    { passive: true },
+  );
 
   bindableRoot.__friendsBound = true;
 }

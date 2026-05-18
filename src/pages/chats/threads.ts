@@ -104,7 +104,10 @@ export function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
       const matchedProfile = knownContact?.profileId
         ? getProfileRecordById(String(knownContact.profileId))
         : undefined;
-      const profileId = knownContact?.profileId ?? storedHint?.profileId;
+      const profileId =
+        knownContact?.profileId ??
+        storedHint?.profileId ??
+        (matchedProfile ? String(matchedProfile.publicId) : undefined);
 
       return {
         id: chat.id,
@@ -112,10 +115,10 @@ export function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
         profileId,
         isFriend: profileId ? acceptedFriendProfileIds.has(String(profileId)) : false,
         avatarLink:
-          matchedProfile?.avatarLink ??
           knownContact?.avatarLink ??
           storedHint?.avatarLink ??
-          chat.avatarLink,
+          chat.avatarLink ??
+          matchedProfile?.avatarLink,
         preview: "",
         previewIsOwn: false,
         timeLabel: formatChatTime(chat.updatedAt ?? chat.createdAt),

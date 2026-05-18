@@ -7,27 +7,30 @@
 
     /* ================= РАЗМЕРЫ ТЕКСТА ================= */
 
-    --font-size-xs: 12px;
-    --font-size-sm: 14px;
-    --font-size-md: 14px;
-    --font-size-lg: 15px;
-    --font-size-xl: 15px;
-    --font-size-2xl: 17px;
-    --font-size-3xl: 22px;
+    --type-size-small: 12px;
+    --type-size-main: 14px;
+    --type-size-heading: 17px;
+    --font-size-xs: var(--type-size-small);
+    --font-size-sm: var(--type-size-small);
+    --font-size-md: var(--type-size-main);
+    --font-size-lg: var(--type-size-main);
+    --font-size-xl: var(--type-size-heading);
+    --font-size-2xl: var(--type-size-heading);
+    --font-size-3xl: var(--type-size-heading);
     --line-height-tight: 1.15;
     --line-height-base: 1.4;
     --line-height-relaxed: 1.5;
     --line-height-solid: 1;
-    --text-size-main: var(--font-size-md);
-    --text-size-title: var(--font-size-lg);
-    --text-size-meta: var(--font-size-md);
-    --text-size-input: var(--font-size-lg);
-    --text-size-caption: var(--font-size-xs);
-    --text-size-label: var(--font-size-md);
-    --text-size-body-lg: var(--font-size-lg);
-    --text-size-heading-sm: var(--font-size-lg);
-    --text-size-heading-md: var(--font-size-2xl);
-    --text-size-display: var(--font-size-3xl);
+    --text-size-main: var(--type-size-main);
+    --text-size-title: var(--type-size-heading);
+    --text-size-meta: var(--type-size-small);
+    --text-size-input: var(--type-size-main);
+    --text-size-caption: var(--type-size-small);
+    --text-size-label: var(--type-size-main);
+    --text-size-body-lg: var(--type-size-main);
+    --text-size-heading-sm: var(--type-size-heading);
+    --text-size-heading-md: var(--type-size-heading);
+    --text-size-display: var(--type-size-heading);
 
     /* ================= НАСЫЩЕННОСТЬ ШРИФТА ================= */
 
@@ -328,11 +331,6 @@
       --layout-sidebar-width: 0px;
       --layout-content-width: 100%;
       --layout-content-gap: 16px;
-      --font-size-md: 15px;
-      --font-size-lg: 16px;
-      --font-size-xl: 17px;
-      --font-size-2xl: 20px;
-      --font-size-3xl: 24px;
       --control-height: 44px;
       --control-padding-x: 16px;
     }

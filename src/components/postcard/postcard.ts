@@ -214,7 +214,7 @@ function renderPostcardStat({ icon, count, action, isLiked }: PostcardStatOption
 }
 
 function renderPostcardMediaImage(src: string, prioritize = false): string {
-  return `<img class="postcard__media-item" loading="${prioritize ? "eager" : "lazy"}"${prioritize ? ' fetchpriority="high"' : ""} decoding="async" src="${resolveMediaSrc(src)}" alt="">`;
+  return `<img class="postcard__media-item" loading="${prioritize ? "eager" : "lazy"}"${prioritize ? ' fetchpriority="high"' : ""} decoding="async" src="${resolveMediaSrc(src)}" alt="" data-post-image-open>`;
 }
 
 /**
@@ -360,14 +360,14 @@ export function renderPostcardInner(
         action: "repost",
       })}
       ${renderPostcardStat({
-        icon: "/assets/img/icons/comment.svg",
+        icon: "/assets/img/icons/chat.svg",
         count: post.comments,
         action: "comment",
       })}
     </div>
   `;
   const displayName =
-    formatPersonName(post.firstName, post.lastName, post.author) || t("widgetbar.userFallback");
+    formatPersonName(post.firstName, post.lastName) || t("widgetbar.userFallback");
   const displayTime = formatPostRelativeTime(post.timeRaw, post.time);
   const exactTime = formatPostExactTime(post.timeRaw);
   const profilePath = resolveProfilePath({
@@ -403,13 +403,13 @@ export function renderPostcardInner(
       <footer class="postcard__footer">
         ${statsMarkup}
 
-        <button
-          type="button"
+        <time
           class="postcard__time"
           ${exactTime ? `data-tooltip="${escapeHtml(exactTime)}"` : ""}
-          ${post.timeRaw ? 'data-postcard-time="true"' : ""}
+          ${exactTime ? `title="${escapeHtml(exactTime.replace(/\n/g, " "))}"` : ""}
+          ${post.timeRaw ? `datetime="${escapeHtml(post.timeRaw)}"` : ""}
           aria-label="${exactTime ? `${t("postcard.exactDateAria")} ${escapeHtml(exactTime.replace(/\n/g, ", "))}` : escapeHtml(displayTime)}"
-        >${displayTime}</button>
+        >${escapeHtml(displayTime)}</time>
       </footer>
     </article>
   `;
@@ -459,20 +459,6 @@ export function initPostcardExpand(root: Document | HTMLElement = document): voi
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
-
-    const timeButton = target.closest("[data-postcard-time]");
-    if (timeButton instanceof HTMLElement) {
-      const shouldOpen = !timeButton.classList.contains("postcard__time--tooltip-open");
-      root.querySelectorAll<HTMLElement>(".postcard__time--tooltip-open").forEach((node) => {
-        node.classList.remove("postcard__time--tooltip-open");
-      });
-      timeButton.classList.toggle("postcard__time--tooltip-open", shouldOpen);
-      return;
-    }
-
-    root.querySelectorAll<HTMLElement>(".postcard__time--tooltip-open").forEach((node) => {
-      node.classList.remove("postcard__time--tooltip-open");
-    });
 
     const button = target.closest(".postcard__expand");
     if (!button) return;

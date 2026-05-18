@@ -4,6 +4,7 @@
 import { postComposerState } from "./state";
 import { escapeHtml } from "./helpers";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
+import { t } from "../../state/i18n";
 
 export function renderPostComposerModal(): string {
   return `
@@ -12,10 +13,10 @@ export function renderPostComposerModal(): string {
         class="profile-post-modal__dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Редактор публикации"
+        aria-label="${t("profile.postEditorLabel")}"
       >
         <header class="profile-post-modal__header">
-          <h2 class="profile-post-modal__title" data-profile-post-title>Новая публикация</h2>
+          <h2 class="profile-post-modal__title" data-profile-post-title>${t("profile.newPostTitle")}</h2>
           ${renderModalCloseButton({
             className: "profile-post-modal__close",
             attributes: "data-profile-post-close",
@@ -27,7 +28,7 @@ export function renderPostComposerModal(): string {
           data-profile-post-text
           rows="8"
           maxlength="5000"
-          placeholder="Что у вас нового?"
+          placeholder="${t("profile.postPlaceholder")}"
         ></textarea>
 
         <input
@@ -44,7 +45,7 @@ export function renderPostComposerModal(): string {
             class="profile-post-modal__button profile-post-modal__button--secondary"
             data-profile-post-pick-image
           >
-            + Изображения
+            ${t("profile.addImages")}
           </button>
         </div>
 
@@ -58,14 +59,14 @@ export function renderPostComposerModal(): string {
             class="profile-post-modal__button profile-post-modal__button--primary"
             data-profile-post-save
           >
-            Опубликовать
+            ${t("profile.publishPost")}
           </button>
           <button
             type="button"
             class="profile-post-modal__button"
             data-profile-post-close
           >
-            Отмена
+            ${t("friends.cancel")}
           </button>
         </div>
       </section>
@@ -80,10 +81,10 @@ export function renderPostDeleteModal(): string {
         class="profile-post-delete-modal__dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Удалить публикацию"
+        aria-label="${t("profile.deletePostTitle")}"
       >
         <header class="profile-post-delete-modal__header">
-          <h2 class="profile-post-delete-modal__title">Удалить публикацию</h2>
+          <h2 class="profile-post-delete-modal__title">${t("profile.deletePostTitle")}</h2>
           ${renderModalCloseButton({
             className: "profile-post-delete-modal__close",
             attributes: "data-profile-post-delete-close",
@@ -91,7 +92,7 @@ export function renderPostDeleteModal(): string {
         </header>
 
         <p class="profile-post-delete-modal__text">
-          Вы действительно хотите удалить этот пост?
+          ${t("profile.deletePostConfirm")}
         </p>
 
         <div class="profile-post-delete-modal__actions">
@@ -100,14 +101,14 @@ export function renderPostDeleteModal(): string {
             class="profile-post-delete-modal__button profile-post-delete-modal__button--primary"
             data-profile-post-delete-confirm
           >
-            Удалить пост
+            ${t("profile.deletePost")}
           </button>
           <button
             type="button"
             class="profile-post-delete-modal__button"
             data-profile-post-delete-close
           >
-            Отмена
+            ${t("friends.cancel")}
           </button>
         </div>
       </section>
@@ -143,7 +144,7 @@ export function syncPostComposerUi(root: ParentNode): void {
 
   if (titleNode) {
     titleNode.textContent =
-      postComposerState.mode === "edit" ? "Редактировать пост" : "Новая публикация";
+      postComposerState.mode === "edit" ? t("profile.editPost") : t("profile.newPostTitle");
   }
 
   if (textarea) {
@@ -160,17 +161,17 @@ export function syncPostComposerUi(root: ParentNode): void {
     saveButton.textContent =
       postComposerState.mode === "edit"
         ? postComposerState.isSaving
-          ? "Сохраняем..."
-          : "Опубликовать"
+          ? t("profile.savingPost")
+          : t("profile.publishPost")
         : postComposerState.isSaving
-          ? "Публикуем..."
-          : "Опубликовать";
+          ? t("profile.publishingPost")
+          : t("profile.publishPost");
   }
 
   if (pickButton) {
     pickButton.disabled = postComposerState.isSaving || postComposerState.mediaItems.length >= 5;
     pickButton.textContent =
-      postComposerState.mediaItems.length >= 5 ? "Достигнут лимит 5 изображений" : "+ Изображения";
+      postComposerState.mediaItems.length >= 5 ? t("profile.imagesLimit") : t("profile.addImages");
   }
 
   if (imageInput && !postComposerState.open) {
@@ -183,18 +184,34 @@ export function syncPostComposerUi(root: ParentNode): void {
   }
 
   if (previewWrap) {
+    const mediaCount = postComposerState.mediaItems.length;
+    const previewCountModifiers = [
+      "",
+      "profile-post-modal__previews--single",
+      "profile-post-modal__previews--double",
+      "profile-post-modal__previews--triple",
+      "profile-post-modal__previews--quad",
+      "profile-post-modal__previews--five",
+    ];
+    previewWrap.className = [
+      "profile-post-modal__previews",
+      previewCountModifiers[Math.min(mediaCount, 5)] ?? "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     previewWrap.innerHTML = postComposerState.mediaItems
       .map(
         (item, index) => `
           <div class="profile-post-modal__preview">
-            <img src="${escapeHtml(item.mediaURL)}" alt="Изображение ${index + 1}">
+            <img src="${escapeHtml(item.mediaURL)}" alt="${t("profile.imageAlt")} ${index + 1}">
             <button
               type="button"
               class="profile-post-modal__preview-remove"
               data-profile-post-remove-image="${index}"
-              aria-label="Удалить изображение"
+              aria-label="${t("profile.imageRemove")}"
             >
-              [X]
+              ×
             </button>
           </div>
         `,

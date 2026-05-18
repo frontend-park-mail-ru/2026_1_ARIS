@@ -211,8 +211,8 @@
 
   .search-field:hover,
   .search-field:focus-within {
-    border-color: var(--color-border-strong);
-    box-shadow: var(--control-focus-ring);
+    border-color: var(--color-border-default);
+    box-shadow: 0 0 0 1px var(--color-border-default);
   }
 
   .search-field__icon {

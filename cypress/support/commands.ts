@@ -112,6 +112,27 @@ Cypress.Commands.add("mockAuthApi", () => {
 });
 
 Cypress.Commands.add("mockFriendsApi", () => {
+  cy.intercept("GET", apiPattern("/api/search?*"), (req) => {
+    const url = new URL(req.url);
+    const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+    const users = [...friends.accepted, ...friends.incoming, ...friends.outgoing]
+      .filter((friend) =>
+        [friend.firstName, friend.lastName, friend.username]
+          .join(" ")
+          .toLowerCase()
+          .includes(query),
+      )
+      .map((friend) => ({
+        profileId: friend.id,
+        userAccountId: friend.id,
+        username: friend.username,
+        firstName: friend.firstName,
+        lastName: friend.lastName,
+      }));
+
+    req.reply({ body: { users, communities: [] } });
+  }).as("friendsSearch");
+
   cy.intercept("GET", apiPattern("/api/friends/accepted"), {
     body: { friends: friends.accepted },
   }).as("friendsAccepted");
@@ -198,6 +219,14 @@ Cypress.Commands.add("mockCommunitiesApi", () => {
   cy.intercept("GET", apiPattern("/api/post/community/77*"), {
     body: { posts: [] },
   }).as("createdCommunityPosts");
+  cy.intercept("POST", apiPattern("/api/communities/check-exists"), {
+    body: {
+      exists: false,
+      titleExists: false,
+      usernameExists: false,
+      suggestedUsername: "cypress-club",
+    },
+  }).as("checkCommunityExists");
   cy.intercept("POST", apiPattern("/api/communities"), {
     body: {
       ...communityBundle,

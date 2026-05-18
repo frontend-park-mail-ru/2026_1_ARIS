@@ -19,7 +19,7 @@ export function getCommunityUrl(community: Community): string {
 }
 
 export function getCommunityName(community: Community): string {
-  return community.title.trim() || community.username.trim() || t("communities.communityFallback");
+  return community.title.trim() || t("communities.communityFallback");
 }
 
 export function getMembersLabel(count: number): string {
@@ -107,17 +107,11 @@ export function canRemoveCommunityMember(
 }
 
 export function getMemberDisplayName(member: CommunityMember): string {
-  return (
-    formatPersonName(member.firstName, member.lastName, member.username) ||
-    t("widgetbar.userFallback")
-  );
+  return formatPersonName(member.firstName, member.lastName) || t("widgetbar.userFallback");
 }
 
 export function getPostAuthorDisplayName(post: ProfilePost): string {
-  return (
-    formatPersonName(post.authorFirstName, post.authorLastName, post.authorUsername) ||
-    t("widgetbar.userFallback")
-  );
+  return formatPersonName(post.authorFirstName, post.authorLastName) || t("widgetbar.userFallback");
 }
 
 export function slugifyCommunityTitle(value: string): string {
@@ -170,13 +164,13 @@ export function formatMemberJoinDate(iso?: string): string {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("ru-RU", {
+  const isEnglish = getLanguageMode() === "EN";
+  const formatted = new Intl.DateTimeFormat(isEnglish ? "en-US" : "ru-RU", {
     day: "numeric",
     month: "long",
     year: "numeric",
-  })
-    .format(date)
-    .replace(" г.", " года");
+  }).format(date);
+  return isEnglish ? formatted : formatted.replace(" г.", " года");
 }
 
 export function formatPostRelativeTime(iso?: string): string {
@@ -274,16 +268,29 @@ export function mapPostToCommunityPost(
 
 const POST_EDIT_WINDOW_MS = 10 * 60 * 1000;
 
+function isWithinPostEditWindow(post: ProfilePost): boolean {
+  const createdAt = new Date(post.timeRaw).getTime();
+  return Number.isFinite(createdAt) && Date.now() - createdAt <= POST_EDIT_WINDOW_MS;
+}
+
 export function canEditCommunityPost(
   post: ProfilePost,
-  _bundle: CommunityBundle,
+  bundle: CommunityBundle,
   viewerProfileId: number | null,
 ): boolean {
+  const isOfficialPost = Number(post.authorId) === bundle.community.profileId;
+  if (isOfficialPost) {
+    return (
+      bundle.permissions.canPost &&
+      bundle.permissions.canPostAsCommunity &&
+      isWithinPostEditWindow(post)
+    );
+  }
+
   if (viewerProfileId === null || Number(post.authorId) !== viewerProfileId) {
     return false;
   }
-  const createdAt = new Date(post.timeRaw).getTime();
-  return Date.now() - createdAt <= POST_EDIT_WINDOW_MS;
+  return isWithinPostEditWindow(post);
 }
 
 export function canDeleteCommunityPost(

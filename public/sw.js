@@ -1,6 +1,8 @@
-const CACHE_VERSION = "aris-v5";
+const CACHE_VERSION = "aris-v7";
 const STATIC_CACHE = `${CACHE_VERSION}:static`;
 const API_CACHE = `${CACHE_VERSION}:api`;
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+const IS_LOCAL_OR_TEST_ORIGIN = LOCAL_HOSTNAMES.has(self.location.hostname);
 const OUTBOX_DB_NAME = "aris-outbox";
 const OUTBOX_DB_VERSION = 1;
 const OUTBOX_STORE = "requests";
@@ -51,6 +53,11 @@ function getPrecacheUrls(urls) {
 }
 
 self.addEventListener("install", (event) => {
+  if (IS_LOCAL_OR_TEST_ORIGIN) {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
+
   event.waitUntil(
     (async () => {
       const cache = await caches.open(STATIC_CACHE);
@@ -65,6 +72,12 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
+
+      if (IS_LOCAL_OR_TEST_ORIGIN) {
+        await Promise.all(keys.map((key) => caches.delete(key)));
+        await self.clients.claim();
+        return;
+      }
 
       await Promise.all(
         keys
@@ -295,7 +308,25 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (IS_LOCAL_OR_TEST_ORIGIN) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   const url = new URL(request.url);
+
+  if (url.origin === self.location.origin && url.pathname.startsWith("/api/auth/vkid/")) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (
+    url.origin === self.location.origin &&
+    (url.pathname.startsWith("/api/") || url.pathname.startsWith("/image-proxy"))
+  ) {
+    event.respondWith(networkFirst(request, API_CACHE));
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(networkFirst(request, STATIC_CACHE, ["/index.html", "/offline.html"]));
@@ -308,11 +339,6 @@ self.addEventListener("fetch", (event) => {
 
   if (url.searchParams.has("healthcheck")) {
     event.respondWith(fetch(request));
-    return;
-  }
-
-  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/image-proxy")) {
-    event.respondWith(networkFirst(request, API_CACHE));
     return;
   }
 

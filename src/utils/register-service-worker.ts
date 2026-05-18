@@ -11,6 +11,21 @@ export function registerServiceWorker(): void {
     return;
   }
 
+  const localHostnames = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+  if (localHostnames.has(window.location.hostname)) {
+    window.addEventListener("load", () => {
+      void navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) =>
+          registrations.forEach((registration) => void registration.unregister()),
+        )
+        .catch((error: unknown) => {
+          console.warn("[sw] Не удалось снять локальную регистрацию service worker.", error);
+        });
+    });
+    return;
+  }
+
   const hadControllerAtLoad = Boolean(navigator.serviceWorker.controller);
   let isRefreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {

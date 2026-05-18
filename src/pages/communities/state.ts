@@ -25,6 +25,7 @@ function createInitialMediaEditorState(): CommunityMediaEditorState {
     dragStartY: 0,
     dragStartOffsetX: 0,
     dragStartOffsetY: 0,
+    dragMoved: false,
     dirty: false,
     removed: false,
     loading: false,
@@ -40,6 +41,10 @@ function createInitialFormState() {
     communityId: null,
     isSaving: false,
     errorMessage: "",
+    nameCheckStatus: "idle" as const,
+    nameCheckTitle: "",
+    nameCheckUsername: "",
+    nameCheckMessage: "",
     title: "",
     username: "",
     bio: "",
@@ -69,9 +74,12 @@ function createInitialMembersManagerState() {
   return {
     open: false,
     loading: false,
+    loadingMore: false,
     errorMessage: "",
     query: "",
     includeBlocked: false,
+    offset: 0,
+    hasMore: false,
     changingRoleProfileId: null,
     removingProfileId: null,
     confirmAction: null,
@@ -84,6 +92,8 @@ function createInitialState(): CommunitiesState {
     loading: false,
     errorMessage: "",
     query: "",
+    searchLoading: false,
+    searchResults: null,
     items: [],
     activeCommunity: null,
     activeMembers: [],
@@ -215,6 +225,8 @@ export function findCommunityById(id: string | number): CommunityBundle | null {
 
 export function getVisibleCommunities(): CommunityBundle[] {
   const query = communitiesState.query.trim().toLowerCase();
+  if (query && communitiesState.searchResults) return communitiesState.searchResults;
+
   const memberItems = communitiesState.items.filter((item) => item.membership.isMember);
 
   if (!query) return memberItems;
@@ -228,12 +240,17 @@ export function getVisibleCommunities(): CommunityBundle[] {
 }
 
 export function getVisibleCommunityMembers(): CommunityMember[] {
-  const query = communitiesState.membersManager.query.trim().toLowerCase();
+  const manager = communitiesState.membersManager;
+  const query = manager.query.trim().toLowerCase();
+  const members = communitiesState.activeMembers.filter((member) =>
+    manager.includeBlocked ? member.blocked : !member.blocked,
+  );
+
   if (!query) {
-    return communitiesState.activeMembers;
+    return members;
   }
 
-  return communitiesState.activeMembers.filter((member) =>
+  return members.filter((member) =>
     [member.firstName, member.lastName, member.username].join(" ").toLowerCase().includes(query),
   );
 }

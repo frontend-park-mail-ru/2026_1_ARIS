@@ -10,6 +10,7 @@ import {
   type Friend,
 } from "../../api/friends";
 import { getProfileById } from "../../api/profile";
+import { searchUsersAndCommunities, type SearchUser } from "../../api/search";
 import { isNetworkUnavailableError } from "../../state/network-status";
 import { StateManager } from "../../state/StateManager";
 import { t } from "../../state/i18n";
@@ -31,6 +32,8 @@ export const friendsStore = new StateManager<FriendsState>({
   loading: false,
   errorMessage: "",
   query: "",
+  searchLoading: false,
+  searchResults: null,
   activeTab: "accepted",
   friends: [],
   incoming: [],
@@ -79,6 +82,8 @@ export function resetFriendsState(): void {
   friendsState.loading = false;
   friendsState.errorMessage = "";
   friendsState.query = "";
+  friendsState.searchLoading = false;
+  friendsState.searchResults = null;
   friendsState.activeTab = "accepted";
   friendsState.friends = [];
   friendsState.incoming = [];
@@ -179,8 +184,9 @@ export async function hydrateFriendAvatarLinks<T extends Friend>(
 }
 
 async function resolveFriendEducationLabel(friend: Friend): Promise<string> {
-  const cached = friendEducationCache.get(friend.profileId);
-  if (cached) return cached;
+  if (friendEducationCache.has(friend.profileId)) {
+    return friendEducationCache.get(friend.profileId) ?? "";
+  }
 
   try {
     const profile = await getProfileById(friend.profileId);
@@ -193,16 +199,60 @@ async function resolveFriendEducationLabel(friend: Friend): Promise<string> {
       return institution;
     }
   } catch {
-    // Переходим к резервному варианту с логином пользователя.
+    // Не подставляем логин вместо отсутствующего вуза.
   }
 
-  const fallback = friend.username ? `@${friend.username}` : "Пользователь ARIS";
-  friendEducationCache.set(friend.profileId, fallback);
-  return fallback;
+  friendEducationCache.set(friend.profileId, "");
+  return "";
 }
 
 async function mapFriendToDisplay(friend: Friend): Promise<DisplayFriend> {
   return { ...friend, educationLabel: await resolveFriendEducationLabel(friend) };
+}
+
+function getActiveFriendsSource(): DisplayFriend[] {
+  return friendsState.activeTab === "accepted"
+    ? friendsState.friends
+    : friendsState.activeTab === "incoming"
+      ? friendsState.incoming
+      : friendsState.outgoing;
+}
+
+function mapSearchUserToDisplayFriend(
+  user: SearchUser,
+  existingFriend?: DisplayFriend,
+): DisplayFriend {
+  const profileId = String(user.profileId);
+  const avatarLink = normaliseAvatarLink(user.avatarUrl) ?? existingFriend?.avatarLink;
+
+  return {
+    profileId,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    username: user.username,
+    status: existingFriend?.status ?? "accepted",
+    ...(avatarLink ? { avatarLink } : {}),
+    ...(existingFriend?.createdAt ? { createdAt: existingFriend.createdAt } : {}),
+    educationLabel: existingFriend?.educationLabel ?? "",
+  };
+}
+
+export async function searchFriendsFromBackend(
+  query: string,
+  signal?: AbortSignal,
+): Promise<DisplayFriend[]> {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return [];
+
+  const sourceById = new Map(getActiveFriendsSource().map((friend) => [friend.profileId, friend]));
+  const results = await searchUsersAndCommunities(trimmedQuery, signal);
+
+  return results.users
+    .map((user) => {
+      const existingFriend = sourceById.get(String(user.profileId));
+      return existingFriend ? mapSearchUserToDisplayFriend(user, existingFriend) : null;
+    })
+    .filter((friend): friend is DisplayFriend => Boolean(friend));
 }
 
 /**
@@ -305,14 +355,10 @@ export function findFriendById(friendId: string): DisplayFriend | null {
  * @returns {DisplayFriend[]} Отфильтрованный набор карточек друзей.
  */
 export function getVisibleFriends(): DisplayFriend[] {
-  const source =
-    friendsState.activeTab === "accepted"
-      ? friendsState.friends
-      : friendsState.activeTab === "incoming"
-        ? friendsState.incoming
-        : friendsState.outgoing;
-
   const query = friendsState.query.trim().toLowerCase();
+  if (query && friendsState.searchResults) return friendsState.searchResults;
+
+  const source = getActiveFriendsSource();
   if (!query) return source;
 
   return source.filter((friend) =>

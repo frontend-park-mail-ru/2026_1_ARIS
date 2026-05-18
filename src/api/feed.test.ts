@@ -44,6 +44,7 @@ describe("feed api", () => {
       comments: 3,
       reposts: 1,
       medias: [{ mediaLink: "/media/post.png" }, {}],
+      files: [{ mediaLink: "/media/doc.pdf" }],
     });
 
     expect(card).toEqual({
@@ -61,6 +62,7 @@ describe("feed api", () => {
       comments: 3,
       reposts: 1,
       images: ["/media/post.png"],
+      files: ["/media/doc.pdf"],
     });
     expect(localStorage.getItem("arisfront:post-like-state")).toContain('"42":true');
   });

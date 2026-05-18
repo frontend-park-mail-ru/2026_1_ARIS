@@ -5,6 +5,7 @@ import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import {
   changeCommunityMemberRole,
+  checkCommunityExists,
   createCommunity,
   deleteCommunity,
   getCommunities,
@@ -17,7 +18,9 @@ import {
   type CommunityBundle,
   type CommunityMember,
   type CommunityPayload,
+  type CommunityRole,
 } from "../../api/communities";
+import { searchUsersAndCommunities, type SearchCommunity } from "../../api/search";
 import {
   createPost,
   deletePost,
@@ -30,9 +33,11 @@ import {
 } from "../../api/posts";
 import { getMyProfile, uploadProfileAvatar } from "../../api/profile";
 import { getSessionUser } from "../../state/session";
+import { t } from "../../state/i18n";
 import { clearFeedCache } from "../feed/cache";
 import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
 import { prepareAvatarLinks } from "../../utils/avatar";
+import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 import type { ComposerMediaItem } from "../profile/types";
 import type { CommunitiesParams } from "./types";
 import {
@@ -69,7 +74,6 @@ import {
 import {
   isOfficialCommunityPost,
   mapPostToCommunityPost,
-  slugifyCommunityTitle,
   canManageCommunityMemberRole,
   canRemoveCommunityMember,
 } from "./helpers";
@@ -77,6 +81,7 @@ import {
   refreshCommunitiesList,
   refreshCommunitiesPage,
   renderCommunitiesListContent,
+  renderCommunityMembersManagerList,
   renderCommunityDetailContent,
   renderCommunityRightRail,
 } from "./render";
@@ -92,9 +97,177 @@ type CommunitiesRoot = (Document | HTMLElement) & {
   __communityPostDeleteBackdropPressStarted?: boolean;
 };
 
+const COMMUNITY_MEMBERS_PAGE_SIZE = 30;
+
 const COMMUNITY_TITLE_MIN_LENGTH = 3;
 const COMMUNITY_BIO_MAX_LENGTH = 2047;
 const COMMUNITY_TITLE_MAX_LENGTH = 64;
+const COMMUNITIES_SEARCH_DEBOUNCE_MS = 250;
+const COMMUNITY_NAME_CHECK_DEBOUNCE_MS = 350;
+
+let communitiesSearchTimerId: number | null = null;
+let communitiesSearchAbortController: AbortController | null = null;
+let communitiesSearchRequestId = 0;
+let communityNameCheckTimerId: number | null = null;
+let communityNameCheckAbortController: AbortController | null = null;
+let communityNameCheckRequestId = 0;
+
+function formatCommunityMessage(message: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replace(`{${key}}`, String(value)),
+    message,
+  );
+}
+
+function clearCommunitiesSearchRequest(): void {
+  if (communitiesSearchTimerId !== null) {
+    window.clearTimeout(communitiesSearchTimerId);
+    communitiesSearchTimerId = null;
+  }
+
+  communitiesSearchAbortController?.abort();
+  communitiesSearchAbortController = null;
+}
+
+function clearCommunityNameCheckRequest(): void {
+  if (communityNameCheckTimerId !== null) {
+    window.clearTimeout(communityNameCheckTimerId);
+    communityNameCheckTimerId = null;
+  }
+
+  communityNameCheckAbortController?.abort();
+  communityNameCheckAbortController = null;
+}
+
+function resetCommunityNameCheckState(): void {
+  clearCommunityNameCheckRequest();
+  communityNameCheckRequestId += 1;
+  communitiesState.form.nameCheckStatus = "idle";
+  communitiesState.form.nameCheckTitle = "";
+  communitiesState.form.nameCheckUsername = "";
+  communitiesState.form.nameCheckMessage = "";
+}
+
+function validateCommunityUsername(value: string): string {
+  const username = value.trim().toLowerCase();
+
+  if (!username) {
+    return t("communities.formUsernameRequired");
+  }
+
+  if (username.length < 3 || username.length > 20) {
+    return t("communities.formUsernameLengthError");
+  }
+
+  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(username)) {
+    return t("communities.formUsernameFormatError");
+  }
+
+  return "";
+}
+
+function validateCommunityUsernameInput(value: string): string {
+  const username = value.trim().toLowerCase();
+  if (!username) {
+    return "";
+  }
+  return validateCommunityUsername(username);
+}
+
+function mapSearchCommunityToBundle(result: SearchCommunity): CommunityBundle {
+  const existing = findCommunityById(result.id);
+  if (existing) {
+    return {
+      ...existing,
+      community: {
+        ...existing.community,
+        title: result.title || existing.community.title,
+        username: result.username || existing.community.username,
+        ...(typeof result.bio === "string" ? { bio: result.bio } : {}),
+        ...(result.avatarUrl ? { avatarUrl: result.avatarUrl } : {}),
+        ...(result.coverUrl ? { coverUrl: result.coverUrl } : {}),
+      },
+    };
+  }
+
+  return {
+    community: {
+      id: result.id,
+      uid: "",
+      profileId: result.profileId,
+      username: result.username,
+      title: result.title,
+      ...(typeof result.bio === "string" ? { bio: result.bio } : {}),
+      type: result.type === "private" ? "private" : "public",
+      ...(result.avatarId ? { avatarId: result.avatarId } : {}),
+      ...(result.avatarUrl ? { avatarUrl: result.avatarUrl } : {}),
+      ...(result.coverId ? { coverId: result.coverId } : {}),
+      ...(result.coverUrl ? { coverUrl: result.coverUrl } : {}),
+      isActive: true,
+      createdAt: "",
+      updatedAt: "",
+    },
+    membership: {
+      isMember: false,
+      role: "",
+      blocked: false,
+    },
+    permissions: {
+      canEditCommunity: false,
+      canDeleteCommunity: false,
+      canPost: false,
+      canPostAsCommunity: false,
+      canPostAsMember: false,
+      canManageMembers: false,
+      canChangeRoles: false,
+    },
+  };
+}
+
+function scheduleCommunitiesBackendSearch(root: ParentNode): void {
+  const query = communitiesState.query.trim();
+  const requestId = ++communitiesSearchRequestId;
+
+  clearCommunitiesSearchRequest();
+
+  if (!query) {
+    communitiesState.searchLoading = false;
+    communitiesState.searchResults = null;
+    refreshCommunitiesList(root);
+    return;
+  }
+
+  communitiesState.searchLoading = true;
+  communitiesState.searchResults = null;
+  refreshCommunitiesList(root);
+
+  communitiesSearchTimerId = window.setTimeout(() => {
+    communitiesSearchTimerId = null;
+    const controller = new AbortController();
+    communitiesSearchAbortController = controller;
+
+    void searchUsersAndCommunities(query, controller.signal)
+      .then((results) => {
+        if (requestId !== communitiesSearchRequestId || communitiesState.query.trim() !== query) {
+          return;
+        }
+        communitiesState.searchResults = results.communities.map(mapSearchCommunityToBundle);
+        communitiesState.errorMessage = "";
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        if (requestId !== communitiesSearchRequestId) return;
+        communitiesState.searchResults = [];
+        communitiesState.errorMessage =
+          error instanceof Error ? error.message : "Не удалось выполнить поиск сообществ.";
+      })
+      .finally(() => {
+        if (requestId !== communitiesSearchRequestId) return;
+        communitiesState.searchLoading = false;
+        refreshCommunitiesList(root);
+      });
+  }, COMMUNITIES_SEARCH_DEBOUNCE_MS);
+}
 
 function syncCommunityBundle(bundle: CommunityBundle): void {
   if (communitiesState.activeCommunity?.community.id === bundle.community.id) {
@@ -123,6 +296,44 @@ function updateCommunityPostLikeState(postId: string, likes: number, isLiked: bo
   );
 }
 
+function syncActiveCommunity(bundle: CommunityBundle): void {
+  syncCommunityBundle(bundle);
+  setActiveCommunity(bundle);
+}
+
+function syncActiveCommunityMembership(
+  membership: CommunityBundle["membership"],
+  permissions?: CommunityBundle["permissions"],
+): void {
+  const bundle = communitiesState.activeCommunity;
+  if (!bundle) return;
+
+  syncActiveCommunity({
+    ...bundle,
+    membership,
+    ...(permissions ? { permissions } : {}),
+  });
+}
+
+function upsertActiveMember(member: CommunityMember): void {
+  const shouldKeepMember =
+    !member.blocked || communitiesState.membersManager.includeBlocked || member.isSelf;
+  if (!shouldKeepMember) {
+    setActiveMembers(
+      communitiesState.activeMembers.filter((item) => item.profileId !== member.profileId),
+    );
+    return;
+  }
+
+  setActiveMembers(
+    communitiesState.activeMembers.some((item) => item.profileId === member.profileId)
+      ? communitiesState.activeMembers.map((item) =>
+          item.profileId === member.profileId ? member : item,
+        )
+      : [member, ...communitiesState.activeMembers],
+  );
+}
+
 async function ensureViewerProfileId(signal?: AbortSignal): Promise<void> {
   if (
     typeof communitiesState.viewerProfileId === "number" &&
@@ -140,13 +351,39 @@ async function loadCommunityMembers(
   communityId: number,
   includeBlocked = false,
   signal?: AbortSignal,
+  options: { append?: boolean; limit?: number; offset?: number } = {},
 ): Promise<CommunityMember[]> {
   try {
-    const members = await getCommunityMembers(communityId, includeBlocked, signal);
-    setActiveMembers(members);
-    return members;
+    const members = await getCommunityMembers(
+      communityId,
+      includeBlocked,
+      signal,
+      options.limit,
+      options.offset,
+    );
+    const existingMembers = options.append ? communitiesState.activeMembers : [];
+    const existingIds = new Set(existingMembers.map((member) => member.profileId));
+    const newMembers = members.filter((member) => !existingIds.has(member.profileId));
+    const nextMembers = options.append ? [...existingMembers, ...newMembers] : members;
+
+    setActiveMembers(nextMembers);
+
+    if (typeof options.limit === "number") {
+      communitiesState.membersManager.offset = (options.offset ?? 0) + members.length;
+      communitiesState.membersManager.hasMore =
+        members.length >= options.limit && (!options.append || newMembers.length > 0);
+    } else {
+      communitiesState.membersManager.offset = nextMembers.length;
+      communitiesState.membersManager.hasMore = false;
+    }
+
+    return nextMembers;
   } finally {
-    communitiesState.membersLoading = false;
+    if (options.append) {
+      communitiesState.membersManager.loadingMore = false;
+    } else {
+      communitiesState.membersLoading = false;
+    }
   }
 }
 
@@ -209,10 +446,14 @@ function syncCommunityFormFromDom(root: ParentNode): void {
 
   const formData = new FormData(form);
   const title = formData.get("title");
+  const username = formData.get("username");
   const bio = formData.get("bio");
 
   if (typeof title === "string") {
     communitiesState.form.title = title.trim();
+  }
+  if (typeof username === "string") {
+    communitiesState.form.username = username.trim().toLowerCase();
   }
   if (typeof bio === "string") {
     communitiesState.form.bio = bio.trim();
@@ -221,9 +462,7 @@ function syncCommunityFormFromDom(root: ParentNode): void {
 
 function buildCommunityPayload(): CommunityPayload {
   const title = communitiesState.form.title.trim();
-  const explicitUsername = communitiesState.form.username.trim();
-  const generatedUsername = slugifyCommunityTitle(title).slice(0, 20);
-  const username = explicitUsername || generatedUsername;
+  const username = communitiesState.form.username.trim().toLowerCase();
   return {
     title,
     username,
@@ -236,15 +475,19 @@ function validateCommunityTitle(value: string): string {
   const title = value.trim();
 
   if (!title) {
-    return "Введите название сообщества.";
+    return t("communities.formTitleRequired");
   }
 
   if (title.length < COMMUNITY_TITLE_MIN_LENGTH) {
-    return `Название сообщества должно содержать минимум ${COMMUNITY_TITLE_MIN_LENGTH} символа.`;
+    return formatCommunityMessage(t("communities.formTitleMinError"), {
+      count: COMMUNITY_TITLE_MIN_LENGTH,
+    });
   }
 
   if (title.length > COMMUNITY_TITLE_MAX_LENGTH) {
-    return `Название сообщества должно быть не длиннее ${COMMUNITY_TITLE_MAX_LENGTH} символов.`;
+    return formatCommunityMessage(t("communities.formTitleMaxError"), {
+      count: COMMUNITY_TITLE_MAX_LENGTH,
+    });
   }
 
   return "";
@@ -254,25 +497,202 @@ function validateCommunityBio(value: string): string {
   const bio = value.trim();
 
   if (bio.length > COMMUNITY_BIO_MAX_LENGTH) {
-    return `Описание сообщества должно быть не длиннее ${COMMUNITY_BIO_MAX_LENGTH} символов.`;
+    return formatCommunityMessage(t("communities.formBioMaxError"), {
+      count: COMMUNITY_BIO_MAX_LENGTH,
+    });
   }
 
   return "";
 }
 
 function validateCommunityPayload(payload: CommunityPayload): string {
-  const username = payload.username?.trim().toLowerCase() ?? "";
   const titleError = validateCommunityTitle(payload.title ?? "");
   const bioError = validateCommunityBio(payload.bio ?? "");
+  const usernameError = validateCommunityUsername(payload.username ?? "");
 
   if (titleError) return titleError;
   if (bioError) return bioError;
-
-  if (username.length < 3 || username.length > 20) {
-    return "Адрес сообщества должен содержать от 3 до 20 символов.";
-  }
+  if (usernameError) return usernameError;
 
   return "";
+}
+
+function validateCommunityNamePayload(payload: CommunityPayload): string {
+  const titleError = validateCommunityTitle(payload.title ?? "");
+  const usernameError = validateCommunityUsername(payload.username ?? "");
+
+  if (titleError) return titleError;
+  if (usernameError) return usernameError;
+
+  return "";
+}
+
+function syncCommunityFormErrorNode(root: ParentNode, message: string): void {
+  const errorNode = root.querySelector<HTMLElement>("[data-community-form-error]");
+  if (!errorNode) return;
+
+  errorNode.textContent = message || "\u00a0";
+  errorNode.classList.toggle("community-modal__error--hidden", !message);
+}
+
+function syncCommunityFormAddressPreviewNode(root: ParentNode): void {
+  const previewNode = root.querySelector<HTMLElement>("[data-community-form-address-preview]");
+  if (!previewNode) return;
+
+  const username = communitiesState.form.username.trim().toLowerCase();
+  previewNode.textContent = username
+    ? formatCommunityMessage(t("communities.formAddressPreview"), { username })
+    : "\u00a0";
+  previewNode.classList.toggle("community-form__helper--hidden", !username);
+}
+
+function openCommunityMediaPicker(root: ParentNode, kind: "avatar" | "cover"): void {
+  const input = root.querySelector<HTMLInputElement>(`[data-community-${kind}-input]`);
+  if (!input) return;
+  input.value = "";
+  input.click();
+}
+
+function closeCommunityFormHints(root: ParentNode, except?: HTMLButtonElement): void {
+  root.querySelectorAll<HTMLButtonElement>("[data-community-form-hint]").forEach((button) => {
+    if (button === except) return;
+    button.classList.remove("community-form__hint-button--open");
+    button.setAttribute("aria-expanded", "false");
+  });
+}
+
+async function ensureCommunityNameAvailable(
+  root: ParentNode,
+  options: {
+    refresh?: boolean;
+    signal?: AbortSignal;
+    showRequestErrors?: boolean;
+    force?: boolean;
+  } = {},
+): Promise<string> {
+  const payload = buildCommunityPayload();
+  const validationError = validateCommunityNamePayload(payload);
+
+  if (validationError) {
+    resetCommunityNameCheckState();
+    communitiesState.form.errorMessage = validationError;
+    if (options.refresh) {
+      refreshCommunitiesPage(root);
+    } else {
+      syncCommunityFormErrorNode(root, validationError);
+    }
+    return validationError;
+  }
+
+  if (communitiesState.form.mode !== "create") {
+    communitiesState.form.nameCheckStatus = "available";
+    communitiesState.form.nameCheckTitle = payload.title ?? "";
+    communitiesState.form.nameCheckUsername = payload.username ?? "";
+    communitiesState.form.nameCheckMessage = "";
+    return "";
+  }
+
+  const title = payload.title ?? "";
+  const username = payload.username ?? "";
+  if (
+    !options.force &&
+    communitiesState.form.nameCheckStatus === "available" &&
+    communitiesState.form.nameCheckTitle === title &&
+    communitiesState.form.nameCheckUsername === username
+  ) {
+    return "";
+  }
+
+  if (options.signal) {
+    if (communityNameCheckTimerId !== null) {
+      window.clearTimeout(communityNameCheckTimerId);
+      communityNameCheckTimerId = null;
+    }
+  } else {
+    clearCommunityNameCheckRequest();
+  }
+  const requestId = ++communityNameCheckRequestId;
+  communitiesState.form.nameCheckStatus = "checking";
+  communitiesState.form.nameCheckTitle = title;
+  communitiesState.form.nameCheckUsername = username;
+  communitiesState.form.nameCheckMessage = "";
+  if (options.refresh) {
+    refreshCommunitiesPage(root);
+  }
+
+  try {
+    const result = await checkCommunityExists(
+      { title, username },
+      options.signal ?? communityNameCheckAbortController?.signal,
+    );
+    if (requestId !== communityNameCheckRequestId) {
+      return "";
+    }
+
+    const unavailableMessage = result.usernameExists
+      ? formatCommunityMessage(t("communities.formUsernameTakenError"), { username })
+      : "";
+
+    communitiesState.form.nameCheckStatus = unavailableMessage ? "unavailable" : "available";
+    communitiesState.form.nameCheckUsername = username;
+    communitiesState.form.nameCheckMessage = "";
+    communitiesState.form.errorMessage = unavailableMessage;
+
+    if (options.refresh) {
+      refreshCommunitiesPage(root);
+    } else {
+      syncCommunityFormErrorNode(root, unavailableMessage);
+    }
+
+    return unavailableMessage;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return "";
+    }
+
+    const message = error instanceof Error ? error.message : t("communities.formNameCheckError");
+    if (options.showRequestErrors === false) {
+      communitiesState.form.nameCheckStatus = "idle";
+      communitiesState.form.nameCheckMessage = "";
+      return "";
+    }
+
+    communitiesState.form.nameCheckStatus = "error";
+    communitiesState.form.nameCheckMessage = "";
+    communitiesState.form.errorMessage = message;
+
+    if (options.refresh) {
+      refreshCommunitiesPage(root);
+    } else {
+      syncCommunityFormErrorNode(root, message);
+    }
+
+    return message;
+  }
+}
+
+function scheduleCommunityNameAvailabilityCheck(root: ParentNode): void {
+  clearCommunityNameCheckRequest();
+
+  const payload = buildCommunityPayload();
+  const validationError = validateCommunityNamePayload(payload);
+  if (validationError || communitiesState.form.mode !== "create") {
+    communitiesState.form.nameCheckStatus = "idle";
+    communitiesState.form.nameCheckTitle = "";
+    communitiesState.form.nameCheckUsername = "";
+    communitiesState.form.nameCheckMessage = "";
+    return;
+  }
+
+  const controller = new AbortController();
+  communityNameCheckAbortController = controller;
+  communityNameCheckTimerId = window.setTimeout(() => {
+    communityNameCheckTimerId = null;
+    void ensureCommunityNameAvailable(root, {
+      signal: controller.signal,
+      showRequestErrors: false,
+    });
+  }, COMMUNITY_NAME_CHECK_DEBOUNCE_MS);
 }
 
 function getInvalidCommunityFormStep(payload: CommunityPayload): 1 | 2 | 3 | null {
@@ -284,7 +704,7 @@ function getInvalidCommunityFormStep(payload: CommunityPayload): 1 | 2 | 3 | nul
     return 2;
   }
 
-  if ((payload.username?.trim().length ?? 0) < 3 || (payload.username?.trim().length ?? 0) > 20) {
+  if (validateCommunityUsername(payload.username ?? "")) {
     return 1;
   }
 
@@ -294,7 +714,7 @@ function getInvalidCommunityFormStep(payload: CommunityPayload): 1 | 2 | 3 | nul
 async function saveCommunityForm(root: ParentNode): Promise<void> {
   syncCommunityFormFromDom(root);
 
-  const payload = buildCommunityPayload();
+  let payload = buildCommunityPayload();
   const validationError = validateCommunityPayload(payload);
 
   if (validationError) {
@@ -306,6 +726,19 @@ async function saveCommunityForm(root: ParentNode): Promise<void> {
     refreshCommunitiesPage(root);
     return;
   }
+
+  const nameAvailabilityError =
+    communitiesState.form.mode === "create"
+      ? await ensureCommunityNameAvailable(root, { refresh: true, force: true })
+      : "";
+  if (nameAvailabilityError) {
+    communitiesState.form.step = 1;
+    communitiesState.form.errorMessage = nameAvailabilityError;
+    refreshCommunitiesPage(root);
+    return;
+  }
+
+  payload = buildCommunityPayload();
 
   communitiesState.form.isSaving = true;
   communitiesState.form.errorMessage = "";
@@ -351,15 +784,27 @@ async function saveCommunityForm(root: ParentNode): Promise<void> {
     window.dispatchEvent(new PopStateEvent("popstate"));
   } catch (error) {
     communitiesState.form.isSaving = false;
-    communitiesState.form.errorMessage =
-      error instanceof Error ? error.message : "Не удалось сохранить сообщество.";
+    const message = error instanceof Error ? error.message : t("communities.formSaveError");
+    if (/duplicate entry/i.test(message)) {
+      communitiesState.form.step = 1;
+      communitiesState.form.nameCheckStatus = "unavailable";
+      communitiesState.form.nameCheckTitle = payload.title ?? "";
+      communitiesState.form.nameCheckUsername = payload.username ?? "";
+      communitiesState.form.nameCheckMessage = "";
+      communitiesState.form.errorMessage = formatCommunityMessage(
+        t("communities.formUsernameTakenError"),
+        { username: payload.username ?? "" },
+      );
+    } else {
+      communitiesState.form.errorMessage = message;
+    }
     refreshCommunitiesPage(root);
   }
 }
 
 function validateCommunityFormStep(): string {
   if (communitiesState.form.step === 1) {
-    return validateCommunityTitle(communitiesState.form.title);
+    return validateCommunityNamePayload(buildCommunityPayload());
   }
 
   if (communitiesState.form.step === 2) {
@@ -369,7 +814,7 @@ function validateCommunityFormStep(): string {
   return "";
 }
 
-function goToNextCommunityFormStep(root: ParentNode): void {
+async function goToNextCommunityFormStep(root: ParentNode): Promise<void> {
   syncCommunityFormFromDom(root);
   const errorMessage = validateCommunityFormStep();
 
@@ -377,6 +822,18 @@ function goToNextCommunityFormStep(root: ParentNode): void {
     communitiesState.form.errorMessage = errorMessage;
     refreshCommunitiesPage(root);
     return;
+  }
+
+  if (communitiesState.form.step === 1) {
+    const nameAvailabilityError = await ensureCommunityNameAvailable(root, {
+      refresh: true,
+      force: true,
+    });
+    if (nameAvailabilityError) {
+      communitiesState.form.errorMessage = nameAvailabilityError;
+      refreshCommunitiesPage(root);
+      return;
+    }
   }
 
   communitiesState.form.errorMessage = "";
@@ -392,7 +849,7 @@ async function readFilesAsPreviews(files: File[]): Promise<ComposerMediaItem[]> 
           const reader = new FileReader();
           reader.onload = () => {
             if (typeof reader.result !== "string") {
-              reject(new Error("Не получилось прочитать изображение."));
+              reject(new Error(t("communities.imageReadError")));
               return;
             }
 
@@ -402,7 +859,7 @@ async function readFilesAsPreviews(files: File[]): Promise<ComposerMediaItem[]> 
               isUploaded: false,
             });
           };
-          reader.onerror = () => reject(new Error("Не получилось прочитать изображение."));
+          reader.onerror = () => reject(new Error(t("communities.imageReadError")));
           reader.readAsDataURL(file);
         }),
     ),
@@ -467,7 +924,7 @@ async function saveCommunityPost(root: ParentNode): Promise<void> {
 
   const text = communitiesState.postComposer.text.trim();
   if (!text && communitiesState.postComposer.mediaItems.length === 0) {
-    communitiesState.postComposer.errorMessage = "Добавьте текст или изображение.";
+    communitiesState.postComposer.errorMessage = t("communities.addTextOrImage");
     refreshCommunitiesPage(root);
     return;
   }
@@ -501,6 +958,10 @@ async function saveCommunityPost(root: ParentNode): Promise<void> {
         ? await updatePost(communitiesState.postComposer.editingPostId, {
             ...(text ? { text } : {}),
             media,
+            communityId: bundle.community.id,
+            ...(communitiesState.postComposer.authorMode === "community"
+              ? { authorProfileId: bundle.community.profileId }
+              : {}),
           })
         : await createPost({
             ...(text ? { text } : {}),
@@ -643,11 +1104,84 @@ function closeCommunityPostMenus(root: Document | HTMLElement): void {
     });
 }
 
+function closeCommunityMemberRoleMenus(root: Document | HTMLElement): void {
+  document.querySelectorAll<HTMLElement>("[data-community-member-role-menu]").forEach((menu) => {
+    menu.hidden = true;
+    menu.style.top = "";
+    menu.style.right = "";
+    menu.style.left = "";
+    menu.style.width = "";
+    menu.style.maxHeight = "";
+  });
+
+  root
+    .querySelectorAll<HTMLButtonElement>("[data-community-member-role-toggle]")
+    .forEach((button) => {
+      button.setAttribute("aria-expanded", "false");
+    });
+}
+
 function positionCommunityMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
   const rect = toggle.getBoundingClientRect();
   menu.style.top = `${rect.bottom + 8}px`;
   menu.style.right = `${window.innerWidth - rect.right}px`;
   menu.style.left = "auto";
+}
+
+function positionCommunityMemberRoleMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
+  const rect = toggle.getBoundingClientRect();
+  const viewportMargin = 12;
+  const gap = 6;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const menuWidth = Math.min(
+    Math.max(rect.width, menu.offsetWidth || rect.width),
+    viewportWidth - viewportMargin * 2,
+  );
+  const desiredMenuHeight = menu.scrollHeight || menu.offsetHeight || 220;
+  const belowSpace = viewportHeight - rect.bottom - gap - viewportMargin;
+  const aboveSpace = rect.top - gap - viewportMargin;
+  const shouldOpenUp = belowSpace < desiredMenuHeight && aboveSpace > belowSpace;
+  const menuHeight = Math.min(desiredMenuHeight, viewportHeight - viewportMargin * 2);
+  const left = Math.min(
+    Math.max(viewportMargin, rect.left),
+    viewportWidth - viewportMargin - menuWidth,
+  );
+  const unclampedTop = shouldOpenUp ? rect.top - gap - menuHeight : rect.bottom + gap;
+  const top = Math.min(
+    Math.max(viewportMargin, unclampedTop),
+    viewportHeight - viewportMargin - menuHeight,
+  );
+
+  menu.style.top = `${top}px`;
+  menu.style.left = `${left}px`;
+  menu.style.right = "auto";
+  menu.style.width = `${menuWidth}px`;
+  menu.style.maxHeight = "";
+}
+
+function repositionOpenCommunityMemberRoleMenu(root: Document | HTMLElement): void {
+  const openRoleMenu = document.querySelector<HTMLElement>(
+    "[data-community-member-role-menu]:not([hidden])",
+  );
+  if (!openRoleMenu) return;
+
+  const profileId = openRoleMenu.getAttribute("data-community-member-role-menu");
+  const roleToggle = profileId
+    ? root.querySelector<HTMLButtonElement>(`[data-community-member-role-toggle="${profileId}"]`)
+    : null;
+  if (!roleToggle || !roleToggle.isConnected) {
+    closeCommunityMemberRoleMenus(root);
+    return;
+  }
+
+  const rect = roleToggle.getBoundingClientRect();
+  if (rect.bottom < 0 || rect.top > window.innerHeight) {
+    closeCommunityMemberRoleMenus(root);
+    return;
+  }
+
+  positionCommunityMemberRoleMenu(openRoleMenu, roleToggle);
 }
 
 function bindFloatingCommunityMenuActions(
@@ -663,6 +1197,7 @@ function bindFloatingCommunityMenuActions(
   if (editButton && bundle) {
     editButton.onclick = () => {
       closeCommunityMenus(root);
+      resetCommunityNameCheckState();
       openEditCommunityForm(bundle, 1);
       refreshCommunitiesPage(root);
     };
@@ -701,22 +1236,110 @@ function bindFloatingCommunityMenuActions(
 }
 
 function openCommunityMembersManager(root: Document | HTMLElement, bundle: CommunityBundle): void {
+  const canManageMembers = bundle.permissions.canManageMembers || bundle.permissions.canChangeRoles;
   closeCommunityMenus(root);
+  closeCommunityMemberRoleMenus(root);
   setActiveCommunity(bundle);
   communitiesState.membersManager.open = true;
   communitiesState.membersManager.errorMessage = "";
   communitiesState.membersManager.query = "";
+  communitiesState.membersManager.includeBlocked = canManageMembers
+    ? communitiesState.membersManager.includeBlocked
+    : false;
+  communitiesState.membersManager.offset = 0;
+  communitiesState.membersManager.hasMore = true;
+  communitiesState.membersManager.loadingMore = false;
   communitiesState.membersLoading = true;
+  communitiesState.membersLoaded = false;
   refreshCommunitiesPage(root);
-  void loadCommunityMembers(bundle.community.id, communitiesState.membersManager.includeBlocked)
+  void loadCommunityMembers(
+    bundle.community.id,
+    communitiesState.membersManager.includeBlocked,
+    undefined,
+    {
+      limit: COMMUNITY_MEMBERS_PAGE_SIZE,
+      offset: 0,
+    },
+  )
     .then(() => {
       refreshCommunitiesPage(root);
     })
     .catch((error: unknown) => {
       communitiesState.membersManager.errorMessage =
-        error instanceof Error ? error.message : "Не удалось загрузить участников.";
+        error instanceof Error ? error.message : t("communities.membersLoadError");
       refreshCommunitiesPage(root);
     });
+}
+
+function loadMoreCommunityMembers(root: Document | HTMLElement): void {
+  const bundle = communitiesState.activeCommunity;
+  const manager = communitiesState.membersManager;
+  if (!bundle || communitiesState.membersLoading || manager.loadingMore || !manager.hasMore) {
+    return;
+  }
+
+  manager.loadingMore = true;
+  refreshCommunitiesPage(root);
+  void loadCommunityMembers(bundle.community.id, manager.includeBlocked, undefined, {
+    append: true,
+    limit: COMMUNITY_MEMBERS_PAGE_SIZE,
+    offset: manager.offset,
+  })
+    .then(() => {
+      refreshCommunitiesPage(root);
+    })
+    .catch((error: unknown) => {
+      manager.errorMessage =
+        error instanceof Error ? error.message : t("communities.membersLoadError");
+      manager.loadingMore = false;
+      refreshCommunitiesPage(root);
+    });
+}
+
+function isCommunityMemberRole(value: string | null): value is Exclude<CommunityRole, "owner"> {
+  return value === "admin" || value === "moderator" || value === "member" || value === "blocked";
+}
+
+function handleCommunityMemberRoleChoice(
+  root: Document | HTMLElement,
+  profileId: number,
+  nextRole: string | null,
+): void {
+  const bundle = communitiesState.activeCommunity;
+  if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
+  if (!isCommunityMemberRole(nextRole)) return;
+
+  const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
+  if (
+    !member ||
+    member.role === nextRole ||
+    !canManageCommunityMemberRole(bundle, member, communitiesState.viewerProfileId)
+  ) {
+    closeCommunityMemberRoleMenus(root);
+    refreshCommunitiesPage(root);
+    return;
+  }
+
+  closeCommunityMemberRoleMenus(root);
+  communitiesState.membersManager.confirmAction = {
+    type: "role",
+    profileId,
+    newRole: nextRole,
+  };
+  refreshCommunitiesPage(root);
+}
+
+function bindFloatingCommunityMemberRoleMenuActions(
+  menu: HTMLElement,
+  root: Document | HTMLElement,
+): void {
+  menu.querySelectorAll<HTMLButtonElement>("[data-community-member-role]").forEach((button) => {
+    button.onclick = () => {
+      const profileId = Number(button.getAttribute("data-community-member-role"));
+      const nextRole = button.getAttribute("data-community-member-role-value");
+      handleCommunityMemberRoleChoice(root, profileId, nextRole);
+    };
+  });
 }
 
 function positionCommunityPostMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
@@ -770,6 +1393,7 @@ export async function renderCommunities(
     return (await import("../feed/feed")).renderFeed(undefined, signal);
   }
 
+  clearCommunityNameCheckRequest();
   resetCommunitiesState();
 
   if (params.id) {
@@ -843,6 +1467,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
   closeCommunityMenus(root);
   closeCommunityPostMenus(root);
+  closeCommunityMemberRoleMenus(root);
 
   root.addEventListener("pointerdown", (event: Event) => {
     if (event instanceof PointerEvent) {
@@ -909,12 +1534,80 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     cancelCommunityMediaDrag("cover", root);
   });
 
+  root.addEventListener(
+    "scroll",
+    (event: Event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-community-members-modal]")) {
+        repositionOpenCommunityMemberRoleMenu(root);
+      }
+      if (target instanceof HTMLElement && target.matches("[data-community-members-list]")) {
+        const remaining = target.scrollHeight - target.scrollTop - target.clientHeight;
+        if (remaining < 120) {
+          loadMoreCommunityMembers(root);
+        }
+      }
+    },
+    { capture: true, passive: true },
+  );
+
+  root.addEventListener("keydown", (event: Event) => {
+    if (!(event instanceof KeyboardEvent)) return;
+
+    if (event.key === "Escape") {
+      const openHint = root.querySelector(".community-form__hint-button--open");
+      if (openHint) {
+        event.preventDefault();
+        closeCommunityFormHints(root);
+        return;
+      }
+    }
+
+    if (
+      (event.key === "Enter" || event.key === " ") &&
+      event.target instanceof HTMLElement &&
+      event.target.matches("[data-community-media-pick-target]")
+    ) {
+      const kind = event.target.getAttribute("data-community-media-pick-target");
+      if (kind === "avatar" || kind === "cover") {
+        event.preventDefault();
+        openCommunityMediaPicker(root, kind);
+        return;
+      }
+    }
+
+    if (
+      event.key === "Enter" &&
+      event.target instanceof HTMLInputElement &&
+      event.target.form?.matches("[data-community-form]") &&
+      (event.target.matches("[data-community-title]") ||
+        event.target.matches("[data-community-username]")) &&
+      communitiesState.form.step < 4
+    ) {
+      event.preventDefault();
+      void goToNextCommunityFormStep(root);
+      return;
+    }
+
+    if (
+      (event.key === "Enter" || event.key === " ") &&
+      event.target instanceof Element &&
+      event.target.closest("[data-post-image-open]")
+    ) {
+      closeCommunityMenus(root);
+      closeCommunityPostMenus(root);
+      closeCommunityMemberRoleMenus(root);
+      openPostImageViewerFromTarget(event.target);
+      event.preventDefault();
+    }
+  });
+
   root.addEventListener("input", (event: Event) => {
     const target = event.target;
 
     if (target instanceof HTMLInputElement && target.matches("[data-communities-search]")) {
       communitiesState.query = target.value;
-      refreshCommunitiesList(root);
+      scheduleCommunitiesBackendSearch(root);
       return;
     }
 
@@ -944,8 +1637,43 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     if (target instanceof HTMLInputElement && target.matches("[data-community-title]")) {
       communitiesState.form.title = target.value;
-      communitiesState.form.errorMessage =
+      const errorMessage =
         communitiesState.form.step === 1 ? validateCommunityTitle(target.value) : "";
+      communitiesState.form.errorMessage = errorMessage;
+      communitiesState.form.nameCheckStatus = "idle";
+      communitiesState.form.nameCheckTitle = "";
+      communitiesState.form.nameCheckUsername = "";
+      communitiesState.form.nameCheckMessage = "";
+      syncCommunityFormErrorNode(root, errorMessage);
+      syncCommunityFormAddressPreviewNode(root);
+      if (errorMessage) {
+        clearCommunityNameCheckRequest();
+      } else {
+        scheduleCommunityNameAvailabilityCheck(root);
+      }
+      return;
+    }
+
+    if (target instanceof HTMLInputElement && target.matches("[data-community-username]")) {
+      const normalizedValue = target.value.toLowerCase();
+      if (target.value !== normalizedValue) {
+        target.value = normalizedValue;
+      }
+      communitiesState.form.username = normalizedValue;
+      const errorMessage =
+        communitiesState.form.step === 1 ? validateCommunityUsernameInput(normalizedValue) : "";
+      communitiesState.form.errorMessage = errorMessage;
+      communitiesState.form.nameCheckStatus = "idle";
+      communitiesState.form.nameCheckTitle = "";
+      communitiesState.form.nameCheckUsername = "";
+      communitiesState.form.nameCheckMessage = "";
+      syncCommunityFormErrorNode(root, errorMessage);
+      syncCommunityFormAddressPreviewNode(root);
+      if (errorMessage) {
+        clearCommunityNameCheckRequest();
+      } else {
+        scheduleCommunityNameAvailabilityCheck(root);
+      }
       return;
     }
 
@@ -991,7 +1719,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     if (target instanceof HTMLInputElement && target.matches("[data-community-post-image-input]")) {
       void handleCommunityPostImages(target.files, root).catch((error: unknown) => {
         communitiesState.postComposer.errorMessage =
-          error instanceof Error ? error.message : "Не получилось подготовить изображения.";
+          error instanceof Error ? error.message : t("communities.imagePrepareError");
         refreshCommunitiesPage(root);
       });
       return;
@@ -1006,16 +1734,46 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
       communitiesState.membersManager.includeBlocked = target.checked;
       communitiesState.membersManager.errorMessage = "";
+      communitiesState.membersManager.offset = 0;
+      communitiesState.membersManager.hasMore = true;
+      communitiesState.membersManager.loadingMore = false;
       communitiesState.membersLoading = true;
-      refreshCommunitiesPage(root);
-      void loadCommunityMembers(bundle.community.id, target.checked)
+      communitiesState.membersLoaded = false;
+      const errorNode = root.querySelector<HTMLElement>("[data-community-members-error]");
+      if (errorNode) {
+        errorNode.textContent = "\u00a0";
+        errorNode.classList.add("community-modal__error--hidden");
+      }
+      const list = root.querySelector<HTMLElement>("[data-community-members-list]");
+      if (list) {
+        list.innerHTML = renderCommunityMembersManagerList(bundle);
+      }
+      const includeBlocked = target.checked;
+      void loadCommunityMembers(bundle.community.id, includeBlocked, undefined, {
+        limit: COMMUNITY_MEMBERS_PAGE_SIZE,
+        offset: 0,
+      })
         .then(() => {
-          refreshCommunitiesPage(root);
+          if (communitiesState.membersManager.includeBlocked !== includeBlocked) return;
+          const nextList = root.querySelector<HTMLElement>("[data-community-members-list]");
+          if (nextList) {
+            nextList.innerHTML = renderCommunityMembersManagerList(bundle);
+          }
         })
         .catch((error: unknown) => {
+          if (communitiesState.membersManager.includeBlocked !== includeBlocked) return;
           communitiesState.membersManager.errorMessage =
-            error instanceof Error ? error.message : "Не удалось обновить список участников.";
-          refreshCommunitiesPage(root);
+            error instanceof Error ? error.message : t("communities.membersLoadError");
+          communitiesState.membersLoading = false;
+          const nextErrorNode = root.querySelector<HTMLElement>("[data-community-members-error]");
+          if (nextErrorNode) {
+            nextErrorNode.textContent = communitiesState.membersManager.errorMessage;
+            nextErrorNode.classList.remove("community-modal__error--hidden");
+          }
+          const nextList = root.querySelector<HTMLElement>("[data-community-members-list]");
+          if (nextList) {
+            nextList.innerHTML = renderCommunityMembersManagerList(bundle);
+          }
         });
       return;
     }
@@ -1027,7 +1785,11 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     if (target.matches("[data-community-form]")) {
       event.preventDefault();
-      void saveCommunityForm(root);
+      if (communitiesState.form.step < 4) {
+        void goToNextCommunityFormStep(root);
+      } else {
+        void saveCommunityForm(root);
+      }
       return;
     }
 
@@ -1041,6 +1803,24 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
+    const hintButton = target.closest("[data-community-form-hint]");
+    if (hintButton instanceof HTMLButtonElement) {
+      const willOpen = !hintButton.classList.contains("community-form__hint-button--open");
+      closeCommunityFormHints(root, hintButton);
+      hintButton.classList.toggle("community-form__hint-button--open", willOpen);
+      hintButton.setAttribute("aria-expanded", String(willOpen));
+      return;
+    }
+
+    closeCommunityFormHints(root);
+
+    if (target.closest("[data-post-image-open]")) {
+      closeCommunityMenus(root);
+      closeCommunityPostMenus(root);
+      closeCommunityMemberRoleMenus(root);
+      if (openPostImageViewerFromTarget(target)) return;
+    }
+
     if (target.closest("[data-member-confirm-modal] a[data-link]")) {
       communitiesState.membersManager.confirmAction = null;
       refreshCommunitiesPage(root);
@@ -1049,6 +1829,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     const createButton = target.closest("[data-community-create-open]");
     if (createButton instanceof HTMLButtonElement) {
+      resetCommunityNameCheckState();
       openCreateCommunityForm();
       refreshCommunitiesPage(root);
       return;
@@ -1065,6 +1846,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const isExpanded = menuToggle.getAttribute("aria-expanded") === "true";
       closeCommunityMenus(root);
       closeCommunityPostMenus(root);
+      closeCommunityMemberRoleMenus(root);
 
       if (menu && !isExpanded) {
         positionCommunityMenu(menu, menuToggle);
@@ -1088,6 +1870,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const menu = document.querySelector<HTMLElement>(`[data-community-post-menu="${postId}"]`);
       const isExpanded = postMenuToggle.getAttribute("aria-expanded") === "true";
       closeCommunityPostMenus(root);
+      closeCommunityMemberRoleMenus(root);
 
       if (menu && !isExpanded) {
         positionCommunityPostMenu(menu, postMenuToggle);
@@ -1149,6 +1932,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const id = editButton.getAttribute("data-community-edit");
       const bundle = id ? findCommunityById(id) : null;
       if (bundle) {
+        resetCommunityNameCheckState();
         openEditCommunityForm(bundle, 1);
         closeCommunityMenus(root);
         refreshCommunitiesPage(root);
@@ -1163,6 +1947,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       (formBackdrop === target && bindableRoot.__communityFormBackdropPressStarted)
     ) {
       bindableRoot.__communityFormBackdropPressStarted = false;
+      resetCommunityNameCheckState();
       resetCommunityFormState();
       refreshCommunitiesPage(root);
       return;
@@ -1170,26 +1955,28 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     const pickAvatarButton = target.closest("[data-community-avatar-pick]");
     if (pickAvatarButton instanceof HTMLButtonElement) {
-      const input = root.querySelector<HTMLInputElement>("[data-community-avatar-input]");
-      input?.click();
+      openCommunityMediaPicker(root, "avatar");
       return;
     }
 
     const pickCoverButton = target.closest("[data-community-cover-pick]");
     if (pickCoverButton instanceof HTMLButtonElement) {
-      const input = root.querySelector<HTMLInputElement>("[data-community-cover-input]");
-      input?.click();
+      openCommunityMediaPicker(root, "cover");
       return;
     }
 
-    const pickMediaButton = target.closest("[data-community-media-pick]");
-    if (pickMediaButton instanceof HTMLButtonElement) {
-      const kind = pickMediaButton.getAttribute("data-community-media-pick");
+    const pickMediaTarget = target.closest("[data-community-media-pick-target]");
+    if (pickMediaTarget instanceof HTMLElement) {
+      const kind = pickMediaTarget.getAttribute("data-community-media-pick-target");
       if (kind === "avatar" || kind === "cover") {
-        const input = root.querySelector<HTMLInputElement>(`[data-community-${kind}-input]`);
-        if (input) {
-          input.value = "";
-          input.click();
+        const editor =
+          kind === "avatar"
+            ? communitiesState.form.avatarEditor
+            : communitiesState.form.coverEditor;
+        if (editor.dragMoved) {
+          editor.dragMoved = false;
+        } else {
+          openCommunityMediaPicker(root, kind);
         }
       }
       return;
@@ -1238,7 +2025,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     const nextStepButton = target.closest("[data-community-form-next]");
     if (nextStepButton instanceof HTMLButtonElement) {
-      goToNextCommunityFormStep(root);
+      void goToNextCommunityFormStep(root);
       return;
     }
 
@@ -1309,48 +2096,40 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       return;
     }
 
-    const memberRoleButton = target.closest("[data-community-member-role]");
-    if (memberRoleButton instanceof HTMLButtonElement) {
-      const bundle = communitiesState.activeCommunity;
-      const profileId = Number(memberRoleButton.getAttribute("data-community-member-role"));
-      const nextRole = memberRoleButton.getAttribute("data-community-member-role-value");
-      if (!bundle || !Number.isFinite(profileId) || profileId <= 0) return;
-      if (
-        nextRole !== "admin" &&
-        nextRole !== "moderator" &&
-        nextRole !== "member" &&
-        nextRole !== "blocked"
-      ) {
-        return;
-      }
+    const memberRoleToggle = target.closest("[data-community-member-role-toggle]");
+    if (memberRoleToggle instanceof HTMLButtonElement) {
+      const profileId = memberRoleToggle.getAttribute("data-community-member-role-toggle");
+      if (!profileId) return;
 
-      const member = communitiesState.activeMembers.find((item) => item.profileId === profileId);
-      if (
-        !member ||
-        member.role === nextRole ||
-        !canManageCommunityMemberRole(bundle, member, communitiesState.viewerProfileId)
-      ) {
-        refreshCommunitiesPage(root);
-        return;
-      }
+      const menu = document.querySelector<HTMLElement>(
+        `[data-community-member-role-menu="${profileId}"]`,
+      );
+      const isExpanded = memberRoleToggle.getAttribute("aria-expanded") === "true";
+      closeCommunityMemberRoleMenus(root);
 
-      communitiesState.membersManager.confirmAction = {
-        type: "role",
-        profileId,
-        newRole: nextRole,
-      };
-      refreshCommunitiesPage(root);
+      if (menu && !isExpanded) {
+        document.body.appendChild(menu);
+        menu.hidden = false;
+        positionCommunityMemberRoleMenu(menu, memberRoleToggle);
+        bindFloatingCommunityMemberRoleMenuActions(menu, root);
+        memberRoleToggle.setAttribute("aria-expanded", "true");
+      }
       return;
     }
 
-    const roleSelect = target.closest(".community-members-manager__role-select");
-    if (roleSelect instanceof HTMLDetailsElement) {
-      root
-        .querySelectorAll<HTMLDetailsElement>(".community-members-manager__role-select[open]")
-        .forEach((details) => {
-          if (details !== roleSelect) details.open = false;
-        });
+    const memberRoleButton = target.closest("[data-community-member-role]");
+    if (memberRoleButton instanceof HTMLButtonElement) {
+      const profileId = Number(memberRoleButton.getAttribute("data-community-member-role"));
+      const nextRole = memberRoleButton.getAttribute("data-community-member-role-value");
+      handleCommunityMemberRoleChoice(root, profileId, nextRole);
       return;
+    }
+
+    if (
+      !target.closest("[data-community-member-role-select]") &&
+      !target.closest("[data-community-member-role-menu]")
+    ) {
+      closeCommunityMemberRoleMenus(root);
     }
 
     const membersCloseButton = target.closest("[data-community-members-close]");
@@ -1362,6 +2141,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       bindableRoot.__communityMembersBackdropPressStarted = false;
       communitiesState.membersManager.open = false;
       communitiesState.membersManager.errorMessage = "";
+      closeCommunityMemberRoleMenus(root);
       refreshCommunitiesPage(root);
       return;
     }
@@ -1378,10 +2158,23 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       refreshCommunitiesPage(root);
       void (async () => {
         try {
-          await Promise.all([joinCommunity(bundle.community.id), waitMinimumSkeletonTime(800)]);
+          const [joinedMember] = await Promise.all([
+            joinCommunity(bundle.community.id),
+            waitMinimumSkeletonTime(800),
+          ]);
+          upsertActiveMember(joinedMember);
+          communitiesState.viewerProfileId = joinedMember.profileId;
+          communitiesState.membershipLoading = false;
+          communitiesState.membersLoading = false;
+          syncActiveCommunityMembership({
+            isMember: true,
+            role: joinedMember.blocked ? "blocked" : joinedMember.role,
+            blocked: joinedMember.blocked,
+          });
+          refreshCommunitiesPage(root);
+
           const freshBundle = await getCommunityById(bundle.community.id);
-          syncCommunityBundle(freshBundle);
-          setActiveCommunity(freshBundle);
+          syncActiveCommunity(freshBundle);
           await Promise.all([
             loadCommunityMembers(
               freshBundle.community.id,
@@ -1427,6 +2220,35 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       void (async () => {
         try {
           await Promise.all([leaveCommunity(bundle.community.id), waitMinimumSkeletonTime(800)]);
+          const selfProfileId =
+            communitiesState.viewerProfileId ??
+            communitiesState.activeMembers.find((item) => item.isSelf)?.profileId ??
+            null;
+          if (selfProfileId !== null) {
+            setActiveMembers(
+              communitiesState.activeMembers.filter((member) => member.profileId !== selfProfileId),
+            );
+          }
+          communitiesState.membershipLoading = false;
+          communitiesState.membersLoading = false;
+          syncActiveCommunityMembership(
+            {
+              isMember: false,
+              role: "",
+              blocked: false,
+            },
+            {
+              canEditCommunity: false,
+              canDeleteCommunity: false,
+              canPost: false,
+              canPostAsCommunity: false,
+              canPostAsMember: false,
+              canManageMembers: false,
+              canChangeRoles: false,
+            },
+          );
+          refreshCommunitiesPage(root);
+
           const freshBundle = await getCommunityById(bundle.community.id);
           syncCommunityBundle(freshBundle);
           if (communitiesState.activeCommunity?.community.id === bundle.community.id) {
@@ -1567,16 +2389,13 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         refreshCommunitiesPage(root);
         void (async () => {
           try {
-            await Promise.all([
-              removeCommunityMember(bundle.community.id, action.profileId),
-              waitMinimumSkeletonTime(600),
-            ]);
+            await removeCommunityMember(bundle.community.id, action.profileId);
             setActiveMembers(
               communitiesState.activeMembers.filter((m) => m.profileId !== action.profileId),
             );
+            refreshCommunitiesPage(root);
             const freshBundle = await getCommunityById(bundle.community.id);
-            syncCommunityBundle(freshBundle);
-            setActiveCommunity(freshBundle);
+            syncActiveCommunity(freshBundle);
           } catch (error) {
             communitiesState.membersManager.errorMessage =
               error instanceof Error ? error.message : "Не удалось удалить участника.";
@@ -1590,15 +2409,12 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         refreshCommunitiesPage(root);
         void (async () => {
           try {
-            const [updatedMember] = await Promise.all([
-              changeCommunityMemberRole(bundle.community.id, action.profileId, action.newRole),
-              waitMinimumSkeletonTime(600),
-            ]);
-            setActiveMembers(
-              communitiesState.activeMembers.map((m) =>
-                m.profileId === action.profileId ? updatedMember : m,
-              ),
+            const updatedMember = await changeCommunityMemberRole(
+              bundle.community.id,
+              action.profileId,
+              action.newRole,
             );
+            upsertActiveMember(updatedMember);
             if (updatedMember.isSelf && communitiesState.activeCommunity) {
               syncCommunityBundle({
                 ...communitiesState.activeCommunity,
@@ -1609,6 +2425,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
                 },
               });
             }
+            refreshCommunitiesPage(root);
           } catch (error) {
             communitiesState.membersManager.errorMessage =
               error instanceof Error ? error.message : "Не удалось изменить роль участника.";
@@ -1723,6 +2540,10 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
     const pickPostImageButton = target.closest("[data-community-post-pick-image]");
     if (pickPostImageButton instanceof HTMLButtonElement) {
+      if (pickPostImageButton.disabled || communitiesState.postComposer.mediaItems.length >= 5) {
+        return;
+      }
+
       const input = root.querySelector<HTMLInputElement>("[data-community-post-image-input]");
       if (input) {
         input.value = "";
@@ -1764,17 +2585,24 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       const openPostMenu = document.querySelector<HTMLElement>(
         "[data-community-post-menu]:not([hidden])",
       );
-      if (!openPostMenu) return;
-      const postId = openPostMenu.getAttribute("data-community-post-menu");
-      if (!postId) return;
-      const postToggle = root.querySelector<HTMLButtonElement>(
-        `[data-community-post-menu-toggle="${postId}"]`,
-      );
-      if (!postToggle) return;
-      positionCommunityPostMenu(openPostMenu, postToggle);
+      if (openPostMenu) {
+        const postId = openPostMenu.getAttribute("data-community-post-menu");
+        const postToggle = postId
+          ? root.querySelector<HTMLButtonElement>(`[data-community-post-menu-toggle="${postId}"]`)
+          : null;
+        if (postToggle) {
+          positionCommunityPostMenu(openPostMenu, postToggle);
+        }
+      }
+
+      repositionOpenCommunityMemberRoleMenu(root);
     },
     { passive: true },
   );
+
+  window.addEventListener("resize", () => repositionOpenCommunityMemberRoleMenu(root), {
+    passive: true,
+  });
 
   syncCommunityMediaEditorsUi(root);
 }

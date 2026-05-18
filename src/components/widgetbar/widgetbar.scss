@@ -9,7 +9,7 @@
     --widgetbar-weather-row-gap: 8px;
     --widgetbar-avatar-size: 32px;
     --widgetbar-weather-icon-width: 18px;
-    --widgetbar-weather-icon-size: 14px;
+    --widgetbar-weather-icon-size: var(--text-size-main);
     --widgetbar-event-min-height: 44px;
 
     display: flex; // контейнер правой колонки с виджетами
@@ -67,7 +67,6 @@
         text-decoration: none; // убираем подчёркивание ссылки
 
         &:hover {
-          text-decoration: underline; // при наведении показываем подчёркивание
         }
       }
 
@@ -79,7 +78,6 @@
         text-decoration: none; // без подчёркивания по умолчанию
 
         &:hover {
-          text-decoration: underline; // подчёркивание при наведении
         }
       }
 
@@ -100,7 +98,6 @@
         text-decoration: none; // без подчёркивания по умолчанию
 
         &:hover {
-          text-decoration: underline; // подчёркивание при наведении
         }
       }
 
@@ -115,6 +112,20 @@
       display: flex; // блок "аватар + имя"
       align-items: center; // выравнивание по вертикали
       gap: var(--widgetbar-person-gap); // расстояние между аватаркой и именем
+
+      &__avatar-link {
+        display: inline-flex;
+        width: var(--widgetbar-avatar-size);
+        height: var(--widgetbar-avatar-size);
+        flex-shrink: 0;
+        border-radius: var(--radius-round);
+        text-decoration: none;
+
+        &:focus-visible {
+          outline: none;
+          box-shadow: var(--control-focus-ring);
+        }
+      }
 
       &__avatar {
         width: var(--widgetbar-avatar-size);

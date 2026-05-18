@@ -129,7 +129,7 @@
     display: grid;
     min-width: 0;
     grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
+    align-items: baseline;
     gap: 8px;
   }
 
@@ -159,8 +159,6 @@
   }
 
   .chat-thread__time {
-    align-self: start;
-    padding-top: 1px;
     color: var(--color-text-muted);
     font-size: var(--text-size-caption);
     line-height: var(--line-height-tight);
@@ -269,11 +267,6 @@
   .chat-bubble__author-link {
     color: var(--color-text-name);
     text-decoration: none;
-  }
-
-  .chat-header__title-link:hover,
-  .chat-bubble__author-link:hover {
-    text-decoration: underline;
   }
 
   .chat-header__meta {
@@ -563,7 +556,7 @@
     color: var(--color-text-on-primary);
     cursor: pointer;
     font: inherit;
-    font-weight: 700;
+    font-weight: var(--font-weight-regular);
     transition:
       background-color var(--transition-control),
       box-shadow var(--transition-control),
@@ -661,7 +654,7 @@
       color: var(--color-interactive-primary);
       cursor: pointer;
       font: inherit;
-      font-size: 24px;
+      font-size: var(--text-size-heading-md);
       font-weight: 700;
       line-height: 1;
       -webkit-tap-highlight-color: transparent;
@@ -724,7 +717,7 @@
       align-items: center;
       justify-content: center;
       color: var(--color-text-on-primary);
-      font-size: 22px;
+      font-size: var(--text-size-heading-md);
       line-height: 1;
     }
 

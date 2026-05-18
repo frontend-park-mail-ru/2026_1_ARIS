@@ -225,7 +225,7 @@
     .mobile-nav__label {
       max-width: 100%;
       overflow: hidden;
-      font-size: 10px;
+      font-size: var(--text-size-caption);
       font-weight: 700;
       line-height: 1.1;
       text-overflow: ellipsis;
@@ -246,7 +246,7 @@
     }
 
     .mobile-nav__label {
-      font-size: 9px;
+      font-size: var(--text-size-caption);
     }
   }
 }

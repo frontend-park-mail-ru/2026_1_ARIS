@@ -7,6 +7,7 @@ export type CommunitiesParams = {
 
 export type CommunityFormMode = "create" | "edit";
 export type CommunityFormStep = 1 | 2 | 3 | 4;
+export type CommunityNameCheckStatus = "idle" | "checking" | "available" | "unavailable" | "error";
 export type CommunityPostFeedMode = "all" | "official";
 export type CommunityPostAuthorMode = "community" | "member";
 
@@ -27,6 +28,7 @@ export type CommunityMediaEditorState = {
   dragStartY: number;
   dragStartOffsetX: number;
   dragStartOffsetY: number;
+  dragMoved: boolean;
   dirty: boolean;
   removed: boolean;
   loading: boolean;
@@ -40,6 +42,10 @@ export type CommunityFormState = {
   communityId: number | null;
   isSaving: boolean;
   errorMessage: string;
+  nameCheckStatus: CommunityNameCheckStatus;
+  nameCheckTitle: string;
+  nameCheckUsername: string;
+  nameCheckMessage: string;
   title: string;
   username: string;
   bio: string;
@@ -74,9 +80,12 @@ export type MemberConfirmAction =
 export type CommunityMembersManagerState = {
   open: boolean;
   loading: boolean;
+  loadingMore: boolean;
   errorMessage: string;
   query: string;
   includeBlocked: boolean;
+  offset: number;
+  hasMore: boolean;
   changingRoleProfileId: number | null;
   removingProfileId: number | null;
   confirmAction: MemberConfirmAction | null;
@@ -89,6 +98,8 @@ export type CommunitiesState = {
   loading: boolean;
   errorMessage: string;
   query: string;
+  searchLoading: boolean;
+  searchResults: CommunityBundle[] | null;
   items: CommunityBundle[];
   activeCommunity: CommunityBundle | null;
   activeMembers: CommunityMember[];

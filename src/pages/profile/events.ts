@@ -19,6 +19,8 @@ import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
 import { invalidateFriendsState } from "../friends/friends";
 import { rememberChatContactHint } from "../chats/contact-hints";
 import { isOutboxQueuedError } from "../../utils/outbox-idb";
+import { showAppToast as showProfileToast } from "../../utils/toast";
+import { t } from "../../state/i18n";
 
 import type { ComposerMediaItem } from "./types";
 import {
@@ -78,7 +80,9 @@ import {
   initProfilePostListLayout,
   openProfilePostSearch,
 } from "./post-list";
+import { canEditProfilePost } from "./helpers";
 import type { DisplayProfile } from "./types";
+import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 
 function updateOwnProfileCacheAvatar(avatarLink?: string): void {
   const cachedProfile = readJsonStorage<DisplayProfile>(OWN_PROFILE_CACHE_KEY);
@@ -147,8 +151,10 @@ async function waitMinimumSkeletonTime(ms = 520): Promise<void> {
 function updateProfileFriendActions(
   root: Document | HTMLElement,
   profileId: string,
-  relation: "none" | "outgoing",
+  relation: "friend" | "none" | "outgoing",
 ): void {
+  closeProfileFriendMenus(root);
+
   const actionsRoot = root.querySelector("[data-profile-friend-actions-root]");
   if (!(actionsRoot instanceof HTMLElement)) {
     return;
@@ -170,6 +176,45 @@ function updateProfileFriendActions(
   actionsRoot.replaceWith(nextActionsRoot);
 }
 
+function collapseProfileDetails(root: Document | HTMLElement): void {
+  const more = root.querySelector<HTMLElement>(".profile-card__more");
+  const button = root.querySelector<HTMLButtonElement>("[data-profile-toggle]");
+
+  if (!more || !button || more.hidden) {
+    return;
+  }
+
+  more.hidden = true;
+  button.setAttribute("aria-expanded", "false");
+  button.textContent = "показать подробнее";
+}
+
+function closeProfileFriendMenus(root: Document | HTMLElement): void {
+  document.querySelectorAll<HTMLElement>("[data-profile-friend-menu-floating]").forEach((menu) => {
+    menu.remove();
+  });
+
+  document.querySelectorAll<HTMLElement>("[data-profile-friend-menu]").forEach((menu) => {
+    menu.hidden = true;
+    menu.style.top = "";
+    menu.style.right = "";
+    menu.style.left = "";
+  });
+
+  root
+    .querySelectorAll<HTMLButtonElement>("[data-profile-friend-menu-toggle]")
+    .forEach((button) => {
+      button.setAttribute("aria-expanded", "false");
+    });
+}
+
+function positionProfileFriendMenu(menu: HTMLElement, toggle: HTMLButtonElement): void {
+  const rect = toggle.getBoundingClientRect();
+  menu.style.top = `${rect.bottom + 8}px`;
+  menu.style.right = `${window.innerWidth - rect.right}px`;
+  menu.style.left = "auto";
+}
+
 async function resolveChatIdForProfile(profileId: string, profileName: string): Promise<string> {
   return createOrResolvePrivateChatId(profileId, { expectedTitle: profileName });
 }
@@ -188,6 +233,12 @@ function bindFloatingPostMenuActions(
   const editButton = menu.querySelector<HTMLButtonElement>(`[data-profile-post-edit="${postId}"]`);
   if (editButton) {
     editButton.onclick = () => {
+      const post = currentProfilePosts.find((item) => item.id === postId);
+      if (!post || !canEditProfilePost(post)) {
+        closeProfilePostMenus(root);
+        return;
+      }
+
       closeProfilePostMenus(root);
       openEditPostComposer(postId);
       syncPostComposerUi(root);
@@ -203,6 +254,178 @@ function bindFloatingPostMenuActions(
       postComposerState.deleteConfirmPostId = postId;
       postComposerState.errorMessage = "";
       syncPostComposerUi(root);
+    };
+  }
+}
+
+function getProfileNameFromRoot(root: Document | HTMLElement, profileId: string): string {
+  return root.querySelector(".profile-card__hero-copy h1")?.textContent?.trim() || profileId;
+}
+
+function openChatWithProfile(root: Document | HTMLElement, profileId: string): void {
+  const profileName = getProfileNameFromRoot(root, profileId);
+
+  void resolveChatIdForProfile(profileId, profileName)
+    .then((chatId) => {
+      rememberChatContactHint({
+        chatId,
+        profileId,
+        title: profileName,
+        avatarLink: readProfileAvatarLinkFromRoot(root),
+      });
+      window.history.pushState({}, "", `/chats?chatId=${encodeURIComponent(chatId)}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    })
+    .catch((error: unknown) => {
+      console.error("[profile] open chat failed", error);
+    });
+}
+
+function requestProfileFriend(
+  root: Document | HTMLElement,
+  profileId: string,
+  button?: HTMLButtonElement,
+): void {
+  if (button) {
+    button.disabled = true;
+  }
+
+  void requestFriendship(profileId)
+    .then(() => {
+      invalidateFriendsState();
+      updateProfileFriendActions(root, profileId, "outgoing");
+      showProfileToast(t("profile.friendRequestSentToast"));
+    })
+    .catch((error: unknown) => {
+      console.error("[profile] request friend failed", error);
+      if (button) {
+        button.disabled = false;
+      }
+    });
+}
+
+function revokeProfileFriendRequest(
+  root: Document | HTMLElement,
+  profileId: string,
+  button?: HTMLButtonElement,
+): void {
+  if (button) {
+    button.disabled = true;
+  }
+
+  void revokeFriendRequest(profileId)
+    .then(() => {
+      invalidateFriendsState();
+      updateProfileFriendActions(root, profileId, "none");
+      showProfileToast(t("profile.friendRequestRevokedToast"));
+    })
+    .catch((error: unknown) => {
+      console.error("[profile] revoke friend request failed", error);
+      if (button) {
+        button.disabled = false;
+      }
+    });
+}
+
+function acceptProfileFriendRequest(
+  root: Document | HTMLElement,
+  profileId: string,
+  button?: HTMLButtonElement,
+): void {
+  if (button) {
+    button.disabled = true;
+  }
+
+  void acceptFriendRequest(profileId)
+    .then(() => {
+      invalidateFriendsState();
+      updateProfileFriendActions(root, profileId, "friend");
+      showProfileToast(t("profile.friendRequestAcceptedToast"));
+    })
+    .catch((error: unknown) => {
+      console.error("[profile] accept friend failed", error);
+      if (button) {
+        button.disabled = false;
+      }
+    });
+}
+
+function declineProfileFriendRequest(
+  root: Document | HTMLElement,
+  profileId: string,
+  button?: HTMLButtonElement,
+): void {
+  if (button) {
+    button.disabled = true;
+  }
+
+  void declineFriendRequest(profileId)
+    .then(() => {
+      invalidateFriendsState();
+      updateProfileFriendActions(root, profileId, "none");
+      showProfileToast(t("profile.friendRequestDeclinedToast"));
+    })
+    .catch((error: unknown) => {
+      console.error("[profile] decline friend failed", error);
+      if (button) {
+        button.disabled = false;
+      }
+    });
+}
+
+function openProfileDeleteFriendModal(root: Document | HTMLElement): void {
+  const deleteModal = root.querySelector("[data-profile-delete-modal]");
+  if (deleteModal instanceof HTMLElement) {
+    closeProfileFriendMenus(root);
+    deleteModal.hidden = false;
+  }
+}
+
+function bindFloatingProfileFriendMenuActions(
+  menu: HTMLElement,
+  root: Document | HTMLElement,
+  profileId: string,
+): void {
+  const openChatButton = menu.querySelector<HTMLButtonElement>("[data-profile-open-chat]");
+  if (openChatButton) {
+    openChatButton.onclick = () => {
+      closeProfileFriendMenus(root);
+      openChatWithProfile(root, profileId);
+    };
+  }
+
+  const requestButton = menu.querySelector<HTMLButtonElement>("[data-profile-request-friend]");
+  if (requestButton) {
+    requestButton.onclick = () => {
+      requestProfileFriend(root, profileId, requestButton);
+    };
+  }
+
+  const revokeButton = menu.querySelector<HTMLButtonElement>("[data-profile-revoke-friend]");
+  if (revokeButton) {
+    revokeButton.onclick = () => {
+      revokeProfileFriendRequest(root, profileId, revokeButton);
+    };
+  }
+
+  const acceptButton = menu.querySelector<HTMLButtonElement>("[data-profile-accept-friend]");
+  if (acceptButton) {
+    acceptButton.onclick = () => {
+      acceptProfileFriendRequest(root, profileId, acceptButton);
+    };
+  }
+
+  const declineButton = menu.querySelector<HTMLButtonElement>("[data-profile-decline-friend]");
+  if (declineButton) {
+    declineButton.onclick = () => {
+      declineProfileFriendRequest(root, profileId, declineButton);
+    };
+  }
+
+  const deleteButton = menu.querySelector<HTMLButtonElement>("[data-profile-delete-friend]");
+  if (deleteButton) {
+    deleteButton.onclick = () => {
+      openProfileDeleteFriendModal(root);
     };
   }
 }
@@ -229,6 +452,11 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    if (target.closest("[data-post-image-open]")) {
+      closeProfilePostMenus(root);
+      if (openPostImageViewerFromTarget(target)) return;
+    }
 
     const postSearchOpenButton = target.closest("[data-profile-post-search-open]");
     if (postSearchOpenButton instanceof HTMLButtonElement) {
@@ -270,6 +498,41 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       closeProfilePostMenus(root);
     }
 
+    const friendMenuToggle = target.closest("[data-profile-friend-menu-toggle]");
+    if (friendMenuToggle instanceof HTMLButtonElement) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const profileId = friendMenuToggle.getAttribute("data-profile-friend-menu-toggle");
+      if (!profileId) return;
+
+      const menu = root.querySelector<HTMLElement>(`[data-profile-friend-menu="${profileId}"]`);
+      const isExpanded = friendMenuToggle.getAttribute("aria-expanded") === "true";
+      closeProfileFriendMenus(root);
+
+      if (menu && !isExpanded) {
+        const floatingMenu = menu.cloneNode(true);
+        if (!(floatingMenu instanceof HTMLElement)) {
+          return;
+        }
+
+        floatingMenu.dataset.profileFriendMenuFloating = "";
+        floatingMenu.hidden = false;
+        document.body.appendChild(floatingMenu);
+        bindFloatingProfileFriendMenuActions(floatingMenu, root, profileId);
+        positionProfileFriendMenu(floatingMenu, friendMenuToggle);
+        friendMenuToggle.setAttribute("aria-expanded", "true");
+      }
+      return;
+    }
+
+    if (
+      !target.closest(".profile-friend-actions") &&
+      !target.closest("[data-profile-friend-menu]")
+    ) {
+      closeProfileFriendMenus(root);
+    }
+
     const likePostButton = target.closest("[data-profile-post-like]");
     if (likePostButton instanceof HTMLButtonElement) {
       const postId = likePostButton.getAttribute("data-profile-post-like");
@@ -308,6 +571,12 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     if (editPostButton instanceof HTMLButtonElement) {
       const postId = editPostButton.getAttribute("data-profile-post-edit");
       if (postId) {
+        const post = currentProfilePosts.find((item) => item.id === postId);
+        if (!post || !canEditProfilePost(post)) {
+          closeProfilePostMenus(root);
+          return;
+        }
+
         closeProfilePostMenus(root);
         openEditPostComposer(postId);
         syncPostComposerUi(root);
@@ -347,6 +616,10 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
     const pickPostImageButton = target.closest("[data-profile-post-pick-image]");
     if (pickPostImageButton instanceof HTMLButtonElement) {
+      if (pickPostImageButton.disabled || postComposerState.mediaItems.length >= 5) {
+        return;
+      }
+
       const imageInput = root.querySelector<HTMLInputElement>("[data-profile-post-image-input]");
       if (imageInput) {
         imageInput.value = "";
@@ -370,7 +643,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     if (savePostButton instanceof HTMLButtonElement) {
       const trimmedText = postComposerState.text.trim();
       if (!trimmedText && postComposerState.mediaItems.length === 0) {
-        postComposerState.errorMessage = "Добавьте текст или изображение.";
+        postComposerState.errorMessage = t("profile.postContentRequired");
         syncPostComposerUi(root);
         return;
       }
@@ -406,9 +679,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
                   (item) => !item.isUploaded || item.mediaID == null,
                 )
               ) {
-                throw new Error(
-                  "Не получилось обновить изображения поста. Перезагрузите страницу и попробуйте снова.",
-                );
+                throw new Error(t("profile.postImagesSyncError"));
               }
 
               return updatePost(
@@ -457,6 +728,11 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           clearFeedCache();
           clearWidgetbarCache();
           if (currentProfile) {
+            const existingPost = composerSnapshot.editingPostId
+              ? currentProfilePosts.find((post) => post.id === composerSnapshot.editingPostId)
+              : undefined;
+            const createdAt =
+              savedPost.createdAt ?? existingPost?.timeRaw ?? new Date().toISOString();
             const nextPost = {
               id: String(savedPost.id),
               authorId: String(savedPost.profileID ?? currentProfile.id),
@@ -467,8 +743,8 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
                 normaliseAvatarLink(savedPost.avatarURL) ?? currentProfile.avatarLink ?? "",
               isOwnPost: true,
               text: typeof savedPost.text === "string" ? savedPost.text : "",
-              time: "только что",
-              timeRaw: savedPost.createdAt ?? "",
+              time: existingPost?.time ?? t("postcard.justNow"),
+              timeRaw: createdAt,
               ...(savedPost.updatedAt ? { updatedAtRaw: savedPost.updatedAt } : {}),
               likes: savedPost.likes ?? 0,
               isLiked: savedPost.isLiked ?? false,
@@ -502,12 +778,12 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           postComposerState.text = composerSnapshot.text;
           postComposerState.mediaItems = composerSnapshot.mediaItems;
           postComposerState.errorMessage = isOutboxQueuedError(error)
-            ? "Публикация сохранена и отправится при восстановлении сети."
+            ? t("profile.postSaveQueued")
             : isOfflineNetworkError(error)
-              ? "Нет соединения с интернетом."
+              ? t("feed.noInternet")
               : error instanceof Error
                 ? error.message
-                : "Не получилось сохранить публикацию.";
+                : t("profile.postSaveError");
           syncPostComposerUi(root);
         });
       return;
@@ -648,23 +924,8 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         return;
       }
 
-      const profileName =
-        root.querySelector(".profile-card__hero-copy h1")?.textContent?.trim() || profileId;
-
-      void resolveChatIdForProfile(profileId, profileName)
-        .then((chatId) => {
-          rememberChatContactHint({
-            chatId,
-            profileId,
-            title: profileName,
-            avatarLink: readProfileAvatarLinkFromRoot(root),
-          });
-          window.history.pushState({}, "", `/chats?chatId=${encodeURIComponent(chatId)}`);
-          window.dispatchEvent(new PopStateEvent("popstate"));
-        })
-        .catch((error: unknown) => {
-          console.error("[profile] open chat failed", error);
-        });
+      closeProfileFriendMenus(root);
+      openChatWithProfile(root, profileId);
       return;
     }
 
@@ -675,16 +936,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         return;
       }
 
-      requestFriendButton.disabled = true;
-      void requestFriendship(profileId)
-        .then(() => {
-          invalidateFriendsState();
-          updateProfileFriendActions(root, profileId, "outgoing");
-        })
-        .catch((error: unknown) => {
-          console.error("[profile] request friend failed", error);
-          requestFriendButton.disabled = false;
-        });
+      requestProfileFriend(root, profileId, requestFriendButton);
       return;
     }
 
@@ -695,16 +947,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         return;
       }
 
-      revokeFriendButton.disabled = true;
-      void revokeFriendRequest(profileId)
-        .then(() => {
-          invalidateFriendsState();
-          updateProfileFriendActions(root, profileId, "none");
-        })
-        .catch((error: unknown) => {
-          console.error("[profile] revoke friend request failed", error);
-          revokeFriendButton.disabled = false;
-        });
+      revokeProfileFriendRequest(root, profileId, revokeFriendButton);
       return;
     }
 
@@ -715,16 +958,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         return;
       }
 
-      acceptFriendButton.disabled = true;
-      void acceptFriendRequest(profileId)
-        .then(async () => {
-          invalidateFriendsState();
-          await rerenderCurrentRoute();
-        })
-        .catch((error: unknown) => {
-          console.error("[profile] accept friend failed", error);
-          acceptFriendButton.disabled = false;
-        });
+      acceptProfileFriendRequest(root, profileId, acceptFriendButton);
       return;
     }
 
@@ -735,27 +969,13 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         return;
       }
 
-      declineFriendButton.disabled = true;
-      void declineFriendRequest(profileId)
-        .then(async () => {
-          invalidateFriendsState();
-          await rerenderCurrentRoute();
-        })
-        .catch((error: unknown) => {
-          console.error("[profile] decline friend failed", error);
-          declineFriendButton.disabled = false;
-        });
+      declineProfileFriendRequest(root, profileId, declineFriendButton);
       return;
     }
 
     const deleteFriendButton = target.closest("[data-profile-delete-friend]");
     if (deleteFriendButton instanceof HTMLButtonElement) {
-      const deleteModal = root.querySelector("[data-profile-delete-modal]");
-      if (!(deleteModal instanceof HTMLElement)) {
-        return;
-      }
-
-      deleteModal.hidden = false;
+      openProfileDeleteFriendModal(root);
       return;
     }
 
@@ -778,9 +998,14 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
       confirmDeleteButton.disabled = true;
       void deleteFriend(profileId)
-        .then(async () => {
+        .then(() => {
           invalidateFriendsState();
-          await rerenderCurrentRoute();
+          updateProfileFriendActions(root, profileId, "none");
+          const deleteModal = root.querySelector("[data-profile-delete-modal]");
+          if (deleteModal instanceof HTMLElement) {
+            deleteModal.hidden = true;
+          }
+          showProfileToast(t("profile.friendRemovedToast"));
         })
         .catch((error: unknown) => {
           console.error("[profile] delete friend failed", error);
@@ -823,12 +1048,12 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           postComposerState.isSaving = false;
           postComposerState.deleteConfirmPostId = postId;
           postComposerState.errorMessage = isOutboxQueuedError(error)
-            ? "Удаление сохранено и выполнится при восстановлении сети."
+            ? t("profile.postDeleteQueued")
             : isOfflineNetworkError(error)
-              ? "Нет соединения с интернетом."
+              ? t("feed.noInternet")
               : error instanceof Error
                 ? error.message
-                : "Не получилось удалить публикацию.";
+                : t("profile.postDeleteError");
           syncPostComposerUi(root);
           rerenderProfilePostsSection(root);
         });
@@ -883,6 +1108,10 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     if (editButton instanceof HTMLButtonElement) {
       event.preventDefault();
       event.stopPropagation();
+      const editor = root.querySelector<HTMLElement>("[data-profile-editor]");
+      if (editor?.hidden) {
+        collapseProfileDetails(root);
+      }
       toggleProfileEditor(root);
       return;
     }
@@ -984,6 +1213,20 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       });
   });
 
+  document.addEventListener("click", (event: MouseEvent) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    if (
+      target.closest("[data-profile-friend-menu-toggle]") ||
+      target.closest("[data-profile-friend-menu]")
+    ) {
+      return;
+    }
+
+    closeProfileFriendMenus(root);
+  });
+
   root.addEventListener("input", (event: Event) => {
     const target = event.target;
 
@@ -1041,7 +1284,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       void handlePostImagesSelected(target.files)
         .catch((error: unknown) => {
           postComposerState.errorMessage =
-            error instanceof Error ? error.message : "Не получилось подготовить изображения.";
+            error instanceof Error ? error.message : t("profile.postImagesPrepareError");
         })
         .finally(() => {
           syncPostComposerUi(root);
@@ -1067,6 +1310,17 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
   root.addEventListener("keydown", (event: Event) => {
     if (!(event instanceof KeyboardEvent)) {
+      return;
+    }
+
+    if (
+      (event.key === "Enter" || event.key === " ") &&
+      event.target instanceof Element &&
+      event.target.closest("[data-post-image-open]")
+    ) {
+      closeProfilePostMenus(root);
+      openPostImageViewerFromTarget(event.target);
+      event.preventDefault();
       return;
     }
 
@@ -1170,16 +1424,29 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       const openMenu = document.querySelector<HTMLElement>(
         "[data-profile-post-menu]:not([hidden])",
       );
-      if (!openMenu) return;
-      const postId = openMenu.getAttribute("data-profile-post-menu");
-      if (!postId) return;
-      const toggle = root.querySelector<HTMLButtonElement>(
-        `[data-profile-post-menu-toggle="${postId}"]`,
+      if (openMenu) {
+        const postId = openMenu.getAttribute("data-profile-post-menu");
+        const toggle = postId
+          ? root.querySelector<HTMLButtonElement>(`[data-profile-post-menu-toggle="${postId}"]`)
+          : null;
+        if (toggle) {
+          const rect = toggle.getBoundingClientRect();
+          openMenu.style.top = `${rect.bottom + 8}px`;
+          openMenu.style.right = `${window.innerWidth - rect.right}px`;
+        }
+      }
+
+      const openFriendMenu = document.querySelector<HTMLElement>(
+        "[data-profile-friend-menu-floating]:not([hidden])",
       );
-      if (!toggle) return;
-      const rect = toggle.getBoundingClientRect();
-      openMenu.style.top = `${rect.bottom + 8}px`;
-      openMenu.style.right = `${window.innerWidth - rect.right}px`;
+      if (!openFriendMenu) return;
+      const profileId = openFriendMenu.getAttribute("data-profile-friend-menu");
+      if (!profileId) return;
+      const friendToggle = root.querySelector<HTMLButtonElement>(
+        `[data-profile-friend-menu-toggle="${profileId}"]`,
+      );
+      if (!friendToggle) return;
+      positionProfileFriendMenu(openFriendMenu, friendToggle);
     },
     { passive: true },
   );

@@ -21,10 +21,7 @@ function escapeHtml(value: string): string {
 }
 
 function getFriendName(friend: DisplayFriend): string {
-  return (
-    formatPersonName(friend.firstName, friend.lastName, friend.username) ||
-    t("widgetbar.userFallback")
-  );
+  return formatPersonName(friend.firstName, friend.lastName) || t("widgetbar.userFallback");
 }
 
 function renderFriendAvatar(friend: DisplayFriend, className: string): string {
@@ -64,38 +61,64 @@ function getFriendsTabTitle(tab: FriendsTab): string {
 }
 
 function renderFriendActions(friend: DisplayFriend): string {
-  if (friendsState.activeTab === "incoming") {
-    return `
-      <div class="friends-card__actions">
-        <button type="button" class="friends-card__action" data-friend-accept="${escapeHtml(friend.profileId)}">
-          ${t("friends.accept")}
-        </button>
-        <button type="button" class="friends-card__action friends-card__action--danger" data-friend-decline="${escapeHtml(friend.profileId)}">
-          ${t("friends.decline")}
-        </button>
-      </div>
-    `;
-  }
+  const friendId = escapeHtml(friend.profileId);
+  let items = "";
 
-  if (friendsState.activeTab === "outgoing") {
-    return `
-      <div class="friends-card__actions">
-        <button type="button" class="friends-card__action" disabled>${t("friends.sent")}</button>
-        <button type="button" class="friends-card__action friends-card__action--danger" data-friend-revoke="${escapeHtml(friend.profileId)}">
-          ${t("friends.cancelRequest")}
+  if (friendsState.activeTab === "incoming") {
+    items = `
+        <a href="/id${encodeURIComponent(friend.profileId)}" data-link class="friends-card__menu-item">
+          ${t("friends.viewProfile")}
+        </a>
+        <button type="button" class="friends-card__menu-item" data-friend-open-chat="${friendId}">
+          ${t("friends.sendMessage")}
         </button>
-      </div>
+        <button type="button" class="friends-card__menu-item" data-friend-accept="${friendId}">
+          ${t("friends.acceptRequest")}
+        </button>
+        <button type="button" class="friends-card__menu-item friends-card__menu-item--danger" data-friend-decline="${friendId}">
+          ${t("friends.declineRequest")}
+        </button>
+    `;
+  } else if (friendsState.activeTab === "outgoing") {
+    items = `
+        <a href="/id${encodeURIComponent(friend.profileId)}" data-link class="friends-card__menu-item">
+          ${t("friends.viewProfile")}
+        </a>
+        <button type="button" class="friends-card__menu-item" data-friend-open-chat="${friendId}">
+          ${t("friends.sendMessage")}
+        </button>
+        <button type="button" class="friends-card__menu-item friends-card__menu-item--danger" data-friend-revoke="${friendId}">
+          ${t("friends.revokeRequest")}
+        </button>
+    `;
+  } else {
+    items = `
+        <a href="/id${encodeURIComponent(friend.profileId)}" data-link class="friends-card__menu-item">
+          ${t("friends.viewProfile")}
+        </a>
+        <button type="button" class="friends-card__menu-item" data-friend-open-chat="${friendId}">
+          ${t("friends.sendMessage")}
+        </button>
+        <button type="button" class="friends-card__menu-item friends-card__menu-item--danger" data-friend-open-delete="${friendId}">
+          ${t("friends.delete")}
+        </button>
     `;
   }
 
   return `
     <div class="friends-card__actions">
-      <button type="button" class="friends-card__action" data-friend-open-chat="${escapeHtml(friend.profileId)}">
-        ${t("chats.message")}
+      <button
+        type="button"
+        class="friends-card__menu-toggle"
+        data-friend-menu-toggle="${friendId}"
+        aria-label="${t("profile.actionsAria")}"
+        aria-expanded="false"
+      >
+        <span></span><span></span><span></span>
       </button>
-      <button type="button" class="friends-card__action friends-card__action--danger" data-friend-open-delete="${escapeHtml(friend.profileId)}">
-        ${t("friends.delete")}
-      </button>
+      <div class="friends-card__menu" data-friend-menu="${friendId}" hidden>
+        ${items}
+      </div>
     </div>
   `;
 }
@@ -104,7 +127,7 @@ function renderFriendActions(friend: DisplayFriend): string {
 export function renderFriendsList(): string {
   const visibleFriends = getVisibleFriends();
 
-  if (friendsState.loading) {
+  if (friendsState.loading || friendsState.searchLoading) {
     return Array.from(
       { length: 4 },
       () => `
@@ -139,9 +162,9 @@ export function renderFriendsList(): string {
           </a>
           <div class="friends-card__body">
             <a href="${profilePath}" data-link class="friends-card__name">${escapeHtml(friendName)}</a>
-            <p class="friends-card__meta">${escapeHtml(friend.educationLabel)}</p>
-            ${renderFriendActions(friend)}
+            ${friend.educationLabel ? `<p class="friends-card__meta">${escapeHtml(friend.educationLabel)}</p>` : ""}
           </div>
+          ${renderFriendActions(friend)}
         </article>
       `;
     })
@@ -194,7 +217,7 @@ export function renderFriendsContent(): string {
           <p class="friends-panel__summary">
             ${
               totalCount === 0
-                ? t("common.emptyList")
+                ? t("friends.emptySummary")
                 : t("friends.summary").replace("{count}", getFriendsCountLabel(totalCount))
             }
           </p>

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../../api/config";
+import { t } from "../../state/i18n";
 import { getAvatarInitials, resolveAvatarSrc } from "../../utils/avatar";
 import { resolveMediaUrl } from "../../utils/media";
 import { communitiesState } from "./state";
@@ -124,7 +125,7 @@ function getCurrentCommunityMediaSrc(kind: CommunityMediaEditorKind): string {
     // Ниже останется безопасный fallback.
   }
 
-  return `/image-proxy?url=${encodeURIComponent(rawValue)}`;
+  return rawValue;
 }
 
 function applyCommunityMediaSource(
@@ -144,6 +145,7 @@ function applyCommunityMediaSource(
   editor.rotation = 0;
   editor.offsetX = 0;
   editor.offsetY = 0;
+  editor.dragMoved = false;
   editor.dirty = dirty;
   editor.removed = false;
   editor.loading = false;
@@ -181,6 +183,7 @@ export function clearCommunityMediaSelection(kind: CommunityMediaEditorKind): vo
   editor.dragStartY = 0;
   editor.dragStartOffsetX = 0;
   editor.dragStartOffsetY = 0;
+  editor.dragMoved = false;
   editor.dirty = false;
   editor.removed = false;
   editor.loading = false;
@@ -219,16 +222,16 @@ export async function loadCommunityMediaFile(
           return;
         }
 
-        reject(new Error("Не получилось прочитать изображение."));
+        reject(new Error(t("communities.formReadImageError")));
       };
-      reader.onerror = () => reject(new Error("Не получилось прочитать изображение."));
+      reader.onerror = () => reject(new Error(t("communities.formReadImageError")));
       reader.readAsDataURL(file);
     });
 
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
       const previewImage = new Image();
       previewImage.onload = () => resolve(previewImage);
-      previewImage.onerror = () => reject(new Error("Не получилось прочитать изображение."));
+      previewImage.onerror = () => reject(new Error(t("communities.formReadImageError")));
       previewImage.src = dataUrl;
     });
 
@@ -236,7 +239,7 @@ export async function loadCommunityMediaFile(
   } catch (error) {
     setCommunityMediaError(
       kind,
-      error instanceof Error ? error.message : "Не получилось подготовить изображение.",
+      error instanceof Error ? error.message : t("communities.formPrepareImageError"),
     );
   }
 
@@ -259,8 +262,7 @@ export async function loadCommunityMediaFromUrl(
       const previewImage = new Image();
       previewImage.crossOrigin = "anonymous";
       previewImage.onload = () => resolve(previewImage);
-      previewImage.onerror = () =>
-        reject(new Error("Не получилось загрузить текущее изображение."));
+      previewImage.onerror = () => reject(new Error(t("communities.formReadCurrentImageError")));
       previewImage.src = src;
     });
 
@@ -268,7 +270,7 @@ export async function loadCommunityMediaFromUrl(
   } catch (error) {
     setCommunityMediaError(
       kind,
-      error instanceof Error ? error.message : "Не получилось загрузить текущее изображение.",
+      error instanceof Error ? error.message : t("communities.formReadCurrentImageError"),
     );
   }
 
@@ -280,7 +282,7 @@ export function ensureCommunityMediaEditorSource(
   root: ParentNode,
 ): void {
   const editor = getCommunityMediaEditor(kind);
-  if (editor.objectUrl || editor.loading) {
+  if (editor.objectUrl || editor.loading || editor.errorMessage) {
     return;
   }
   if (editor.removed) {
@@ -356,7 +358,7 @@ export async function buildCommunityMediaFile(
   const editor = getCommunityMediaEditor(kind);
 
   if (!editor.objectUrl || !editor.naturalWidth || !editor.naturalHeight) {
-    throw new Error("Сначала выберите изображение.");
+    throw new Error(t("communities.formSelectImageError"));
   }
 
   const stageSize = getCommunityMediaStageSize(root, kind);
@@ -374,14 +376,14 @@ export async function buildCommunityMediaFile(
     const previewImage = new Image();
     previewImage.crossOrigin = "anonymous";
     previewImage.onload = () => resolve(previewImage);
-    previewImage.onerror = () => reject(new Error("Не получилось подготовить изображение."));
+    previewImage.onerror = () => reject(new Error(t("communities.formPrepareImageError")));
     previewImage.src = editor.objectUrl!;
   });
 
   const rotatedCanvas = document.createElement("canvas");
   const rotatedContext = rotatedCanvas.getContext("2d");
   if (!rotatedContext) {
-    throw new Error("Не получилось подготовить изображение.");
+    throw new Error(t("communities.formPrepareImageError"));
   }
 
   rotatedCanvas.width = rotatedSize.width;
@@ -396,7 +398,7 @@ export async function buildCommunityMediaFile(
 
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error("Не получилось подготовить изображение.");
+    throw new Error(t("communities.formPrepareImageError"));
   }
 
   context.drawImage(
@@ -419,7 +421,7 @@ export async function buildCommunityMediaFile(
           return;
         }
 
-        reject(new Error("Не получилось подготовить изображение."));
+        reject(new Error(t("communities.formPrepareImageError")));
       },
       "image/jpeg",
       0.92,
@@ -443,11 +445,10 @@ function syncSingleCommunityMediaEditor(root: ParentNode, kind: CommunityMediaEd
     `[data-community-media-current-image="${kind}"]`,
   );
   const zoomWrap = wrapper.querySelector<HTMLElement>(`[data-community-media-zoom-wrap="${kind}"]`);
+  const tools = wrapper.querySelector<HTMLElement>(".community-media-editor__tools");
+  const zoomLabel = wrapper.querySelector<HTMLElement>(".community-media-editor__zoom-label");
   const zoomInput = wrapper.querySelector<HTMLInputElement>(
     `[data-community-media-zoom="${kind}"]`,
-  );
-  const pickButton = wrapper.querySelector<HTMLButtonElement>(
-    `[data-community-media-pick="${kind}"]`,
   );
   const deleteButton = wrapper.querySelector<HTMLButtonElement>(
     `[data-community-media-delete="${kind}"]`,
@@ -489,25 +490,30 @@ function syncSingleCommunityMediaEditor(root: ParentNode, kind: CommunityMediaEd
   }
 
   if (zoomWrap instanceof HTMLElement) {
-    zoomWrap.hidden = !hasEditorImage;
+    zoomWrap.hidden = !hasEditorImage && !hasCurrentImage;
+  }
+
+  if (tools instanceof HTMLElement) {
+    tools.hidden = !hasEditorImage;
+  }
+
+  if (zoomLabel instanceof HTMLElement) {
+    zoomLabel.hidden = !hasEditorImage;
   }
 
   if (zoomInput instanceof HTMLInputElement) {
+    zoomInput.hidden = !hasEditorImage;
     zoomInput.value = String(getCommunityMediaZoomPercent(kind));
     zoomInput.disabled = !hasEditorImage || editor.loading;
-  }
-
-  if (pickButton instanceof HTMLButtonElement) {
-    pickButton.disabled = editor.loading;
-    pickButton.textContent =
-      hasEditorImage || hasCurrentImage ? "Заменить изображение" : "Выбрать изображение";
   }
 
   if (deleteButton instanceof HTMLButtonElement) {
     deleteButton.hidden = !canResetChanges && !canDeleteSavedImage;
     deleteButton.disabled = editor.loading;
     deleteButton.textContent =
-      canResetChanges && !canDeleteSavedImage ? "Сбросить изменения" : "Удалить изображение";
+      canResetChanges && canDeleteSavedImage
+        ? t("communities.formResetChanges")
+        : t("communities.formRemoveImage");
   }
 
   rotateButtons.forEach((button) => {
@@ -545,6 +551,7 @@ export function startCommunityMediaDrag(
   editor.dragStartY = event.clientY;
   editor.dragStartOffsetX = editor.offsetX;
   editor.dragStartOffsetY = editor.offsetY;
+  editor.dragMoved = false;
   stage.setPointerCapture(event.pointerId);
   stage.classList.add("is-dragging");
 }
@@ -559,6 +566,7 @@ export function moveCommunityMediaDrag(
     return;
   }
 
+  editor.dragMoved = true;
   editor.offsetX = editor.dragStartOffsetX + (event.clientX - editor.dragStartX);
   editor.offsetY = editor.dragStartOffsetY + (event.clientY - editor.dragStartY);
   editor.dirty = true;
@@ -589,6 +597,7 @@ export function endCommunityMediaDrag(
 export function cancelCommunityMediaDrag(kind: CommunityMediaEditorKind, root: ParentNode): void {
   const editor = getCommunityMediaEditor(kind);
   editor.dragPointerId = null;
+  editor.dragMoved = false;
   getCommunityMediaStage(root, kind)?.classList.remove("is-dragging");
 }
 

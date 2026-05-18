@@ -418,6 +418,9 @@ function renderAuthorisedHeader(): string {
           </button>
 
           <div class="header__user-menu" role="menu">
+            <button type="button" class="header__user-menu-item" data-header-profile-open role="menuitem">
+              ${t("header.profile")}
+            </button>
             <button type="button" class="header__user-menu-item" data-support-open role="menuitem">
               ${t("header.help")}
             </button>
@@ -507,6 +510,22 @@ export function initHeader(root: Document | HTMLElement = document): void {
         menuRoot.classList.toggle("is-open", shouldOpen);
         menuToggle.setAttribute("aria-expanded", String(shouldOpen));
       }
+      return;
+    }
+
+    const profileButton = target.closest("[data-header-profile-open]");
+    if (profileButton instanceof HTMLButtonElement) {
+      root.querySelectorAll<HTMLElement>("[data-header-user-menu].is-open").forEach((node) => {
+        node.classList.remove("is-open");
+        node
+          .querySelector<HTMLButtonElement>("[data-header-user-menu-toggle]")
+          ?.setAttribute("aria-expanded", "false");
+      });
+
+      const user = getSessionUser();
+      const profilePath = user?.id ? `/id${encodeURIComponent(user.id)}` : "/profile";
+      window.history.pushState({}, "", profilePath);
+      window.dispatchEvent(new PopStateEvent("popstate"));
       return;
     }
 

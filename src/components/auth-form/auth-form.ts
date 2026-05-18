@@ -30,6 +30,70 @@ type RenderAuthFormOptions = {
   registerValues?: Partial<RegisterValues>;
 };
 
+const DEFAULT_OAUTH_RETURN_TO = "/feed";
+const AUTH_PAGE_PATHS = new Set(["/login", "/register"]);
+
+function addVkIdSuccessMarker(path: string): string {
+  const url = new URL(path, "https://aris.local");
+  url.searchParams.set("oauth", "vkid");
+  url.searchParams.delete("error");
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function getCurrentOauthReturnTo(): string {
+  if (typeof window === "undefined") {
+    return addVkIdSuccessMarker(DEFAULT_OAUTH_RETURN_TO);
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete("oauth");
+  url.searchParams.delete("error");
+
+  if (AUTH_PAGE_PATHS.has(url.pathname)) {
+    return addVkIdSuccessMarker(DEFAULT_OAUTH_RETURN_TO);
+  }
+
+  const returnTo = `${url.pathname}${url.search}${url.hash}`;
+  return addVkIdSuccessMarker(returnTo || DEFAULT_OAUTH_RETURN_TO);
+}
+
+function getVkIdLoginUrl(): string {
+  const params = new URLSearchParams({ returnTo: getCurrentOauthReturnTo() });
+  return `/api/auth/vkid/login?${params.toString()}`;
+}
+
+function getVkIdOauthErrorText(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("oauth") !== "vkid" || !params.has("error")) {
+    return "";
+  }
+
+  return "Не удалось войти через VK ID. Попробуйте ещё раз.";
+}
+
+function renderVkIdAuth(): string {
+  return `
+    <div class="auth-form__oauth" aria-label="Вход через внешние сервисы">
+      <div class="auth-form__oauth-divider">
+        <span class="auth-form__oauth-divider-text">или</span>
+      </div>
+
+      ${renderButton({
+        text: '<span class="auth-form__vkid-mark" aria-hidden="true">VK</span><span>Войти через VK ID</span>',
+        variant: "surface",
+        tag: "link",
+        href: getVkIdLoginUrl(),
+        className: "auth-form__oauth-button",
+        attributes: 'data-auth-vkid-link rel="nofollow"',
+      })}
+    </div>
+  `;
+}
+
 /**
  * Рендерит одно поле формы авторизации с инпутом и областью ошибки.
  *
@@ -318,6 +382,9 @@ export function renderAuthForm({
   const isLogin = mode === "login";
   const isModal = context === "modal";
   const isRegisterStepTwo = mode === "register" && registerStep === 2;
+  const oauthErrorText = getVkIdOauthErrorText();
+  const formHasError = hasError || Boolean(oauthErrorText);
+  const formErrorText = oauthErrorText || errorText;
 
   return `
     <section
@@ -351,15 +418,15 @@ export function renderAuthForm({
           ${
             isLogin
               ? renderLoginFields(hasError, registerValues)
-              : renderRegisterFields(registerStep, registerValues, hasError, errorText)
+              : renderRegisterFields(registerStep, registerValues, formHasError, formErrorText)
           }
         </div>
 
         ${
           isLogin
             ? `
-              <p class="auth-form__error${hasError ? "" : " auth-form__error--hidden"}">
-                ${hasError ? errorText : " "}
+              <p class="auth-form__error${formHasError ? "" : " auth-form__error--hidden"}">
+                ${formHasError ? formErrorText : " "}
               </p>
               <div class="auth-form__actions">
                 ${renderButton({
@@ -374,6 +441,8 @@ export function renderAuthForm({
             : ""
         }
       </form>
+
+      ${isRegisterStepTwo ? "" : renderVkIdAuth()}
 
       ${
         isLogin

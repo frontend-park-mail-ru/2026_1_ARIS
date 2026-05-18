@@ -9,7 +9,7 @@
     --postcard-stats-gap: 20px; // расстояние между группами статистики внизу карточки
     --postcard-stat-gap: 6px; // расстояние между иконкой и числом внутри stat-элемента
     --postcard-stat-padding: 4px; // внутренний отступ у stat-элемента, чтобы увеличить кликабельную область
-    --postcard-stat-icon-size: 16px; // размер иконок статистики
+    --postcard-stat-icon-size: 18px; // размер иконок статистики
     --postcard-expand-offset: 4px; // отступ сверху у кнопки "читать полностью"
 
     container-type: inline-size;
@@ -40,9 +40,10 @@
     }
 
     &__author {
-      display: flex; // блок автора — flex-контейнер
+      display: inline-flex; // ссылка занимает только область текста автора
       min-width: 0; // позволяет тексту автора не ломать layout при длинном имени
-      flex: 1 1 auto; // блок автора занимает всё оставшееся место
+      max-width: 100%; // длинное имя не выходит за пределы шапки
+      flex: 0 1 auto; // не растягиваем ссылку на всё свободное место
       flex-direction: column; // если строк будет несколько, они пойдут вертикально
       justify-content: center; // содержимое автора центрируется по вертикали
       margin: 0; // убираем дефолтные внешние отступы
@@ -88,7 +89,6 @@
         font-weight: var(--font-weight-medium);
 
         &:hover {
-          text-decoration: underline;
         }
       }
     }
@@ -106,7 +106,6 @@
 
       &:hover {
         color: var(--color-text-main);
-        text-decoration: underline;
       }
 
       &--hidden {
@@ -198,6 +197,7 @@
       overflow: hidden; // обрезаем выступающие края
       border-radius: var(--radius-input); // скругляем углы изображения
       object-fit: cover; // изображение заполняет контейнер без искажений
+      cursor: zoom-in;
     }
 
     &__media-overlay {
@@ -222,6 +222,7 @@
       font-size: var(--text-size-title);
       font-weight: var(--font-weight-bold);
       line-height: var(--line-height-base);
+      pointer-events: none;
     }
 
     &__footer {
@@ -308,7 +309,7 @@
 
       &-count {
         color: var(--color-text-meta);
-        font-size: var(--text-size-meta);
+        font-size: var(--text-size-main);
         font-weight: var(--font-weight-medium);
         line-height: var(--line-height-base);
       }
@@ -318,17 +319,13 @@
       margin: 0;
       position: relative;
       padding: 0;
-      border: 0;
-      background: transparent;
       white-space: nowrap;
       text-align: right;
       color: var(--color-text-meta);
-      cursor: pointer;
       font: inherit;
       font-size: var(--text-size-meta);
-      font-weight: var(--font-weight-medium);
+      font-weight: var(--font-weight-regular);
       line-height: var(--line-height-base);
-      -webkit-tap-highlight-color: transparent;
 
       &[data-tooltip]::before,
       &[data-tooltip]::after {

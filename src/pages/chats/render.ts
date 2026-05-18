@@ -234,7 +234,7 @@ function renderMessages(thread?: ChatViewThread): string {
   const messages = thread.messages ?? [];
 
   if (!messages.length) {
-    return `<div class="chat-view__empty">${t("common.emptyList")}</div>`;
+    return `<div class="chat-view__empty">${t("chats.emptyMessages")}</div>`;
   }
 
   let previousDateKey = "";

@@ -315,7 +315,17 @@ async function resolveProfilePosts(
         }
 
         try {
-          return await getPostById(post.id, signal);
+          const details = await getPostById(post.id, signal);
+          const mergedPost: PostResponse = { ...post, ...details };
+
+          if (!mergedPost.createdAt && post.createdAt) {
+            mergedPost.createdAt = post.createdAt;
+          }
+          if (!mergedPost.updatedAt && post.updatedAt) {
+            mergedPost.updatedAt = post.updatedAt;
+          }
+
+          return mergedPost;
         } catch (error) {
           if (error instanceof Error && error.name === "AbortError") {
             throw error;
@@ -461,15 +471,20 @@ export async function renderProfile(
                 </div>
 
                 <div class="profile-card__hero-copy">
-                  ${
-                    profile.isOwnProfile
-                      ? `<div class="profile-card__eyebrow">${t("profile.myProfile")}</div>`
-                      : ""
-                  }
-                  <h1>${escapeHtml(formatPersonName(profile.firstName, profile.lastName, profile.username))}</h1>
+                  <h1>
+                    ${escapeHtml(
+                      formatPersonName(profile.firstName, profile.lastName) ||
+                        t("widgetbar.userFallback"),
+                    )}
+                    ${
+                      profile.isOwnProfile
+                        ? `<span class="profile-card__self-mark">${t("profile.selfMark")}</span>`
+                        : ""
+                    }
+                  </h1>
                   ${hasVisibleValue(profile.status) ? `<p>${escapeHtml(profile.status)}</p>` : ""}
-                  ${renderProfileFriendActions(profile)}
                 </div>
+                ${renderProfileFriendActions(profile)}
               </header>
 
               <div class="profile-card__details">

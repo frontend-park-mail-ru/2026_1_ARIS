@@ -4,6 +4,7 @@
 import { uploadPostImages } from "../../api/posts";
 import { normalizeName } from "../../utils/profile-validation";
 import type { UpdateProfilePayload } from "../../api/profile";
+import { t } from "../../state/i18n";
 
 import type { ComposerMediaItem, EditableProfileFields } from "./types";
 import { postComposerState, validateProfilePatch, hasProfileFieldErrors } from "./state";
@@ -62,9 +63,9 @@ export async function handlePostImagesSelected(files: FileList | null): Promise<
               return;
             }
 
-            reject(new Error("Не получилось прочитать изображение."));
+            reject(new Error(t("profile.postImageReadError")));
           };
-          reader.onerror = () => reject(new Error("Не получилось прочитать изображение."));
+          reader.onerror = () => reject(new Error(t("profile.postImageReadError")));
           reader.readAsDataURL(file);
         }),
     ),

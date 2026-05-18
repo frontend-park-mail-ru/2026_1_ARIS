@@ -4,13 +4,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "./core/client";
 import {
+  createPostComment,
   createPost,
+  deletePostComment,
   deletePost,
+  getPostCommentReplies,
+  getPostComments,
   getMyPosts,
   getPostById,
   likePost,
   unlikePost,
   updatePost,
+  updatePostComment,
   uploadPostImages,
 } from "./posts";
 import { clearFeedCache } from "../pages/feed/cache";
@@ -77,11 +82,13 @@ describe("posts api", () => {
             { media_id: "21", url: "/media/post.png" },
             { mediaID: 0, mediaURL: "" },
           ],
+          files: [{ mediaID: "31", mediaURL: "/media/doc.pdf" }],
           mediaUrl: ["/legacy.png", ""],
           text: "Пост",
           likes: "6",
           is_liked: "1",
-          createdAt: "2026-05-04T10:00:00.000Z",
+          created_at: "2026-05-04T10:00:00.000Z",
+          updated_at: "2026-05-04T11:00:00.000Z",
         },
         { id: 0 },
       ],
@@ -92,6 +99,7 @@ describe("posts api", () => {
         id: 15,
         profileID: 7,
         media: [{ mediaID: 21, mediaURL: "/media/post.png" }],
+        files: [{ mediaID: 31, mediaURL: "/media/doc.pdf" }],
         mediaURL: ["/legacy.png"],
         text: "Пост",
         firstName: "Софья",
@@ -107,6 +115,7 @@ describe("posts api", () => {
           avatarURL: "/media/avatar.png",
         },
         createdAt: "2026-05-04T10:00:00.000Z",
+        updatedAt: "2026-05-04T11:00:00.000Z",
         likes: 6,
         isLiked: true,
       },
@@ -146,6 +155,29 @@ describe("posts api", () => {
       null,
     );
     expect(clearFeedCache).toHaveBeenCalledTimes(3);
+  });
+
+  it("передаёт вложения поста в новом формате media/files", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({ id: 1, profileID: 7, text: "with media" });
+
+    await createPost({
+      text: "with media",
+      media: [{ mediaID: 7 }],
+      files: [{ mediaID: 8 }],
+    });
+
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/post/upload",
+      {
+        method: "POST",
+        body: {
+          text: "with media",
+          media: [{ mediaID: 7 }],
+          files: [{ mediaID: 8 }],
+        },
+      },
+      null,
+    );
   });
 
   it("ставит и убирает лайк, сохраняя resolved состояние", async () => {
@@ -199,5 +231,81 @@ describe("posts api", () => {
     vi.mocked(apiRequest).mockResolvedValue(null);
 
     await expect(getPostById("missing")).rejects.toThrow("Не удалось загрузить публикацию.");
+  });
+
+  it("работает с комментариями и ответами поста", async () => {
+    vi.mocked(apiRequest)
+      .mockResolvedValueOnce([
+        {
+          id: "100",
+          uid: "comment-uid",
+          text: "Комментарий",
+          postId: "1",
+          author: { profileID: 7, firstName: "Софья" },
+          createdAt: "2026-05-04T10:00:00.000Z",
+          updatedAt: "2026-05-04T10:00:00.000Z",
+          repliesCount: "2",
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({
+        id: "101",
+        text: "Ответ",
+        postId: "1",
+        parentCommentId: "100",
+        author: { profileID: 7 },
+      })
+      .mockResolvedValueOnce({
+        id: "101",
+        text: "Обновлено",
+        postId: "1",
+        author: { profileID: 7 },
+      })
+      .mockResolvedValueOnce(null);
+
+    await expect(getPostComments(1, { limit: 10, offset: 5 })).resolves.toEqual([
+      {
+        id: "100",
+        uid: "comment-uid",
+        text: "Комментарий",
+        postId: "1",
+        author: { profileID: 7, firstName: "Софья" },
+        createdAt: "2026-05-04T10:00:00.000Z",
+        updatedAt: "2026-05-04T10:00:00.000Z",
+        repliesCount: 2,
+      },
+    ]);
+    await expect(getPostCommentReplies(1, 100)).resolves.toEqual([]);
+    await expect(
+      createPostComment(1, { text: "Ответ", parentCommentId: 100 }),
+    ).resolves.toMatchObject({
+      id: "101",
+      parentCommentId: "100",
+    });
+    await expect(updatePostComment(1, 101, "Обновлено")).resolves.toMatchObject({
+      text: "Обновлено",
+    });
+    await deletePostComment(1, 101);
+
+    expect(apiRequest).toHaveBeenNthCalledWith(1, "/api/post/1/comments?limit=10&offset=5", {}, []);
+    expect(apiRequest).toHaveBeenNthCalledWith(2, "/api/post/1/comments/100/replies", {}, []);
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      3,
+      "/api/post/1/comments",
+      { method: "POST", body: { text: "Ответ", parentCommentId: 100 } },
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      4,
+      "/api/post/1/comments/101",
+      { method: "PATCH", body: { text: "Обновлено" } },
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      5,
+      "/api/post/1/comments/101",
+      { method: "DELETE" },
+      null,
+    );
   });
 });

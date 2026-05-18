@@ -17,6 +17,7 @@ import { likePost, unlikePost } from "../../api/posts";
 import { getFriends, type Friend } from "../../api/friends";
 import { getFeedMode, getSessionUser } from "../../state/session";
 import { prepareAvatarLinks } from "../../utils/avatar";
+import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 import { hydrateFriendAvatarLinks } from "../friends/state";
 
 import type { FeedMode, FeedAuthKey, FeedCenterResult, ActiveFeedState } from "./types";
@@ -41,6 +42,7 @@ export { initFeedInfiniteScroll } from "./scroll";
 
 const FEED_BATCH_SIZE = 10;
 let isFeedLikeBound = false;
+let isFeedImageViewerBound = false;
 
 function isOfflineNetworkError(error: unknown): boolean {
   if (!navigator.onLine || error instanceof TypeError) {
@@ -184,6 +186,29 @@ function bindFeedLikeActions(): void {
   });
 
   isFeedLikeBound = true;
+}
+
+function bindFeedImageViewerActions(): void {
+  if (isFeedImageViewerBound) {
+    return;
+  }
+
+  document.addEventListener("click", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (!(target.closest("[data-feed-list]") instanceof HTMLElement)) {
+      return;
+    }
+
+    if (openPostImageViewerFromTarget(target)) {
+      event.preventDefault();
+    }
+  });
+
+  isFeedImageViewerBound = true;
 }
 
 /**
@@ -390,6 +415,7 @@ export async function renderFeed(
   signal?: AbortSignal,
 ): Promise<string> {
   bindFeedLikeActions();
+  bindFeedImageViewerActions();
   const isAuthorised = getSessionUser() !== null;
   const feedResult = await getCachedFeedData(isAuthorised, signal);
   await prepareAvatarLinks([
@@ -458,6 +484,7 @@ async function refreshFeedOnReturn(): Promise<void> {
 
 window.addEventListener("apprender", () => {
   bindFeedLikeActions();
+  bindFeedImageViewerActions();
   initFeedInfiniteScroll();
 });
 

@@ -4,6 +4,8 @@
  * Создаёт кнопку открытия и лениво монтирует iframe только в момент первого открытия,
  * чтобы техподдержка не утяжеляла начальную загрузку каждой страницы.
  */
+import { t } from "../state/i18n";
+
 let widgetInitialised = false;
 
 /**
@@ -27,7 +29,7 @@ export function initSupportIframe(): void {
     iframe.className = "support-iframe";
     iframe.id = "support-iframe";
     iframe.setAttribute("frameborder", "0");
-    iframe.setAttribute("title", "Техподдержка");
+    iframe.setAttribute("title", t("support.title"));
     iframe.setAttribute("loading", "lazy");
     document.body.appendChild(iframe);
 

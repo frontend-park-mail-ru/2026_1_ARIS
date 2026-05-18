@@ -67,7 +67,7 @@
     display: inline-flex !important;
     width: 64px;
     height: 64px;
-    font-size: 18px;
+    font-size: var(--text-size-heading-md);
     letter-spacing: 0;
   }
 
@@ -81,10 +81,6 @@
     font-size: var(--text-size-main);
     font-weight: var(--font-weight-medium);
     text-decoration: none;
-  }
-
-  .search-result-card__name:hover {
-    text-decoration: underline;
   }
 
   .search-result-card__meta {

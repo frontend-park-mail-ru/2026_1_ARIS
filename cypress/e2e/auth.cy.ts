@@ -48,6 +48,10 @@ describe("авторизация и регистрация", () => {
 
   it("авторизует пользователя и открывает ленту", () => {
     cy.mockAuthApi();
+    cy.intercept("GET", "**/api/auth/me", {
+      statusCode: 401,
+      body: { error: "unauthorized" },
+    }).as("authMeGuest");
     cy.intercept("POST", "**/api/auth/login", {
       body: sessionUser,
     }).as("login");
@@ -92,6 +96,10 @@ describe("авторизация и регистрация", () => {
 
   it("регистрирует нового пользователя и запускает сессию", () => {
     cy.mockAuthApi();
+    cy.intercept("GET", "**/api/auth/me", {
+      statusCode: 401,
+      body: { error: "unauthorized" },
+    }).as("authMeGuest");
     cy.intercept("POST", "**/api/auth/register/step-one", {
       body: { ok: true },
     }).as("validateStepOne");

@@ -23,14 +23,21 @@ import {
 import { searchUsersAndCommunities, type SearchCommunity } from "../../api/search";
 import {
   createPost,
+  createPostComment,
   deletePost,
   getOfficialCommunityPosts,
+  getPostComments,
+  getPostCommentReplies,
+  getPostCommentRepliesBatch,
   getPostsByCommunityId,
+  likePostComment,
   likePost,
+  unlikePostComment,
   unlikePost,
   updatePost,
   uploadPostImages,
 } from "../../api/posts";
+import { renderCommentItemHtml, renderSingleCommentHtml } from "../../utils/post-comment-render";
 import { getMyProfile, uploadProfileAvatar } from "../../api/profile";
 import { getSessionUser } from "../../state/session";
 import { t } from "../../state/i18n";
@@ -62,6 +69,7 @@ import {
   openEditCommunityPostComposer,
   openEditCommunityForm,
   prevCommunityFormStep,
+  removeCommunityComposerFileItem,
   removeCommunityComposerMediaItem,
   resetCommunitiesState,
   resetCommunityFormState,
@@ -76,6 +84,7 @@ import {
   mapPostToCommunityPost,
   canManageCommunityMemberRole,
   canRemoveCommunityMember,
+  escapeHtml,
 } from "./helpers";
 import {
   refreshCommunitiesList,
@@ -111,6 +120,10 @@ let communitiesSearchRequestId = 0;
 let communityNameCheckTimerId: number | null = null;
 let communityNameCheckAbortController: AbortController | null = null;
 let communityNameCheckRequestId = 0;
+const loadedCommunityCommentPostIds = new Set<string>();
+const loadingCommunityCommentPostIds = new Set<string>();
+const openCommunityCommentPostIds = new Set<string>();
+const expandedCommunityReplies = new Map<string, Set<string>>();
 
 function formatCommunityMessage(message: string, values: Record<string, string | number>): string {
   return Object.entries(values).reduce(
@@ -294,6 +307,134 @@ function updateCommunityPostLikeState(postId: string, likes: number, isLiked: bo
         : post,
     ),
   );
+}
+
+function canCommentActiveCommunity(): boolean {
+  const bundle = communitiesState.activeCommunity;
+
+  return Boolean(
+    bundle &&
+    bundle.membership.isMember &&
+    !bundle.membership.blocked &&
+    bundle.membership.role !== "blocked",
+  );
+}
+
+function updateCommunityPostCommentCount(postId: string, comments: number): void {
+  setActivePosts(
+    communitiesState.activePosts.map((post) =>
+      post.id === postId
+        ? {
+            ...post,
+            comments,
+          }
+        : post,
+    ),
+  );
+}
+
+function syncCommunityPostCommentCountUi(postId: string): void {
+  const post = communitiesState.activePosts.find((item) => item.id === postId);
+  if (!post) return;
+
+  document
+    .querySelectorAll<HTMLElement>(
+      `[data-community-post="${CSS.escape(postId)}"] [data-community-post-comment-count="${CSS.escape(postId)}"]`,
+    )
+    .forEach((count) => {
+      count.textContent = String(post.comments);
+    });
+}
+
+function isCommunityCommentListEmpty(postId: string): boolean {
+  const listEl = document.querySelector<HTMLElement>(
+    `[data-community-post-comment-list="${CSS.escape(postId)}"]`,
+  );
+
+  return !listEl || listEl.childElementCount === 0;
+}
+
+async function loadCommunityPostComments(postId: string): Promise<void> {
+  const listEl = document.querySelector<HTMLElement>(
+    `[data-community-post-comment-list="${CSS.escape(postId)}"]`,
+  );
+  if (!listEl || loadingCommunityCommentPostIds.has(postId)) return;
+
+  loadingCommunityCommentPostIds.add(postId);
+  listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
+
+  try {
+    const comments = await getPostComments(postId, { limit: 50 });
+    if (!comments.length) {
+      listEl.innerHTML = `<p class="profile-comment-empty">${t("profile.commentsEmpty")}</p>`;
+      loadedCommunityCommentPostIds.add(postId);
+      return;
+    }
+
+    const parentIds = comments
+      .filter((comment) => comment.repliesCount > 0)
+      .map((comment) => comment.id);
+    const firstReplies =
+      parentIds.length > 0 ? await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 }) : {};
+    const post = communitiesState.activePosts.find((item) => item.id === postId);
+    const headerText = t("profile.commentsHeader").replace(
+      "{{n}}",
+      String(post?.comments ?? comments.length),
+    );
+    const canReply = canCommentActiveCommunity();
+
+    listEl.innerHTML =
+      `<p class="profile-comment-header-label">${escapeHtml(headerText)}</p>` +
+      comments
+        .map((comment) =>
+          renderCommentItemHtml(comment, firstReplies[comment.id]?.[0], {
+            showReply: canReply,
+          }),
+        )
+        .join("");
+
+    const expanded = expandedCommunityReplies.get(postId);
+    if (expanded && expanded.size > 0) {
+      for (const commentId of expanded) {
+        const repliesContainer = document.querySelector<HTMLElement>(
+          `[data-comment-replies="${CSS.escape(commentId)}"]`,
+        );
+        if (repliesContainer) {
+          void getPostCommentReplies(postId, commentId, { limit: 50 }).then((replies) => {
+            repliesContainer.innerHTML = replies
+              .map((reply) => renderSingleCommentHtml(reply, true, { showReply: canReply }))
+              .join("");
+          });
+        }
+      }
+    }
+
+    loadedCommunityCommentPostIds.add(postId);
+  } catch {
+    listEl.innerHTML = `<p class="profile-comment-empty">${t("profile.commentSendError")}</p>`;
+    loadedCommunityCommentPostIds.delete(postId);
+  } finally {
+    loadingCommunityCommentPostIds.delete(postId);
+  }
+}
+
+function restoreOpenCommunityComments(): void {
+  openCommunityCommentPostIds.forEach((postId) => {
+    const commentsEl = document.querySelector<HTMLElement>(
+      `[data-community-post-comments="${CSS.escape(postId)}"]`,
+    );
+    const toggleButton = document.querySelector<HTMLButtonElement>(
+      `[data-community-post-toggle-comments="${CSS.escape(postId)}"]`,
+    );
+    if (!commentsEl) return;
+
+    commentsEl.hidden = false;
+    toggleButton?.setAttribute("aria-expanded", "true");
+
+    if (!loadedCommunityCommentPostIds.has(postId) || isCommunityCommentListEmpty(postId)) {
+      void loadCommunityPostComments(postId);
+    }
+  });
 }
 
 function syncActiveCommunity(bundle: CommunityBundle): void {
@@ -872,11 +1013,32 @@ async function handleCommunityPostImages(files: FileList | null, root: ParentNod
   if (!files?.length) return;
 
   const availableSlots = Math.max(0, 5 - communitiesState.postComposer.mediaItems.length);
-  const nextFiles = Array.from(files).slice(0, availableSlots);
+  const nextFiles = Array.from(files)
+    .filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/"))
+    .slice(0, availableSlots);
   if (!nextFiles.length) return;
 
   communitiesState.postComposer.mediaItems = communitiesState.postComposer.mediaItems.concat(
     await readFilesAsPreviews(nextFiles),
+  );
+  refreshCommunitiesPage(root);
+}
+
+function handleCommunityPostFiles(files: FileList | null, root: ParentNode): void {
+  if (!files?.length) return;
+
+  const availableSlots = Math.max(0, 10 - communitiesState.postComposer.fileItems.length);
+  const nextFiles = Array.from(files).slice(0, availableSlots);
+  if (!nextFiles.length) return;
+
+  communitiesState.postComposer.fileItems = communitiesState.postComposer.fileItems.concat(
+    nextFiles.map((file) => ({
+      mediaURL: "",
+      fileName: file.name,
+      mimeType: file.type,
+      file,
+      isUploaded: false,
+    })),
   );
   refreshCommunitiesPage(root);
 }
@@ -899,11 +1061,38 @@ async function uploadPendingCommunityPostImages(): Promise<void> {
         ? {
             mediaID: next.mediaID,
             mediaURL: next.mediaURL,
+            fileName: item.fileName,
+            mimeType: item.mimeType,
             isUploaded: true,
           }
         : item;
     },
   );
+}
+
+async function uploadPendingCommunityPostFiles(): Promise<void> {
+  const pending = communitiesState.postComposer.fileItems.filter(
+    (item) => !item.isUploaded && item.file,
+  );
+  if (!pending.length) return;
+
+  const uploaded = await uploadPostImages(pending.map((item) => item.file!));
+  let uploadIndex = 0;
+
+  communitiesState.postComposer.fileItems = communitiesState.postComposer.fileItems.map((item) => {
+    if (item.isUploaded) return item;
+    const next = uploaded[uploadIndex];
+    uploadIndex += 1;
+    return next
+      ? {
+          mediaID: next.mediaID,
+          mediaURL: next.mediaURL,
+          fileName: item.fileName,
+          mimeType: item.mimeType,
+          isUploaded: true,
+        }
+      : item;
+  });
 }
 
 async function waitForNextPaint(): Promise<void> {
@@ -923,7 +1112,11 @@ async function saveCommunityPost(root: ParentNode): Promise<void> {
   if (!bundle || !bundle.permissions.canPost) return;
 
   const text = communitiesState.postComposer.text.trim();
-  if (!text && communitiesState.postComposer.mediaItems.length === 0) {
+  if (
+    !text &&
+    communitiesState.postComposer.mediaItems.length === 0 &&
+    communitiesState.postComposer.fileItems.length === 0
+  ) {
     communitiesState.postComposer.errorMessage = t("communities.addTextOrImage");
     refreshCommunitiesPage(root);
     return;
@@ -943,7 +1136,17 @@ async function saveCommunityPost(root: ParentNode): Promise<void> {
 
   try {
     await uploadPendingCommunityPostImages();
+    await uploadPendingCommunityPostFiles();
     const media = communitiesState.postComposer.mediaItems
+      .filter(
+        (item): item is ComposerMediaItem & { mediaID: number } =>
+          item.isUploaded && typeof item.mediaID === "number",
+      )
+      .map((item) => ({
+        mediaID: item.mediaID,
+        mediaURL: item.mediaURL,
+      }));
+    const files = communitiesState.postComposer.fileItems
       .filter(
         (item): item is ComposerMediaItem & { mediaID: number } =>
           item.isUploaded && typeof item.mediaID === "number",
@@ -958,6 +1161,7 @@ async function saveCommunityPost(root: ParentNode): Promise<void> {
         ? await updatePost(communitiesState.postComposer.editingPostId, {
             ...(text ? { text } : {}),
             media,
+            files,
             communityId: bundle.community.id,
             ...(communitiesState.postComposer.authorMode === "community"
               ? { authorProfileId: bundle.community.profileId }
@@ -966,6 +1170,7 @@ async function saveCommunityPost(root: ParentNode): Promise<void> {
         : await createPost({
             ...(text ? { text } : {}),
             media,
+            files,
             communityId: bundle.community.id,
             ...(communitiesState.postComposer.authorMode === "community"
               ? { authorProfileId: bundle.community.profileId }
@@ -1725,6 +1930,11 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       return;
     }
 
+    if (target instanceof HTMLInputElement && target.matches("[data-community-post-file-input]")) {
+      handleCommunityPostFiles(target.files, root);
+      return;
+    }
+
     if (
       target instanceof HTMLInputElement &&
       target.matches("[data-community-members-include-blocked]")
@@ -1796,6 +2006,53 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     if (target.matches("[data-community-post-form]")) {
       event.preventDefault();
       void saveCommunityPost(root);
+      return;
+    }
+
+    const commentPostId = target.getAttribute("data-community-post-comment-form");
+    if (commentPostId) {
+      event.preventDefault();
+      if (!canCommentActiveCommunity()) return;
+
+      const input = target.querySelector<HTMLInputElement>(
+        `[data-community-post-comment-input="${CSS.escape(commentPostId)}"]`,
+      );
+      const errorEl = root.querySelector<HTMLElement>(
+        `[data-community-post-comment-error="${CSS.escape(commentPostId)}"]`,
+      );
+      const submitBtn = target.querySelector<HTMLButtonElement>('button[type="submit"]');
+      const text = input?.value.trim() ?? "";
+      if (!text || !input) return;
+
+      if (submitBtn) submitBtn.disabled = true;
+      if (errorEl) errorEl.hidden = true;
+
+      const replyToId = target.dataset.communityPostReplyTo?.trim();
+      const commentPayload = replyToId ? { text, parentCommentId: Number(replyToId) } : { text };
+
+      void createPostComment(commentPostId, commentPayload)
+        .then(() => {
+          input.value = "";
+          delete target.dataset.communityPostReplyTo;
+          input.placeholder = t("profile.commentPlaceholder");
+          loadedCommunityCommentPostIds.delete(commentPostId);
+          void loadCommunityPostComments(commentPostId);
+
+          const currentCount =
+            communitiesState.activePosts.find((item) => item.id === commentPostId)?.comments ?? 0;
+          updateCommunityPostCommentCount(commentPostId, currentCount + 1);
+          syncCommunityPostCommentCountUi(commentPostId);
+        })
+        .catch((error: unknown) => {
+          console.error("[communities] create comment failed", error);
+          if (errorEl) {
+            errorEl.textContent = t("profile.commentSendError");
+            errorEl.hidden = false;
+          }
+        })
+        .finally(() => {
+          if (submitBtn) submitBtn.disabled = false;
+        });
     }
   });
 
@@ -1824,6 +2081,113 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     if (target.closest("[data-member-confirm-modal] a[data-link]")) {
       communitiesState.membersManager.confirmAction = null;
       refreshCommunitiesPage(root);
+      return;
+    }
+
+    const showRepliesBtn = target.closest("[data-show-replies]");
+    if (showRepliesBtn instanceof HTMLButtonElement && target.closest("[data-communities-page]")) {
+      const commentId = showRepliesBtn.getAttribute("data-show-replies") ?? "";
+      const postId = showRepliesBtn.getAttribute("data-show-replies-post") ?? "";
+      const repliesContainer = root.querySelector<HTMLElement>(
+        `[data-comment-replies="${CSS.escape(commentId)}"]`,
+      );
+      if (!repliesContainer || !postId || !commentId) return;
+
+      showRepliesBtn.disabled = true;
+      void getPostCommentReplies(postId, commentId, { limit: 50 })
+        .then((replies) => {
+          repliesContainer.innerHTML = replies
+            .map((reply) =>
+              renderSingleCommentHtml(reply, true, { showReply: canCommentActiveCommunity() }),
+            )
+            .join("");
+          if (!expandedCommunityReplies.has(postId)) {
+            expandedCommunityReplies.set(postId, new Set());
+          }
+          expandedCommunityReplies.get(postId)?.add(commentId);
+        })
+        .catch(() => {
+          showRepliesBtn.disabled = false;
+        });
+      return;
+    }
+
+    const commentLikeBtn = target.closest("[data-comment-like]");
+    if (commentLikeBtn instanceof HTMLButtonElement && target.closest("[data-communities-page]")) {
+      const commentId = commentLikeBtn.getAttribute("data-comment-like") ?? "";
+      const postId = commentLikeBtn.getAttribute("data-comment-like-post") ?? "";
+      if (!commentId || !postId || commentLikeBtn.disabled) return;
+
+      const isLiked = commentLikeBtn.getAttribute("aria-pressed") === "true";
+      commentLikeBtn.disabled = true;
+      void (isLiked ? unlikePostComment(postId, commentId) : likePostComment(postId, commentId))
+        .then((updated) => {
+          const isNowLiked = updated.isLiked;
+          commentLikeBtn.setAttribute("aria-pressed", String(isNowLiked));
+          commentLikeBtn.classList.toggle("profile-comment__like--liked", isNowLiked);
+          const countSpan = commentLikeBtn.querySelector("span:last-child");
+          if (
+            countSpan &&
+            countSpan !== commentLikeBtn.querySelector(".profile-comment__like-icon")
+          ) {
+            countSpan.textContent = updated.likes > 0 ? String(updated.likes) : "";
+          } else if (updated.likes > 0) {
+            const span = document.createElement("span");
+            span.textContent = String(updated.likes);
+            commentLikeBtn.appendChild(span);
+          }
+        })
+        .catch((error: unknown) => {
+          console.error("[communities] comment like failed", error);
+        })
+        .finally(() => {
+          commentLikeBtn.disabled = false;
+        });
+      return;
+    }
+
+    const replyButton = target.closest("[data-comment-reply]");
+    if (replyButton instanceof HTMLButtonElement && target.closest("[data-communities-page]")) {
+      if (!canCommentActiveCommunity()) return;
+      const commentId = replyButton.getAttribute("data-comment-reply") ?? "";
+      const postId = replyButton.getAttribute("data-reply-post") ?? "";
+      const authorName = replyButton.getAttribute("data-reply-author") ?? "";
+      const form = root.querySelector<HTMLFormElement>(
+        `[data-community-post-comment-form="${CSS.escape(postId)}"]`,
+      );
+      const input = form?.querySelector<HTMLInputElement>(
+        `[data-community-post-comment-input="${CSS.escape(postId)}"]`,
+      );
+
+      if (form && input && commentId) {
+        form.dataset.communityPostReplyTo = commentId;
+        input.placeholder = t("profile.commentReplyPlaceholder").replace("{{name}}", authorName);
+        input.focus();
+      }
+      return;
+    }
+
+    const toggleCommentsButton = target.closest("[data-community-post-toggle-comments]");
+    if (toggleCommentsButton instanceof HTMLButtonElement) {
+      const postId = toggleCommentsButton.getAttribute("data-community-post-toggle-comments") ?? "";
+      const commentsEl = root.querySelector<HTMLElement>(
+        `[data-community-post-comments="${CSS.escape(postId)}"]`,
+      );
+      if (!postId || !commentsEl) return;
+
+      const isExpanded = !commentsEl.hidden;
+      commentsEl.hidden = isExpanded;
+      toggleCommentsButton.setAttribute("aria-expanded", String(!isExpanded));
+
+      if (isExpanded) {
+        openCommunityCommentPostIds.delete(postId);
+        return;
+      }
+
+      openCommunityCommentPostIds.add(postId);
+      if (!loadedCommunityCommentPostIds.has(postId) || isCommunityCommentListEmpty(postId)) {
+        void loadCommunityPostComments(postId);
+      }
       return;
     }
 
@@ -2552,6 +2916,20 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       return;
     }
 
+    const pickPostFileButton = target.closest("[data-community-post-pick-file]");
+    if (pickPostFileButton instanceof HTMLButtonElement) {
+      if (pickPostFileButton.disabled || communitiesState.postComposer.fileItems.length >= 10) {
+        return;
+      }
+
+      const input = root.querySelector<HTMLInputElement>("[data-community-post-file-input]");
+      if (input) {
+        input.value = "";
+        input.click();
+      }
+      return;
+    }
+
     const removePostImageButton = target.closest("[data-community-post-remove-image]");
     if (removePostImageButton instanceof HTMLButtonElement) {
       const index = Number.parseInt(
@@ -2559,6 +2937,17 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         10,
       );
       removeCommunityComposerMediaItem(index);
+      refreshCommunitiesPage(root);
+      return;
+    }
+
+    const removePostFileButton = target.closest("[data-community-post-remove-file]");
+    if (removePostFileButton instanceof HTMLButtonElement) {
+      const index = Number.parseInt(
+        removePostFileButton.getAttribute("data-community-post-remove-file") ?? "-1",
+        10,
+      );
+      removeCommunityComposerFileItem(index);
       refreshCommunitiesPage(root);
       return;
     }
@@ -2602,6 +2991,10 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
   window.addEventListener("resize", () => repositionOpenCommunityMemberRoleMenu(root), {
     passive: true,
+  });
+
+  window.addEventListener("communities:refreshed", () => {
+    restoreOpenCommunityComments();
   });
 
   syncCommunityMediaEditorsUi(root);

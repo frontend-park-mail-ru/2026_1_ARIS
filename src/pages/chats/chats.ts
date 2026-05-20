@@ -37,6 +37,9 @@ import {
   applySelectedChatPersistedViewState,
   clearScrollState,
   setChatMessagesReady,
+  keepSelectedChatPinnedToBottom,
+  chatScrollStateById,
+  scheduleScrollChatToBottom,
 } from "./render";
 import { syncSelectedChatToUrl } from "./helpers";
 import { bindChatsEvents } from "./events";
@@ -87,7 +90,12 @@ function rebuildPendingOutgoingFromThreads(): void {
           m.id.startsWith("local-") &&
           (m.deliveryState === "failed" || m.deliveryState === "sending"),
       )
-      .map((m) => ({ localId: m.id, text: m.text, createdAt: m.createdAt }));
+      .map((m) => ({
+        localId: m.id,
+        text: m.text,
+        stickerId: m.stickerId ? Number(m.stickerId) : undefined,
+        createdAt: m.createdAt,
+      }));
 
     if (pending.length) {
       chatsState.pendingOutgoingByChatId.set(thread.id, pending);
@@ -197,7 +205,7 @@ function ensureChatsPollingStarted(): void {
  * @returns {Promise<void>}
  */
 async function doLoadChats(): Promise<void> {
-  const preferredChatId = getRequestedChatId() || chatsState.selectedChatId || "";
+  const preferredChatId = getRequestedChatId();
   let loadedChatListFromApi = false;
 
   try {
@@ -223,10 +231,7 @@ async function doLoadChats(): Promise<void> {
     const persisted = readPersistedChatsData();
     chatsState.source = "api";
     chatsState.threads = persisted;
-    chatsState.selectedChatId =
-      chatsState.threads.find((t) => t.id === preferredChatId)?.id ??
-      chatsState.threads[0]?.id ??
-      "";
+    chatsState.selectedChatId = chatsState.threads.find((t) => t.id === preferredChatId)?.id ?? "";
     applySelectedChatPersistedViewState();
     chatsState.errorMessage = persisted.length
       ? "Нет соединения с интернетом. Показываем последние сохранённые сообщения."
@@ -244,7 +249,13 @@ async function doLoadChats(): Promise<void> {
   );
 
   applyThreadVisibilityRules(preferredChatId);
-  applySelectedChatPersistedViewState();
+  if (preferredChatId && chatsState.selectedChatId) {
+    chatScrollStateById.delete(chatsState.selectedChatId);
+    keepSelectedChatPinnedToBottom();
+  } else {
+    chatsState.selectedChatId = "";
+    applySelectedChatPersistedViewState();
+  }
   chatsState.errorMessage =
     chatsState.errorMessage && !chatsState.threads.length ? chatsState.errorMessage : "";
   persistChatsData(chatsState.threads);
@@ -264,17 +275,21 @@ async function doLoadChats(): Promise<void> {
  * @returns {Promise<void>}
  */
 async function ensureChatsLoaded(signal?: AbortSignal): Promise<void> {
-  const preferredChatId = getRequestedChatId() || chatsState.selectedChatId || "";
+  const preferredChatId = getRequestedChatId();
 
   if (chatsState.loaded) {
     if (preferredChatId) {
       const requestedThread = chatsState.threads.find((t) => t.id === preferredChatId);
       if (requestedThread) {
         chatsState.selectedChatId = requestedThread.id;
-        applySelectedChatPersistedViewState();
+        chatScrollStateById.delete(requestedThread.id);
+        keepSelectedChatPinnedToBottom();
       } else {
         chatsState.loaded = false;
       }
+    } else {
+      chatsState.selectedChatId = "";
+      applySelectedChatPersistedViewState();
     }
   }
 
@@ -324,7 +339,6 @@ export async function renderChats(
 ): Promise<string> {
   const isAuthorised = getSessionUser() !== null;
   const currentUserId = String(getSessionUser()?.id ?? "");
-  const requestedChatId = getRequestedChatId();
 
   if (chatsState.loadedForUserId !== currentUserId) {
     resetChatsState();
@@ -338,7 +352,7 @@ export async function renderChats(
 
   hydratePersistedChatsUiState();
   await ensureChatsLoaded(signal);
-  chatsState.mobileView = requestedChatId ? "dialog" : "list";
+  chatsState.mobileView = chatsState.selectedChatId ? "dialog" : "list";
   await prepareAvatarLinks([
     getSessionUser()?.avatarLink,
     ...chatsState.threads.map((thread) => thread.avatarLink),
@@ -378,6 +392,9 @@ export function initChats(root: Document | HTMLElement = document): void {
   ensureChatsPollingStarted();
 
   restoreSelectedChatScroll(root);
+  if (chatsState.selectedChatId) {
+    scheduleScrollChatToBottom(root);
+  }
   setChatMessagesReady(root);
   refreshScrollControls(root);
   rememberSelectedChatScroll(root);

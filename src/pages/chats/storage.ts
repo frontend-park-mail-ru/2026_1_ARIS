@@ -81,6 +81,13 @@ function sanitisePersistedMessage(value: unknown): ChatViewMessage | null {
   return {
     id,
     text: String(message.text ?? ""),
+    stickerId: typeof message.stickerId === "string" ? message.stickerId : undefined,
+    stickerData:
+      message.stickerData && typeof message.stickerData === "object"
+        ? message.stickerData
+        : undefined,
+    media: Array.isArray(message.media) ? message.media : [],
+    files: Array.isArray(message.files) ? message.files : [],
     authorName,
     isOwn: Boolean(message.isOwn),
     deliveryState: message.deliveryState === "sending" ? "failed" : message.deliveryState,

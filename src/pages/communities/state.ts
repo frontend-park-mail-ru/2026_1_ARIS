@@ -67,6 +67,7 @@ function createInitialPostComposerState() {
     errorMessage: "",
     text: "",
     mediaItems: [] as ComposerMediaItem[],
+    fileItems: [] as ComposerMediaItem[],
   };
 }
 
@@ -185,12 +186,26 @@ export function openEditCommunityPostComposer(
   communitiesState.postComposer.mediaItems = post.media.map((item) => ({
     mediaID: item.mediaID,
     mediaURL: item.mediaURL,
+    mimeType: item.mimeType,
+    isUploaded: true,
+  }));
+  communitiesState.postComposer.fileItems = post.files.map((item) => ({
+    mediaID: item.mediaID,
+    mediaURL: item.mediaURL,
+    fileName: item.mediaURL.split("/").filter(Boolean).pop() ?? "",
+    mimeType: item.mimeType,
     isUploaded: true,
   }));
 }
 
 export function removeCommunityComposerMediaItem(index: number): void {
   const items = communitiesState.postComposer.mediaItems;
+  if (index < 0 || index >= items.length || communitiesState.postComposer.isSaving) return;
+  items.splice(index, 1);
+}
+
+export function removeCommunityComposerFileItem(index: number): void {
+  const items = communitiesState.postComposer.fileItems;
   if (index < 0 || index >= items.length || communitiesState.postComposer.isSaving) return;
   items.splice(index, 1);
 }

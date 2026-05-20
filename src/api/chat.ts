@@ -11,6 +11,7 @@
  */
 import { ApiError, apiRequest } from "./core/client";
 import { getSessionUser } from "../state/session";
+import type { UploadedMedia } from "./profile";
 // Повторно экспортируем `ApiError`, чтобы сохранить текущие импорты в других модулях.
 export { ApiError };
 
@@ -77,6 +78,10 @@ type RawMessageAttachment = {
   uid?: string;
   mimeType?: string;
   url?: string;
+  name?: string;
+  fileName?: string;
+  file_name?: string;
+  originalName?: string;
 };
 
 type RawUploadedChatMedia = {
@@ -102,6 +107,9 @@ type RawStickerPack = {
   id?: number | string;
   uid?: string;
   title?: string;
+  authorId?: number | string | null;
+  author_id?: number | string | null;
+  AuthorID?: number | string | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -191,12 +199,14 @@ export type MessageAttachment = {
   uid: string;
   mimeType: string;
   url: string;
+  name?: string;
 };
 
 export type StickerPack = {
   id: string;
   uid: string;
   title: string;
+  authorId: string | null;
   createdAt?: string | undefined;
   updatedAt?: string | undefined;
 };
@@ -244,6 +254,37 @@ type ListOptions = {
   limit?: number;
   offset?: number;
   signal?: AbortSignal;
+};
+
+type StickerPackListOptions = ListOptions & {
+  search?: string;
+  my?: boolean;
+};
+
+export type CreateStickerPackPayload = {
+  title: string;
+};
+
+export type AddStickerToPackPayload = {
+  mediaID: number;
+  sortOrder?: number;
+};
+
+type UploadedMediaPayload =
+  | UploadedMedia
+  | {
+      mediaID?: number | string;
+      mediaId?: number | string;
+      media_id?: number | string;
+      mediaURL?: string;
+      mediaUrl?: string;
+      media_url?: string;
+      url?: string;
+    };
+
+type UploadMediaResponse = {
+  media?: UploadedMediaPayload[];
+  errors?: Array<{ index?: number; error?: string }>;
 };
 
 /**
@@ -327,11 +368,14 @@ function mapAttachment(raw: RawMessageAttachment | null | undefined): MessageAtt
     return null;
   }
 
+  const name = (raw.name ?? raw.fileName ?? raw.file_name ?? raw.originalName ?? "").trim();
+
   return {
     id,
     uid: String(raw.uid ?? ""),
     mimeType: String(raw.mimeType ?? ""),
     url,
+    ...(name ? { name } : {}),
   };
 }
 
@@ -382,14 +426,41 @@ function mapStickerPack(raw: RawStickerPack): StickerPack | null {
   if (!id) {
     return null;
   }
+  const rawAuthorId = raw.authorId ?? raw.author_id ?? raw.AuthorID;
 
   return {
     id,
     uid: String(raw.uid ?? ""),
     title: String(raw.title ?? ""),
+    authorId: rawAuthorId === undefined || rawAuthorId === null ? null : String(rawAuthorId),
     ...(raw.createdAt ? { createdAt: raw.createdAt } : {}),
     ...(raw.updatedAt ? { updatedAt: raw.updatedAt } : {}),
   };
+}
+
+function mapUploadedMedia(raw: UploadedMediaPayload | null | undefined): UploadedMedia | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const mediaID = Number(
+    raw.mediaID ??
+      ("mediaId" in raw ? raw.mediaId : undefined) ??
+      ("media_id" in raw ? raw.media_id : undefined),
+  );
+  const mediaURL = String(
+    raw.mediaURL ??
+      ("mediaUrl" in raw ? raw.mediaUrl : undefined) ??
+      ("media_url" in raw ? raw.media_url : undefined) ??
+      ("url" in raw ? raw.url : undefined) ??
+      "",
+  ).trim();
+
+  if (!Number.isFinite(mediaID) || mediaID <= 0 || !mediaURL) {
+    return null;
+  }
+
+  return { mediaID, mediaURL };
 }
 
 function mapMessage(raw: RawMessage): ChatMessage {
@@ -434,6 +505,10 @@ function mapMessage(raw: RawMessage): ChatMessage {
 }
 
 function normaliseSendMessagePayload(payload: SendMessagePayload): SendMessagePayload {
+  if (typeof payload.stickerId === "number") {
+    return { stickerId: payload.stickerId };
+  }
+
   const media = Array.isArray(payload.media)
     ? payload.media
         .map((item) => Number(item.mediaID))
@@ -464,6 +539,16 @@ function buildListQuery(options: ListOptions & { after?: number | string } = {})
   if (typeof options.offset === "number") params.set("offset", String(options.offset));
   if (options.after !== undefined && options.after !== "")
     params.set("after", String(options.after));
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+function buildStickerPackListQuery(options: StickerPackListOptions = {}): string {
+  const params = new URLSearchParams();
+  if (options.search?.trim()) params.set("search", options.search.trim());
+  if (options.my) params.set("my", "true");
+  if (typeof options.limit === "number") params.set("limit", String(options.limit));
+  if (typeof options.offset === "number") params.set("offset", String(options.offset));
   const query = params.toString();
   return query ? `?${query}` : "";
 }
@@ -683,9 +768,11 @@ export async function updateChatMessageText(
   return mapMessage(data);
 }
 
-export async function getStickerPacks(options: ListOptions = {}): Promise<StickerPack[]> {
+export async function getStickerPacks(
+  options: StickerPackListOptions = {},
+): Promise<StickerPack[]> {
   const data = await apiRequest<RawStickerPack[]>(
-    `/api/sticker-packs${buildListQuery(options)}`,
+    `/api/sticker-packs${buildStickerPackListQuery(options)}`,
     { ...(options.signal ? { signal: options.signal } : {}) },
     [],
   );
@@ -693,6 +780,17 @@ export async function getStickerPacks(options: ListOptions = {}): Promise<Sticke
   return Array.isArray(data)
     ? data.map(mapStickerPack).filter((item): item is StickerPack => Boolean(item))
     : [];
+}
+
+export async function createStickerPack(payload: CreateStickerPackPayload): Promise<StickerPack> {
+  const data = await apiRequest<RawStickerPack>(
+    "/api/sticker-packs",
+    { method: "POST", body: { title: payload.title.trim() } },
+    {},
+  );
+  const pack = mapStickerPack(data);
+  if (!pack) throw new Error("Не удалось создать стикерпак.");
+  return pack;
 }
 
 export async function getStickersByPack(
@@ -708,6 +806,55 @@ export async function getStickersByPack(
   return Array.isArray(data)
     ? data.map(mapSticker).filter((item): item is Sticker => Boolean(item))
     : [];
+}
+
+export async function addStickerToPack(
+  packId: string | number,
+  payload: AddStickerToPackPayload,
+): Promise<Sticker> {
+  const body = {
+    mediaID: payload.mediaID,
+    ...(typeof payload.sortOrder === "number" ? { sortOrder: payload.sortOrder } : {}),
+  };
+  const data = await apiRequest<RawSticker>(
+    `/api/sticker-packs/${encodeURIComponent(String(packId))}/stickers`,
+    { method: "POST", body },
+    {},
+  );
+  const sticker = mapSticker(data);
+  if (!sticker) throw new Error("Не удалось добавить стикер.");
+  return sticker;
+}
+
+export async function uploadStickerImage(file: File): Promise<UploadedMedia> {
+  const formData = new FormData();
+  formData.append("files", file);
+
+  const data = await apiRequest<UploadMediaResponse>(
+    "/api/media/upload?for=sticker",
+    { method: "POST", body: formData },
+    {},
+  );
+  const uploadedMedia = Array.isArray(data.media) ? data.media : [];
+  const uploaded = uploadedMedia.map(mapUploadedMedia).find(Boolean);
+  if (!uploaded) throw new Error("Не удалось загрузить изображение стикера.");
+  return uploaded;
+}
+
+export async function uploadMessageAttachments(files: File[]): Promise<UploadedMedia[]> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+
+  const data = await apiRequest<UploadMediaResponse>(
+    "/api/media/upload?for=message",
+    { method: "POST", body: formData },
+    {},
+  );
+  const uploadedMedia = Array.isArray(data.media) ? data.media : [];
+
+  return uploadedMedia
+    .map((item) => mapUploadedMedia(item))
+    .filter((item): item is UploadedMedia => Boolean(item));
 }
 
 export async function setMessageReaction(

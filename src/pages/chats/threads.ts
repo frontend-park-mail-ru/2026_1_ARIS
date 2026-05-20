@@ -15,7 +15,13 @@ import { t } from "../../state/i18n";
 import type { ChatViewMessage, ChatViewThread } from "./types";
 
 function getMessagePreviewText(message: ChatViewMessage): string {
-  return message.text || (message.voice ? t("chats.voiceMessage") : "");
+  return (
+    message.text ||
+    (message.voice ? t("chats.voiceMessage") : "") ||
+    (message.stickerId ? t("chats.sticker") : "") ||
+    ((message.media?.length ?? 0) > 0 ? t("chats.media") : "") ||
+    ((message.files?.length ?? 0) > 0 ? t("chats.file") : "")
+  );
 }
 
 /** Обновляет поля preview, timeLabel и updatedAt по последнему сообщению. */
@@ -76,9 +82,8 @@ function getThreadCounterpartyName(thread: ChatViewThread): string {
 }
 
 /** Возвращает true, если тред должен быть виден в левой колонке списка. */
-export function shouldShowThreadInSidebar(thread: ChatViewThread): boolean {
-  if (!hasThreadActivity(thread)) return false;
-  return looksLikeDirectPersonName(getThreadCounterpartyName(thread));
+export function shouldShowThreadInSidebar(_thread: ChatViewThread): boolean {
+  return true;
 }
 
 /** Обновляет выбранный чат после загрузки/слияния списка тредов. */
@@ -88,8 +93,6 @@ export function applyThreadVisibilityRules(preferredChatId = ""): void {
   chatsState.selectedChatId =
     chatsState.threads.find((t) => t.id === preferredChatId)?.id ??
     chatsState.threads.find((t) => t.id === previousSelectedChatId)?.id ??
-    chatsState.threads.find((t) => shouldShowThreadInSidebar(t))?.id ??
-    chatsState.threads[0]?.id ??
     "";
 }
 
@@ -172,9 +175,7 @@ export function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
 
   sortThreadsByUpdatedAt();
   chatsState.selectedChatId =
-    chatsState.threads.find((t) => t.id === previousSelectedChatId)?.id ??
-    chatsState.threads[0]?.id ??
-    "";
+    chatsState.threads.find((t) => t.id === previousSelectedChatId)?.id ?? "";
 
   return previousSignature !== getThreadsRenderSignature(chatsState.threads);
 }
@@ -197,9 +198,8 @@ function getThreadsRenderSignature(threads: ChatViewThread[]): string {
 /** Возвращает треды, отфильтрованные по текущему поисковому запросу. */
 export function getFilteredThreads(): ChatViewThread[] {
   const query = chatsState.query.trim().toLowerCase();
-  const visibleThreads = chatsState.threads.filter((thread) => shouldShowThreadInSidebar(thread));
-  if (!query) return visibleThreads;
-  return visibleThreads.filter((thread) => {
+  if (!query) return [...chatsState.threads];
+  return chatsState.threads.filter((thread) => {
     const lastMessage = thread.messages?.[thread.messages.length - 1];
     const preview = lastMessage ? getMessagePreviewText(lastMessage) : thread.preview;
     return [thread.title, preview].join(" ").toLowerCase().includes(query);
@@ -208,7 +208,11 @@ export function getFilteredThreads(): ChatViewThread[] {
 
 /** Возвращает текущий выбранный тред из списка отфильтрованных тредов. */
 export function getSelectedThread(filteredThreads: ChatViewThread[]): ChatViewThread | undefined {
-  return chatsState.threads.find((t) => t.id === chatsState.selectedChatId) ?? filteredThreads[0];
+  if (!filteredThreads.some((thread) => thread.id === chatsState.selectedChatId)) {
+    return undefined;
+  }
+
+  return chatsState.threads.find((t) => t.id === chatsState.selectedChatId);
 }
 
 /** Возвращает состояние превью (text, isOwn, timeLabel), вычисленное по последнему сообщению или резервным данным. */

@@ -32,7 +32,7 @@ export function renderFeedSkeleton(): string {
   const cards = Array.from({ length: 4 }, renderSkeletonCard).join("");
 
   return `
-    <div class="app-page">
+    <div class="app-page app-page--feed-loading" data-feed-skeleton>
       ${renderHeaderSkeleton()}
       <main class="app-layout">
         <aside class="app-layout__left">

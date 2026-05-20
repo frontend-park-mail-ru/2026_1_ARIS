@@ -43,7 +43,7 @@ describe("feed api", () => {
       liked: "yes",
       comments: 3,
       reposts: 1,
-      medias: [{ mediaLink: "/media/post.png" }, {}],
+      medias: [{ mediaLink: "/media/post.png", mimeType: "image/png" }, {}],
       files: [{ mediaLink: "/media/doc.pdf" }],
     });
 
@@ -62,6 +62,7 @@ describe("feed api", () => {
       comments: 3,
       reposts: 1,
       images: ["/media/post.png"],
+      media: [{ url: "/media/post.png", mimeType: "image/png" }],
       files: ["/media/doc.pdf"],
     });
     expect(localStorage.getItem("arisfront:post-like-state")).toContain('"42":true');

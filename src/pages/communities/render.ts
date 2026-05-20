@@ -3,9 +3,12 @@
  */
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderAvatarMarkup, resolveAvatarSrc } from "../../utils/avatar";
-import { resolveMediaUrl } from "../../utils/media";
+import { getMediaFileName, isVideoMedia, resolveMediaUrl } from "../../utils/media";
+import { formatPersonName } from "../../utils/display-name";
+import { getSessionUser } from "../../state/session";
 import { t } from "../../state/i18n";
 import type { CommunityBundle } from "../../api/communities";
+import type { PostMedia } from "../../api/posts";
 import type { ProfilePost } from "../profile/types";
 import { communitiesState, getVisibleCommunities, getVisibleCommunityMembers } from "./state";
 import { getCommunityMediaAvatarInitials, syncCommunityMediaEditorsUi } from "./media-editor";
@@ -386,10 +389,14 @@ function renderCommunityMembersCardSkeleton(): string {
   `;
 }
 
-function renderPostImages(images: string[]): string {
-  if (!images.length) return "";
+function renderPostMedia(post: ProfilePost): string {
+  const media: PostMedia[] = post.media.length
+    ? post.media
+    : post.images.map((image, index) => ({ mediaID: index + 1, mediaURL: image }));
 
-  const count = Math.min(images.length, 5);
+  if (!media.length) return "";
+
+  const count = Math.min(media.length, 5);
   const modifiers: Record<number, string> = {
     1: "profile-post__images--single",
     2: "profile-post__images--double",
@@ -400,23 +407,102 @@ function renderPostImages(images: string[]): string {
 
   return `
     <div class="profile-post__images ${modifiers[count] ?? ""}">
-      ${images
+      ${media
         .slice(0, 5)
+        .map((item, index) =>
+          isVideoMedia(item.mediaURL, item.mimeType)
+            ? `
+                <video
+                  class="profile-post__image profile-post__video${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
+                  src="${escapeHtml(resolveMediaUrl(item.mediaURL))}"
+                  controls
+                  preload="metadata"
+                ></video>
+              `
+            : `
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
+                  src="${escapeHtml(resolveMediaUrl(item.mediaURL))}"
+                  alt="${t("profile.imageAlt")}"
+                  role="button"
+                  tabindex="0"
+                  data-post-image-open
+                >
+              `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderPostFiles(files: ProfilePost["files"]): string {
+  if (!files.length) return "";
+
+  return `
+    <div class="profile-post__files">
+      ${files
         .map(
-          (image, index) => `
-            <img
-              loading="lazy"
-              decoding="async"
-              class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
-              src="${escapeHtml(image)}"
-              alt="${t("profile.imageAlt")}"
-              role="button"
-              tabindex="0"
-              data-post-image-open
-            >
+          (file) => `
+            <a class="profile-post__file" href="${escapeHtml(resolveMediaUrl(file.mediaURL))}" target="_blank" rel="noopener noreferrer">
+              <img class="profile-post__file-icon" src="/assets/img/icons/file.svg" alt="" aria-hidden="true">
+              <span class="profile-post__file-name">${escapeHtml(file.name || getMediaFileName(file.mediaURL, t("chats.file")))}</span>
+            </a>
           `,
         )
         .join("")}
+    </div>
+  `;
+}
+
+function canCommentCommunityPost(bundle: CommunityBundle): boolean {
+  return (
+    bundle.membership.isMember && !bundle.membership.blocked && bundle.membership.role !== "blocked"
+  );
+}
+
+function renderCommunityPostComments(postId: string, bundle: CommunityBundle): string {
+  const sessionUser = getSessionUser();
+  const canComment = canCommentCommunityPost(bundle) && Boolean(sessionUser);
+  const userName = sessionUser
+    ? formatPersonName(sessionUser.firstName, sessionUser.lastName) || t("widgetbar.userFallback")
+    : "";
+
+  return `
+    <div class="profile-post__comments" data-community-post-comments="${escapeHtml(postId)}" hidden>
+      <div class="profile-post__comment-list" data-community-post-comment-list="${escapeHtml(postId)}"></div>
+      ${
+        canComment && sessionUser
+          ? `
+            <div class="profile-comment-compose">
+              ${renderAvatarMarkup(
+                "profile-comment-compose__avatar",
+                userName,
+                sessionUser.avatarLink,
+                {
+                  width: 32,
+                  height: 32,
+                },
+              )}
+              <form class="profile-post__comment-form" data-community-post-comment-form="${escapeHtml(postId)}" novalidate>
+                <input
+                  type="text"
+                  class="profile-post__comment-input"
+                  placeholder="${t("profile.commentPlaceholder")}"
+                  data-community-post-comment-input="${escapeHtml(postId)}"
+                  maxlength="2000"
+                  autocomplete="off"
+                >
+                <button type="submit" class="profile-post__comment-send">
+                  ${t("profile.commentSubmit")}
+                </button>
+              </form>
+            </div>
+            <p class="profile-post__comment-error" data-community-post-comment-error="${escapeHtml(postId)}" hidden></p>
+          `
+          : ""
+      }
     </div>
   `;
 }
@@ -494,7 +580,8 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
       </header>
 
       ${post.text ? `<p class="profile-post__text">${escapeHtml(post.text)}</p>` : ""}
-      ${renderPostImages(post.images)}
+      ${renderPostMedia(post)}
+      ${renderPostFiles(post.files)}
 
       <footer class="profile-post__footer">
         <div class="profile-post__stats">
@@ -516,10 +603,15 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
             <img src="/assets/img/icons/repost.svg" class="profile-post__icon" alt="" />
             ${post.reposts}
           </span>
-          <span class="profile-post__stat">
+          <button
+            type="button"
+            class="profile-post__stat profile-post__stat-button"
+            data-community-post-toggle-comments="${escapeHtml(post.id)}"
+            aria-expanded="false"
+          >
             <img src="/assets/img/icons/chat.svg" class="profile-post__icon" alt="" />
-            ${post.comments}
-          </span>
+            <span data-community-post-comment-count="${escapeHtml(post.id)}">${post.comments}</span>
+          </button>
         </div>
         <time
           class="profile-post__time"
@@ -527,6 +619,8 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
           ${post.timeRaw ? `data-tooltip="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}
         >${escapeHtml(formatPostRelativeTime(post.timeRaw) || post.time)}</time>
       </footer>
+
+      ${renderCommunityPostComments(post.id, bundle)}
     </article>
   `;
 }
@@ -595,6 +689,7 @@ function renderCommunityPosts(bundle: CommunityBundle, posts: ProfilePost[]): st
         reposts: 0,
         comments: 0,
         media: [],
+        files: [],
         images: [],
       });
     }
@@ -1229,10 +1324,18 @@ export function renderCommunityPostModal(): string {
             id="community-post-images"
             name="communityPostImages"
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/jpg"
+            accept="image/*,video/*"
             multiple
             hidden
             data-community-post-image-input
+          >
+          <input
+            id="community-post-files"
+            name="communityPostFiles"
+            type="file"
+            multiple
+            hidden
+            data-community-post-file-input
           >
 
           <div class="profile-post-modal__toolbar">
@@ -1242,7 +1345,15 @@ export function renderCommunityPostModal(): string {
               data-community-post-pick-image
               ${composer.isSaving || composer.mediaItems.length >= 5 ? "disabled" : ""}
             >
-              ${composer.mediaItems.length >= 5 ? t("communities.imagesLimit") : t("communities.addImages")}
+              ${composer.mediaItems.length >= 5 ? t("profile.mediaLimit") : t("profile.addMedia")}
+            </button>
+            <button
+              type="button"
+              class="profile-post-modal__button profile-post-modal__button--secondary"
+              data-community-post-pick-file
+              ${composer.isSaving || composer.fileItems.length >= 10 ? "disabled" : ""}
+            >
+              ${composer.fileItems.length >= 10 ? t("profile.filesLimit") : t("profile.addFiles")}
             </button>
           </div>
 
@@ -1251,8 +1362,26 @@ export function renderCommunityPostModal(): string {
               .map(
                 (item, index) => `
                   <div class="profile-post-modal__preview">
-                    <img src="${escapeHtml(item.mediaURL)}" alt="${t("communities.imageAlt")} ${index + 1}">
+                    ${
+                      isVideoMedia(item.mediaURL, item.mimeType)
+                        ? `<video src="${escapeHtml(item.mediaURL)}" muted playsinline preload="metadata"></video>`
+                        : `<img src="${escapeHtml(item.mediaURL)}" alt="${t("communities.imageAlt")} ${index + 1}">`
+                    }
                     <button type="button" class="profile-post-modal__preview-remove" data-community-post-remove-image="${index}" aria-label="${t("communities.removeImage")}">×</button>
+                  </div>
+                `,
+              )
+              .join("")}
+          </div>
+
+          <div class="profile-post-modal__files" ${composer.fileItems.length ? "" : "hidden"}>
+            ${composer.fileItems
+              .map(
+                (item, index) => `
+                  <div class="profile-post-modal__file-preview">
+                    <img class="profile-post-modal__file-icon" src="/assets/img/icons/file.svg" alt="" aria-hidden="true">
+                    <span class="profile-post-modal__file-name">${escapeHtml(item.fileName || getMediaFileName(item.mediaURL, t("chats.file")))}</span>
+                    <button type="button" class="profile-post-modal__file-remove" data-community-post-remove-file="${index}" aria-label="${t("profile.fileRemove")}">×</button>
                   </div>
                 `,
               )
@@ -1677,6 +1806,7 @@ export function refreshCommunitiesPage(root: ParentNode = document): void {
   const next = template.content.firstElementChild;
   if (!(next instanceof HTMLElement)) return;
   container.replaceWith(next);
+  window.dispatchEvent(new CustomEvent("communities:refreshed"));
   if (isDetail) {
     refreshCommunityRightRail(root);
   }

@@ -56,3 +56,28 @@ export function resolveMediaUrl(rawValue?: string | null): string {
 
   return API_BASE_URL ? `${API_BASE_URL}/${value.replace(/^\.?\//, "")}` : value;
 }
+
+export function getMediaFileName(rawValue?: string | null, fallback = "Файл"): string {
+  const value = String(rawValue ?? "").trim();
+  if (!value) return fallback;
+
+  try {
+    const parsed = new URL(value, window.location.origin);
+    const tail = parsed.pathname.split("/").filter(Boolean).pop() ?? "";
+    return decodeURIComponent(tail) || fallback;
+  } catch {
+    const tail = value.split(/[/?#]/).filter(Boolean).pop() ?? "";
+    return tail || fallback;
+  }
+}
+
+export function isVideoMedia(rawValue?: string | null, mimeType?: string | null): boolean {
+  if (mimeType?.toLowerCase().startsWith("video/")) return true;
+  return /\.(mp4|webm|ogg|mov|m4v)(?:[?#].*)?$/i.test(String(rawValue ?? ""));
+}
+
+export function isImageMedia(rawValue?: string | null, mimeType?: string | null): boolean {
+  if (mimeType?.toLowerCase().startsWith("image/")) return true;
+  if (mimeType?.toLowerCase().startsWith("video/")) return false;
+  return /\.(png|jpe?g|gif|webp|avif|bmp|svg)(?:[?#].*)?$/i.test(String(rawValue ?? ""));
+}

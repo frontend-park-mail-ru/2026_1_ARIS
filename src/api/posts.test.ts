@@ -8,6 +8,7 @@ import {
   createPost,
   deletePostComment,
   deletePost,
+  getPostCommentRepliesBatch,
   getPostCommentReplies,
   getPostComments,
   getMyPosts,
@@ -249,6 +250,18 @@ describe("posts api", () => {
       ])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce({
+        "100": [
+          {
+            id: "102",
+            text: "Batch answer",
+            postId: "1",
+            parentCommentId: "100",
+            author: { profileID: 8 },
+          },
+        ],
+        "101": [],
+      })
+      .mockResolvedValueOnce({
         id: "101",
         text: "Ответ",
         postId: "1",
@@ -276,6 +289,22 @@ describe("posts api", () => {
       },
     ]);
     await expect(getPostCommentReplies(1, 100)).resolves.toEqual([]);
+    await expect(getPostCommentRepliesBatch(1, [100, 101, 100], { limit: 20 })).resolves.toEqual({
+      "100": [
+        {
+          id: "102",
+          uid: "",
+          text: "Batch answer",
+          postId: "1",
+          parentCommentId: "100",
+          author: { profileID: 8 },
+          createdAt: "",
+          updatedAt: "",
+          repliesCount: 0,
+        },
+      ],
+      "101": [],
+    });
     await expect(
       createPostComment(1, { text: "Ответ", parentCommentId: 100 }),
     ).resolves.toMatchObject({
@@ -291,18 +320,24 @@ describe("posts api", () => {
     expect(apiRequest).toHaveBeenNthCalledWith(2, "/api/post/1/comments/100/replies", {}, []);
     expect(apiRequest).toHaveBeenNthCalledWith(
       3,
+      "/api/post/1/comments/replies?parentIds=100%2C101&limit=20",
+      {},
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      4,
       "/api/post/1/comments",
       { method: "POST", body: { text: "Ответ", parentCommentId: 100 } },
       {},
     );
     expect(apiRequest).toHaveBeenNthCalledWith(
-      4,
+      5,
       "/api/post/1/comments/101",
       { method: "PATCH", body: { text: "Обновлено" } },
       {},
     );
     expect(apiRequest).toHaveBeenNthCalledWith(
-      5,
+      6,
       "/api/post/1/comments/101",
       { method: "DELETE" },
       null,

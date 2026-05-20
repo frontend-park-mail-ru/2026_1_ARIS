@@ -27,6 +27,7 @@ function createProfilePost(overrides: Partial<ProfilePost> = {}): ProfilePost {
     reposts: 0,
     comments: 0,
     media: [],
+    files: [],
     images: [],
     ...overrides,
   };

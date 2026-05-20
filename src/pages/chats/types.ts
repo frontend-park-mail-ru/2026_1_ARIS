@@ -1,4 +1,9 @@
-import type { ChatMessageSocketSubscription } from "../../api/chat";
+import type {
+  ChatMessageSocketSubscription,
+  MessageAttachment,
+  Sticker,
+  StickerPack,
+} from "../../api/chat";
 
 /**
  * Типы страницы чатов.
@@ -19,6 +24,14 @@ export type ChatViewMessage = {
   id: string;
   /** Текст сообщения без форматирования. */
   text: string;
+  /** Идентификатор стикера, если сообщение состоит только из стикера. */
+  stickerId?: string | undefined;
+  /** Данные стикера для отображения. */
+  stickerData?: Sticker | undefined;
+  /** Фото и видео вложения сообщения. */
+  media?: MessageAttachment[] | undefined;
+  /** Остальные файловые вложения сообщения. */
+  files?: MessageAttachment[] | undefined;
   /** Имя автора, которое показывается в пузыре сообщения. */
   authorName: string;
   /** Флаг собственного сообщения, влияющий на выравнивание и стили. */
@@ -31,6 +44,28 @@ export type ChatViewMessage = {
   avatarLink?: string | undefined;
   /** Путь к профилю автора для перехода по имени. */
   profilePath?: string | undefined;
+};
+
+export type ChatComposerAttachment = {
+  id: string;
+  file: File;
+  name: string;
+  mimeType: string;
+  url: string;
+  kind: "media" | "file";
+};
+
+export type StickerPickerState = {
+  open: boolean;
+  loading: boolean;
+  stickersLoading: boolean;
+  saving: boolean;
+  errorMessage: string;
+  search: string;
+  packs: StickerPack[];
+  activePackId: string;
+  stickersByPackId: Map<string, Sticker[]>;
+  newPackTitle: string;
 };
 
 /**
@@ -134,6 +169,12 @@ export type ChatsState = {
   mobileView: "list" | "dialog";
   /** Черновики текста сообщений по chatId. */
   composeDraftByChatId: Map<string, string>;
+  /** Выбранные вложения по chatId до отправки сообщения. */
+  composeAttachmentsByChatId: Map<string, ChatComposerAttachment[]>;
+  /** Открыта ли панель эмодзи. */
+  emojiPickerOpen: boolean;
+  /** Состояние панели стикеров. */
+  stickerPicker: StickerPickerState;
   /** Полный список тредов, известных странице. */
   threads: ChatViewThread[];
   /** Идентификатор выбранного диалога. */
@@ -156,6 +197,8 @@ export type ChatsState = {
       localId: string;
       /** Текст сообщения. */
       text: string;
+      /** ID стикера для повторной отправки отдельного стикер-сообщения. */
+      stickerId?: number | undefined;
       /** Время создания локального сообщения в формате ISO. */
       createdAt?: string | undefined;
     }>

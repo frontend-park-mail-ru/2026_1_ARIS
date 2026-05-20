@@ -61,7 +61,12 @@ export function dedupeMessagesById(messages: ChatViewMessage[]): ChatViewMessage
 
 /** Возвращает стабильный отпечаток списка сообщений для определения изменений. */
 export function getMessagesFingerprint(messages: ChatViewMessage[] | undefined): string {
-  return (messages ?? []).map((m) => `${m.id}:${m.createdAt ?? ""}:${m.text}`).join("|");
+  return (messages ?? [])
+    .map(
+      (m) =>
+        `${m.id}:${m.createdAt ?? ""}:${m.text}:${m.stickerId ?? ""}:${m.media?.length ?? 0}:${m.files?.length ?? 0}`,
+    )
+    .join("|");
 }
 
 /** Возвращает ключ дедупликации для входящего сообщения, используемый при отслеживании непрочитанных. */
@@ -92,7 +97,12 @@ export function mergeRetriableMessages(
 
 export function addPendingOutgoing(chatId: string, message: ChatViewMessage): void {
   const pending = chatsState.pendingOutgoingByChatId.get(chatId) ?? [];
-  pending.push({ localId: message.id, text: message.text, createdAt: message.createdAt });
+  pending.push({
+    localId: message.id,
+    text: message.text,
+    stickerId: message.stickerId ? Number(message.stickerId) : undefined,
+    createdAt: message.createdAt,
+  });
   chatsState.pendingOutgoingByChatId.set(chatId, pending);
 }
 
@@ -110,7 +120,12 @@ export function removePendingOutgoing(chatId: string, localId: string): void {
 export function queueOutgoingForRetry(chatId: string, message: ChatViewMessage): void {
   const pending = chatsState.pendingOutgoingByChatId.get(chatId) ?? [];
   const next = pending.filter((item) => item.localId !== message.id);
-  next.push({ localId: message.id, text: message.text, createdAt: message.createdAt });
+  next.push({
+    localId: message.id,
+    text: message.text,
+    stickerId: message.stickerId ? Number(message.stickerId) : undefined,
+    createdAt: message.createdAt,
+  });
   chatsState.pendingOutgoingByChatId.set(chatId, next);
 }
 
@@ -200,6 +215,10 @@ export function mapMessageToViewMessage(
   return {
     id: message.id,
     text: message.text,
+    stickerId: message.stickerId,
+    stickerData: message.stickerData,
+    media: message.media,
+    files: message.files,
     authorName:
       message.authorName ??
       (own
@@ -232,6 +251,9 @@ export function reconcilePendingOutgoing(
 
   const matchedPending = pending.find((item) => {
     if (item.text !== incomingMessage.text) return false;
+    if ((item.stickerId ? String(item.stickerId) : "") !== (incomingMessage.stickerId ?? "")) {
+      return false;
+    }
     const pendingCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : 0;
     if (!incomingCreatedAt || !pendingCreatedAt) return true;
     return Math.abs(incomingCreatedAt - pendingCreatedAt) <= 15000;
@@ -249,6 +271,10 @@ export function reconcilePendingOutgoing(
               createdAt: incomingMessage.createdAt,
               authorName: incomingMessage.authorName,
               avatarLink: incomingMessage.avatarLink,
+              stickerId: incomingMessage.stickerId,
+              stickerData: incomingMessage.stickerData,
+              media: incomingMessage.media,
+              files: incomingMessage.files,
               isOwn: true,
               profilePath: getCurrentUserProfilePath(),
             }
@@ -399,7 +425,10 @@ export async function retryChatMessage(chatId: string, localMessageId: string): 
   refreshChatsPage(chatsRoot);
 
   try {
-    const sentMessage = await sendChatMessage(chatId, { text: message.text });
+    const sentMessage = await sendChatMessage(
+      chatId,
+      message.stickerId ? { stickerId: Number(message.stickerId) } : { text: message.text },
+    );
     thread.messages = dedupeMessagesById(
       (thread.messages ?? []).map((m) =>
         m.id === localMessageId
@@ -407,6 +436,10 @@ export async function retryChatMessage(chatId: string, localMessageId: string): 
               ...m,
               id: sentMessage.id,
               deliveryState: undefined,
+              stickerId: sentMessage.stickerId,
+              stickerData: sentMessage.stickerData,
+              media: sentMessage.media,
+              files: sentMessage.files,
               profilePath: getCurrentUserProfilePath(),
             }
           : m,

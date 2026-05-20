@@ -286,6 +286,8 @@ describe("posts api", () => {
         createdAt: "2026-05-04T10:00:00.000Z",
         updatedAt: "2026-05-04T10:00:00.000Z",
         repliesCount: 2,
+        likes: 0,
+        isLiked: false,
       },
     ]);
     await expect(getPostCommentReplies(1, 100)).resolves.toEqual([]);
@@ -301,6 +303,8 @@ describe("posts api", () => {
           createdAt: "",
           updatedAt: "",
           repliesCount: 0,
+          likes: 0,
+          isLiked: false,
         },
       ],
       "101": [],

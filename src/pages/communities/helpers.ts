@@ -230,6 +230,15 @@ export function mapPostToCommunityPost(
           item.mediaURL.trim().length > 0,
       )
     : [];
+  const files = Array.isArray(post.files)
+    ? post.files.filter(
+        (item): item is PostMedia =>
+          Boolean(item) &&
+          typeof item.mediaID === "number" &&
+          typeof item.mediaURL === "string" &&
+          item.mediaURL.trim().length > 0,
+      )
+    : [];
   const images = Array.isArray(post.mediaURL)
     ? post.mediaURL.filter(Boolean)
     : media.map((item) => item.mediaURL);
@@ -260,8 +269,9 @@ export function mapPostToCommunityPost(
     likes: post.likes ?? 0,
     isLiked: post.isLiked ?? false,
     reposts: 0,
-    comments: 0,
+    comments: post.comments ?? 0,
     media,
+    files,
     images,
   };
 }

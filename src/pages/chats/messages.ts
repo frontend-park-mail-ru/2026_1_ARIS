@@ -135,7 +135,10 @@ export function dedupeMessagesById(messages: ChatViewMessage[]): ChatViewMessage
 /** Возвращает стабильный отпечаток списка сообщений для определения изменений. */
 export function getMessagesFingerprint(messages: ChatViewMessage[] | undefined): string {
   return (messages ?? [])
-    .map((m) => `${m.id}:${m.createdAt ?? ""}:${m.text}:${m.voice?.url ?? ""}`)
+    .map(
+      (m) =>
+        `${m.id}:${m.createdAt ?? ""}:${m.text}:${m.voice?.url ?? ""}:${m.stickerId ?? ""}:${m.media?.length ?? 0}:${m.files?.length ?? 0}`,
+    )
     .join("|");
 }
 
@@ -171,6 +174,7 @@ export function addPendingOutgoing(chatId: string, message: ChatViewMessage): vo
     localId: message.id,
     text: message.text,
     voice: message.voice,
+    stickerId: message.stickerId ? Number(message.stickerId) : undefined,
     createdAt: message.createdAt,
   });
   chatsState.pendingOutgoingByChatId.set(chatId, pending);
@@ -194,6 +198,7 @@ export function queueOutgoingForRetry(chatId: string, message: ChatViewMessage):
     localId: message.id,
     text: message.text,
     voice: message.voice,
+    stickerId: message.stickerId ? Number(message.stickerId) : undefined,
     createdAt: message.createdAt,
   });
   chatsState.pendingOutgoingByChatId.set(chatId, next);
@@ -285,6 +290,10 @@ export function mapMessageToViewMessage(
   return {
     id: message.id,
     text: message.text,
+    stickerId: message.stickerId,
+    stickerData: message.stickerData,
+    media: message.media,
+    files: message.files,
     authorName:
       message.authorName ??
       (own
@@ -319,6 +328,9 @@ export function reconcilePendingOutgoing(
   const matchedPending = pending.find((item) => {
     if (item.text !== incomingMessage.text) return false;
     if (Boolean(item.voice) !== Boolean(incomingMessage.voice)) return false;
+    if ((item.stickerId ? String(item.stickerId) : "") !== (incomingMessage.stickerId ?? "")) {
+      return false;
+    }
     const pendingCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : 0;
     if (!incomingCreatedAt || !pendingCreatedAt) return true;
     return Math.abs(incomingCreatedAt - pendingCreatedAt) <= 15000;
@@ -336,6 +348,10 @@ export function reconcilePendingOutgoing(
               createdAt: incomingMessage.createdAt,
               authorName: incomingMessage.authorName,
               avatarLink: incomingMessage.avatarLink,
+              stickerId: incomingMessage.stickerId,
+              stickerData: incomingMessage.stickerData,
+              media: incomingMessage.media,
+              files: incomingMessage.files,
               isOwn: true,
               profilePath: getCurrentUserProfilePath(),
               voice: incomingMessage.voice
@@ -505,6 +521,10 @@ export async function retryChatMessage(chatId: string, localMessageId: string): 
           ? {
               ...sentViewMessage,
               deliveryState: undefined,
+              stickerId: sentMessage.stickerId,
+              stickerData: sentMessage.stickerData,
+              media: sentMessage.media,
+              files: sentMessage.files,
               profilePath: getCurrentUserProfilePath(),
               voice: sentViewMessage.voice
                 ? {
@@ -541,6 +561,9 @@ export async function retryChatMessage(chatId: string, localMessageId: string): 
 }
 
 async function buildRetryMessagePayload(message: ChatViewMessage): Promise<SendMessagePayload> {
+  if (message.stickerId) {
+    return { stickerId: Number(message.stickerId) };
+  }
   if (!message.voice) {
     return { text: message.text };
   }

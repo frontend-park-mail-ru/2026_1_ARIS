@@ -133,7 +133,9 @@ export function openPostImageViewerFromTarget(target: EventTarget | null): boole
   const image = target.closest<HTMLImageElement>("[data-post-image-open]");
   if (!image) return false;
 
-  const container = image.closest<HTMLElement>(".profile-post__images, .postcard__media");
+  const container = image.closest<HTMLElement>(
+    ".profile-post__images, .postcard__media, .chat-bubble__media",
+  );
   const imageNodes = Array.from(
     container?.querySelectorAll<HTMLImageElement>("[data-post-image-open]") ?? [image],
   );

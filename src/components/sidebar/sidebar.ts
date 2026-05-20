@@ -193,7 +193,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           label: t("nav.feed"),
           icon: "/assets/img/icons/home.svg",
           isActive: isFeedRoute,
-          reloadOnClick: true,
+          reloadOnClick: isFeedRoute,
           attributes: isFeedRoute ? 'data-sidebar-feed-refresh="true"' : "",
         })}
 

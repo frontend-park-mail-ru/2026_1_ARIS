@@ -66,6 +66,7 @@ export type CommunityPostComposerState = {
   errorMessage: string;
   text: string;
   mediaItems: ComposerMediaItem[];
+  fileItems: ComposerMediaItem[];
 };
 
 export type CommunityPendingPostState = {

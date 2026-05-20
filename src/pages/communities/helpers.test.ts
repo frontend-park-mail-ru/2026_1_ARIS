@@ -133,6 +133,7 @@ describe("communities helpers", () => {
       isOwnPost: true,
       likes: 2,
       isLiked: true,
+      files: [],
       images: ["/media/post.png"],
     });
     expect(canEditCommunityPost(mapped, bundle, 7)).toBe(true);

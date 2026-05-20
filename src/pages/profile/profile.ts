@@ -10,7 +10,6 @@
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import {
-  getPostById,
   getMyPosts,
   getPostsByProfileId,
   type PostMedia,
@@ -259,6 +258,15 @@ function mapApiPostToProfilePost(post: PostResponse, profile: DisplayProfile): P
           item.mediaURL.trim().length > 0,
       )
     : [];
+  const files = Array.isArray(post.files)
+    ? post.files.filter(
+        (item): item is PostMedia =>
+          Boolean(item) &&
+          typeof item.mediaID === "number" &&
+          typeof item.mediaURL === "string" &&
+          item.mediaURL.trim().length > 0,
+      )
+    : [];
 
   const images = Array.isArray(post.mediaURL)
     ? post.mediaURL.filter(Boolean)
@@ -278,8 +286,9 @@ function mapApiPostToProfilePost(post: PostResponse, profile: DisplayProfile): P
     likes: post.likes ?? 0,
     isLiked: post.isLiked ?? false,
     reposts: 0,
-    comments: 0,
+    comments: post.comments ?? 0,
     media,
+    files,
     images,
   };
 
@@ -308,34 +317,7 @@ async function resolveProfilePosts(
     const posts = profile.isOwnProfile
       ? await getMyPosts(signal)
       : await getPostsByProfileId(profile.id, signal);
-    const hydratedPosts = await Promise.all(
-      posts.map(async (post) => {
-        if (!post?.id) {
-          return post;
-        }
-
-        try {
-          const details = await getPostById(post.id, signal);
-          const mergedPost: PostResponse = { ...post, ...details };
-
-          if (!mergedPost.createdAt && post.createdAt) {
-            mergedPost.createdAt = post.createdAt;
-          }
-          if (!mergedPost.updatedAt && post.updatedAt) {
-            mergedPost.updatedAt = post.updatedAt;
-          }
-
-          return mergedPost;
-        } catch (error) {
-          if (error instanceof Error && error.name === "AbortError") {
-            throw error;
-          }
-
-          return post;
-        }
-      }),
-    );
-    const mappedPosts = hydratedPosts.map((post) => mapApiPostToProfilePost(post, profile));
+    const mappedPosts = posts.map((post) => mapApiPostToProfilePost(post, profile));
 
     if (profile.isOwnProfile) {
       writeJsonStorage(OWN_PROFILE_POSTS_CACHE_KEY, mappedPosts);

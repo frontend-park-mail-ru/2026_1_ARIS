@@ -170,6 +170,8 @@ export type ProfilePost = {
   comments: number;
   /** Медиавложения поста в нормализованном виде. */
   media: PostMedia[];
+  /** Файловые вложения поста в нормализованном виде. */
+  files: PostMedia[];
   /** Список изображений для карточки поста. */
   images: string[];
 };
@@ -182,6 +184,10 @@ export type ComposerMediaItem = {
   mediaID?: number;
   /** Ссылка на локальное превью или серверный файл. */
   mediaURL: string;
+  /** Имя файла для файлового вложения или подписи. */
+  fileName?: string | undefined;
+  /** MIME-тип исходного файла, если известен. */
+  mimeType?: string | undefined;
   /** Исходный файл до загрузки на сервер. */
   file?: File;
   /** Показывает, был ли файл уже загружен на сервер. */
@@ -208,6 +214,8 @@ export type PostComposerState = {
   text: string;
   /** Список выбранных медиаэлементов. */
   mediaItems: ComposerMediaItem[];
+  /** Список выбранных файловых вложений. */
+  fileItems: ComposerMediaItem[];
 };
 
 export type ProfilePendingPostState = {

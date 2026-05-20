@@ -4,7 +4,20 @@
  * Содержит пользовательские сценарии и реакцию интерфейса на действия пользователя.
  */
 import { createOrResolvePrivateChatId } from "../../api/chat";
-import { createPost, deletePost, likePost, unlikePost, updatePost } from "../../api/posts";
+import {
+  createPost,
+  deletePost,
+  likePost,
+  unlikePost,
+  updatePost,
+  getPostComments,
+  getPostCommentReplies,
+  getPostCommentRepliesBatch,
+  createPostComment,
+  likePostComment,
+  unlikePostComment,
+} from "../../api/posts";
+import type { PostComment } from "../../api/posts";
 import {
   acceptFriendRequest,
   declineFriendRequest,
@@ -36,6 +49,7 @@ import {
   openCreatePostComposer,
   openEditPostComposer,
   removeComposerMediaItem,
+  removeComposerFileItem,
   validateProfilePatch,
   hasProfileFieldErrors,
   setOwnAvatarOverride,
@@ -65,7 +79,9 @@ import {
 } from "./render";
 import {
   uploadPendingComposerImages,
+  uploadPendingComposerFiles,
   handlePostImagesSelected,
+  handlePostFilesSelected,
   validateProfileFormLive,
   toggleProfileEditor,
   rerenderCurrentRoute,
@@ -80,9 +96,67 @@ import {
   initProfilePostListLayout,
   openProfilePostSearch,
 } from "./post-list";
-import { canEditProfilePost } from "./helpers";
+import { canEditProfilePost, escapeHtml } from "./helpers";
 import type { DisplayProfile } from "./types";
 import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
+
+const expandedPosts = new Set<string>();
+// postId → Set of commentIds whose full reply list is loaded
+const expandedReplies = new Map<string, Set<string>>();
+
+export { renderSingleCommentHtml, renderCommentItemHtml } from "../../utils/post-comment-render";
+import { renderSingleCommentHtml, renderCommentItemHtml } from "../../utils/post-comment-render";
+
+async function loadAndRenderPostComments(
+  root: Document | HTMLElement,
+  postId: string,
+): Promise<void> {
+  const listEl = root.querySelector<HTMLElement>(
+    `[data-profile-post-comment-list="${CSS.escape(postId)}"]`,
+  );
+  if (!listEl) return;
+
+  listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
+
+  const comments = await getPostComments(postId, { limit: 50 });
+
+  const parentIds = comments.filter((c) => c.repliesCount > 0).map((c) => c.id);
+  let firstReplies: Record<string, PostComment[]> = {};
+  if (parentIds.length > 0) {
+    firstReplies = await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 });
+  }
+
+  const post = currentProfilePosts.find((p) => p.id === postId);
+  const headerText = t("profile.commentsHeader").replace(
+    "{{n}}",
+    String(post?.comments ?? comments.length),
+  );
+
+  if (!comments.length) {
+    listEl.innerHTML = `<p class="profile-comment-empty">${t("profile.commentsEmpty")}</p>`;
+    return;
+  }
+
+  listEl.innerHTML =
+    `<p class="profile-comment-header-label">${escapeHtml(headerText)}</p>` +
+    comments.map((c) => renderCommentItemHtml(c, firstReplies[c.id]?.[0])).join("");
+
+  const expanded = expandedReplies.get(postId);
+  if (expanded && expanded.size > 0) {
+    for (const commentId of expanded) {
+      const repliesContainer = root.querySelector<HTMLElement>(
+        `[data-comment-replies="${CSS.escape(commentId)}"]`,
+      );
+      if (repliesContainer) {
+        void getPostCommentReplies(postId, commentId, { limit: 50 }).then((replies) => {
+          repliesContainer.innerHTML = replies
+            .map((r) => renderSingleCommentHtml(r, true))
+            .join("");
+        });
+      }
+    }
+  }
+}
 
 function updateOwnProfileCacheAvatar(avatarLink?: string): void {
   const cachedProfile = readJsonStorage<DisplayProfile>(OWN_PROFILE_CACHE_KEY);
@@ -116,6 +190,20 @@ function rerenderProfilePostsSection(root: Document | HTMLElement): void {
   section.replaceWith(next);
   applyProfilePostFilters(root);
   initProfilePostListLayout(root);
+
+  expandedPosts.forEach((postId) => {
+    const commentsEl = root.querySelector<HTMLElement>(
+      `[data-profile-post-comments="${CSS.escape(postId)}"]`,
+    );
+    const toggleBtn = root.querySelector<HTMLButtonElement>(
+      `[data-profile-post-toggle-comments="${CSS.escape(postId)}"]`,
+    );
+    if (commentsEl) {
+      commentsEl.hidden = false;
+      toggleBtn?.setAttribute("aria-expanded", "true");
+      void loadAndRenderPostComments(root, postId);
+    }
+  });
 }
 
 function updateProfilePostLikeState(postId: string, likes: number, isLiked: boolean): void {
@@ -458,6 +546,108 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       if (openPostImageViewerFromTarget(target)) return;
     }
 
+    const toggleCommentsBtn = target.closest("[data-profile-post-toggle-comments]");
+    if (toggleCommentsBtn instanceof HTMLButtonElement) {
+      const postId = toggleCommentsBtn.getAttribute("data-profile-post-toggle-comments") ?? "";
+      if (!postId) return;
+
+      const commentsEl = root.querySelector<HTMLElement>(
+        `[data-profile-post-comments="${CSS.escape(postId)}"]`,
+      );
+      if (!commentsEl) return;
+
+      const isExpanded = !commentsEl.hidden;
+      if (isExpanded) {
+        commentsEl.hidden = true;
+        expandedPosts.delete(postId);
+        expandedReplies.delete(postId);
+        toggleCommentsBtn.setAttribute("aria-expanded", "false");
+      } else {
+        commentsEl.hidden = false;
+        expandedPosts.add(postId);
+        toggleCommentsBtn.setAttribute("aria-expanded", "true");
+        void loadAndRenderPostComments(root, postId);
+      }
+      return;
+    }
+
+    const showRepliesBtn = target.closest("[data-show-replies]");
+    if (showRepliesBtn instanceof HTMLButtonElement) {
+      const commentId = showRepliesBtn.getAttribute("data-show-replies") ?? "";
+      const postId = showRepliesBtn.getAttribute("data-show-replies-post") ?? "";
+      const repliesContainer = root.querySelector<HTMLElement>(
+        `[data-comment-replies="${CSS.escape(commentId)}"]`,
+      );
+      if (!repliesContainer || !postId || !commentId) return;
+
+      showRepliesBtn.disabled = true;
+      void getPostCommentReplies(postId, commentId, { limit: 50 })
+        .then((replies) => {
+          repliesContainer.innerHTML = replies
+            .map((r) => renderSingleCommentHtml(r, true))
+            .join("");
+          if (!expandedReplies.has(postId)) expandedReplies.set(postId, new Set());
+          expandedReplies.get(postId)!.add(commentId);
+        })
+        .catch(() => {
+          showRepliesBtn.disabled = false;
+        });
+      return;
+    }
+
+    const commentLikeBtn = target.closest("[data-comment-like]");
+    if (commentLikeBtn instanceof HTMLButtonElement) {
+      const commentId = commentLikeBtn.getAttribute("data-comment-like") ?? "";
+      const postId = commentLikeBtn.getAttribute("data-comment-like-post") ?? "";
+      if (!commentId || !postId || commentLikeBtn.disabled) return;
+
+      const isLiked = commentLikeBtn.getAttribute("aria-pressed") === "true";
+      commentLikeBtn.disabled = true;
+      void (isLiked ? unlikePostComment(postId, commentId) : likePostComment(postId, commentId))
+        .then((updated) => {
+          const isNowLiked = updated.isLiked;
+          commentLikeBtn.setAttribute("aria-pressed", String(isNowLiked));
+          commentLikeBtn.classList.toggle("profile-comment__like--liked", isNowLiked);
+          const countSpan = commentLikeBtn.querySelector("span:last-child");
+          if (
+            countSpan &&
+            countSpan !== commentLikeBtn.querySelector(".profile-comment__like-icon")
+          ) {
+            countSpan.textContent = updated.likes > 0 ? String(updated.likes) : "";
+          } else if (updated.likes > 0) {
+            const span = document.createElement("span");
+            span.textContent = String(updated.likes);
+            commentLikeBtn.appendChild(span);
+          }
+        })
+        .catch((error: unknown) => {
+          console.error("[profile] comment like failed", error);
+        })
+        .finally(() => {
+          commentLikeBtn.disabled = false;
+        });
+      return;
+    }
+
+    const replyButton = target.closest("[data-comment-reply]");
+    if (replyButton instanceof HTMLButtonElement) {
+      const commentId = replyButton.getAttribute("data-comment-reply") ?? "";
+      const postId = replyButton.getAttribute("data-reply-post") ?? "";
+      const authorName = replyButton.getAttribute("data-reply-author") ?? "";
+      const form = root.querySelector<HTMLFormElement>(
+        `[data-profile-post-comment-form="${CSS.escape(postId)}"]`,
+      );
+      const input = form?.querySelector<HTMLInputElement>(
+        `[data-profile-post-comment-input="${CSS.escape(postId)}"]`,
+      );
+      if (form && input) {
+        form.dataset.profilePostReplyTo = commentId;
+        input.placeholder = t("profile.commentReplyPlaceholder").replace("{{name}}", authorName);
+        input.focus();
+      }
+      return;
+    }
+
     const postSearchOpenButton = target.closest("[data-profile-post-search-open]");
     if (postSearchOpenButton instanceof HTMLButtonElement) {
       openProfilePostSearch(root);
@@ -628,6 +818,20 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       return;
     }
 
+    const pickPostFileButton = target.closest("[data-profile-post-pick-file]");
+    if (pickPostFileButton instanceof HTMLButtonElement) {
+      if (pickPostFileButton.disabled || postComposerState.fileItems.length >= 10) {
+        return;
+      }
+
+      const fileInput = root.querySelector<HTMLInputElement>("[data-profile-post-file-input]");
+      if (fileInput) {
+        fileInput.value = "";
+        fileInput.click();
+      }
+      return;
+    }
+
     const removePostImageButton = target.closest("[data-profile-post-remove-image]");
     if (removePostImageButton instanceof HTMLButtonElement) {
       const index = Number.parseInt(
@@ -639,10 +843,25 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       return;
     }
 
+    const removePostFileButton = target.closest("[data-profile-post-remove-file]");
+    if (removePostFileButton instanceof HTMLButtonElement) {
+      const index = Number.parseInt(
+        removePostFileButton.getAttribute("data-profile-post-remove-file") ?? "-1",
+        10,
+      );
+      removeComposerFileItem(index);
+      syncPostComposerUi(root);
+      return;
+    }
+
     const savePostButton = target.closest("[data-profile-post-save]");
     if (savePostButton instanceof HTMLButtonElement) {
       const trimmedText = postComposerState.text.trim();
-      if (!trimmedText && postComposerState.mediaItems.length === 0) {
+      if (
+        !trimmedText &&
+        postComposerState.mediaItems.length === 0 &&
+        postComposerState.fileItems.length === 0
+      ) {
         postComposerState.errorMessage = t("profile.postContentRequired");
         syncPostComposerUi(root);
         return;
@@ -653,6 +872,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         editingPostId: postComposerState.editingPostId,
         text: postComposerState.text,
         mediaItems: [...postComposerState.mediaItems],
+        fileItems: [...postComposerState.fileItems],
       };
       pendingProfilePostState.mode = postComposerState.mode === "edit" ? "edit" : "create";
       pendingProfilePostState.postId = postComposerState.editingPostId;
@@ -667,17 +887,27 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         postComposerState.mode === "edit" && postComposerState.editingPostId
           ? (async () => {
               await uploadPendingComposerImages();
+              await uploadPendingComposerFiles();
               const knownMediaItems = postComposerState.mediaItems.filter(
                 (item): item is ComposerMediaItem & { mediaID: number } =>
                   item.isUploaded && typeof item.mediaID === "number" && item.mediaID > 0,
               );
+              const knownFileItems = postComposerState.fileItems.filter(
+                (item): item is ComposerMediaItem & { mediaID: number } =>
+                  item.isUploaded && typeof item.mediaID === "number" && item.mediaID > 0,
+              );
               const canSyncMedia = knownMediaItems.length === postComposerState.mediaItems.length;
+              const canSyncFiles = knownFileItems.length === postComposerState.fileItems.length;
 
               if (
-                !canSyncMedia &&
-                postComposerState.mediaItems.some(
-                  (item) => !item.isUploaded || item.mediaID == null,
-                )
+                (!canSyncMedia &&
+                  postComposerState.mediaItems.some(
+                    (item) => !item.isUploaded || item.mediaID == null,
+                  )) ||
+                (!canSyncFiles &&
+                  postComposerState.fileItems.some(
+                    (item) => !item.isUploaded || item.mediaID == null,
+                  ))
               ) {
                 throw new Error(t("profile.postImagesSyncError"));
               }
@@ -691,6 +921,10 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
                         mediaID: item.mediaID,
                         mediaURL: item.mediaURL,
                       })),
+                      files: knownFileItems.map((item) => ({
+                        mediaID: item.mediaID,
+                        mediaURL: item.mediaURL,
+                      })),
                     }
                   : {
                       text: trimmedText,
@@ -699,6 +933,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
             })()
           : (async () => {
               await uploadPendingComposerImages();
+              await uploadPendingComposerFiles();
 
               const createPayload = {
                 media: postComposerState.mediaItems
@@ -710,9 +945,19 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
                     mediaID: item.mediaID,
                     mediaURL: item.mediaURL,
                   })),
+                files: postComposerState.fileItems
+                  .filter(
+                    (item): item is ComposerMediaItem & { mediaID: number } =>
+                      item.isUploaded && typeof item.mediaID === "number",
+                  )
+                  .map((item) => ({
+                    mediaID: item.mediaID,
+                    mediaURL: item.mediaURL,
+                  })),
               } as {
                 text?: string;
                 media: Array<{ mediaID: number; mediaURL: string }>;
+                files: Array<{ mediaID: number; mediaURL: string }>;
               };
 
               if (trimmedText) {
@@ -751,6 +996,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
               reposts: 0,
               comments: 0,
               media: Array.isArray(savedPost.media) ? savedPost.media : [],
+              files: Array.isArray(savedPost.files) ? savedPost.files : [],
               images: Array.isArray(savedPost.mediaURL)
                 ? savedPost.mediaURL.filter(Boolean)
                 : Array.isArray(savedPost.media)
@@ -777,6 +1023,7 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           postComposerState.editingPostId = composerSnapshot.editingPostId;
           postComposerState.text = composerSnapshot.text;
           postComposerState.mediaItems = composerSnapshot.mediaItems;
+          postComposerState.fileItems = composerSnapshot.fileItems;
           postComposerState.errorMessage = isOutboxQueuedError(error)
             ? t("profile.postSaveQueued")
             : isOfflineNetworkError(error)
@@ -1213,6 +1460,65 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       });
   });
 
+  root.addEventListener("submit", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLFormElement)) return;
+
+    const postId = target.getAttribute("data-profile-post-comment-form");
+    if (!postId) return;
+
+    event.preventDefault();
+
+    const input = target.querySelector<HTMLInputElement>(
+      `[data-profile-post-comment-input="${postId}"]`,
+    );
+    const errorEl = root.querySelector<HTMLElement>(
+      `[data-profile-post-comment-error="${CSS.escape(postId)}"]`,
+    );
+    const submitBtn = target.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const text = input?.value.trim() ?? "";
+
+    if (!text || !input) return;
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (errorEl) errorEl.hidden = true;
+
+    const replyToId = target.dataset.profilePostReplyTo?.trim();
+    const commentPayload = replyToId ? { text, parentCommentId: Number(replyToId) } : { text };
+
+    void createPostComment(postId, commentPayload)
+      .then(() => {
+        const nextPosts = currentProfilePosts.map((post) =>
+          post.id === postId ? { ...post, comments: post.comments + 1 } : post,
+        );
+        setCurrentProfilePosts(nextPosts);
+
+        const countEl = root.querySelector<HTMLElement>(
+          `[data-profile-post-comment-count="${CSS.escape(postId)}"]`,
+        );
+        if (countEl) {
+          const updatedPost = nextPosts.find((p) => p.id === postId);
+          if (updatedPost) countEl.textContent = String(updatedPost.comments);
+        }
+
+        input.value = "";
+        delete target.dataset.profilePostReplyTo;
+        input.placeholder = t("profile.commentPlaceholder");
+
+        void loadAndRenderPostComments(root, postId);
+      })
+      .catch((error: unknown) => {
+        console.error("[profile] create comment failed", error);
+        if (errorEl) {
+          errorEl.textContent = t("profile.commentSendError");
+          errorEl.hidden = false;
+        }
+      })
+      .finally(() => {
+        if (submitBtn) submitBtn.disabled = false;
+      });
+  });
+
   document.addEventListener("click", (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -1289,6 +1595,12 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         .finally(() => {
           syncPostComposerUi(root);
         });
+      return;
+    }
+
+    if (target instanceof HTMLInputElement && target.matches("[data-profile-post-file-input]")) {
+      handlePostFilesSelected(target.files);
+      syncPostComposerUi(root);
       return;
     }
 

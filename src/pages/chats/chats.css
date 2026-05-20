@@ -462,6 +462,12 @@
     text-decoration: none;
   }
 
+  .chat-bubble__file-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+  }
+
   .chat-bubble__file-name {
     min-width: 0;
     overflow: hidden;
@@ -723,6 +729,13 @@
     height: 32px;
     border-radius: 6px;
     object-fit: cover;
+  }
+
+  .chat-compose-attachment__file {
+    width: 20px;
+    height: 20px;
+    justify-self: center;
+    object-fit: contain;
   }
 
   .chat-compose-attachment__name {
@@ -1421,6 +1434,18 @@
     .chat-voice__bar {
       --voice-bar-played-color: rgb(173 187 255 / 78%);
       --voice-bar-pending-color: rgb(173 187 255 / 30%);
+    }
+
+    .chat-bubble__file-icon,
+    .chat-compose-attachment__file,
+    .chat-compose__voice img {
+      filter: brightness(0) invert(1);
+      opacity: 0.72;
+    }
+
+    .chat-bubble__file:hover .chat-bubble__file-icon,
+    .chat-compose__voice:hover img {
+      opacity: 0.9;
     }
 
     .chat-stickers,

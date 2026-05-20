@@ -97,7 +97,6 @@ import {
   openProfilePostSearch,
 } from "./post-list";
 import { canEditProfilePost, escapeHtml } from "./helpers";
-import { formatPersonName } from "../../utils/display-name";
 import type { DisplayProfile } from "./types";
 import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 

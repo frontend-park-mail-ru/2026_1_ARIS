@@ -69,8 +69,10 @@ const VOICE_MIME_CANDIDATES = [
   "audio/wav",
 ] as const;
 const VOICE_MAX_DURATION_MS = 10 * 60 * 1000;
+const TRANSIENT_ACTION_ERROR_TIMEOUT_MS = 4000;
 const voiceWaveformRequests = new Set<string>();
 const voicePlaybackAnimationByAudio = new WeakMap<HTMLAudioElement, number>();
+let transientActionErrorTimer: number | undefined;
 
 type VoiceSeekState = {
   audio: HTMLAudioElement;
@@ -82,6 +84,18 @@ type VoiceWaveformInfo = {
   heights: number[];
   durationMs: number;
 };
+
+function showTransientActionError(root: Document | HTMLElement, message: string): void {
+  window.clearTimeout(transientActionErrorTimer);
+  chatsState.actionErrorMessage = message;
+  refreshChatsPage(root);
+
+  transientActionErrorTimer = window.setTimeout(() => {
+    if (chatsState.actionErrorMessage !== message) return;
+    chatsState.actionErrorMessage = "";
+    refreshChatsPage(root);
+  }, TRANSIENT_ACTION_ERROR_TIMEOUT_MS);
+}
 
 function formatVoicePlaybackTime(valueSeconds: number): string {
   if (!Number.isFinite(valueSeconds) || valueSeconds <= 0) {
@@ -537,8 +551,7 @@ async function startVoiceRecording(
     refreshChatsPage(root);
   } catch (error) {
     console.error("[chats] source=media scope=voice-record error", error);
-    chatsState.actionErrorMessage = t("chats.voicePermissionError");
-    refreshChatsPage(root);
+    showTransientActionError(root, t("chats.voicePermissionError"));
   }
 }
 

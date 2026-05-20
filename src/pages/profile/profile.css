@@ -3033,6 +3033,16 @@
       opacity: 0.72;
     }
 
+    .profile-post__file-icon,
+    .profile-post-modal__file-icon {
+      filter: brightness(0) invert(1);
+      opacity: 0.72;
+    }
+
+    .profile-post__file:hover .profile-post__file-icon {
+      opacity: 0.9;
+    }
+
     .profile-post__stat-button--liked {
       color: #ff8d8d;
     }

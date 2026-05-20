@@ -1,6 +1,7 @@
 import express, { NextFunction, Request, Response } from "express";
 import http from "http";
 import https from "https";
+import net from "net";
 import morgan from "morgan";
 import path from "path";
 
@@ -49,14 +50,14 @@ app.get("/health", (_req: Request, res: Response) => {
   });
 });
 
-app.get(/^\/api\/auth\/vkid\//, async (req: Request, res: Response) => {
+function proxyHttpRequest(req: Request, res: Response, errorMessage = "Backend proxy error"): void {
   const targetUrl = new URL(req.originalUrl, backendUrl);
   const transport = targetUrl.protocol === "https:" ? https : http;
 
   const proxyReq = transport.request(
     targetUrl,
     {
-      method: "GET",
+      method: req.method,
       headers: {
         ...req.headers,
         host: targetUrl.host,
@@ -72,13 +73,21 @@ app.get(/^\/api\/auth\/vkid\//, async (req: Request, res: Response) => {
 
   proxyReq.on("error", () => {
     if (!res.headersSent) {
-      res.status(502).send("VK ID proxy error");
+      res.status(502).send(errorMessage);
     } else {
       res.end();
     }
   });
 
-  proxyReq.end();
+  req.pipe(proxyReq);
+}
+
+app.use(/^\/api(\/|$)/, (req: Request, res: Response) => {
+  proxyHttpRequest(req, res);
+});
+
+app.use(/^\/media(\/|$)/, (req: Request, res: Response) => {
+  proxyHttpRequest(req, res);
 });
 
 app.get("/image-proxy", async (req: Request, res: Response) => {
@@ -126,6 +135,41 @@ app.get(/.*/, (req: Request, res: Response, next: NextFunction) => {
 });
 
 const server = app.listen(port, host);
+
+server.on("upgrade", (req, socket, head) => {
+  if (!req.url?.startsWith("/ws/")) {
+    socket.destroy();
+    return;
+  }
+
+  const targetUrl = new URL(req.url, backendUrl);
+  const targetPort = Number(targetUrl.port || (targetUrl.protocol === "https:" ? 443 : 80));
+  const targetSocket = net.connect(targetPort, targetUrl.hostname, () => {
+    const headers = [
+      `${req.method || "GET"} ${targetUrl.pathname}${targetUrl.search} HTTP/${req.httpVersion}`,
+      `Host: ${targetUrl.host}`,
+      `X-Forwarded-Host: ${req.headers.host || ""}`,
+      `X-Forwarded-Proto: ${req.headers["x-forwarded-proto"]?.toString() || "http"}`,
+      ...Object.entries(req.headers)
+        .filter(([key]) => key.toLowerCase() !== "host")
+        .map(([key, value]) =>
+          Array.isArray(value) ? `${key}: ${value.join(", ")}` : `${key}: ${value ?? ""}`,
+        ),
+      "",
+      "",
+    ].join("\r\n");
+
+    targetSocket.write(headers);
+    if (head.length > 0) {
+      targetSocket.write(head);
+    }
+    targetSocket.pipe(socket);
+    socket.pipe(targetSocket);
+  });
+
+  targetSocket.on("error", () => socket.destroy());
+  socket.on("error", () => targetSocket.destroy());
+});
 
 server.on("listening", () => {
   console.log(`Server listening on http://${host}:${port}`);

@@ -6,7 +6,6 @@ import {
   formatChatTime,
   formatChatExactTime,
   formatMessageTime,
-  looksLikeDirectPersonName,
   resolvePersonPath,
 } from "./helpers";
 import { acceptedFriendProfileIds } from "./contacts";
@@ -74,11 +73,6 @@ export function sortThreadsByUpdatedAt(): void {
     if (leftHasActivity !== rightHasActivity) return leftHasActivity ? -1 : 1;
     return getThreadUpdatedAtValue(right) - getThreadUpdatedAtValue(left);
   });
-}
-
-function getThreadCounterpartyName(thread: ChatViewThread): string {
-  const otherMessage = (thread.messages ?? []).find((m) => !m.isOwn && m.authorName.trim());
-  return otherMessage?.authorName?.trim() || thread.title.trim();
 }
 
 /** Возвращает true, если тред должен быть виден в левой колонке списка. */

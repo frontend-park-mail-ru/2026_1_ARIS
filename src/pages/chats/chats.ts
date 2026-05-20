@@ -93,6 +93,7 @@ function rebuildPendingOutgoingFromThreads(): void {
       .map((m) => ({
         localId: m.id,
         text: m.text,
+        voice: m.voice,
         stickerId: m.stickerId ? Number(m.stickerId) : undefined,
         createdAt: m.createdAt,
       }));

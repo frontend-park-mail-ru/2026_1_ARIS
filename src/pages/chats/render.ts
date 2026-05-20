@@ -23,6 +23,12 @@ import { formatDisplayName } from "../../utils/display-name";
 import { VOICE_WAVEFORM_BARS, getCachedVoiceWaveform } from "./voice-waveform";
 import { getMediaFileName, isVideoMedia, resolveMediaUrl } from "../../utils/media";
 import type { StickerPack } from "../../api/chat";
+import type {
+  ChatViewThread,
+  ChatViewMessage,
+  PersistedChatScrollState,
+  ChatViewportAnchor,
+} from "./types";
 
 /** Возвращает количество непрочитанных входящих сообщений в чате. */
 function getUnreadIncomingCount(chatId: string): number {
@@ -33,12 +39,6 @@ function isOwnStickerPack(pack?: StickerPack): boolean {
   const currentUserId = getSessionUser()?.id;
   return Boolean(pack?.authorId && currentUserId && pack.authorId === currentUserId);
 }
-import type {
-  ChatViewThread,
-  ChatViewMessage,
-  PersistedChatScrollState,
-  ChatViewportAnchor,
-} from "./types";
 
 // ---------------------------------------------------------------------------
 // Состояние прокрутки (относится к слою рендера и касается только DOM)

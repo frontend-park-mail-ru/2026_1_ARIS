@@ -22,7 +22,7 @@ import { getSessionUser } from "../../state/session";
 import { formatDisplayName } from "../../utils/display-name";
 import { VOICE_WAVEFORM_BARS, getCachedVoiceWaveform } from "./voice-waveform";
 import { getMediaFileName, isVideoMedia, resolveMediaUrl } from "../../utils/media";
-import type { StickerPack } from "../../api/chat";
+import type { MessageAttachment, StickerPack } from "../../api/chat";
 import type {
   ChatViewThread,
   ChatViewMessage,
@@ -278,14 +278,27 @@ function renderMessageDateDivider(value: string | undefined, dateKey: string): s
   `;
 }
 
+function isAudioAttachment(item: MessageAttachment): boolean {
+  const mimeType = item.mimeType.trim().toLowerCase();
+  if (mimeType.startsWith("audio/")) return true;
+  return /\.(aac|aif|aiff|flac|m4a|mp3|oga|ogg|opus|wav|weba|webm)(?:[?#].*)?$/i.test(item.url);
+}
+
+function isRenderedVoiceAttachment(message: ChatViewMessage, item: MessageAttachment): boolean {
+  const voice = message.voice;
+  if (!voice) return false;
+  if (voice.mediaID && Number(item.id) === voice.mediaID) return true;
+
+  const voiceUrl = resolveMediaUrl(voice.url);
+  const itemUrl = resolveMediaUrl(item.url);
+  if (voiceUrl && itemUrl && voiceUrl === itemUrl) return true;
+
+  return isAudioAttachment(item);
+}
+
 function renderMessageMedia(message: ChatViewMessage): string {
-  const hasVoice = Boolean(message.voice);
-  const media = (message.media ?? []).filter(
-    (item) => !(hasVoice && item.mimeType.startsWith("audio/")),
-  );
-  const files = (message.files ?? []).filter(
-    (item) => !(hasVoice && item.mimeType.startsWith("audio/")),
-  );
+  const media = (message.media ?? []).filter((item) => !isRenderedVoiceAttachment(message, item));
+  const files = (message.files ?? []).filter((item) => !isRenderedVoiceAttachment(message, item));
 
   const mediaMarkup = media
     .map((item) => {

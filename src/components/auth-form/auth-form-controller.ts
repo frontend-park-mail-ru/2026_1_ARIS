@@ -37,6 +37,12 @@ type ServerFieldErrors = Partial<Record<"login" | "password1" | "password2", str
 
 type FieldName = (typeof FIELD_ORDER)[number];
 
+/**
+ * Извлекает ссылку на аватар из разных вариантов backend-payload.
+ *
+ * @param {unknown} payload Ответ API профиля.
+ * @returns {string} Нормализованная ссылка на аватар или пустая строка.
+ */
 function extractAvatarLink(payload: unknown): string {
   if (!payload || typeof payload !== "object") {
     return "";
@@ -72,8 +78,8 @@ const EMPTY_VALIDATION_ERRORS: ValidationErrors = {
 /**
  * Извлекает и нормализует значения формы авторизации.
  *
- * @param {HTMLFormElement} form
- * @returns {Partial<RegisterValues>}
+ * @param {HTMLFormElement} form Форма входа или регистрации.
+ * @returns {Partial<RegisterValues>} Нормализованные значения полей.
  */
 function getFormValues(form: HTMLFormElement): Partial<RegisterValues> {
   const result: Partial<RegisterValues> = {};
@@ -92,8 +98,8 @@ function getFormValues(form: HTMLFormElement): Partial<RegisterValues> {
 /**
  * Возвращает текущий шаг регистрации из dataset формы авторизации.
  *
- * @param {HTMLElement} authForm
- * @returns {RegisterStep}
+ * @param {HTMLElement} authForm Корневой элемент формы авторизации.
+ * @returns {RegisterStep} Номер текущего шага регистрации.
  */
 function getRegisterStep(authForm: HTMLElement): RegisterStep {
   const step = Number(authForm.dataset.registerStep || "1");
@@ -103,8 +109,8 @@ function getRegisterStep(authForm: HTMLElement): RegisterStep {
 /**
  * Возвращает поля регистрации, видимые на указанном шаге.
  *
- * @param {RegisterStep} step
- * @returns {FieldName[]}
+ * @param {RegisterStep} step Шаг регистрации.
+ * @returns {FieldName[]} Список имён полей текущего шага.
  */
 function getRegisterStepFields(step: RegisterStep): readonly FieldName[] {
   return REGISTER_STEP_FIELDS[step];
@@ -113,8 +119,8 @@ function getRegisterStepFields(step: RegisterStep): readonly FieldName[] {
 /**
  * Возвращает объединённые значения регистрации из черновика и текущей формы.
  *
- * @param {HTMLFormElement} form
- * @returns {RegisterValues}
+ * @param {HTMLFormElement} form Текущая DOM-форма регистрации.
+ * @returns {RegisterValues} Полный набор значений регистрации.
  */
 function getRegisterValues(form: HTMLFormElement): RegisterValues {
   return {
@@ -126,7 +132,7 @@ function getRegisterValues(form: HTMLFormElement): RegisterValues {
 /**
  * Сохраняет текущие значения формы в черновик регистрации.
  *
- * @param {HTMLFormElement} form
+ * @param {HTMLFormElement} form Текущая DOM-форма регистрации.
  * @returns {void}
  */
 function syncRegisterDraft(form: HTMLFormElement): void {
@@ -136,8 +142,8 @@ function syncRegisterDraft(form: HTMLFormElement): void {
 /**
  * Возвращает имена затронутых полей, сохранённые в dataset формы.
  *
- * @param {HTMLFormElement} form
- * @returns {string[]}
+ * @param {HTMLFormElement} form Форма входа.
+ * @returns {string[]} Имена полей, с которыми пользователь уже взаимодействовал.
  */
 function getTouchedFields(form: HTMLFormElement): string[] {
   try {
@@ -150,8 +156,8 @@ function getTouchedFields(form: HTMLFormElement): string[] {
 /**
  * Помечает поле входа как затронутое.
  *
- * @param {HTMLFormElement} form
- * @param {string} fieldName
+ * @param {HTMLFormElement} form Форма входа.
+ * @param {string} fieldName Имя поля.
  * @returns {void}
  */
 function setTouchedField(form: HTMLFormElement, fieldName: string): void {
@@ -163,7 +169,7 @@ function setTouchedField(form: HTMLFormElement, fieldName: string): void {
 /**
  * Помечает поле регистрации как затронутое.
  *
- * @param {string} fieldName
+ * @param {string} fieldName Имя поля регистрации.
  * @returns {void}
  */
 function setRegisterTouchedField(fieldName: string): void {
@@ -237,9 +243,9 @@ function rerenderRegisterForm(authForm: HTMLElement): HTMLFormElement | null {
 /**
  * Валидирует поле пола.
  *
- * @param {string} value
- * @param {boolean} [isSubmitAttempted=false]
- * @returns {string}
+ * @param {string} value Значение select-поля.
+ * @param {boolean} [isSubmitAttempted=false] Была ли попытка отправки формы.
+ * @returns {string} Текст ошибки или пустая строка.
  */
 function validateGender(value: string, isSubmitAttempted = false): string {
   if (!value) {
@@ -252,9 +258,9 @@ function validateGender(value: string, isSubmitAttempted = false): string {
 /**
  * Валидирует поле логина.
  *
- * @param {string} value
- * @param {boolean} [isSubmitAttempted=false]
- * @returns {string}
+ * @param {string} value Значение логина.
+ * @param {boolean} [isSubmitAttempted=false] Была ли попытка отправки формы.
+ * @returns {string} Текст ошибки или пустая строка.
  */
 function validateLogin(value: string, isSubmitAttempted = false): string {
   if (!value) {
@@ -283,9 +289,9 @@ function validateLogin(value: string, isSubmitAttempted = false): string {
 /**
  * Валидирует поле пароля.
  *
- * @param {string} value
- * @param {boolean} [isSubmitAttempted=false]
- * @returns {string}
+ * @param {string} value Значение пароля.
+ * @param {boolean} [isSubmitAttempted=false] Была ли попытка отправки формы.
+ * @returns {string} Текст ошибки или пустая строка.
  */
 function validatePassword(value: string, isSubmitAttempted = false): string {
   if (!value) {
@@ -306,10 +312,10 @@ function validatePassword(value: string, isSubmitAttempted = false): string {
 /**
  * Валидирует поле повторного пароля.
  *
- * @param {string} password
- * @param {string} repeatPassword
- * @param {boolean} [isSubmitAttempted=false]
- * @returns {string}
+ * @param {string} password Основной пароль.
+ * @param {string} repeatPassword Повтор пароля.
+ * @param {boolean} [isSubmitAttempted=false] Была ли попытка отправки формы.
+ * @returns {string} Текст ошибки или пустая строка.
  */
 function validateRepeatPassword(
   password: string,
@@ -330,9 +336,9 @@ function validateRepeatPassword(
 /**
  * Валидирует значения формы регистрации.
  *
- * @param {RegisterValues} values
- * @param {boolean} [isSubmitAttempted=false]
- * @returns {ValidationErrors}
+ * @param {RegisterValues} values Значения всех полей регистрации.
+ * @param {boolean} [isSubmitAttempted=false] Была ли попытка отправки формы.
+ * @returns {ValidationErrors} Ошибки, разложенные по именам полей.
  */
 function validateRegisterForm(values: RegisterValues, isSubmitAttempted = false): ValidationErrors {
   const errors: ValidationErrors = {
@@ -362,10 +368,10 @@ function validateRegisterForm(values: RegisterValues, isSubmitAttempted = false)
 /**
  * Возвращает ошибки валидации только для текущего шага регистрации.
  *
- * @param {RegisterValues} values
- * @param {RegisterStep} step
- * @param {boolean} [isSubmitAttempted=false]
- * @returns {ValidationErrors}
+ * @param {RegisterValues} values Значения всех полей регистрации.
+ * @param {RegisterStep} step Текущий шаг регистрации.
+ * @param {boolean} [isSubmitAttempted=false] Была ли попытка отправки формы.
+ * @returns {ValidationErrors} Ошибки только для полей текущего шага.
  */
 function validateRegisterStep(
   values: RegisterValues,
@@ -386,9 +392,9 @@ function validateRegisterStep(
 /**
  * Валидирует значения формы входа.
  *
- * @param {Partial<RegisterValues>} values
- * @param {boolean} [isSubmitAttempted=false]
- * @returns {ValidationErrors}
+ * @param {Partial<RegisterValues>} values Значения формы входа.
+ * @param {boolean} [isSubmitAttempted=false] Была ли попытка отправки формы.
+ * @returns {ValidationErrors} Ошибки логина и пароля.
  */
 function validateLoginForm(
   values: Partial<RegisterValues>,
@@ -404,11 +410,11 @@ function validateLoginForm(
 /**
  * Возвращает ошибки валидации для текущего режима авторизации.
  *
- * @param {"login"|"register"} mode
- * @param {RegisterValues | Partial<RegisterValues>} values
- * @param {boolean} [isSubmitAttempted=false]
- * @param {RegisterStep} [registerStep=1]
- * @returns {ValidationErrors}
+ * @param {"login"|"register"} mode Режим формы.
+ * @param {RegisterValues | Partial<RegisterValues>} values Значения формы.
+ * @param {boolean} [isSubmitAttempted=false] Была ли попытка отправки формы.
+ * @param {RegisterStep} [registerStep=1] Текущий шаг регистрации.
+ * @returns {ValidationErrors} Ошибки, соответствующие текущему режиму.
  */
 function getValidationErrors(
   mode: AuthMode,
@@ -426,9 +432,9 @@ function getValidationErrors(
 /**
  * Возвращает элемент группы поля по имени поля.
  *
- * @param {HTMLFormElement} form
- * @param {string} name
- * @returns {Element|null}
+ * @param {HTMLFormElement} form Форма авторизации.
+ * @param {string} name Имя поля.
+ * @returns {Element|null} Контейнер поля или `null`.
  */
 function getFieldGroup(form: HTMLFormElement, name: string): Element | null {
   const field = form.querySelector(`.input__field[name="${name}"]`);
@@ -443,7 +449,7 @@ function getFieldGroup(form: HTMLFormElement, name: string): Element | null {
 /**
  * Очищает состояние ошибок на уровне полей для всех полей.
  *
- * @param {HTMLFormElement} form
+ * @param {HTMLFormElement} form Форма авторизации.
  * @returns {void}
  */
 function clearFieldState(form: HTMLFormElement): void {

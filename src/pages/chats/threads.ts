@@ -1,20 +1,27 @@
 /**
  * Преобразование и правила отображения тредов страницы чатов.
  */
-import { getProfileRecordById } from "../profile/profile-data";
 import type { ChatSummary } from "../../api/chat";
-import { getChatContactHint } from "./contact-hints";
 import {
   formatChatTime,
   formatChatExactTime,
   formatMessageTime,
-  getNormalisedPersonName,
-  looksLikeDirectPersonName,
   resolvePersonPath,
 } from "./helpers";
-import { knownChatContactsByName, acceptedFriendProfileIds } from "./contacts";
+import { acceptedFriendProfileIds } from "./contacts";
 import { chatsState } from "./state";
-import type { ChatViewThread } from "./types";
+import { t } from "../../state/i18n";
+import type { ChatViewMessage, ChatViewThread } from "./types";
+
+function getMessagePreviewText(message: ChatViewMessage): string {
+  return (
+    message.text ||
+    (message.voice ? t("chats.voiceMessage") : "") ||
+    (message.stickerId ? t("chats.sticker") : "") ||
+    ((message.media?.length ?? 0) > 0 ? t("chats.media") : "") ||
+    ((message.files?.length ?? 0) > 0 ? t("chats.file") : "")
+  );
+}
 
 /** Обновляет поля preview, timeLabel и updatedAt по последнему сообщению. */
 export function updateThreadPreview(thread: ChatViewThread): void {
@@ -22,7 +29,7 @@ export function updateThreadPreview(thread: ChatViewThread): void {
   const lastMessage = messages[messages.length - 1];
   if (!lastMessage) return;
 
-  thread.preview = lastMessage.text;
+  thread.preview = getMessagePreviewText(lastMessage);
   thread.previewIsOwn = lastMessage.isOwn;
   thread.timeLabel = formatMessageTime(lastMessage.createdAt);
   thread.updatedAt = lastMessage.createdAt ?? thread.updatedAt;
@@ -30,6 +37,8 @@ export function updateThreadPreview(thread: ChatViewThread): void {
 
 /** Синхронизирует profilePath треда по первому не-своему сообщению, у которого он есть. */
 export function syncThreadProfilePathFromMessages(thread: ChatViewThread): void {
+  if (thread.interlocutorProfileId || thread.profileId) return;
+
   const otherMessage = (thread.messages ?? []).find(
     (m) => !m.isOwn && m.profilePath && m.profilePath !== "/profile",
   );
@@ -66,15 +75,9 @@ export function sortThreadsByUpdatedAt(): void {
   });
 }
 
-function getThreadCounterpartyName(thread: ChatViewThread): string {
-  const otherMessage = (thread.messages ?? []).find((m) => !m.isOwn && m.authorName.trim());
-  return otherMessage?.authorName?.trim() || thread.title.trim();
-}
-
 /** Возвращает true, если тред должен быть виден в левой колонке списка. */
-export function shouldShowThreadInSidebar(thread: ChatViewThread): boolean {
-  if (!hasThreadActivity(thread)) return false;
-  return looksLikeDirectPersonName(getThreadCounterpartyName(thread));
+export function shouldShowThreadInSidebar(_thread: ChatViewThread): boolean {
+  return true;
 }
 
 /** Обновляет выбранный чат после загрузки/слияния списка тредов. */
@@ -84,12 +87,10 @@ export function applyThreadVisibilityRules(preferredChatId = ""): void {
   chatsState.selectedChatId =
     chatsState.threads.find((t) => t.id === preferredChatId)?.id ??
     chatsState.threads.find((t) => t.id === previousSelectedChatId)?.id ??
-    chatsState.threads.find((t) => shouldShowThreadInSidebar(t))?.id ??
-    chatsState.threads[0]?.id ??
     "";
 }
 
-/** Преобразует сырые краткие данные чатов из API в объекты ChatViewThread с использованием данных известных контактов. */
+/** Преобразует сырые краткие данные чатов из API в объекты ChatViewThread. */
 export function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
   return [...chats]
     .sort((left, right) => {
@@ -99,42 +100,33 @@ export function mapApiChatsToThreads(chats: ChatSummary[]): ChatViewThread[] {
       return rightTime - leftTime;
     })
     .map((chat, index) => {
-      const storedHint = getChatContactHint(chat.id);
-      const knownContact = knownChatContactsByName.get(getNormalisedPersonName(chat.title || ""));
-      const matchedProfile = knownContact?.profileId
-        ? getProfileRecordById(String(knownContact.profileId))
-        : undefined;
-      const profileId =
-        knownContact?.profileId ??
-        storedHint?.profileId ??
-        (matchedProfile ? String(matchedProfile.publicId) : undefined);
+      const title = chat.title || `Чат ${index + 1}`;
+      const profileId = chat.interlocutorProfileId;
 
       return {
         id: chat.id,
-        title: chat.title || `Чат ${index + 1}`,
+        title,
         profileId,
+        interlocutorProfileId: chat.interlocutorProfileId,
+        interlocutorUserAccountId: chat.interlocutorUserAccountId,
         isFriend: profileId ? acceptedFriendProfileIds.has(String(profileId)) : false,
-        avatarLink:
-          knownContact?.avatarLink ??
-          storedHint?.avatarLink ??
-          chat.avatarLink ??
-          matchedProfile?.avatarLink,
+        avatarLink: chat.avatarLink,
+        isOnline: Boolean(chat.isOnline),
+        lastSeenAt: chat.lastSeenAt,
         preview: "",
         previewIsOwn: false,
         timeLabel: formatChatTime(chat.updatedAt ?? chat.createdAt),
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt ?? chat.createdAt,
         source: "api" as const,
-        profilePath: profileId
-          ? resolvePersonPath(chat.title || `Чат ${index + 1}`, profileId)
-          : "/profile",
+        profilePath: profileId ? resolvePersonPath(title, profileId) : "#",
       };
     });
 }
 
 /** Объединяет пришедшие из API треды с текущим состоянием, сохраняя сообщения и состояние прокрутки. */
 export function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
-  const previousSignature = chatsState.threads.map((t) => t.id).join("|");
+  const previousSignature = getThreadsRenderSignature(chatsState.threads);
   const existingById = new Map(chatsState.threads.map((t) => [t.id, t]));
   const previousSelectedChatId = chatsState.selectedChatId;
 
@@ -148,10 +140,14 @@ export function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
       timeLabel: existing?.messages?.length ? existing.timeLabel : thread.timeLabel,
       createdAt: existing?.createdAt ?? thread.createdAt,
       updatedAt: existing?.updatedAt ?? thread.updatedAt,
-      avatarLink: thread.avatarLink ?? existing?.avatarLink,
-      profileId: thread.profileId ?? existing?.profileId,
-      isFriend: thread.isFriend ?? existing?.isFriend,
-      profilePath: thread.profilePath ?? existing?.profilePath,
+      avatarLink: thread.avatarLink,
+      profileId: thread.profileId,
+      interlocutorProfileId: thread.interlocutorProfileId,
+      interlocutorUserAccountId: thread.interlocutorUserAccountId,
+      isFriend: thread.isFriend,
+      isOnline: thread.isOnline,
+      lastSeenAt: thread.lastSeenAt,
+      profilePath: thread.profilePath,
     };
 
     if (merged.messages?.length) {
@@ -173,28 +169,44 @@ export function mergeApiThreads(nextThreads: ChatViewThread[]): boolean {
 
   sortThreadsByUpdatedAt();
   chatsState.selectedChatId =
-    chatsState.threads.find((t) => t.id === previousSelectedChatId)?.id ??
-    chatsState.threads[0]?.id ??
-    "";
+    chatsState.threads.find((t) => t.id === previousSelectedChatId)?.id ?? "";
 
-  return previousSignature !== chatsState.threads.map((t) => t.id).join("|");
+  return previousSignature !== getThreadsRenderSignature(chatsState.threads);
+}
+
+function getThreadsRenderSignature(threads: ChatViewThread[]): string {
+  return threads
+    .map((thread) =>
+      [
+        thread.id,
+        thread.title,
+        thread.avatarLink ?? "",
+        thread.profileId ?? "",
+        thread.isOnline ? "1" : "0",
+        thread.lastSeenAt ?? "",
+      ].join(":"),
+    )
+    .join("|");
 }
 
 /** Возвращает треды, отфильтрованные по текущему поисковому запросу. */
 export function getFilteredThreads(): ChatViewThread[] {
   const query = chatsState.query.trim().toLowerCase();
-  const visibleThreads = chatsState.threads.filter((thread) => shouldShowThreadInSidebar(thread));
-  if (!query) return visibleThreads;
-  return visibleThreads.filter((thread) => {
+  if (!query) return [...chatsState.threads];
+  return chatsState.threads.filter((thread) => {
     const lastMessage = thread.messages?.[thread.messages.length - 1];
-    const preview = lastMessage?.text ?? thread.preview;
+    const preview = lastMessage ? getMessagePreviewText(lastMessage) : thread.preview;
     return [thread.title, preview].join(" ").toLowerCase().includes(query);
   });
 }
 
 /** Возвращает текущий выбранный тред из списка отфильтрованных тредов. */
 export function getSelectedThread(filteredThreads: ChatViewThread[]): ChatViewThread | undefined {
-  return chatsState.threads.find((t) => t.id === chatsState.selectedChatId) ?? filteredThreads[0];
+  if (!filteredThreads.some((thread) => thread.id === chatsState.selectedChatId)) {
+    return undefined;
+  }
+
+  return chatsState.threads.find((t) => t.id === chatsState.selectedChatId);
 }
 
 /** Возвращает состояние превью (text, isOwn, timeLabel), вычисленное по последнему сообщению или резервным данным. */
@@ -217,7 +229,7 @@ export function getThreadPreviewState(thread: ChatViewThread): {
   }
 
   return {
-    text: lastMessage.text,
+    text: getMessagePreviewText(lastMessage),
     isOwn: lastMessage.isOwn,
     timeLabel: formatChatTime(lastMessage.createdAt) || thread.timeLabel,
     timeTooltip: formatChatExactTime(lastMessage.createdAt),

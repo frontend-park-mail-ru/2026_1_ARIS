@@ -7,6 +7,7 @@ import { sortMessagesByCreatedAt } from "./helpers";
 import type {
   ChatViewMessage,
   ChatViewThread,
+  ChatVoiceAttachment,
   PersistedChatsData,
   PersistedChatsUiState,
 } from "./types";
@@ -57,15 +58,43 @@ function sanitisePersistedMessage(value: unknown): ChatViewMessage | null {
   const authorName = String(message.authorName ?? "");
   if (!id || !authorName) return null;
 
+  let voice: ChatVoiceAttachment | undefined;
+  if (message.voice && typeof message.voice === "object") {
+    const rawVoice = message.voice as Partial<ChatVoiceAttachment>;
+    const voiceUrl = typeof rawVoice.url === "string" ? rawVoice.url : "";
+    const waveform = Array.isArray(rawVoice.waveform)
+      ? rawVoice.waveform
+          .map((height) => Number(height))
+          .filter((height) => Number.isFinite(height) && height > 0)
+      : undefined;
+    if (voiceUrl && !voiceUrl.startsWith("blob:")) {
+      voice = {
+        url: voiceUrl,
+        mimeType: String(rawVoice.mimeType ?? "audio/mpeg"),
+        mediaID: typeof rawVoice.mediaID === "number" ? rawVoice.mediaID : undefined,
+        durationMs: typeof rawVoice.durationMs === "number" ? rawVoice.durationMs : undefined,
+        waveform: waveform?.length ? waveform : undefined,
+      };
+    }
+  }
+
   return {
     id,
     text: String(message.text ?? ""),
+    stickerId: typeof message.stickerId === "string" ? message.stickerId : undefined,
+    stickerData:
+      message.stickerData && typeof message.stickerData === "object"
+        ? message.stickerData
+        : undefined,
+    media: Array.isArray(message.media) ? message.media : [],
+    files: Array.isArray(message.files) ? message.files : [],
     authorName,
     isOwn: Boolean(message.isOwn),
     deliveryState: message.deliveryState === "sending" ? "failed" : message.deliveryState,
     createdAt: typeof message.createdAt === "string" ? message.createdAt : undefined,
     avatarLink: typeof message.avatarLink === "string" ? message.avatarLink : undefined,
     profilePath: typeof message.profilePath === "string" ? message.profilePath : undefined,
+    voice,
   };
 }
 
@@ -75,6 +104,8 @@ function sanitisePersistedThread(value: unknown): ChatViewThread | null {
   const id = String(thread.id ?? "");
   const title = String(thread.title ?? "");
   if (!id || !title) return null;
+  const interlocutorProfileId =
+    typeof thread.interlocutorProfileId === "string" ? thread.interlocutorProfileId : undefined;
 
   const messages = Array.isArray(thread.messages)
     ? sortMessagesByCreatedAt(
@@ -87,9 +118,16 @@ function sanitisePersistedThread(value: unknown): ChatViewThread | null {
   return {
     id,
     title,
-    profileId: typeof thread.profileId === "string" ? thread.profileId : undefined,
+    profileId: interlocutorProfileId,
+    interlocutorProfileId,
+    interlocutorUserAccountId:
+      typeof thread.interlocutorUserAccountId === "string"
+        ? thread.interlocutorUserAccountId
+        : undefined,
     isFriend: Boolean(thread.isFriend),
     avatarLink: typeof thread.avatarLink === "string" ? thread.avatarLink : undefined,
+    isOnline: false,
+    lastSeenAt: typeof thread.lastSeenAt === "string" ? thread.lastSeenAt : undefined,
     preview: String(thread.preview ?? ""),
     previewIsOwn: Boolean(thread.previewIsOwn),
     timeLabel: String(thread.timeLabel ?? ""),

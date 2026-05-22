@@ -7,6 +7,9 @@
  * - проверки email и телефона
  * - нормализацию пользовательского ввода
  */
+const MIN_USER_AGE = 13;
+const MAX_USER_AGE = 130;
+
 /**
  * Проверяет, является ли год високосным.
  *
@@ -122,26 +125,69 @@ export function validateAlphabetConsistency(firstName: string, lastName: string)
 }
 
 /**
+ * Создаёт локальную календарную дату без времени.
+ *
+ * Используем `setFullYear`, чтобы годы `0000`-`0099` не превращались
+ * браузером в `1900`-`1999`.
+ *
+ * @param {number} year Полный год.
+ * @param {number} monthIndex Номер месяца от 0 до 11.
+ * @param {number} day День месяца.
+ * @returns {Date} Локальная дата с временем `00:00:00`.
+ */
+function createLocalCalendarDate(year: number, monthIndex: number, day: number): Date {
+  const date = new Date(0);
+  date.setFullYear(year, monthIndex, day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+/**
+ * Возвращает сегодняшнюю дату без времени.
+ *
+ * @returns {Date} Текущая локальная календарная дата.
+ */
+function getTodayCalendarDate(): Date {
+  const now = new Date();
+  return createLocalCalendarDate(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+/**
+ * Возвращает предельную дату рождения для указанного возраста.
+ *
+ * @param {Date} today Сегодняшняя календарная дата.
+ * @param {number} age Возраст в полных годах.
+ * @returns {Date} Дата рождения, соответствующая ровно указанному возрасту сегодня.
+ */
+function getBirthDateLimit(today: Date, age: number): Date {
+  return createLocalCalendarDate(today.getFullYear() - age, today.getMonth(), today.getDate());
+}
+
+/**
  * Проверяет допустимый возраст по дате рождения.
  *
  * @param {Date} date Дата рождения.
  * @returns {string} Текст ошибки или пустая строка.
  */
 export function validateAgeRange(date: Date): string {
-  const now = new Date();
+  if (Number.isNaN(date.getTime())) {
+    return "Некорректная дата рождения";
+  }
 
-  if (date > now) {
+  const today = getTodayCalendarDate();
+
+  if (date > today) {
     return "Дата рождения не может быть в будущем";
   }
 
-  const ageLimit = new Date(date.getFullYear() + 12, date.getMonth(), date.getDate());
-  if (ageLimit > now) {
-    return "Вам должно быть не меньше 12 лет";
+  const latestAllowedBirthDate = getBirthDateLimit(today, MIN_USER_AGE);
+  if (date > latestAllowedBirthDate) {
+    return `Вам должно быть не меньше ${MIN_USER_AGE} лет`;
   }
 
-  const maxAgeLimit = new Date(date.getFullYear() + 130, date.getMonth(), date.getDate());
-  if (maxAgeLimit < now) {
-    return "Возраст не может превышать 130 лет";
+  const earliestAllowedBirthDate = getBirthDateLimit(today, MAX_USER_AGE);
+  if (date < earliestAllowedBirthDate) {
+    return `Возраст не может превышать ${MAX_USER_AGE} лет`;
   }
 
   return "";
@@ -229,7 +275,7 @@ export function validateBirthDate(value: string, isSubmitAttempted = false): str
     const now = new Date();
 
     if (year > now.getFullYear()) {
-      return "Некорректный год";
+      return "Дата рождения не может быть в будущем";
     }
   }
 
@@ -259,7 +305,7 @@ export function validateBirthDate(value: string, isSubmitAttempted = false): str
     return `В этом месяце ${maxDay} дней`;
   }
 
-  const birthDate = new Date(year, month - 1, day);
+  const birthDate = createLocalCalendarDate(year, month - 1, day);
   return validateAgeRange(birthDate);
 }
 
@@ -282,7 +328,7 @@ export function validateIsoBirthDate(value: string): string {
   const year = Number(yearString);
   const month = Number(monthString);
   const day = Number(dayString);
-  const date = new Date(year, month - 1, day);
+  const date = createLocalCalendarDate(year, month - 1, day);
 
   if (
     Number.isNaN(date.getTime()) ||

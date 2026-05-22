@@ -8,6 +8,11 @@ type BindableRoot = (Document | HTMLElement) & {
   __authModalBound?: boolean;
 };
 
+/**
+ * Возвращает контейнер для модального окна, создавая его при необходимости.
+ *
+ * @returns {HTMLElement} DOM-узел для монтирования модального окна.
+ */
 function getModalRoot(): HTMLElement {
   let modalRoot = document.getElementById("modal-root");
 
@@ -20,10 +25,21 @@ function getModalRoot(): HTMLElement {
   return modalRoot;
 }
 
+/**
+ * Возвращает открытый диалог авторизации.
+ *
+ * @returns {HTMLDialogElement | null} Активный диалог или `null`, если он не открыт.
+ */
 function getActiveDialog(): HTMLDialogElement | null {
   return document.querySelector<HTMLDialogElement>("dialog[data-auth-modal]");
 }
 
+/**
+ * Навешивает обработчики жизненного цикла и закрытия по фону.
+ *
+ * @param {HTMLDialogElement} dialog Нативный диалог авторизации.
+ * @returns {void}
+ */
 function attachDialogListeners(dialog: HTMLDialogElement): void {
   let backdropPressStarted = false;
 
@@ -51,6 +67,9 @@ function attachDialogListeners(dialog: HTMLDialogElement): void {
 
 /**
  * Открывает модальное окно авторизации в указанном режиме.
+ *
+ * @param {AuthMode} [mode="login"] Начальный режим формы.
+ * @returns {void}
  */
 export function openAuthModal(mode: AuthMode = "login"): void {
   const modalRoot = getModalRoot();
@@ -66,6 +85,8 @@ export function openAuthModal(mode: AuthMode = "login"): void {
 
 /**
  * Закрывает модальное окно авторизации.
+ *
+ * @returns {void}
  */
 export function closeAuthModal(): void {
   getActiveDialog()?.close();
@@ -73,15 +94,27 @@ export function closeAuthModal(): void {
 
 /**
  * Переключает содержимое открытого модального окна в указанный режим.
+ *
+ * @param {AuthMode} mode Следующий режим формы.
+ * @returns {void}
  */
 function switchAuthModalMode(mode: AuthMode): void {
   const dialog = getActiveDialog();
-  if (!dialog) return;
+  if (!dialog) {
+    const nextPath = mode === "register" ? "/register" : "/login";
+    window.history.pushState({}, "", nextPath);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    return;
+  }
+
   dialog.innerHTML = renderAuthModalPanel(mode, registerDraft);
 }
 
 /**
  * Инициализирует обработчики событий открытия/переключения модального окна.
+ *
+ * @param {Document | HTMLElement} [root=document] Корень, на котором слушаются клики.
+ * @returns {void}
  */
 export function initAuthModal(root: Document | HTMLElement = document): void {
   const bindableRoot = root as BindableRoot;

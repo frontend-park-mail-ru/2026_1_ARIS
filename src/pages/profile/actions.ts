@@ -34,6 +34,39 @@ export async function uploadPendingComposerImages(): Promise<void> {
     return {
       mediaID: uploaded.mediaID,
       mediaURL: uploaded.mediaURL,
+      fileName: item.fileName,
+      mimeType: item.mimeType,
+      isUploaded: true,
+    };
+  });
+}
+
+export async function uploadPendingComposerFiles(): Promise<void> {
+  const pendingItems = postComposerState.fileItems.filter((item) => !item.isUploaded && item.file);
+  if (!pendingItems.length) {
+    return;
+  }
+
+  const uploadedMedia = await uploadPostImages(pendingItems.map((item) => item.file!));
+  let uploadIndex = 0;
+
+  postComposerState.fileItems = postComposerState.fileItems.map((item) => {
+    if (item.isUploaded) {
+      return item;
+    }
+
+    const uploaded = uploadedMedia[uploadIndex];
+    uploadIndex += 1;
+
+    if (!uploaded) {
+      return item;
+    }
+
+    return {
+      mediaID: uploaded.mediaID,
+      mediaURL: uploaded.mediaURL,
+      fileName: item.fileName,
+      mimeType: item.mimeType,
       isUploaded: true,
     };
   });
@@ -46,7 +79,9 @@ export async function handlePostImagesSelected(files: FileList | null): Promise<
 
   postComposerState.errorMessage = "";
   const availableSlots = Math.max(0, 5 - postComposerState.mediaItems.length);
-  const nextFiles = Array.from(files).slice(0, availableSlots);
+  const nextFiles = Array.from(files)
+    .filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/"))
+    .slice(0, availableSlots);
 
   if (!nextFiles.length) {
     return;
@@ -80,11 +115,33 @@ export async function handlePostImagesSelected(files: FileList | null): Promise<
 
       items.push({
         mediaURL,
+        fileName: file.name,
+        mimeType: file.type,
         file,
         isUploaded: false,
       });
       return items;
     }, []),
+  );
+}
+
+export function handlePostFilesSelected(files: FileList | null): void {
+  if (!files?.length) {
+    return;
+  }
+
+  postComposerState.errorMessage = "";
+  const availableSlots = Math.max(0, 10 - postComposerState.fileItems.length);
+  const nextFiles = Array.from(files).slice(0, availableSlots);
+
+  postComposerState.fileItems = postComposerState.fileItems.concat(
+    nextFiles.map((file) => ({
+      mediaURL: "",
+      fileName: file.name,
+      mimeType: file.type,
+      file,
+      isUploaded: false,
+    })),
   );
 }
 

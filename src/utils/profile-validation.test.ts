@@ -54,7 +54,13 @@ describe("утилиты валидации профиля", () => {
   it("валидирует дату рождения и возрастные ограничения", () => {
     expect(validateBirthDate("31/04/2000", true)).toBe("В этом месяце 30 дней");
     expect(validateBirthDate("29/02/2023", true)).toBe("В феврале 2023 года 28 дней");
-    expect(validateBirthDate("01/01/2018", true)).toBe("Вам должно быть не меньше 12 лет");
+    expect(validateBirthDate("01/05/2013", true)).toBe("Вам должно быть не меньше 13 лет");
+    expect(validateBirthDate("30/04/2013", true)).toBe("");
+    expect(validateBirthDate("29/04/1896", true)).toBe("Возраст не может превышать 130 лет");
+    expect(validateBirthDate("30/04/1896", true)).toBe("");
+    expect(validateBirthDate("01/01/0001", true)).toBe("Возраст не может превышать 130 лет");
+    expect(validateBirthDate("01/05/2026", true)).toBe("Дата рождения не может быть в будущем");
+    expect(validateBirthDate("11/11/2029", true)).toBe("Дата рождения не может быть в будущем");
     expect(validateBirthDate("29/02/2012", true)).toBe("");
   });
 

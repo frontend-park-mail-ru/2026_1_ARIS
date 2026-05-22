@@ -26,6 +26,18 @@ describe("авторизация и регистрация", () => {
     cy.get('[name="login"]').closest(".input").should("have.class", "input--error");
   });
 
+  it("переключает отдельные страницы входа и регистрации при прямом заходе", () => {
+    cy.visitApp("/login");
+
+    cy.contains(".auth-form__secondary-link", "Создать аккаунт").click();
+    cy.location("pathname").should("eq", "/register");
+    cy.contains(".auth-form__title", "Регистрация").should("be.visible");
+
+    cy.contains(".auth-form__secondary-link", "Уже есть аккаунт? Войти").click();
+    cy.location("pathname").should("eq", "/login");
+    cy.contains(".auth-form__title", "Вход").should("be.visible");
+  });
+
   it("показывает ссылку входа через VK ID с backend returnTo", () => {
     cy.visitApp("/login");
 
@@ -48,6 +60,10 @@ describe("авторизация и регистрация", () => {
 
   it("авторизует пользователя и открывает ленту", () => {
     cy.mockAuthApi();
+    cy.intercept("GET", "**/api/auth/me", {
+      statusCode: 401,
+      body: { error: "unauthorized" },
+    }).as("authMeGuest");
     cy.intercept("POST", "**/api/auth/login", {
       body: sessionUser,
     }).as("login");
@@ -92,6 +108,10 @@ describe("авторизация и регистрация", () => {
 
   it("регистрирует нового пользователя и запускает сессию", () => {
     cy.mockAuthApi();
+    cy.intercept("GET", "**/api/auth/me", {
+      statusCode: 401,
+      body: { error: "unauthorized" },
+    }).as("authMeGuest");
     cy.intercept("POST", "**/api/auth/register/step-one", {
       body: { ok: true },
     }).as("validateStepOne");
@@ -125,5 +145,46 @@ describe("авторизация и регистрация", () => {
       login: "newuser",
     });
     cy.location("pathname").should("eq", "/feed");
+  });
+
+  it("не отправляет регистрацию, если дата рождения вне возрастных ограничений", () => {
+    let registerRequests = 0;
+
+    cy.intercept("POST", "**/api/auth/register/step-one", {
+      body: { ok: true },
+    }).as("validateStepOne");
+    cy.intercept("POST", "**/api/auth/register", (req) => {
+      registerRequests += 1;
+      req.reply({
+        statusCode: 201,
+        body: sessionUser,
+      });
+    }).as("register");
+
+    cy.visitApp("/register");
+    cy.get('[name="login"]').type("ageuser");
+    cy.get('[name="password"]').type("strongpass");
+    cy.get('[name="repeatPassword"]').type("strongpass");
+    cy.get("[data-register-next]").click();
+    cy.wait("@validateStepOne");
+
+    cy.get('[name="firstName"]').type("Возраст");
+    cy.get('[name="lastName"]').type("Проверка");
+    cy.get('[name="gender"]').select("1");
+    cy.get('[name="birthDate"]').type("01012020");
+    cy.contains(".auth-form__field-error", "Вам должно быть не меньше 13 лет").should("be.visible");
+    cy.get(".auth-form__form").submit();
+    cy.then(() => {
+      expect(registerRequests).to.eq(0);
+    });
+
+    cy.get('[name="birthDate"]').clear().type("01011800");
+    cy.contains(".auth-form__field-error", "Возраст не может превышать 130 лет").should(
+      "be.visible",
+    );
+    cy.get(".auth-form__form").submit();
+    cy.then(() => {
+      expect(registerRequests).to.eq(0);
+    });
   });
 });

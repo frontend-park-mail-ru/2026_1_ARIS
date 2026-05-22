@@ -12,6 +12,13 @@ type RenderAuthModalOptions = {
   registerDraft?: RegisterDraft | null;
 };
 
+/**
+ * Рендерит внутреннюю панель модального окна авторизации.
+ *
+ * @param {AuthMode} mode Активный режим формы: вход или регистрация.
+ * @param {RegisterDraft | null} draft Черновик регистрации для восстановления шага и введённых значений.
+ * @returns {string} HTML-разметка содержимого модального окна.
+ */
 export function renderAuthModalPanel(mode: AuthMode, draft: RegisterDraft | null): string {
   return `
     <div class="auth-modal__panel">
@@ -32,6 +39,9 @@ export function renderAuthModalPanel(mode: AuthMode, draft: RegisterDraft | null
 
 /**
  * Рендерит модальное окно авторизации как нативный <dialog>.
+ *
+ * @param {RenderAuthModalOptions} [options={}] Параметры начального состояния модального окна.
+ * @returns {string} HTML-разметка нативного диалога авторизации.
  */
 export function renderAuthModal({
   mode = "login",

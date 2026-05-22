@@ -200,6 +200,54 @@
       cursor: zoom-in;
     }
 
+    video.postcard__media-item {
+      cursor: default;
+    }
+
+    &__files {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    &__file {
+      display: grid;
+      width: fit-content;
+      max-width: 100%;
+      min-height: 40px;
+      grid-template-columns: 24px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid rgb(138 146 190 / 28%);
+      border-radius: var(--radius-input);
+      background: var(--color-surface-glass);
+      color: var(--color-text-name);
+      font-size: var(--text-size-main);
+      line-height: var(--line-height-base);
+      text-decoration: none;
+      transition:
+        background-color var(--transition-control),
+        box-shadow var(--transition-control);
+    }
+
+    &__file:hover {
+      background: var(--color-surface-muted);
+    }
+
+    &__file:focus-visible {
+      outline: none;
+      box-shadow: var(--control-focus-ring);
+    }
+
+    &__file-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     &__media-overlay {
       position: relative; // нужен для абсолютного позиционирования счётчика поверх картинки
       width: 100%; // overlay занимает всю ширину ячейки

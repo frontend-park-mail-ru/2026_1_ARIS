@@ -3,6 +3,7 @@
  *
  * Содержит функции генерации HTML и обновления DOM для страницы.
  */
+import type { PostMedia } from "../../api/posts";
 import type { DisplayProfile, ProfilePost } from "./types";
 import { pendingProfilePostState } from "./state";
 import {
@@ -15,8 +16,10 @@ import {
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderAvatarMarkup } from "../../utils/avatar";
 import { formatPersonName } from "../../utils/display-name";
+import { getMediaFileName, isVideoMedia, resolveMediaUrl } from "../../utils/media";
 import { getLanguageMode } from "../../state/language";
 import { t } from "../../state/i18n";
+import { getSessionUser } from "../../state/session";
 
 export {
   renderAvatarModal,
@@ -494,12 +497,16 @@ export function renderFriends(profile: DisplayProfile): string {
   `;
 }
 
-function renderProfilePostImages(images: string[]): string {
-  if (!images.length) {
+function renderProfilePostMedia(post: ProfilePost): string {
+  const media: PostMedia[] = post.media.length
+    ? post.media
+    : post.images.map((image, index) => ({ mediaID: index + 1, mediaURL: image }));
+
+  if (!media.length) {
     return "";
   }
 
-  const count = Math.min(images.length, 5);
+  const count = Math.min(media.length, 5);
   const layoutModifierByCount = {
     1: "profile-post__images--single",
     2: "profile-post__images--double",
@@ -511,20 +518,48 @@ function renderProfilePostImages(images: string[]): string {
 
   return `
     <div class="profile-post__images ${layoutModifier}">
-      ${images
+      ${media
         .slice(0, 5)
+        .map((item, index) =>
+          isVideoMedia(item.mediaURL, item.mimeType)
+            ? `
+                <video
+                  class="profile-post__image profile-post__video${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
+                  src="${escapeHtml(resolveMediaUrl(item.mediaURL))}"
+                  controls
+                  preload="metadata"
+                ></video>
+              `
+            : `
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
+                  src="${escapeHtml(getAvatarImageSrc(item.mediaURL))}"
+                  alt="${t("profile.imageAlt")}"
+                  role="button"
+                  tabindex="0"
+                  data-post-image-open
+                >
+              `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderProfilePostFiles(files: ProfilePost["files"]): string {
+  if (!files.length) return "";
+
+  return `
+    <div class="profile-post__files">
+      ${files
         .map(
-          (image, index) => `
-            <img
-              loading="lazy"
-              decoding="async"
-              class="profile-post__image${count === 3 && index === 0 ? " profile-post__image--lead" : ""}"
-              src="${escapeHtml(getAvatarImageSrc(image))}"
-              alt="${t("profile.imageAlt")}"
-              role="button"
-              tabindex="0"
-              data-post-image-open
-            >
+          (file) => `
+            <a class="profile-post__file" href="${escapeHtml(resolveMediaUrl(file.mediaURL))}" target="_blank" rel="noopener noreferrer">
+              <img class="profile-post__file-icon" src="/assets/img/icons/file.svg" alt="" aria-hidden="true">
+              <span class="profile-post__file-name">${escapeHtml(file.name || getMediaFileName(file.mediaURL, t("chats.file")))}</span>
+            </a>
           `,
         )
         .join("")}
@@ -551,6 +586,7 @@ export function renderProfilePosts(
           .map((post) => ({ ...post, isOwnPost: true })),
       ]
     : posts;
+  const sessionUser = getSessionUser();
   const pending = pendingProfilePostState;
   const isSavingCreate = pending.mode === "create";
   const isSavingEdit = pending.mode === "edit" && !!pending.postId;
@@ -573,6 +609,7 @@ export function renderProfilePosts(
     reposts: 0,
     comments: 0,
     media: [],
+    files: [],
     images: [],
   };
 
@@ -727,7 +764,41 @@ export function renderProfilePosts(
 
                       <p class="profile-post__text">${escapeHtml(post.text)}</p>
 
-                      ${renderProfilePostImages(post.images)}
+                      ${renderProfilePostMedia(post)}
+                      ${renderProfilePostFiles(post.files)}
+
+                      <div class="profile-post__comments" data-profile-post-comments="${escapeHtml(post.id)}" hidden>
+                        <div class="profile-post__comment-list" data-profile-post-comment-list="${escapeHtml(post.id)}"></div>
+                        ${
+                          sessionUser
+                            ? `
+                        <div class="profile-comment-compose">
+                          ${renderAvatarMarkup(
+                            "profile-comment-compose__avatar",
+                            formatPersonName(sessionUser.firstName, sessionUser.lastName) ||
+                              t("widgetbar.userFallback"),
+                            sessionUser.avatarLink,
+                            { width: 32, height: 32 },
+                          )}
+                          <form class="profile-post__comment-form" data-profile-post-comment-form="${escapeHtml(post.id)}" novalidate>
+                            <input
+                              type="text"
+                              class="profile-post__comment-input"
+                              placeholder="${t("profile.commentPlaceholder")}"
+                              data-profile-post-comment-input="${escapeHtml(post.id)}"
+                              maxlength="2000"
+                              autocomplete="off"
+                            >
+                            <button type="submit" class="profile-post__comment-send">
+                              ${t("profile.commentSubmit")}
+                            </button>
+                          </form>
+                        </div>
+                        <p class="profile-post__comment-error" data-profile-post-comment-error="${escapeHtml(post.id)}" hidden></p>
+                        `
+                            : ""
+                        }
+                      </div>
 
                       <footer class="profile-post__footer">
                         <div class="profile-post__stats">
@@ -749,10 +820,15 @@ export function renderProfilePosts(
                             <img src="/assets/img/icons/repost.svg" class="profile-post__icon" alt="" />
                             ${post.reposts}
                           </span>
-                          <span class="profile-post__stat">
+                          <button
+                            type="button"
+                            class="profile-post__stat profile-post__stat-button"
+                            data-profile-post-toggle-comments="${escapeHtml(post.id)}"
+                            aria-expanded="false"
+                          >
                             <img src="/assets/img/icons/chat.svg" class="profile-post__icon" alt="" />
-                            ${post.comments}
-                          </span>
+                            <span data-profile-post-comment-count="${escapeHtml(post.id)}">${post.comments}</span>
+                          </button>
                         </div>
                         <time
                           class="profile-post__time"

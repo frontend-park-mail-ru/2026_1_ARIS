@@ -33,6 +33,12 @@ type RenderAuthFormOptions = {
 const DEFAULT_OAUTH_RETURN_TO = "/feed";
 const AUTH_PAGE_PATHS = new Set(["/login", "/register"]);
 
+/**
+ * Добавляет к пути маркер успешного VK ID callback.
+ *
+ * @param {string} path Исходный путь возврата.
+ * @returns {string} Путь с query-параметром `oauth=vkid`.
+ */
 function addVkIdSuccessMarker(path: string): string {
   const url = new URL(path, "https://aris.local");
   url.searchParams.set("oauth", "vkid");
@@ -40,6 +46,11 @@ function addVkIdSuccessMarker(path: string): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+/**
+ * Возвращает безопасный путь возврата после VK ID авторизации.
+ *
+ * @returns {string} Путь, на который backend должен вернуть пользователя после OAuth.
+ */
 function getCurrentOauthReturnTo(): string {
   if (typeof window === "undefined") {
     return addVkIdSuccessMarker(DEFAULT_OAUTH_RETURN_TO);
@@ -57,11 +68,21 @@ function getCurrentOauthReturnTo(): string {
   return addVkIdSuccessMarker(returnTo || DEFAULT_OAUTH_RETURN_TO);
 }
 
+/**
+ * Формирует backend-ссылку для старта VK ID авторизации.
+ *
+ * @returns {string} URL ручки OAuth-логина.
+ */
 function getVkIdLoginUrl(): string {
   const params = new URLSearchParams({ returnTo: getCurrentOauthReturnTo() });
   return `/api/auth/vkid/login?${params.toString()}`;
 }
 
+/**
+ * Извлекает человекочитаемое сообщение об ошибке VK ID callback из текущего URL.
+ *
+ * @returns {string} Текст ошибки или пустая строка.
+ */
 function getVkIdOauthErrorText(): string {
   if (typeof window === "undefined") {
     return "";
@@ -75,6 +96,11 @@ function getVkIdOauthErrorText(): string {
   return "Не удалось войти через VK ID. Попробуйте ещё раз.";
 }
 
+/**
+ * Рендерит блок входа через внешние сервисы.
+ *
+ * @returns {string} HTML-разметка OAuth-блока.
+ */
 function renderVkIdAuth(): string {
   return `
     <div class="auth-form__oauth" aria-label="Вход через внешние сервисы">
@@ -295,6 +321,12 @@ function renderRegisterStepTwoFields(values: Partial<RegisterValues> = {}): stri
   `;
 }
 
+/**
+ * Рендерит кнопки текущего шага регистрации.
+ *
+ * @param {RegisterStep} step Текущий шаг регистрации.
+ * @returns {string} HTML-разметка действий шага.
+ */
 function renderRegisterStepActions(step: RegisterStep): string {
   if (step === 1) {
     return `
@@ -347,6 +379,8 @@ function renderRegisterStepActions(step: RegisterStep): string {
  *
  * @param {RegisterStep} step Текущий шаг регистрации.
  * @param {Partial<RegisterValues>} values Текущие значения формы.
+ * @param {boolean} [hasError=false] Нужно ли показать ошибку уровня формы.
+ * @param {string} [errorText=" "] Текст ошибки уровня формы.
  * @returns {string} HTML-разметка активного шага регистрации.
  */
 function renderRegisterFields(

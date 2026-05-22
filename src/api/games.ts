@@ -13,8 +13,13 @@ export type GameRoomStatus = "waiting" | "active" | "finished";
 export type GamePlayer = {
   profileId: string;
   name: string;
+  username: string;
+  avatarId: string;
+  avatarUrl: string;
   score: number;
+  isReady: boolean;
   hasAnswered: boolean;
+  isMe: boolean;
 };
 
 export type GameAnswer = {
@@ -53,8 +58,14 @@ export type GameRoom = {
   inviteCode: string;
   gameType: GameType;
   status: GameRoomStatus;
+  createdByProfileId: string;
+  maxPlayers: number;
+  hasPassword: boolean;
+  password: string;
+  inviteCodeEnabled: boolean;
   questionCount: number;
   answerTimeoutSec: number;
+  creator: GamePlayer | null;
   players: GamePlayer[];
   currentQuestion: CurrentGameQuestion | null;
   questions: GameRoundQuestion[];
@@ -66,6 +77,15 @@ export type CreateGameRoomPayload = {
   questionCount: number;
   answerTimeoutSec: number;
   gameType: GameType;
+  maxPlayers?: number;
+  password?: string;
+  inviteCodeEnabled?: boolean;
+};
+
+export type JoinGameRoomPayload = {
+  inviteCode?: string;
+  roomId?: string;
+  password?: string;
 };
 
 export type GameHistoryItem = {
@@ -81,6 +101,7 @@ export type GameHistoryItem = {
 
 export type GameRoomSocketHandlers = {
   onRoom: (room: GameRoom) => void;
+  onUnavailable?: () => void;
   onOpen?: () => void;
   onClose?: () => void;
   onError?: () => void;
@@ -135,12 +156,31 @@ function mapGamePlayer(value: unknown): GamePlayer {
   const lastName = getFirstString(raw, ["lastName", "LastName"]);
   const login = getFirstString(raw, ["login", "username", "name", "displayName"]);
   const name = `${firstName} ${lastName}`.trim() || login || "Игрок";
+  const profileId = getFirstString(raw, ["profileId", "profileID", "ProfileID", "id", "ID"]);
+  const isMe = toBoolean(raw.isMe ?? raw.IsMe) || profileId === String(getSessionUser()?.id ?? "");
+  const avatarId = getFirstString(raw, ["avatarId", "avatarID", "AvatarID"]);
+  const avatarUrl =
+    getFirstString(raw, [
+      "avatarUrl",
+      "avatarURL",
+      "avatarLink",
+      "imageLink",
+      "profileAvatarUrl",
+      "ProfileAvatarUrl",
+    ]) ||
+    (avatarId ? `/media/${avatarId}` : "") ||
+    (isMe ? (getSessionUser()?.avatarLink ?? "") : "");
 
   return {
-    profileId: getFirstString(raw, ["profileId", "profileID", "ProfileID", "id", "ID"]),
+    profileId,
     name,
+    username: getFirstString(raw, ["username", "Username", "login", "Login"]),
+    avatarId,
+    avatarUrl,
     score: toNumber(raw.score ?? raw.Score),
+    isReady: toBoolean(raw.isReady ?? raw.IsReady),
     hasAnswered: toBoolean(raw.hasAnswered ?? raw.HasAnswered),
+    isMe,
   };
 }
 
@@ -218,8 +258,23 @@ function mapRoom(value: unknown): GameRoom {
     inviteCode: getFirstString(raw, ["inviteCode", "InviteCode"]),
     gameType: "number_duel",
     status: normaliseStatus(raw.status ?? raw.Status),
+    createdByProfileId: getFirstString(raw, [
+      "createdByProfileId",
+      "createdByProfileID",
+      "CreatedByProfileID",
+      "creatorProfileId",
+      "creatorProfileID",
+    ]),
+    maxPlayers: toNumber(raw.maxPlayers ?? raw.MaxPlayers ?? raw.playerLimit ?? raw.PlayerLimit, 2),
+    hasPassword: toBoolean(raw.hasPassword ?? raw.HasPassword ?? raw.passwordRequired),
+    password: getFirstString(raw, ["password", "Password"]),
+    inviteCodeEnabled: toBoolean(
+      raw.inviteCodeEnabled ?? raw.InviteCodeEnabled ?? raw.hasInviteCode ?? raw.HasInviteCode,
+      Boolean(getFirstString(raw, ["inviteCode", "InviteCode"])),
+    ),
     questionCount: toNumber(raw.questionCount ?? raw.QuestionCount, 5),
     answerTimeoutSec: toNumber(raw.answerTimeoutSec ?? raw.AnswerTimeoutSec, 10),
+    creator: raw.creator || raw.Creator ? mapGamePlayer(raw.creator ?? raw.Creator) : null,
     players: asArray(raw.players ?? raw.Players)
       .map(mapGamePlayer)
       .filter((player) => player.profileId),
@@ -299,13 +354,18 @@ export async function createGameRoom(payload: CreateGameRoomPayload): Promise<Ga
   );
 }
 
-export async function joinGameRoom(inviteCode: string): Promise<GameRoom> {
+export async function joinGameRoom(input: string | JoinGameRoomPayload): Promise<GameRoom> {
+  const payload =
+    typeof input === "string"
+      ? { inviteCode: input }
+      : {
+          ...(input.inviteCode ? { inviteCode: input.inviteCode } : {}),
+          ...(input.roomId ? { roomId: input.roomId } : {}),
+          ...(input.password ? { password: input.password } : {}),
+        };
+
   return extractRoomResponse(
-    await apiRequest<unknown>(
-      "/api/games/rooms/join",
-      { method: "POST", body: { inviteCode } },
-      {},
-    ),
+    await apiRequest<unknown>("/api/games/rooms/join", { method: "POST", body: payload }, {}),
   );
 }
 
@@ -323,6 +383,46 @@ export async function getGameRoom(roomId: string, signal?: AbortSignal): Promise
       { ...(signal ? { signal } : {}) },
       {},
     ),
+  );
+}
+
+export async function disbandGameRoom(roomId: string): Promise<void> {
+  await apiRequest<unknown>(
+    `/api/games/rooms/${encodeURIComponent(roomId)}`,
+    { method: "DELETE" },
+    {},
+  );
+}
+
+export async function leaveGameRoom(roomId: string): Promise<void> {
+  await apiRequest<unknown>(
+    `/api/games/rooms/${encodeURIComponent(roomId)}/members/me`,
+    { method: "DELETE" },
+    {},
+  );
+}
+
+export async function setGameRoomReady(roomId: string, isReady: boolean): Promise<void> {
+  await apiRequest<unknown>(
+    `/api/games/rooms/${encodeURIComponent(roomId)}/ready`,
+    { method: "PATCH", body: { isReady } },
+    {},
+  );
+}
+
+export async function kickGameRoomPlayer(roomId: string, profileId: string): Promise<void> {
+  await apiRequest<unknown>(
+    `/api/games/rooms/${encodeURIComponent(roomId)}/members/${encodeURIComponent(profileId)}`,
+    { method: "DELETE" },
+    {},
+  );
+}
+
+export async function updateGameRoomPassword(roomId: string, password: string): Promise<void> {
+  await apiRequest<unknown>(
+    `/api/games/rooms/${encodeURIComponent(roomId)}/password`,
+    { method: "PATCH", body: { password } },
+    {},
   );
 }
 
@@ -399,6 +499,8 @@ export function subscribeToGameRoom(
         const payload = JSON.parse(event.data) as RawRecord;
         if (payload.type === "room_state" || payload.room || payload.Room) {
           handlers.onRoom(extractRoomResponse(payload));
+        } else if (payload.type === "room_updated") {
+          handlers.onUnavailable?.();
         }
       } catch (error) {
         console.error("[games] failed to parse websocket message", error);

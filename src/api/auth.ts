@@ -23,6 +23,18 @@ export type LoginPayload = {
 };
 
 /**
+ * Тело запроса для смены пароля.
+ */
+export type ChangePasswordPayload = {
+  /** Текущий пароль пользователя. */
+  oldPassword: string;
+  /** Новый пароль. */
+  newPassword1: string;
+  /** Повтор нового пароля. */
+  newPassword2: string;
+};
+
+/**
  * Тело запроса для регистрации.
  */
 export type RegisterPayload = {
@@ -198,6 +210,13 @@ export async function registerUser(payload: RegisterPayload): Promise<User> {
 export async function logoutUser(): Promise<unknown> {
   await apiRequest<unknown>("/api/auth/logout", { method: "POST" });
   return;
+}
+
+/**
+ * Меняет пароль текущего авторизованного пользователя.
+ */
+export async function changePassword(payload: ChangePasswordPayload): Promise<{ ok?: boolean }> {
+  return apiRequest<{ ok?: boolean }>("/api/auth/password", { method: "POST", body: payload }, {});
 }
 
 /**

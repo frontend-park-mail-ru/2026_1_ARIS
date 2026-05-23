@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "./core/client";
 import {
   ApiError,
+  changePassword,
   getCurrentUser,
   loginUser,
   logoutUser,
@@ -99,11 +100,21 @@ describe("auth api", () => {
   });
 
   it("logoutUser и validateRegisterStepOne вызывают нужные endpoints", async () => {
-    vi.mocked(apiRequest).mockResolvedValueOnce(undefined).mockResolvedValueOnce({ ok: true });
+    vi.mocked(apiRequest)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({ ok: true });
 
     await logoutUser();
     await expect(
       validateRegisterStepOne({ login: "demo", password1: "secret", password2: "secret" }),
+    ).resolves.toEqual({ ok: true });
+    await expect(
+      changePassword({
+        oldPassword: "secret-old",
+        newPassword1: "secret-new",
+        newPassword2: "secret-new",
+      }),
     ).resolves.toEqual({ ok: true });
 
     expect(apiRequest).toHaveBeenNthCalledWith(1, "/api/auth/logout", { method: "POST" });
@@ -113,6 +124,19 @@ describe("auth api", () => {
       {
         method: "POST",
         body: { login: "demo", password1: "secret", password2: "secret" },
+      },
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      3,
+      "/api/auth/password",
+      {
+        method: "POST",
+        body: {
+          oldPassword: "secret-old",
+          newPassword1: "secret-new",
+          newPassword2: "secret-new",
+        },
       },
       {},
     );

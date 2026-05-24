@@ -1,3 +1,21 @@
+@keyframes post-highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 3px rgb(74 81 208 / 50%);
+  }
+
+  60% {
+    box-shadow: 0 0 0 3px rgb(74 81 208 / 50%);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgb(74 81 208 / 0%);
+  }
+}
+
+.profile-post--highlighted {
+  animation: post-highlight-pulse 2.5s ease-out forwards;
+}
+
 @layer pages {
   .profile-page {
     display: flex;

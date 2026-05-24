@@ -184,10 +184,16 @@ export function renderFeedCards(
  *
  * @param {PostcardModel[]} items Полный набор карточек.
  * @param {number} renderedCount Количество карточек, видимых сразу.
+ * @param {boolean} serverHasMore Есть ли ещё страницы на сервере.
  * @returns {string} HTML центральной колонки.
  */
-export function renderIncrementalFeedCenter(items: PostcardModel[], renderedCount: number): string {
+export function renderIncrementalFeedCenter(
+  items: PostcardModel[],
+  renderedCount: number,
+  serverHasMore: boolean,
+): string {
   const visibleItems = items.slice(0, renderedCount);
+  const hasMore = renderedCount < items.length || serverHasMore;
 
   return `
     <section class="app-layout__center" data-feed-center>
@@ -195,7 +201,7 @@ export function renderIncrementalFeedCenter(items: PostcardModel[], renderedCoun
       <div class="feed-stream" data-feed-list>
         ${renderFeedCards(visibleItems, { prioritizeFirstCardMedia: true })}
       </div>
-      ${renderFeedStatus(renderedCount < items.length, false)}
+      ${renderFeedStatus(hasMore, false)}
     </section>
   `;
 }

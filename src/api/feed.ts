@@ -281,3 +281,22 @@ export async function getPopularPosts(): Promise<PopularPostsResponse> {
 export async function getPublicPopularPosts(): Promise<PopularPostsResponse> {
   return apiRequest<PopularPostsResponse>("/api/public/popular-posts", {}, {});
 }
+
+export type FeedEventItem = {
+  postId: number;
+  type: "view" | "hide" | "report";
+  dwellMs?: number;
+  position?: number;
+  source?: string;
+};
+
+/**
+ * POST /api/feed/events — фиксирует события взаимодействия с постами в ленте.
+ *
+ * @param {FeedEventItem[]} events Список событий.
+ * @returns {Promise<void>}
+ */
+export async function postFeedEvents(events: FeedEventItem[]): Promise<void> {
+  if (!events.length) return;
+  await apiRequest("/api/feed/events", { method: "POST", body: { events } }, {});
+}

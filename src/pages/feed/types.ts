@@ -30,7 +30,7 @@ export type FeedItemsCache = Record<FeedAuthKey, Record<FeedMode, PostcardModel[
  */
 export type FeedCenterResult =
   /** Успешный результат с набором карточек. */
-  | { kind: "items"; items: PostcardModel[] }
+  | { kind: "items"; items: PostcardModel[]; nextCursor: string; hasMore: boolean }
   /** Резервный результат с готовым HTML-блоком. */
   | { kind: "html"; html: string };
 
@@ -44,4 +44,8 @@ export type ActiveFeedState = {
   renderedCount: number;
   /** Показывает, что сейчас подгружается следующая порция. */
   isLoadingMore: boolean;
+  /** Курсор для следующей страницы с сервера. */
+  nextCursor: string;
+  /** Есть ли ещё страницы на сервере. */
+  hasMore: boolean;
 };

@@ -11,7 +11,14 @@ import { domPatch } from "../../vdom/patch";
 import { renderHeader, refreshHeader } from "../../components/header/header";
 import { refreshSidebar, renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbar } from "../../components/widgetbar/widgetbar";
-import { getFeed, getPublicFeed, mapFeedResponse, type PostcardModel } from "../../api/feed";
+import {
+  getFeed,
+  getPublicFeed,
+  mapFeedResponse,
+  postFeedEvents,
+  type PostcardModel,
+  type FeedEventItem,
+} from "../../api/feed";
 import { ApiError } from "../../api/core/client";
 import {
   likePost,
@@ -44,7 +51,7 @@ import {
   renderOfflineFeedFallback,
   renderIncrementalFeedCenter,
 } from "./render";
-import { initFeedInfiniteScroll, disconnectFeedObserver } from "./scroll";
+import { initFeedInfiniteScroll, disconnectFeedObserver, appendMoreFeedCards } from "./scroll";
 
 export { clearFeedCache, clearFeedCacheLocal } from "./cache";
 export { initFeedInfiniteScroll } from "./scroll";
@@ -529,62 +536,38 @@ function bindFeedCommentActions(): void {
   isFeedCommentBound = true;
 }
 
-/**
- * Сортирует элементы ленты в зависимости от выбранного режима.
- *
- * Для режима `for-you` используется перемешивание, чтобы выдача ощущалась
- * менее предсказуемой без отдельного рекомендательного backend-слоя.
- *
- * @param {PostcardModel[]} items Элементы ленты.
- * @returns {PostcardModel[]} Отсортированный массив.
- */
 function getSortedFeedItems(items: PostcardModel[]): PostcardModel[] {
-  const result = [...items];
-
   if (getCurrentFeedMode() === "for-you") {
-    for (let i = result.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const current = result[i];
-      const random = result[j];
-      if (current && random) {
-        result[i] = random;
-        result[j] = current;
-      }
-    }
-    return result;
+    return items;
   }
-
-  return result.sort((a, b) => new Date(b.timeRaw).getTime() - new Date(a.timeRaw).getTime());
+  return [...items].sort((a, b) => new Date(b.timeRaw).getTime() - new Date(a.timeRaw).getTime());
 }
 
-/**
- * Загружает публичную ленту для гостевой страницы.
- *
- * @param {AbortSignal} [signal] Сигнал отмены запроса.
- * @returns {Promise<PostcardModel[]>} Готовые карточки ленты.
- */
-async function buildGuestFeedItems(signal?: AbortSignal): Promise<PostcardModel[]> {
-  const response = await getPublicFeed({ limit: 100, ...(signal ? { signal } : {}) });
-  return getSortedFeedItems(mapFeedResponse(response).items);
+type FeedPageResult = { items: PostcardModel[]; nextCursor: string; hasMore: boolean };
+
+async function buildGuestFeedPage(signal?: AbortSignal): Promise<FeedPageResult> {
+  const response = await getPublicFeed({ limit: 20, ...(signal ? { signal } : {}) });
+  const mapped = mapFeedResponse(response);
+  return {
+    items: getSortedFeedItems(mapped.items),
+    nextCursor: mapped.nextCursor,
+    hasMore: mapped.hasMore,
+  };
 }
 
-/**
- * Загружает ленту для авторизованного пользователя.
- *
- * Фильтрация по друзьям выполняется на бэкенде; фронт только сортирует
- * результат согласно выбранному режиму.
- *
- * @param {AbortSignal} [signal] Сигнал отмены запроса.
- * @returns {Promise<PostcardModel[]>} Готовые карточки ленты.
- */
-async function buildAuthorisedFeedItems(signal?: AbortSignal): Promise<PostcardModel[]> {
+async function buildAuthorisedFeedPage(signal?: AbortSignal): Promise<FeedPageResult> {
   const mode = getCurrentFeedMode();
   try {
-    const response = await getFeed({ limit: 100, mode, ...(signal ? { signal } : {}) });
-    return getSortedFeedItems(mapFeedResponse(response).items);
+    const response = await getFeed({ limit: 20, mode, ...(signal ? { signal } : {}) });
+    const mapped = mapFeedResponse(response);
+    return {
+      items: getSortedFeedItems(mapped.items),
+      nextCursor: mapped.nextCursor,
+      hasMore: mapped.hasMore,
+    };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
-    if (isFeedEmptyResponseError(error)) return [];
+    if (isFeedEmptyResponseError(error)) return { items: [], nextCursor: "", hasMore: false };
     throw error;
   }
 }
@@ -607,23 +590,23 @@ async function getCachedFeedData(
   // Если в памяти есть свежие данные в пределах TTL, сразу возвращаем их без сетевого запроса.
   const cachedItems = feedItemsCache.get(cacheKey);
   if (cachedItems?.length) {
-    return { kind: "items", items: cachedItems };
+    return { kind: "items", items: cachedItems, nextCursor: "", hasMore: false };
   }
 
   const persistedItems = readPersistedFeedItems(authKey, modeKey);
 
   try {
-    const items = isAuthorised
-      ? await buildAuthorisedFeedItems(signal)
-      : await buildGuestFeedItems(signal);
-    feedItemsCache.set(cacheKey, items);
-    persistFeedItems(authKey, modeKey, items);
-    return { kind: "items", items };
+    const page = isAuthorised
+      ? await buildAuthorisedFeedPage(signal)
+      : await buildGuestFeedPage(signal);
+    feedItemsCache.set(cacheKey, page.items);
+    persistFeedItems(authKey, modeKey, page.items);
+    return { kind: "items", items: page.items, nextCursor: page.nextCursor, hasMore: page.hasMore };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     if (persistedItems?.length) {
       feedItemsCache.set(cacheKey, persistedItems);
-      return { kind: "items", items: persistedItems };
+      return { kind: "items", items: persistedItems, nextCursor: "", hasMore: false };
     }
     if (!isOfflineNetworkError(error)) throw error;
     return { kind: "html", html: renderOfflineFeedFallback(isAuthorised) };
@@ -644,7 +627,7 @@ function buildFeedCenter(feedResult: FeedCenterResult, isAuthorised: boolean): s
     return feedResult.html;
   }
 
-  if (!feedResult.items.length) {
+  if (!feedResult.items.length && !feedResult.hasMore) {
     disconnectFeedObserver();
     setActiveFeedState(null);
     return isAuthorised ? renderEmptyFriendsFeed() : renderEmptyPublicFeed();
@@ -654,9 +637,11 @@ function buildFeedCenter(feedResult: FeedCenterResult, isAuthorised: boolean): s
     items: feedResult.items,
     renderedCount: Math.min(FEED_BATCH_SIZE, feedResult.items.length),
     isLoadingMore: false,
+    nextCursor: feedResult.nextCursor,
+    hasMore: feedResult.hasMore,
   };
   setActiveFeedState(nextState);
-  return renderIncrementalFeedCenter(nextState.items, nextState.renderedCount);
+  return renderIncrementalFeedCenter(nextState.items, nextState.renderedCount, feedResult.hasMore);
 }
 
 /**
@@ -674,6 +659,121 @@ export async function prefetchFeed(): Promise<void> {
   const cacheKey = `${authKey}:${modeKey}`;
   if (feedItemsCache.get(cacheKey)?.length) return;
   await getCachedFeedData(isAuthorised);
+}
+
+async function fetchNextFeedPage(): Promise<void> {
+  if (!activeFeedState?.hasMore) return;
+
+  const cursor = activeFeedState.nextCursor;
+  const mode = getCurrentFeedMode();
+  const isAuthorised = getSessionUser() !== null;
+  const authKey: FeedAuthKey = isAuthorised ? "authorised" : "guest";
+
+  try {
+    const response = isAuthorised
+      ? await getFeed({ cursor, limit: 20, mode })
+      : await getPublicFeed({ cursor, limit: 20 });
+    const mapped = mapFeedResponse(response);
+    const allItems = [...activeFeedState.items, ...mapped.items];
+
+    feedItemsCache.set(`${authKey}:${mode}`, allItems);
+    persistFeedItems(authKey, mode, allItems);
+
+    setActiveFeedState({
+      ...activeFeedState,
+      items: allItems,
+      nextCursor: mapped.nextCursor,
+      hasMore: mapped.hasMore,
+    });
+
+    appendMoreFeedCards();
+  } catch (error) {
+    if (!(error instanceof Error && error.name === "AbortError")) {
+      console.error("[feed] fetchNextFeedPage failed", error);
+    }
+  }
+}
+
+// --- View tracking ---
+
+let viewObserver: IntersectionObserver | null = null;
+let listMutationObserver: MutationObserver | null = null;
+const viewTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const viewedPostIds = new Set<string>();
+
+function observeFeedCardForView(card: HTMLElement): void {
+  const postId = card.dataset.postId;
+  if (!postId || viewedPostIds.has(postId)) return;
+  viewObserver?.observe(card);
+}
+
+function initViewTracking(): void {
+  viewObserver?.disconnect();
+  viewObserver = null;
+  viewTimers.forEach((t) => clearTimeout(t));
+  viewTimers.clear();
+  listMutationObserver?.disconnect();
+  listMutationObserver = null;
+
+  if (!getSessionUser()) return;
+
+  viewObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        const postId = (entry.target as HTMLElement).dataset.postId;
+        if (!postId) continue;
+
+        if (entry.isIntersecting) {
+          if (!viewedPostIds.has(postId) && !viewTimers.has(postId)) {
+            viewTimers.set(
+              postId,
+              setTimeout(() => {
+                viewTimers.delete(postId);
+                if (viewedPostIds.has(postId)) return;
+                viewedPostIds.add(postId);
+                const pos = activeFeedState?.items.findIndex((it) => it.id === postId) ?? -1;
+                const event: FeedEventItem = {
+                  postId: Number(postId),
+                  type: "view",
+                  dwellMs: 1000,
+                  position: pos >= 0 ? pos : 0,
+                  source: "feed",
+                };
+                void postFeedEvents([event]);
+              }, 1000),
+            );
+          }
+        } else {
+          const t = viewTimers.get(postId);
+          if (t !== undefined) {
+            clearTimeout(t);
+            viewTimers.delete(postId);
+          }
+        }
+      }
+    },
+    { threshold: 0.5 },
+  );
+
+  const list = document.querySelector("[data-feed-list]");
+  if (!(list instanceof HTMLElement)) return;
+
+  list.querySelectorAll<HTMLElement>("[data-post-id]").forEach(observeFeedCardForView);
+
+  listMutationObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        if (node.dataset.postId) {
+          observeFeedCardForView(node);
+        } else {
+          node.querySelectorAll<HTMLElement>("[data-post-id]").forEach(observeFeedCardForView);
+        }
+      }
+    }
+  });
+
+  listMutationObserver.observe(list, { childList: true, subtree: true });
 }
 
 /**
@@ -739,7 +839,8 @@ export async function refreshFeedCenter(): Promise<void> {
   if (!(newCenter instanceof HTMLElement)) return;
 
   domPatch(center, newCenter);
-  initFeedInfiniteScroll();
+  initFeedInfiniteScroll(fetchNextFeedPage);
+  initViewTracking();
   restoreOpenFeedComments();
 }
 
@@ -764,7 +865,8 @@ window.addEventListener("apprender", () => {
   bindFeedLikeActions();
   bindFeedImageViewerActions();
   bindFeedCommentActions();
-  initFeedInfiniteScroll();
+  initFeedInfiniteScroll(fetchNextFeedPage);
+  initViewTracking();
   if (isFeedRouteActive()) {
     refreshHeader();
     refreshSidebar();

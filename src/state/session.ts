@@ -41,7 +41,7 @@ type SessionChangeDetail = {
  */
 export const sessionStore = new StateManager<SessionState>({
   user: null,
-  feedMode: "by-time",
+  feedMode: "for-you",
 });
 
 const SESSION_USER_STORAGE_KEY = "arisfront:session-user";
@@ -367,7 +367,7 @@ export async function initSession(): Promise<void> {
   const savedMode = localStorage.getItem("feedMode");
   const savedUser = readPersistedSessionUser();
   sessionStore.patch({
-    feedMode: savedMode && isFeedMode(savedMode) ? savedMode : "by-time",
+    feedMode: savedMode && isFeedMode(savedMode) ? savedMode : "for-you",
     user: savedUser,
   });
 

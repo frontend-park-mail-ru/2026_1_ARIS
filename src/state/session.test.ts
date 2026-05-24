@@ -41,14 +41,14 @@ const user: User = {
 describe("session state", () => {
   beforeEach(() => {
     vi.stubGlobal("localStorage", createMemoryStorage());
-    sessionStore.reset({ user: null, feedMode: "by-time" });
+    sessionStore.reset({ user: null, feedMode: "for-you" });
     window.history.replaceState({}, "", "/feed");
   });
 
   afterEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
-    sessionStore.reset({ user: null, feedMode: "by-time" });
+    sessionStore.reset({ user: null, feedMode: "for-you" });
   });
 
   it("сохраняет и очищает пользователя с событием sessionchange", () => {
@@ -124,7 +124,7 @@ describe("session state", () => {
     expect(getCurrentUser).toHaveBeenCalledTimes(1);
     expect(listener).toHaveBeenCalledTimes(1);
     expect(listener.mock.calls[0]?.[0]).toMatchObject({
-      detail: { key: "init", state: { user: null, feedMode: "by-time" } },
+      detail: { key: "init", state: { user: null, feedMode: "for-you" } },
     });
 
     window.removeEventListener("sessionchange", listener);

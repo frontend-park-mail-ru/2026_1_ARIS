@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameRoom } from "../../../api/games";
 import {

@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../../api/core/client";
 import type { GameRoom } from "../../../api/games";

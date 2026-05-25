@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, expect, it, vi } from "vitest";
 import type { GameRoom } from "../../../api/games";
 import { renderGamesPage, type RenderGamesPageOptions } from "./page-render";

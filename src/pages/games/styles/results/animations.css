@@ -1,0 +1,256 @@
+/* Анимации и настройки уменьшенного движения для результатов. */
+@layer pages {
+  @media (prefers-reduced-motion: reduce) {
+    .games-stage-card,
+    .games-game-player,
+    .games-game-player__round-points,
+    .games-game-player__score strong,
+    .games-results-table__row,
+    .games-question-hero,
+    .games-answer-axis-card,
+    .games-answer-axis-card__time,
+    .games-round-score-board,
+    .games-round-score-row,
+    .games-replay-action,
+    .games-round-result,
+    .games-final-place,
+    .games-final-question,
+    .games-final-question__answer,
+    .games-start-countdown__value {
+      animation: none;
+    }
+
+    .games-precision-timer__bar-fill,
+    .games-start-countdown__bar-fill,
+    .games-game-player,
+    .games-results-table__row,
+    .games-answer-axis-card,
+    .games-round-score-row,
+    .games-question-report,
+    .games-button {
+      transition: none;
+    }
+
+    .games-answer-axis-card__time,
+    .games-game-player__round-points--visible {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes games-stage-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.99);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes games-rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes games-score-row-in {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes games-answer-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.98);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes games-round-points-appear {
+    from {
+      opacity: 0;
+      transform: translateY(5px) scale(0.96);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes games-score-value-bump {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+
+    45% {
+      transform: scale(1.24);
+    }
+  }
+
+  @keyframes games-answer-time-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes games-accent-flow {
+    from {
+      background-position: 0% 50%;
+    }
+
+    to {
+      background-position: 180% 50%;
+    }
+  }
+
+  @keyframes games-question-materialize {
+    0% {
+      opacity: 0;
+      clip-path: inset(48% 0 48% 0 round 8px);
+      filter: blur(12px);
+      transform: translateY(26px) scale(0.96);
+    }
+
+    62% {
+      opacity: 1;
+      clip-path: inset(0 0 0 0 round 8px);
+      filter: blur(0);
+      transform: translateY(-2px) scale(1.01);
+    }
+
+    100% {
+      opacity: 1;
+      clip-path: inset(0 0 0 0 round 8px);
+      filter: blur(0);
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes games-correct-answer-reveal {
+    0% {
+      opacity: 0;
+      clip-path: inset(0 52% 0 52% round 8px);
+      transform: translateY(16px) scale(0.94);
+    }
+
+    100% {
+      opacity: 1;
+      clip-path: inset(0 0 0 0 round 8px);
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes games-axis-draw {
+    0% {
+      opacity: 0;
+      transform: scaleX(0.32);
+    }
+
+    100% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes games-axis-card-settle {
+    0% {
+      opacity: 0;
+      transform: translateX(
+          calc(var(--games-answer-side, 0) * (72px + var(--games-answer-offset, 0) * 150px))
+        )
+        translateY(-14px) rotateX(4deg) scale(0.96);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateX(0) translateY(0) rotateX(0) scale(1);
+    }
+  }
+
+  @keyframes games-exact-answer-pulse {
+    0%,
+    100% {
+      box-shadow: 0 10px 22px rgb(33 45 88 / 6%);
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+
+    50% {
+      box-shadow:
+        0 18px 34px rgb(53 137 96 / 17%),
+        0 0 0 1px rgb(53 137 96 / 18%) inset;
+      transform: translate3d(0, 0, 0) scale(1.012);
+    }
+  }
+
+  @keyframes games-score-board-reveal {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes games-timer-pulse {
+    from {
+      transform: scale(1);
+    }
+
+    to {
+      transform: scale(1.04);
+    }
+  }
+
+  @keyframes games-start-ring {
+    from {
+      opacity: 0.42;
+      transform: scale(0.985);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes games-start-pop {
+    from {
+      transform: scale(0.985);
+    }
+
+    to {
+      transform: scale(1.02);
+    }
+  }
+}

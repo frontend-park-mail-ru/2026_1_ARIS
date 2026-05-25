@@ -1,0 +1,90 @@
+/* Адаптивные правила широкого игрового layout. */
+@layer pages {
+  @media (width <=1199px) {
+    .app-page--game-room {
+      height: auto;
+      min-height: 100dvh;
+      overflow: auto;
+    }
+
+    .app-layout--game-room {
+      height: auto;
+      min-height: 0;
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: var(--space-4);
+      overflow: visible;
+    }
+
+    .app-layout--game-room .app-layout__left,
+    .app-layout--game-room .app-layout__center,
+    .app-layout--game-room .app-layout__right {
+      display: flex;
+      height: auto;
+      min-height: 0;
+      padding-left: 0;
+      overflow: visible;
+    }
+
+    .app-layout--game-room .games-page,
+    .app-layout--game-room [data-games-content],
+    .games-layout--room,
+    .games-layout--room .games-main {
+      height: auto;
+      max-width: 100%;
+      min-height: 0;
+      overflow: visible;
+    }
+
+    .games-layout--room .games-panel {
+      height: auto;
+      max-height: min(680px, calc(100dvh - 96px));
+    }
+
+    .games-room-players-panel {
+      height: auto;
+      max-height: 360px;
+    }
+
+    .games-layout--with-chat {
+      max-width: 100%;
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-4);
+    }
+
+    .games-game-shell {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .games-game-scoreboard__list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    }
+
+    .games-room-chat {
+      position: static;
+      height: auto;
+      min-height: 360px;
+      max-height: none;
+    }
+
+    .games-room-layout__chat > .games-room-chat {
+      height: auto;
+      min-height: 360px;
+      max-height: 520px;
+    }
+
+    .games-layout--with-chat > [data-games-external-chat],
+    .games-layout--with-chat > [data-games-external-chat] > .games-room-chat {
+      height: 100%;
+      max-height: none;
+    }
+
+    .games-room-chat__messages {
+      max-height: 320px;
+    }
+
+    .games-layout--with-chat .games-room-chat__messages {
+      max-height: none;
+    }
+  }
+}

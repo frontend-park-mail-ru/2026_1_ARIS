@@ -14,7 +14,7 @@ import {
   uploadStickerImage,
 } from "../../api/chat";
 import type { AttachmentPayload, MessageAttachment, Sticker, StickerPack } from "../../api/chat";
-import { ApiError } from "../../api/core/client";
+import { ApiError, apiRequest } from "../../api/core/client";
 import { getSessionUser } from "../../state/session";
 import { t } from "../../state/i18n";
 import { chatsState } from "./state";
@@ -375,8 +375,12 @@ async function loadVoiceWaveform(audio: HTMLAudioElement): Promise<void> {
 
   voiceWaveformRequests.add(fetchUrl);
   try {
-    const response = await fetch(fetchUrl, { credentials: "include" });
-    const waveformInfo = await decodeVoiceWaveform(await response.arrayBuffer());
+    const data = await apiRequest<ArrayBuffer>(
+      fetchUrl,
+      { responseType: "arrayBuffer" },
+      new ArrayBuffer(0),
+    );
+    const waveformInfo = await decodeVoiceWaveform(data);
     if (waveformInfo) {
       rememberVoiceWaveform([src, fetchUrl], waveformInfo.heights);
       applyVoiceWaveform(player, waveformInfo.heights);

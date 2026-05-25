@@ -4,6 +4,8 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
+const ImageMinimizerPlugin = require("image-minimizer-webpack-plugin");
+const CompressionPlugin = require("compression-webpack-plugin");
 const packageJson = require("./package.json");
 
 const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
@@ -104,6 +106,19 @@ module.exports = {
         },
       }),
       new CssMinimizerPlugin(),
+      new ImageMinimizerPlugin({
+        test: /\.(jpe?g|png|webp)$/i,
+        minimizer: {
+          implementation: ImageMinimizerPlugin.sharpMinify,
+          options: {
+            encodeOptions: {
+              jpeg: { quality: 85, progressive: true },
+              png: { palette: true, quality: 95, effort: 10, compressionLevel: 9 },
+              webp: { quality: 85 },
+            },
+          },
+        },
+      }),
     ],
     splitChunks: {
       chunks: "all",
@@ -135,6 +150,11 @@ module.exports = {
       },
     }),
     new AssetManifestPlugin(),
+    new CompressionPlugin({
+      test: /\.(js|css|html|svg|json)$/i,
+      threshold: 1024,
+      minRatio: 0.8,
+    }),
     new CopyWebpackPlugin({
       patterns: [
         {
@@ -156,6 +176,11 @@ module.exports = {
         {
           from: path.resolve(__dirname, "public/offline.html"),
           to: "offline.html",
+        },
+        {
+          from: path.resolve(__dirname, "public/.well-known"),
+          to: ".well-known",
+          globOptions: { ignore: ["**/.DS_Store"] },
         },
         {
           from: path.resolve(__dirname, "public/assets/img"),

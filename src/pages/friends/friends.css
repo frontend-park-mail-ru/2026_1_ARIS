@@ -7,7 +7,7 @@
   .friends-panel {
     width: 100%;
     padding: var(--space-4) var(--space-4) var(--space-6);
-    border-radius: var(--radius-panel);
+    border-radius: var(--radius-ui);
     background: var(--color-surface-muted);
     box-shadow: var(--shadow-card);
   }
@@ -30,7 +30,7 @@
     min-height: 34px;
     padding: var(--space-1) var(--space-3);
     border: 1px solid var(--color-border-default);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-ui);
     background: var(--color-surface-overlay);
     color: var(--color-text-main);
     font-size: var(--text-size-main);
@@ -366,7 +366,7 @@
   @media (width <= 768px) {
     .friends-panel {
       padding: 20px 14px;
-      border-radius: 20px;
+      border-radius: var(--radius-ui);
     }
 
     .friends-panel__header {
@@ -407,7 +407,7 @@
     .friends-modal__dialog {
       width: 100%;
       padding: 18px;
-      border-radius: 24px;
+      border-radius: var(--radius-ui);
     }
 
     .friends-modal__identity {

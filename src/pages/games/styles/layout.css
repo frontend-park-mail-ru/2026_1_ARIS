@@ -1,0 +1,100 @@
+/* Базовая раскладка страницы игр. */
+@layer pages {
+  .games-page {
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+  }
+
+  .games-page > [data-games-content] {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .games-layout {
+    display: grid;
+    width: 100%;
+    max-width: calc(var(--layout-content-width) - (var(--layout-content-inner-padding-x) * 2));
+    margin: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .games-layout--with-chat {
+    max-width: calc(
+      var(--layout-content-width) + var(--layout-widgets-width) + var(--layout-column-gap)
+    );
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: minmax(0, var(--layout-content-width)) var(--layout-widgets-width);
+    align-items: stretch;
+    gap: var(--layout-column-gap);
+  }
+
+  .games-layout--with-chat > [data-games-external-chat] {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .app-layout--game-room {
+    width: max-content;
+    min-width: var(--layout-min-width);
+    height: 100%;
+    min-height: 0;
+    grid-template-columns:
+      var(--layout-sidebar-width)
+      var(--layout-content-width)
+      var(--layout-widgets-width);
+    align-items: stretch;
+    padding-bottom: var(--layout-padding-top);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .app-layout--game-room .app-layout__left,
+  .app-layout--game-room .app-layout__center,
+  .app-layout--game-room .app-layout__right {
+    min-height: 0;
+  }
+
+  .app-layout--game-room .app-layout__left {
+    display: flex;
+    width: 100%;
+  }
+
+  .app-layout--game-room .app-layout__center {
+    height: 100%;
+    padding: 0 var(--layout-content-inner-padding-x);
+    align-items: stretch;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .app-layout--game-room .app-layout__right {
+    display: flex;
+    height: 100%;
+    padding-left: 0;
+    overflow: hidden;
+  }
+
+  .app-layout--game-room .games-page,
+  .app-layout--game-room [data-games-content] {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .games-main {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .games-layout--with-chat > .games-main {
+    align-self: start;
+  }
+}

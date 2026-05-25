@@ -128,6 +128,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
   const isCommunitiesRoute = isCommunitiesListRoute || currentPath.startsWith("/communities/");
   const isChatsRoute = currentPath === "/chats";
   const isGamesRoute = currentPath === "/games" || currentPath.startsWith("/games/");
+  const isGamesCatalogRoute = currentPath === "/games";
   const isSettingsRoute = currentPath === "/settings";
   const isForYouActive = getFeedMode() === "for-you";
   const isByTimeActive = getFeedMode() === "by-time";
@@ -239,7 +240,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           icon: "/assets/img/icons/star.svg",
           isActive: isGamesRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
-          preventWhenActive: true,
+          preventWhenActive: isGamesCatalogRoute,
         })}
 
         ${renderSidebarItem({

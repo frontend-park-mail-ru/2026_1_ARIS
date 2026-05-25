@@ -1,0 +1,175 @@
+/* Архив вопросов и прошлые раунды на экране итогов. */
+@layer pages {
+  .games-question,
+  .games-history-card {
+    display: flex;
+    min-width: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-glass-soft);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-base);
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .games-question {
+    justify-content: flex-start;
+  }
+
+  .games-question--waiting {
+    gap: var(--space-2);
+  }
+
+  .games-question--active {
+    border-color: var(--color-border-accent-soft);
+    background: var(--color-surface-glass-strong);
+  }
+
+  .games-question__topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .games-question-report {
+    display: inline-flex;
+    min-height: 34px;
+    max-width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid rgb(178 59 88 / 28%);
+    border-radius: var(--radius-small);
+    background: linear-gradient(180deg, rgb(255 247 249 / 86%), rgb(255 255 255 / 72%));
+    color: rgb(143 43 68);
+    align-items: center;
+    justify-content: center;
+    font: inherit;
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.1;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgb(178 59 88 / 7%);
+    transition:
+      background var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .games-question-report:disabled {
+    cursor: default;
+    opacity: 0.68;
+  }
+
+  .games-question-report:focus-visible,
+  .games-question-report:hover:not(:disabled) {
+    border-color: rgb(178 59 88 / 48%);
+    background: linear-gradient(180deg, rgb(255 239 243 / 92%), rgb(255 255 255 / 76%));
+    color: rgb(122 36 57);
+    transform: translateY(-1px);
+  }
+
+  .games-question-report--card {
+    min-height: 30px;
+    margin-left: auto;
+    padding: 6px var(--space-2);
+    font-size: 12px;
+  }
+
+  .games-question__label,
+  .games-countdown {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-countdown {
+    min-width: 58px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border-accent-soft);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-muted);
+    color: var(--color-interactive-primary);
+    font-size: var(--text-size-title);
+    text-align: center;
+  }
+
+  .games-countdown--danger {
+    color: var(--color-text-error);
+  }
+
+  .games-answer-progress {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .games-answer-progress__item--done {
+    border-color: rgb(53 137 96 / 38%);
+    background: rgb(53 137 96 / 12%);
+    color: var(--color-text-main);
+  }
+
+  .games-question--active .games-question__title {
+    max-width: 760px;
+    margin: 0;
+    color: var(--color-text-main);
+    font-size: 24px;
+    line-height: 1.25;
+  }
+
+  .games-answer-form {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(118px, auto);
+    align-items: end;
+    gap: var(--space-3);
+  }
+
+  .games-answer-form--play .games-button {
+    min-height: 48px;
+  }
+
+  .games-rounds {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .games-round {
+    display: flex;
+    min-width: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-glass-soft);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-muted);
+    flex-direction: column;
+    gap: var(--space-2);
+    color: var(--color-text-main);
+    text-decoration: none;
+  }
+
+  .games-round__header,
+  .games-round__players {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .games-round p {
+    margin: 0;
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    line-height: var(--line-height-base);
+  }
+
+  .games-round__answer,
+  .games-round__players {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+  }
+}

@@ -1,0 +1,49 @@
+/* Адаптивные правила компактного мобильного layout. */
+@layer pages {
+  @media (width <=520px) {
+    .games-field__error--stable {
+      min-height: 48px;
+    }
+
+    .games-stage-card__topline,
+    .games-question__topline {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .games-stage-card__actions {
+      width: 100%;
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .games-question-report,
+    .games-precision-timer,
+    .games-precision-timer--compact {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+
+    .games-stage-card {
+      min-height: 340px;
+      padding: var(--space-3);
+    }
+
+    .games-stage-card__question {
+      font-size: 24px;
+    }
+
+    .games-precision-timer__value {
+      font-size: 30px;
+    }
+
+    .games-start-countdown__value {
+      font-size: 64px;
+    }
+
+    .games-answer-axis-card__correct-value {
+      font-size: 34px;
+    }
+  }
+}

@@ -1,0 +1,143 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { describe, expect, it, vi } from "vitest";
+import type { GameRoom, GameRoomMessage } from "../../../../api/games";
+import { createGameRoomAvatarService, getProfileAvatarLink } from "./avatars";
+
+const basePlayer: GameRoom["players"][number] = {
+  profileId: "1",
+  userAccountId: "10",
+  name: "Alice Example",
+  firstName: "Alice",
+  lastName: "Example",
+  gender: "",
+  username: "alice",
+  avatarId: "",
+  avatarUrl: "/avatars/alice.png",
+  score: 0,
+  isReady: false,
+  hasAnswered: false,
+  pauseUsed: false,
+  forceResumeRequested: false,
+  isMe: true,
+};
+
+const baseRoom: GameRoom = {
+  id: "room-1",
+  title: "Room",
+  inviteCode: "123456",
+  gameType: "number_duel",
+  status: "waiting",
+  createdByProfileId: "1",
+  maxPlayers: 4,
+  hasPassword: false,
+  password: "",
+  isRanked: false,
+  inviteCodeEnabled: true,
+  questionCount: 5,
+  answerTimeoutSec: 30,
+  currentQuestionIndex: 0,
+  nextQuestionAt: "",
+  pausedByProfileId: "",
+  pauseStartedAt: "",
+  pauseUntilAt: "",
+  pauseForceVotes: 0,
+  pauseForceVotesRequired: 0,
+  creator: basePlayer,
+  players: [basePlayer],
+  currentQuestion: null,
+  questions: [],
+  ratingChanges: [],
+  winnerProfileId: "",
+  profileStats: null,
+};
+
+const baseMessage: GameRoomMessage = {
+  id: "message-1",
+  roomId: "room-1",
+  authorProfileId: "",
+  authorUserAccountId: "",
+  authorName: "",
+  authorFirstName: "",
+  authorLastName: "",
+  authorUsername: "",
+  authorAvatarId: "",
+  authorAvatarUrl: "",
+  text: "Привет",
+  createdAt: "2026-05-25T00:00:00.000Z",
+};
+
+/** Создаёт сервис аватаров с тестовыми зависимостями. */
+function createService(overrides: Partial<Parameters<typeof createGameRoomAvatarService>[0]> = {}) {
+  return createGameRoomAvatarService({
+    getCurrentProfileId: () => "1",
+    getCurrentPlayer: () => basePlayer,
+    getSessionUser: () => ({
+      id: "1",
+      firstName: "Alice",
+      lastName: "Example",
+      login: "alice",
+      avatarLink: "/session/avatar.png",
+    }),
+    loadProfile: vi.fn(async () => ({ imageLink: "/profile/avatar.png", gender: "female" })),
+    ...overrides,
+  });
+}
+
+describe("game room avatars", () => {
+  it("достаёт ссылку на аватар из разных полей профиля", () => {
+    expect(getProfileAvatarLink({ avatarURL: "/avatar.png" })).toBe("/avatar.png");
+    expect(getProfileAvatarLink({ photoUrl: " /photo.png " })).toBe("/photo.png");
+    expect(getProfileAvatarLink(null)).toBe("");
+  });
+
+  it("обогащает собственное сообщение данными текущего игрока", () => {
+    const service = createService();
+
+    expect(service.enrichOwnRoomChatMessage(baseRoom, baseMessage)).toMatchObject({
+      roomId: "room-1",
+      authorProfileId: "1",
+      authorUserAccountId: "10",
+      authorName: "Alice Example",
+      authorFirstName: "Alice",
+      authorLastName: "Example",
+      authorUsername: "alice",
+      authorAvatarUrl: "/session/avatar.png",
+    });
+  });
+
+  it("сопоставляет автора чата с игроком комнаты по username", () => {
+    const service = createService({
+      getSessionUser: () => null,
+    });
+
+    expect(
+      service.getRoomChatAuthorAvatar(baseRoom, {
+        ...baseMessage,
+        authorUsername: "alice",
+      }),
+    ).toBe("/avatars/alice.png");
+  });
+
+  it("загружает недостающий аватар и пол игрока из профиля", async () => {
+    const loadProfile = vi.fn(async () => ({ imageLink: "/loaded.png", gender: "female" }));
+    const service = createService({
+      getCurrentProfileId: () => "other",
+      getCurrentPlayer: () => null,
+      getSessionUser: () => null,
+      loadProfile,
+    });
+
+    const [player] = await service.hydrateGamePlayersAvatars([
+      { ...basePlayer, avatarUrl: "", gender: "", isMe: false },
+    ]);
+
+    expect(loadProfile).toHaveBeenCalledWith("1", undefined);
+    expect(player).toMatchObject({
+      avatarUrl: "/loaded.png",
+      gender: "female",
+      isMe: false,
+    });
+  });
+});

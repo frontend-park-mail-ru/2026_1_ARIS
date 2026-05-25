@@ -17,8 +17,8 @@ export function renderEyeToggle({
   className = "",
 }: RenderEyeToggleOptions = {}): string {
   const iconSrc = isVisible
-    ? "assets/img/icons/eye-on-thin.svg"
-    : "assets/img/icons/eye-off-thin.svg";
+    ? "/assets/img/icons/eye-on-thin.svg"
+    : "/assets/img/icons/eye-off-thin.svg";
 
   const stateClass = isVisible ? "eye-toggle--visible" : "eye-toggle--hidden";
 

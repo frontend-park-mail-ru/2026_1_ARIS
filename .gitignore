@@ -6,3 +6,4 @@ allure-report/
 .DS_Store
 .env
 docs/runbook.md
+.claude/

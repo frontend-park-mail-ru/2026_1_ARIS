@@ -1,0 +1,124 @@
+/* Модальные окна подтверждений и перехода в профиль из комнаты. */
+@layer pages {
+  .games-confirm-modal {
+    position: fixed;
+    z-index: 1100;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-5);
+    background: var(--color-surface-backdrop);
+  }
+
+  .games-confirm-modal__dialog {
+    display: flex;
+    width: min(360px, 100%);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border-glass);
+    border-radius: var(--radius-content-card);
+    background: var(--color-surface-content-card);
+    box-shadow: var(--shadow-card-elevated);
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .games-confirm-modal__dialog--report {
+    width: min(440px, 100%);
+  }
+
+  .games-confirm-modal__title,
+  .games-confirm-modal__text {
+    margin: 0;
+  }
+
+  .games-confirm-modal__header {
+    position: relative;
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .games-confirm-modal__title {
+    width: calc(100% - 56px);
+    padding: 0;
+    padding-right: 56px;
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.2;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .games-confirm-modal__dialog--report .games-confirm-modal__title {
+    white-space: normal;
+  }
+
+  .games-confirm-modal__dialog--profile-nav .games-confirm-modal__title {
+    white-space: normal;
+  }
+
+  .games-confirm-modal__close,
+  .games-confirm-modal__header > .modal-close-button {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    flex: 0 0 auto;
+    transform: translateY(-50%);
+  }
+
+  .games-confirm-modal__text {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+    line-height: var(--line-height-base);
+  }
+
+  .games-confirm-modal__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
+  .games-confirm-modal__actions > .games-button {
+    width: 100%;
+  }
+
+  .games-profile-nav-modal__user {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-muted);
+  }
+
+  .games-profile-nav-modal__avatar {
+    display: inline-flex;
+    width: 56px;
+    height: 56px;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: var(--radius-round);
+    background: var(--color-surface-avatar-placeholder);
+    object-fit: cover;
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-profile-nav-modal__user strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    line-height: var(--line-height-tight);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

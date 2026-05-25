@@ -2,6 +2,7 @@ import express, { NextFunction, Request, Response } from "express";
 import http from "http";
 import https from "https";
 import net from "net";
+import fs from "fs";
 import morgan from "morgan";
 import path from "path";
 
@@ -24,18 +25,44 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+function setCacheHeaders(res: Response, filePath: string): void {
+  if (filePath.endsWith(".html")) {
+    res.setHeader("Cache-Control", "no-cache");
+  } else if (/\.[0-9a-f]{8,}\.(js|css)$/i.test(filePath)) {
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  } else {
+    res.setHeader("Cache-Control", "public, max-age=3600");
+  }
+}
+
+// Serve pre-compressed .gz files when the client accepts gzip encoding.
+// Falls through to express.static for files without a .gz counterpart.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const acceptEncoding = req.headers["accept-encoding"] ?? "";
+  if (!acceptEncoding.includes("gzip") || req.method !== "GET") {
+    next();
+    return;
+  }
+
+  const relativePath = req.path.replace(/^\//, "");
+  const gzPath = path.resolve(distDir, `${relativePath}.gz`);
+
+  if (!fs.existsSync(gzPath)) {
+    next();
+    return;
+  }
+
+  const originalPath = path.resolve(distDir, relativePath);
+  setCacheHeaders(res, originalPath);
+  res.type(path.extname(relativePath));
+  res.setHeader("Content-Encoding", "gzip");
+  res.setHeader("Vary", "Accept-Encoding");
+  res.sendFile(gzPath);
+});
+
 app.use(
   express.static(distDir, {
-    setHeaders(res, filePath) {
-      if (filePath.endsWith(".html")) {
-        res.setHeader("Cache-Control", "no-cache");
-      } else if (/\.[0-9a-f]{8,}\.(js|css)$/i.test(filePath)) {
-        // Content-hashed bundles are immutable — cache for 1 year
-        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      } else {
-        res.setHeader("Cache-Control", "public, max-age=3600");
-      }
-    },
+    setHeaders: setCacheHeaders,
   }),
 );
 app.use(express.static(publicDir));

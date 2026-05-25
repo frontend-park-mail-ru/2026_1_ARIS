@@ -1,0 +1,135 @@
+/* Базовые формы, сетки полей и состояния input. */
+@layer pages {
+  .games-form {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 10px;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-glass-soft);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-muted);
+  }
+
+  .games-form--wide {
+    max-width: 680px;
+  }
+
+  .games-form--plain {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .games-form--invite {
+    max-width: 618px;
+  }
+
+  .games-join-actions__submit {
+    width: 100%;
+    grid-column: 1 / -1;
+  }
+
+  .games-form--narrow {
+    max-width: 360px;
+  }
+
+  .games-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .games-field--full {
+    grid-column: 1 / -1;
+  }
+
+  .games-field {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 5px;
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .games-field__label-row {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .games-field > input {
+    width: 100%;
+    min-width: 0;
+    min-height: 34px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-input);
+    color: var(--color-text-main);
+    font: inherit;
+    box-sizing: border-box;
+  }
+
+  .games-field > input[type="number"] {
+    appearance: textfield;
+  }
+
+  .games-field > input[type="number"]::-webkit-inner-spin-button,
+  .games-field > input[type="number"]::-webkit-outer-spin-button {
+    margin: 0;
+    appearance: none;
+  }
+
+  .games-field--invalid > input {
+    border-color: var(--color-border-error);
+    background: var(--color-surface-input-error);
+  }
+
+  .games-field__error {
+    display: block;
+    min-height: 16px;
+    color: var(--color-text-error);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-medium);
+    line-height: 16px;
+  }
+
+  .games-field__error--stable {
+    min-height: 32px;
+  }
+
+  .games-field--answer {
+    gap: var(--space-2);
+  }
+
+  .games-field--compact {
+    min-width: 160px;
+    gap: var(--space-1);
+  }
+
+  .games-field--compact > input {
+    min-height: 36px;
+  }
+
+  .games-field--answer > input {
+    min-height: 48px;
+    border-color: rgb(95 111 157 / 22%);
+    background: rgb(255 255 255 / 86%);
+    font-size: var(--text-size-title);
+    font-weight: var(--font-weight-bold);
+    box-shadow:
+      0 10px 20px rgb(33 45 88 / 7%),
+      0 1px 0 rgb(255 255 255 / 82%) inset;
+    transition:
+      background var(--transition-control),
+      border-color var(--transition-control),
+      box-shadow var(--transition-control);
+  }
+}

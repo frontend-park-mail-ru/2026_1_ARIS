@@ -1666,6 +1666,24 @@ export async function renderCommunities(
   `;
 }
 
+function scrollToHighlightedCommunityPost(): void {
+  const postId = new URLSearchParams(window.location.search).get("postId");
+  if (!postId) return;
+
+  const article = document.querySelector<HTMLElement>(
+    `[data-community-post="${CSS.escape(postId)}"]`,
+  );
+  if (!article) return;
+
+  window.history.replaceState({}, "", window.location.pathname + window.location.hash);
+
+  requestAnimationFrame(() => {
+    article.scrollIntoView({ behavior: "smooth", block: "center" });
+    article.classList.add("profile-post--highlighted");
+    window.setTimeout(() => article.classList.remove("profile-post--highlighted"), 2500);
+  });
+}
+
 export function initCommunities(root: Document | HTMLElement = document): void {
   const bindableRoot = root as CommunitiesRoot;
   if (bindableRoot.__communitiesBound) return;
@@ -1673,6 +1691,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
   closeCommunityMenus(root);
   closeCommunityPostMenus(root);
   closeCommunityMemberRoleMenus(root);
+  scrollToHighlightedCommunityPost();
 
   root.addEventListener("pointerdown", (event: Event) => {
     if (event instanceof PointerEvent) {

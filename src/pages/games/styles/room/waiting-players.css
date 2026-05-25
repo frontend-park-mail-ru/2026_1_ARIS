@@ -1,0 +1,197 @@
+/* Список игроков и карточки участников в комнате ожидания. */
+@layer pages {
+  .games-scoreboard {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    overflow: visible;
+  }
+
+  .games-player {
+    position: relative;
+    z-index: 35;
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-muted);
+    gap: var(--space-2);
+    overflow: visible;
+  }
+
+  .games-player--me {
+    border-color: var(--color-border-accent-soft);
+  }
+
+  .games-player--answered {
+    border-color: rgb(53 137 96 / 38%);
+    background: rgb(53 137 96 / 10%);
+  }
+
+  .games-player--ready {
+    border-color: rgb(23 163 92 / 68%);
+    background: rgb(23 163 92 / 16%);
+  }
+
+  .games-player--not-ready {
+    border-color: rgb(224 62 91 / 62%);
+    background: rgb(224 62 91 / 14%);
+  }
+
+  .games-player__body {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .games-player-menu {
+    position: relative;
+    z-index: 80;
+    place-self: center end;
+  }
+
+  .games-player-menu__toggle {
+    width: 30px;
+    height: 30px;
+  }
+
+  .games-player-menu__popup {
+    z-index: 90;
+    top: 50%;
+    right: calc(100% + var(--space-2));
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+
+  .games-player-menu__popup[hidden] {
+    display: none;
+  }
+
+  .games-player-menu:not(:has(.games-player-menu__popup[hidden])) {
+    z-index: 100;
+  }
+
+  .games-player:has(.games-player-menu__popup:not([hidden])) {
+    z-index: 90;
+  }
+
+  .games-access-panel,
+  .games-room-footer,
+  .games-panel {
+    overflow: visible;
+  }
+
+  .games-layout--room {
+    display: flex;
+    max-width: calc(var(--layout-content-width) - (var(--layout-content-inner-padding-x) * 2));
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .games-layout--room .games-main {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .games-layout--room .games-panel {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden auto;
+    overscroll-behavior: contain;
+  }
+
+  @supports not selector(:has(*)) {
+    .games-player-menu__popup {
+      z-index: 100;
+    }
+  }
+
+  .games-player-profile {
+    display: inline-flex;
+    max-width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-name);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+    text-decoration: none;
+  }
+
+  .games-player-profile:hover {
+    color: var(--color-interactive-primary);
+  }
+
+  .games-player-profile__avatar {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: var(--radius-round);
+    background: var(--color-surface-avatar-placeholder);
+    object-fit: cover;
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-player-profile__name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .games-lobby-creator .games-player-profile {
+    color: var(--color-text-name);
+  }
+
+  .games-lobby-creator .games-player-profile:hover {
+    color: var(--color-interactive-primary);
+  }
+
+  .games-lobby-creator .games-player-profile__avatar {
+    width: 32px;
+    height: 32px;
+    font-size: var(--text-size-meta);
+  }
+
+  .games-player__kick {
+    width: fit-content;
+    min-height: 28px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border-danger);
+    border-radius: var(--radius-small);
+    background: rgb(178 59 88 / 10%);
+    color: var(--color-text-danger);
+    font: inherit;
+    font-size: var(--text-size-meta);
+    cursor: pointer;
+  }
+
+  .games-player__kick:hover {
+    background: rgb(178 59 88 / 16%);
+  }
+
+  .games-player-empty-summary {
+    display: flex;
+    min-height: 66px;
+    align-items: center;
+    padding: var(--space-3);
+    border: 1px dashed var(--color-border-default);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-muted);
+    box-sizing: border-box;
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-medium);
+  }
+}

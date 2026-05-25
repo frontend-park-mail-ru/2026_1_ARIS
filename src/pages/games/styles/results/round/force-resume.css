@@ -1,0 +1,75 @@
+/* Состояние голосования за досрочное продолжение паузы. */
+@layer pages {
+  .games-force-resume {
+    display: flex;
+    width: 100%;
+    max-width: 620px;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+    animation: games-rise-in 360ms ease both;
+  }
+
+  .games-force-resume__header {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .games-force-resume__count {
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-force-resume__meter {
+    display: block;
+    height: 10px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: rgb(178 59 88 / 14%);
+  }
+
+  .games-force-resume__meter-fill {
+    display: block;
+    width: var(--games-force-progress, 0%);
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgb(178 59 88), rgb(242 179 65));
+    transition: width 260ms ease;
+  }
+
+  .games-force-resume__players {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .games-force-resume__player {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--color-border-glass-soft);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-base);
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-force-resume__player--voted {
+    border-color: rgb(53 137 96 / 38%);
+    background: rgb(53 137 96 / 12%);
+    color: rgb(39 116 80);
+  }
+}

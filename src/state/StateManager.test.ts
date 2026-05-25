@@ -10,6 +10,16 @@ describe("StateManager", () => {
     expect(Object.isFrozen(snapshot)).toBe(true);
   });
 
+  it("сохраняет shallow-freeze семантику снимков", () => {
+    const nested = { value: 1 };
+    const store = new StateManager({ nested });
+    const snapshot = store.get();
+
+    expect(Object.isFrozen(snapshot)).toBe(true);
+    expect(Object.isFrozen(snapshot.nested)).toBe(false);
+    expect(snapshot.nested).toBe(nested);
+  });
+
   it("обновляет состояние через patch и уведомляет подписчиков", () => {
     const store = new StateManager({ count: 1, label: "old" });
     const listener = vi.fn();
@@ -20,6 +30,21 @@ describe("StateManager", () => {
     expect(store.get()).toEqual({ count: 2, label: "old" });
     expect(listener).toHaveBeenCalledTimes(1);
     expect(listener).toHaveBeenCalledWith({ count: 2, label: "old" });
+  });
+
+  it("атомарно обновляет состояние через update и уведомляет подписчиков один раз", () => {
+    const store = new StateManager({ count: 1, label: "old" });
+    const listener = vi.fn();
+
+    store.subscribe(listener);
+    store.update((state) => ({
+      count: state.count + 1,
+      label: "new",
+    }));
+
+    expect(store.get()).toEqual({ count: 2, label: "new" });
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith({ count: 2, label: "new" });
   });
 
   it("перестаёт уведомлять после unsubscribe", () => {

@@ -8,7 +8,7 @@ import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
 import { getSessionUser } from "../../state/session";
 import { canViewAdminPanel } from "../../state/role";
-import { getAllTickets, getSupportStats } from "../../api/support";
+import { getAllTickets, getSupportStats, type Ticket } from "../../api/support";
 import { buildStatsFromTickets, renderStats } from "./render";
 
 export async function renderSupportStats(
@@ -54,13 +54,25 @@ export async function renderSupportStats(
   let statsHtml: string;
   try {
     const stats = await getSupportStats(signal);
-    statsHtml = renderStats(stats);
+    let complaints: Ticket[] | null = null;
+    try {
+      complaints = await getAllTickets({ category: "complaint" }, signal);
+    } catch (complaintsError) {
+      if (complaintsError instanceof Error && complaintsError.name === "AbortError") {
+        throw complaintsError;
+      }
+      console.warn("[support-stats] complaint tickets unavailable", complaintsError);
+    }
+    statsHtml = renderStats(stats, complaints);
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     console.warn("[support-stats] stats endpoint unavailable, fallback to all tickets", error);
     try {
       const tickets = await getAllTickets(undefined, signal);
-      statsHtml = renderStats(buildStatsFromTickets(tickets));
+      statsHtml = renderStats(
+        buildStatsFromTickets(tickets),
+        tickets.filter((ticket) => ticket.category === "complaint"),
+      );
     } catch (ticketsError) {
       if (ticketsError instanceof Error && ticketsError.name === "AbortError") throw ticketsError;
       console.error("[support-stats] failed to load tickets for stats", ticketsError);

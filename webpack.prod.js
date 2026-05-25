@@ -158,6 +158,11 @@ module.exports = {
           to: "offline.html",
         },
         {
+          from: path.resolve(__dirname, "public/.well-known"),
+          to: ".well-known",
+          globOptions: { ignore: ["**/.DS_Store"] },
+        },
+        {
           from: path.resolve(__dirname, "public/assets/img"),
           to: "assets/img",
           globOptions: { ignore: ["**/.DS_Store"] },

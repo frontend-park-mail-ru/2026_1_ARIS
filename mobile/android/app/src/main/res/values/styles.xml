@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:colorAccent">#2F7DFF</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#111A33</item>
+        <item name="android:navigationBarColor">#111A33</item>
+    </style>
+
+    <style name="AppTheme.Launcher" parent="AppTheme">
+        <item name="android:windowBackground">@drawable/launch_screen</item>
+    </style>
+</resources>

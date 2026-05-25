@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ARISNET</string>
+    <string name="no_external_app">Cannot open this link</string>
+    <string name="loading">Loading</string>
+    <string name="network_error_title">No connection</string>
+    <string name="network_error_message">Check the network connection and try again.</string>
+    <string name="retry">Retry</string>
+</resources>

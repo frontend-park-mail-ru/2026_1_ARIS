@@ -19,18 +19,17 @@ describe("media url helpers", () => {
   });
 
   it("разворачивает старые image-proxy ссылки в реальные адреса", () => {
-    expect(resolveMediaUrl("/image-proxy?url=%2Fmedia%2F1.png")).toBe(
-      "http://localhost:8080/media/1.png",
-    );
+    expect(resolveMediaUrl("/image-proxy?url=%2Fmedia%2F1.png")).toBe("/media/1.png");
     expect(resolveMediaUrl("/image-proxy?url=https%3A%2F%2Fcdn.example%2Fimage.png")).toBe(
       "https://cdn.example/image.png",
     );
   });
 
-  it("добавляет backend origin для относительных ссылок на localhost", () => {
-    expect(resolveMediaUrl("/media/avatar.png")).toBe("http://localhost:8080/media/avatar.png");
-    expect(resolveMediaUrl("media/avatar.png")).toBe("http://localhost:8080/media/avatar.png");
-    expect(resolveMediaUrl("./media/avatar.png")).toBe("http://localhost:8080/media/avatar.png");
+  it("оставляет media-ссылки на localhost на текущем origin для dev-proxy", () => {
+    expect(resolveMediaUrl("/media/avatar.png")).toBe("/media/avatar.png");
+    expect(resolveMediaUrl("media/avatar.png")).toBe("/media/avatar.png");
+    expect(resolveMediaUrl("./media/avatar.png")).toBe("/media/avatar.png");
+    expect(resolveMediaUrl("http://localhost:8080/media/avatar.png")).toBe("/media/avatar.png");
   });
 
   it("подставляет текущий protocol для protocol-relative ссылок", () => {

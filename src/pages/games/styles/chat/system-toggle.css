@@ -1,0 +1,73 @@
+/* Переключатель отображения системных сообщений чата. */
+@layer pages {
+  .games-room-chat__system-toggle {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-base);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .games-room-chat__system-toggle-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .games-room-chat__system-toggle-box {
+    position: relative;
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    border: 1px solid var(--color-border-default);
+    border-radius: 4px;
+    background: var(--color-surface-input);
+    transition:
+      background var(--transition-control),
+      border-color var(--transition-control);
+  }
+
+  .games-room-chat__system-toggle-box::after {
+    position: absolute;
+    top: 1px;
+    left: 4px;
+    width: 5px;
+    height: 9px;
+    border: solid var(--color-text-on-primary);
+    border-width: 0 2px 2px 0;
+    content: none;
+    transform: rotate(45deg);
+    transition:
+      border-color var(--transition-control),
+      opacity var(--transition-control);
+  }
+
+  .games-room-chat__system-toggle-input:checked + .games-room-chat__system-toggle-box {
+    border-color: var(--color-border-accent-soft);
+    background: var(--color-interactive-primary);
+  }
+
+  .games-room-chat__system-toggle-input:checked + .games-room-chat__system-toggle-box::after {
+    content: "";
+  }
+
+  .games-room-chat__system-toggle-input:focus-visible + .games-room-chat__system-toggle-box {
+    outline: none;
+    box-shadow: var(--control-focus-ring);
+  }
+
+  .games-room-chat__system-toggle-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

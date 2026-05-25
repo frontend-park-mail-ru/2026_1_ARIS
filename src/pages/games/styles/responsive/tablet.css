@@ -1,0 +1,326 @@
+/* Адаптивные правила планшетного layout страницы игр. */
+@layer pages {
+  @media (width <=768px) {
+    .app-layout--game-room {
+      padding: var(--space-3) max(10px, env(safe-area-inset-right)) var(--space-3)
+        max(10px, env(safe-area-inset-left));
+      row-gap: var(--space-3);
+      overflow: visible;
+    }
+
+    .app-layout--game-room .app-layout__left {
+      display: flex;
+    }
+
+    .app-layout--game-room .app-layout__center {
+      height: auto;
+    }
+
+    .games-page {
+      padding-bottom: calc(112px + env(safe-area-inset-bottom));
+      box-sizing: border-box;
+    }
+
+    .games-panel {
+      padding: var(--space-4);
+    }
+
+    .games-panel--play {
+      padding: 0;
+    }
+
+    .games-game-shell {
+      padding: var(--space-3);
+    }
+
+    .games-room-chat {
+      padding: var(--space-4);
+    }
+
+    .app-layout--game-room .games-page {
+      padding-bottom: 0;
+    }
+
+    .games-layout--room .games-panel {
+      max-height: min(640px, calc(100dvh - 72px));
+    }
+
+    .games-room-players-panel {
+      max-height: 300px;
+      padding: var(--space-3);
+    }
+
+    .games-room-layout__chat > .games-room-chat {
+      min-height: 340px;
+      max-height: 520px;
+    }
+
+    .games-catalog {
+      padding: var(--space-4);
+    }
+
+    .games-play-header {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .games-panel--play .games-play-header {
+      padding: var(--space-4);
+    }
+
+    .games-question__tools {
+      width: 100%;
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .games-play-header__main,
+    .games-play-header__actions {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .games-play-header__action {
+      width: 100%;
+    }
+
+    .games-stage-card {
+      min-height: 360px;
+      padding: var(--space-4);
+    }
+
+    .games-stage-card__question {
+      font-size: 28px;
+    }
+
+    .games-start-countdown__value {
+      font-size: 78px;
+    }
+
+    .games-start-countdown__unit {
+      padding-bottom: 10px;
+      font-size: 20px;
+    }
+
+    .games-round-result {
+      grid-template-columns: 30px 34px minmax(0, 1fr);
+    }
+
+    .games-round-result__body,
+    .games-round-result__meta {
+      grid-column: 3;
+    }
+
+    .games-round-result__meta {
+      align-items: flex-start;
+      text-align: left;
+    }
+
+    .games-result-hero {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .games-result-next {
+      grid-column: auto;
+    }
+
+    .games-paused-question {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .games-leaderboard__header {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .games-leaderboard-row {
+      grid-template-columns: 32px 38px minmax(0, 1fr);
+    }
+
+    .games-leaderboard-row__rating {
+      grid-column: 3;
+      justify-self: start;
+      font-size: var(--text-size-main);
+    }
+
+    .games-final-place {
+      grid-template-columns: 34px 36px minmax(0, 1fr);
+    }
+
+    .games-final-place em,
+    .games-final-place small {
+      grid-column: 3;
+      justify-self: start;
+    }
+
+    .games-replay-action {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .games-replay-action__copy,
+    .games-replay-action__players,
+    .games-replay-action__button {
+      grid-column: auto;
+      grid-row: auto;
+    }
+
+    .games-replay-action__button {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .games-rating-change {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .games-rating-change em {
+      grid-column: 2;
+    }
+
+    .games-final-question__answer {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .games-final-question__answer em,
+    .games-final-question__answer time {
+      grid-column: 2;
+    }
+
+    .games-results-table__head {
+      display: none;
+    }
+
+    .games-results-table__row {
+      grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .games-results-table__row > :nth-child(4),
+    .games-results-table__row > :nth-child(5) {
+      justify-self: start;
+    }
+
+    .games-results-table__row > :nth-child(3),
+    .games-results-table__row > :nth-child(4),
+    .games-results-table__row > :nth-child(5) {
+      grid-column: 2 / -1;
+      white-space: normal;
+    }
+
+    .games-question-timer-strip,
+    .games-round-result-header {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: stretch;
+    }
+
+    .games-answer-axis-card,
+    .games-round-score-row {
+      grid-template-columns:
+        30px
+        minmax(0, 1fr)
+        64px;
+      align-items: center;
+    }
+
+    .games-answer-axis-card__answer-pack {
+      grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+    }
+
+    .games-answer-axis-card__answer {
+      grid-column: 2;
+      justify-self: center;
+      font-size: 28px;
+    }
+
+    .games-answer-axis-card__answer-pack .games-answer-axis-card__answer {
+      grid-column: 2;
+    }
+
+    .games-answer-axis-card__delta {
+      grid-column: 3;
+      justify-self: start;
+    }
+
+    .games-answer-axis-card__answer-pack .games-answer-axis-card__delta {
+      grid-column: 3;
+    }
+
+    .games-answer-axis-card__time {
+      grid-column: 3;
+      justify-self: center;
+    }
+
+    .games-round-score-row > span:nth-child(n + 3),
+    .games-round-score-row > time,
+    .games-round-score-row > strong {
+      grid-column: 1 / -1;
+      justify-self: start;
+      white-space: normal;
+    }
+
+    .games-answer-axis-card--correct {
+      grid-template-columns:
+        30px
+        minmax(0, 1fr)
+        64px;
+    }
+
+    .games-answer-axis-card__correct-value {
+      grid-column: auto;
+    }
+
+    .games-round-score-table__head {
+      display: none;
+    }
+
+    .games-panel__header,
+    .games-form-grid,
+    .games-room-details,
+    .games-room-card,
+    .games-room-card__join,
+    .games-scoreboard,
+    .games-answer-form,
+    .games-answer-progress {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .games-panel__header {
+      display: grid;
+    }
+
+    .games-room-actions {
+      display: grid;
+      justify-content: stretch;
+    }
+
+    .games-room-header__controls {
+      flex-basis: 100%;
+      width: 100%;
+      margin-left: 0;
+      justify-content: stretch;
+    }
+
+    .games-room-footer__actions {
+      width: 100%;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .games-room-card__join {
+      display: grid;
+    }
+
+    .games-status,
+    .games-button,
+    .games-answer-form .games-button {
+      width: 100%;
+    }
+
+    .games-scoreboard {
+      display: grid;
+    }
+
+    .games-question--active .games-question__title {
+      font-size: 20px;
+    }
+  }
+}

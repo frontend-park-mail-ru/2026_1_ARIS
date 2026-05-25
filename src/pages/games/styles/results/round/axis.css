@@ -1,0 +1,251 @@
+/* Cinematic-шкала ответов и карточки ответа раунда. */
+@layer pages {
+  .games-round-result-cinema {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .games-final-round-reveal {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 14px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgb(95 111 157 / 14%);
+  }
+
+  .games-answer-axis {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .games-answer-axis__list {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 9px;
+    perspective: 900px;
+  }
+
+  .games-answer-axis-card,
+  .games-round-score-row {
+    display: grid;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .games-answer-axis-card {
+    position: relative;
+    grid-template-columns:
+      34px
+      minmax(0, 1fr)
+      74px;
+    min-height: 58px;
+    padding: 9px 10px;
+    border: 1px solid rgb(95 111 157 / 14%);
+    border-radius: var(--radius-small);
+    background: rgb(255 255 255 / 72%);
+    box-shadow: 0 10px 22px rgb(33 45 88 / 6%);
+    color: var(--color-text-meta);
+    animation: games-axis-card-settle 1900ms cubic-bezier(0.18, 0.88, 0.22, 1) both;
+    animation-delay: var(--games-result-delay, calc(620ms + var(--games-result-index, 0) * 240ms));
+  }
+
+  .games-answer-axis-card--correct {
+    grid-template-columns:
+      34px
+      minmax(0, 1fr)
+      74px;
+    border-color: rgb(53 137 96 / 38%);
+    background:
+      linear-gradient(135deg, rgb(53 137 96 / 16%), transparent 52%), rgb(255 255 255 / 88%);
+    box-shadow: 0 18px 36px rgb(53 137 96 / 12%);
+    color: rgb(39 116 80);
+  }
+
+  .games-answer-axis-card--has-time {
+    grid-template-columns:
+      34px
+      minmax(0, 1fr)
+      74px;
+  }
+
+  .games-answer-axis-card__correct-value {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    color: rgb(39 116 80);
+    font-size: 36px;
+    font-weight: var(--font-weight-bold);
+    line-height: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  .games-answer-axis-card--winner {
+    border-color: rgb(53 137 96 / 34%);
+    background:
+      linear-gradient(135deg, rgb(53 137 96 / 12%), transparent 48%), rgb(255 255 255 / 82%);
+  }
+
+  .games-answer-axis-card--me {
+    border-color: rgb(95 111 157 / 30%);
+    background:
+      linear-gradient(135deg, rgb(95 111 157 / 14%), transparent 48%), rgb(245 247 250 / 92%);
+  }
+
+  .games-answer-axis-card--exact {
+    border-color: rgb(53 137 96 / 42%);
+    animation:
+      games-axis-card-settle 1900ms cubic-bezier(0.18, 0.88, 0.22, 1) both,
+      games-exact-answer-pulse 1800ms ease-in-out infinite;
+    animation-delay:
+      var(--games-result-delay, calc(620ms + var(--games-result-index, 0) * 240ms)),
+      var(--games-exact-pulse-delay, 2020ms);
+  }
+
+  .games-answer-axis-card--missing {
+    opacity: 0.78;
+  }
+
+  .games-answer-axis-card__rank,
+  .games-round-score-row__rank {
+    display: inline-flex;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+
+  .games-answer-axis-card__answer-pack {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+    align-items: center;
+    pointer-events: none;
+  }
+
+  .games-answer-axis-card__answer,
+  .games-answer-axis-card__time {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .games-answer-axis-card__answer {
+    grid-column: 2;
+    justify-self: center;
+    color: var(--color-text-main);
+    font-size: 30px;
+    line-height: 1;
+    text-align: center;
+  }
+
+  .games-answer-axis-card__answer-pack .games-answer-axis-card__answer {
+    grid-column: 2;
+  }
+
+  .games-answer-axis-card__answer--exact {
+    color: rgb(39 116 80);
+  }
+
+  .games-answer-axis-card__answer--missing {
+    color: var(--color-text-error);
+    font-size: 32px;
+  }
+
+  .games-answer-axis-card__no-answer {
+    grid-column: 3;
+    justify-self: start;
+    margin-left: 8px;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .games-answer-axis-card__time {
+    grid-column: 3;
+    justify-self: center;
+    opacity: 0;
+    animation: games-answer-time-reveal 360ms ease both;
+    animation-delay: var(--games-time-reveal-delay, 0ms);
+  }
+
+  .games-answer-axis-card__delta,
+  .games-round-score-row__delta {
+    display: inline-flex;
+    grid-column: 3;
+    min-width: 0;
+    min-height: 30px;
+    align-items: center;
+    justify-content: center;
+    justify-self: start;
+    margin-left: 8px;
+    padding: 0 6px;
+    border: 1px solid rgb(95 111 157 / 14%);
+    border-radius: var(--radius-small);
+    background: rgb(95 111 157 / 8%);
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+  }
+
+  .games-answer-axis-card__answer-pack .games-answer-axis-card__delta {
+    grid-column: 3;
+  }
+
+  .games-answer-axis-card__delta--exact,
+  .games-round-score-row__delta--exact {
+    border-color: rgb(53 137 96 / 34%);
+    background: rgb(53 137 96 / 13%);
+    color: rgb(39 116 80);
+  }
+
+  .games-answer-axis-card__delta--negative,
+  .games-round-score-row__delta--negative {
+    border-color: rgb(74 81 208 / 24%);
+    background: rgb(74 81 208 / 9%);
+    color: rgb(58 68 180);
+  }
+
+  .games-answer-axis-card__delta--positive,
+  .games-round-score-row__delta--positive {
+    border-color: rgb(242 179 65 / 34%);
+    background: rgb(242 179 65 / 13%);
+    color: #8a5a00;
+  }
+
+  .games-answer-axis-card__delta--missing,
+  .games-round-score-row__delta--missing {
+    color: var(--color-text-meta);
+  }
+}

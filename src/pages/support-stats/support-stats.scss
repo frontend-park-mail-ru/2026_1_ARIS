@@ -113,4 +113,62 @@
     font-size: var(--font-size-sm);
     color: var(--color-text-muted);
   }
+
+  .ss-complaints {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .ss-complaint {
+    display: flex;
+    min-width: 0;
+    padding: var(--space-3);
+    border: 1px solid rgb(178 59 88 / 18%);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 78%);
+    flex-direction: column;
+    gap: var(--space-2);
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+      color: var(--color-text-muted);
+      font-size: var(--font-size-xs);
+    }
+
+    strong {
+      color: var(--color-text-main);
+      font-size: var(--font-size-md);
+      line-height: var(--line-height-tight);
+    }
+
+    p {
+      display: -webkit-box;
+      margin: 0;
+      overflow: hidden;
+      color: var(--color-text-meta);
+      font-size: var(--font-size-sm);
+      line-height: var(--line-height-base);
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 4;
+    }
+
+    a {
+      width: fit-content;
+      color: var(--color-interactive-primary);
+      font-size: var(--font-size-sm);
+      font-weight: 700;
+      text-decoration: none;
+    }
+  }
+
+  .ss-complaint__status {
+    padding: 4px var(--space-2);
+    border-radius: 999px;
+    background: rgb(178 59 88 / 10%);
+    color: rgb(143 43 68);
+    font-weight: 700;
+  }
 }

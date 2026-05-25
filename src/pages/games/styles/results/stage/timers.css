@@ -1,0 +1,168 @@
+/* Precision timer, countdown вопроса и таймер результата раунда. */
+@layer pages {
+  .games-precision-timer {
+    position: relative;
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-2);
+    padding: 12px 14px;
+    border: 1px solid rgb(74 81 208 / 18%);
+    border-radius: var(--radius-small);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 88%), rgb(247 249 255 / 72%)),
+      linear-gradient(90deg, rgb(53 137 96 / 10%), transparent 48%);
+    box-shadow:
+      0 10px 24px rgb(33 45 88 / 8%),
+      0 1px 0 rgb(255 255 255 / 82%) inset;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .games-precision-timer--compact {
+    min-width: 220px;
+    padding: 10px 12px;
+  }
+
+  .games-precision-timer__label {
+    grid-column: 1 / -1;
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-precision-timer__value {
+    color: var(--color-interactive-primary);
+    font-variant-numeric: tabular-nums;
+    font-size: 34px;
+    line-height: 1;
+    transition:
+      color var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .games-precision-timer--compact .games-precision-timer__value {
+    font-size: 28px;
+  }
+
+  .games-precision-timer__unit {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-precision-timer__bar {
+    grid-column: 1 / -1;
+    height: 8px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: rgb(15 23 42 / 8%);
+  }
+
+  .games-precision-timer__bar-fill {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgb(53 137 96), rgb(74 81 208), rgb(242 179 65));
+    box-shadow: 0 0 16px rgb(74 81 208 / 20%);
+    transform: scaleX(1);
+    transform-origin: left center;
+    transition: transform 80ms linear;
+  }
+
+  .games-precision-timer--danger .games-precision-timer__value {
+    color: var(--color-text-error);
+    animation: games-timer-pulse 560ms ease-in-out infinite alternate;
+  }
+
+  .games-precision-timer--danger .games-precision-timer__bar-fill {
+    background: linear-gradient(90deg, rgb(242 179 65), rgb(201 55 55));
+    box-shadow: 0 0 16px rgb(201 55 55 / 20%);
+  }
+
+  .games-round-result-header {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .games-round-next-timer > .games-precision-timer {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .games-question-countdown {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .games-question-countdown__line {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px 8px;
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+    text-align: center;
+  }
+
+  .games-question-countdown__value {
+    color: var(--color-interactive-primary);
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .games-question-countdown__bar {
+    display: block;
+    width: 100%;
+    height: 8px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: rgb(15 23 42 / 8%);
+  }
+
+  .games-question-countdown__bar-fill {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgb(53 137 96), rgb(74 81 208), rgb(242 179 65));
+    transform: scaleX(1);
+    transform-origin: left center;
+    transition: transform 80ms linear;
+  }
+
+  .games-question-countdown.games-precision-timer--danger .games-question-countdown__value {
+    color: var(--color-text-error);
+    animation: games-timer-pulse 560ms ease-in-out infinite alternate;
+  }
+
+  .games-question-countdown.games-precision-timer--danger .games-question-countdown__bar-fill {
+    background: linear-gradient(90deg, rgb(242 179 65), rgb(201 55 55));
+  }
+
+  .games-round-result-countdown.games-precision-timer--pending {
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+  }
+
+  .games-round-result-countdown:not(.games-precision-timer--pending) {
+    animation: games-answer-time-reveal 360ms ease both;
+  }
+}

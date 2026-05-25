@@ -25,6 +25,12 @@ type ErrorResponse = {
   error?: string;
 };
 
+export type ApiQueryValue = string | number | boolean | null | undefined;
+
+export type ApiQuery = URLSearchParams | Record<string, ApiQueryValue | readonly ApiQueryValue[]>;
+
+export type ApiResponseType = "json" | "text" | "blob" | "arrayBuffer" | "empty";
+
 /**
  * Безопасно разбирает JSON-тело ответа.
  * Возвращает `fallback`, если тело пустое или не поддаётся разбору.
@@ -58,12 +64,75 @@ export function createApiError(
   return new ApiError(message, status, data);
 }
 
-type RequestOptions = {
+/**
+ * Собирает URL с query-параметрами и пропускает пустые значения.
+ */
+export function buildApiUrl(url: string, query?: ApiQuery): string {
+  if (!query) {
+    return url;
+  }
+
+  const params = new URLSearchParams();
+
+  if (query instanceof URLSearchParams) {
+    query.forEach((value, key) => {
+      if (value !== "") params.append(key, value);
+    });
+  } else {
+    Object.entries(query).forEach(([key, value]) => {
+      const values = Array.isArray(value) ? value : [value];
+      values.forEach((item) => {
+        if (item === null || item === undefined || item === "") return;
+        params.append(key, String(item));
+      });
+    });
+  }
+
+  const queryString = params.toString();
+  if (!queryString) {
+    return url;
+  }
+
+  return `${url}${url.includes("?") ? "&" : "?"}${queryString}`;
+}
+
+/**
+ * Разбирает успешное тело ответа в нужном формате.
+ */
+export async function parseResponseBody<T>(
+  response: Response,
+  responseType: ApiResponseType,
+  fallback: T,
+): Promise<T> {
+  if (responseType === "empty") {
+    return fallback;
+  }
+
+  if (responseType === "text") {
+    return (await response.text()) as T;
+  }
+
+  if (responseType === "blob") {
+    return (await response.blob()) as T;
+  }
+
+  if (responseType === "arrayBuffer") {
+    return (await response.arrayBuffer()) as T;
+  }
+
+  return parseJson<T>(response, fallback);
+}
+
+export type RequestOptions = {
   method?: string;
   headers?: Record<string, string>;
   body?: unknown;
   credentials?: RequestCredentials;
   signal?: AbortSignal;
+  cache?: RequestCache;
+  keepalive?: boolean;
+  query?: ApiQuery;
+  responseType?: ApiResponseType;
 };
 
 const inFlightRequests = new Map<string, Promise<unknown>>();
@@ -88,11 +157,22 @@ export async function apiRequest<T>(
   options: RequestOptions = {},
   emptyFallback: T = {} as T,
 ): Promise<T> {
-  const { body, headers = {}, method = "GET", credentials = "include", signal } = options;
+  const {
+    body,
+    headers = {},
+    method = "GET",
+    credentials = "include",
+    signal,
+    cache,
+    keepalive,
+    query,
+    responseType = "json",
+  } = options;
+  const requestUrl = buildApiUrl(url, query);
 
   // Запросы с AbortSignal не дедуплицируются: каждый вызов управляет своим жизненным циклом сам.
   const dedup = (method === "GET" || method === "HEAD") && !signal;
-  const dedupKey = `${method}:${url}`;
+  const dedupKey = `${method}:${requestUrl}`;
 
   if (dedup && inFlightRequests.has(dedupKey)) {
     return inFlightRequests.get(dedupKey) as Promise<T>;
@@ -100,6 +180,8 @@ export async function apiRequest<T>(
 
   const requestInit: RequestInit = { method, credentials };
   if (signal) requestInit.signal = signal;
+  if (cache) requestInit.cache = cache;
+  if (keepalive !== undefined) requestInit.keepalive = keepalive;
 
   if (body !== undefined) {
     if (isBodyInit(body)) {
@@ -115,33 +197,82 @@ export async function apiRequest<T>(
     requestInit.headers = headers;
   }
 
-  const promise = trackedFetch(url, requestInit)
-    .then((response) =>
-      parseJson<T>(response, emptyFallback).then((data) => {
-        if (!response.ok) {
-          const apiError = createApiError(`Ошибка запроса к ${url}`, response.status, data);
+  const promise = trackedFetch(requestUrl, requestInit)
+    .then(async (response) => {
+      if (!response.ok) {
+        const data = await parseJson<unknown>(response, emptyFallback);
+        const apiError = createApiError(`Ошибка запроса к ${requestUrl}`, response.status, data);
 
-          if (response.status >= 500) {
-            captureAppException(apiError, {
-              area: "api",
-              action: "request",
-              extras: {
-                method,
-                status: response.status,
-                url,
-              },
-            });
-          }
-
-          throw apiError;
+        if (response.status >= 500) {
+          captureAppException(apiError, {
+            area: "api",
+            action: "request",
+            extras: {
+              method,
+              status: response.status,
+              url: requestUrl,
+            },
+          });
         }
-        return data;
-      }),
-    )
+
+        throw apiError;
+      }
+
+      return parseResponseBody<T>(response, responseType, emptyFallback);
+    })
     .finally(() => {
       if (dedup) inFlightRequests.delete(dedupKey);
     });
 
   if (dedup) inFlightRequests.set(dedupKey, promise);
   return promise;
+}
+
+type ApiRequestWithoutMethod = Omit<RequestOptions, "method">;
+type ApiRequestWithoutMethodAndBody = Omit<RequestOptions, "method" | "body">;
+
+/**
+ * Выполняет GET-запрос через единый API-клиент.
+ */
+export function apiGet<T>(
+  url: string,
+  options: ApiRequestWithoutMethodAndBody = {},
+  emptyFallback: T = {} as T,
+): Promise<T> {
+  return apiRequest<T>(url, { ...options, method: "GET" }, emptyFallback);
+}
+
+/**
+ * Выполняет POST-запрос через единый API-клиент.
+ */
+export function apiPost<T>(
+  url: string,
+  body?: unknown,
+  options: ApiRequestWithoutMethodAndBody = {},
+  emptyFallback: T = {} as T,
+): Promise<T> {
+  return apiRequest<T>(url, { ...options, method: "POST", body }, emptyFallback);
+}
+
+/**
+ * Выполняет PATCH-запрос через единый API-клиент.
+ */
+export function apiPatch<T>(
+  url: string,
+  body?: unknown,
+  options: ApiRequestWithoutMethodAndBody = {},
+  emptyFallback: T = {} as T,
+): Promise<T> {
+  return apiRequest<T>(url, { ...options, method: "PATCH", body }, emptyFallback);
+}
+
+/**
+ * Выполняет DELETE-запрос через единый API-клиент.
+ */
+export function apiDelete<T>(
+  url: string,
+  options: ApiRequestWithoutMethod = {},
+  emptyFallback: T = {} as T,
+): Promise<T> {
+  return apiRequest<T>(url, { ...options, method: "DELETE" }, emptyFallback);
 }

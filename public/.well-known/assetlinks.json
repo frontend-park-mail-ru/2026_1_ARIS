@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ru.arisnet.app",
+      "sha256_cert_fingerprints": [
+        "67:6C:9B:CE:0C:76:09:CD:14:0D:FF:9C:FE:ED:CE:DE:D7:DD:AB:11:66:D7:54:C5:6A:9C:02:38:51:0B:5D:1A",
+        "3D:B8:7B:02:BF:83:5A:AC:34:F1:52:3C:0A:F4:48:02:92:A9:01:ED:1D:F7:49:4E:78:2B:5F:AC:52:97:84:FE"
+      ]
+    }
+  }
+]

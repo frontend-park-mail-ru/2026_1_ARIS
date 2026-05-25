@@ -111,7 +111,7 @@ export function resolveAvatarSrc(avatarLink?: string | null): string {
 }
 
 function preloadAvatarSrc(src: string, timeoutMs: number): Promise<void> {
-  if (!src || brokenAvatarSrcSet.has(src) || loadedAvatarSrcSet.has(src)) {
+  if (!src || loadedAvatarSrcSet.has(src)) {
     return Promise.resolve();
   }
 

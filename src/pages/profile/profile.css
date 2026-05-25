@@ -123,7 +123,7 @@
     max-width: 100%;
     padding: 14px;
     border: 1px solid rgb(255 255 255 / 58%);
-    border-radius: 22px;
+    border-radius: var(--radius-ui);
     background:
       radial-gradient(circle at top right, rgb(252 215 106 / 22%), transparent 22%),
       linear-gradient(180deg, rgb(255 255 255 / 95%), rgb(243 244 255 / 90%));
@@ -360,7 +360,7 @@
   .profile-section {
     overflow: hidden;
     border: 1px solid rgb(203 210 222 / 78%);
-    border-radius: 16px;
+    border-radius: var(--radius-ui);
     background: rgb(255 255 255 / 74%);
   }
 
@@ -2004,7 +2004,7 @@
     width: 100%;
     padding: var(--space-4);
     border: 1px solid rgb(255 255 255 / 60%);
-    border-radius: 16px;
+    border-radius: var(--radius-card);
     background: var(--color-surface-glass);
     box-shadow: var(--shadow-card);
   }
@@ -2659,7 +2659,6 @@
     .profile-editor,
     .profile-post,
     .profile-posts__header,
-    .profile-friends-card,
     .profile-guest-card,
     .profile-guest-sidecard {
       border-radius: 20px;

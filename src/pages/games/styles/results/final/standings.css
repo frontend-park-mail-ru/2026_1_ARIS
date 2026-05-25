@@ -1,0 +1,147 @@
+/* Финальный hero, победитель и места игроков. */
+@layer pages {
+  .games-final-hero {
+    display: flex;
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border-glass-soft);
+    border-radius: var(--radius-small);
+    background: rgb(255 255 255 / 68%);
+    flex-direction: column;
+    gap: var(--space-2);
+    animation: games-answer-reveal 420ms ease both;
+  }
+
+  .games-final-hero p {
+    margin: 0;
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+  }
+
+  .games-final-winner-card {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--color-text-main);
+    text-decoration: none;
+  }
+
+  .games-final-winner-card strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-interactive-primary);
+    font-size: var(--text-size-heading-sm);
+    line-height: var(--line-height-tight);
+    text-overflow: ellipsis;
+  }
+
+  .games-final-winner-card__avatar {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 auto;
+    border-radius: var(--radius-round);
+    object-fit: cover;
+    overflow: hidden;
+  }
+
+  .games-final-winner-card--draw {
+    color: var(--color-text-main);
+    font-size: var(--text-size-heading-sm);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-final-section-title {
+    margin: 0;
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+  }
+
+  .games-final-place {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 34px 36px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border-glass-soft);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-muted);
+    animation: games-score-row-in 360ms ease both;
+    animation-delay: calc(var(--games-result-index, 0) * 70ms);
+  }
+
+  .games-final-place--me {
+    border-color: var(--color-border-accent-soft);
+  }
+
+  .games-final-place--winner {
+    border-color: rgb(53 137 96 / 42%);
+    background: rgb(53 137 96 / 10%);
+  }
+
+  .games-final-place strong {
+    color: var(--color-interactive-primary);
+    font-size: var(--text-size-title);
+  }
+
+  .games-player-name-link {
+    color: var(--color-interactive-primary);
+    font-weight: var(--font-weight-bold);
+    text-decoration: none;
+  }
+
+  .games-player-name-link:hover {
+    color: var(--color-interactive-primary-hover);
+  }
+
+  .games-player-name-link:focus-visible {
+    outline: 2px solid var(--color-border-accent-soft);
+    outline-offset: 3px;
+  }
+
+  .games-final-place__avatar-link,
+  .games-final-place__name {
+    text-decoration: none;
+  }
+
+  .games-final-place__avatar-link {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-round);
+  }
+
+  .games-final-place__name {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-interactive-primary);
+    font-weight: var(--font-weight-bold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .games-final-place__avatar-link:focus-visible,
+  .games-final-place__name:focus-visible {
+    outline: 2px solid var(--color-border-accent-soft);
+    outline-offset: 3px;
+  }
+
+  .games-final-place__name[data-link]:hover {
+    color: var(--color-interactive-primary);
+  }
+
+  .games-final-place em {
+    color: var(--color-text-main);
+    font-style: normal;
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-final-place small {
+    justify-self: end;
+  }
+}

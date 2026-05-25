@@ -7,6 +7,10 @@ import { API_BASE_URL } from "../api/config";
 
 const EMPTY_MEDIA_VALUES = new Set(["", "null", "undefined", "none"]);
 
+function isLocalhostFrontend(): boolean {
+  return ["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname);
+}
+
 function getImageProxyTarget(value: string): string {
   if (!value.startsWith("/image-proxy?url=")) {
     return "";
@@ -43,6 +47,17 @@ export function resolveMediaUrl(rawValue?: string | null): string {
   }
 
   if (/^https?:\/\//i.test(value)) {
+    if (isLocalhostFrontend() && API_BASE_URL) {
+      try {
+        const parsed = new URL(value);
+        const apiBase = new URL(API_BASE_URL, window.location.origin);
+        if (parsed.origin === apiBase.origin && parsed.pathname.startsWith("/media/")) {
+          return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+        }
+      } catch {
+        // If URL parsing fails, leave the absolute link as-is below.
+      }
+    }
     return value;
   }
 
@@ -51,7 +66,14 @@ export function resolveMediaUrl(rawValue?: string | null): string {
   }
 
   if (value.startsWith("/")) {
+    if (isLocalhostFrontend() && value.startsWith("/media/")) {
+      return value;
+    }
     return API_BASE_URL ? `${API_BASE_URL}${value}` : value;
+  }
+
+  if (isLocalhostFrontend() && value.replace(/^\.?\//, "").startsWith("media/")) {
+    return `/${value.replace(/^\.?\//, "")}`;
   }
 
   return API_BASE_URL ? `${API_BASE_URL}/${value.replace(/^\.?\//, "")}` : value;

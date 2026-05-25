@@ -26,7 +26,7 @@ describe("avatar helpers", () => {
   it("нормализует avatar src и учитывает список битых ссылок", () => {
     const src = "/media/avatar-broken.png";
 
-    expect(resolveAvatarSrc(src)).toBe("http://localhost:8080/media/avatar-broken.png");
+    expect(resolveAvatarSrc(src)).toBe("/media/avatar-broken.png");
 
     markAvatarSrcBroken(src);
 
@@ -55,7 +55,7 @@ describe("avatar helpers", () => {
     expect(html).toContain('height="40"');
     expect(html).toContain('loading="eager"');
     expect(html).toContain('fetchpriority="high"');
-    expect(html).toContain('src="http://localhost:8080/media/avatar-ok.png"');
+    expect(html).toContain('src="/media/avatar-ok.png"');
     expect(html).toContain('alt="&quot;Admin&quot;"');
   });
 
@@ -82,5 +82,33 @@ describe("avatar helpers", () => {
     await promise;
 
     expect(resolveAvatarSrc("/media/preload.png")).toBe("");
+  });
+
+  it("повторно проверяет ранее битую ссылку и возвращает аватар после успешной загрузки", async () => {
+    const createdImages: Array<{ onload: (() => void) | null; onerror: (() => void) | null }> = [];
+
+    class MockImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      decoding = "";
+      complete = false;
+      naturalWidth = 0;
+      set src(_value: string) {
+        createdImages.push(this);
+      }
+    }
+
+    vi.stubGlobal("Image", MockImage);
+
+    markAvatarSrcBroken("/media/avatar-recovered.png");
+    expect(resolveAvatarSrc("/media/avatar-recovered.png")).toBe("");
+
+    const promise = prepareAvatarLinks(["/media/avatar-recovered.png"], 1000);
+    expect(createdImages).toHaveLength(1);
+
+    createdImages[0]?.onload?.();
+    await promise;
+
+    expect(resolveAvatarSrc("/media/avatar-recovered.png")).toBe("/media/avatar-recovered.png");
   });
 });

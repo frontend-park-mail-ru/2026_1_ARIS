@@ -1,0 +1,178 @@
+/* Панель доступа, пароль комнаты и меню управления доступом. */
+@layer pages {
+  .games-access-panel {
+    position: relative;
+    z-index: 30;
+    display: flex;
+    min-width: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-muted);
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .games-access-panel__row {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .games-access-panel__actions {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .games-access-panel__label {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+  }
+
+  .games-access-panel__row,
+  .games-access-panel__password {
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+  }
+
+  .games-access-panel__password {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-base);
+    font-weight: var(--font-weight-bold);
+    overflow-wrap: anywhere;
+  }
+
+  .games-access-panel__actions > .games-button {
+    min-height: 34px;
+    flex: 1 1 130px;
+    padding-right: var(--space-3);
+    padding-left: var(--space-3);
+  }
+
+  .games-access-menu {
+    position: relative;
+    z-index: 31;
+    display: inline-flex;
+    justify-content: flex-end;
+  }
+
+  .games-menu-toggle {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .games-menu-toggle:hover {
+    background: rgb(74 81 208 / 10%);
+  }
+
+  .games-menu-toggle:focus-visible {
+    outline: none;
+    box-shadow: var(--control-focus-ring);
+  }
+
+  .games-menu-toggle span {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgb(91 103 145 / 92%);
+  }
+
+  .games-access-menu__popup {
+    position: absolute;
+    z-index: 160;
+    top: auto;
+    bottom: calc(100% + var(--space-1));
+    right: 0;
+    display: flex;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-card-elevated);
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .games-access-menu__popup--below {
+    top: calc(100% + var(--space-1));
+    right: 0;
+    bottom: auto;
+  }
+
+  .games-access-menu__popup[hidden] {
+    display: none;
+  }
+
+  .games-access-menu__item {
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: var(--radius-small);
+    background: transparent;
+    color: var(--color-text-main);
+    font: inherit;
+    font-size: var(--text-size-main);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .games-access-menu__item:hover {
+    background: var(--color-interactive-hover);
+    color: var(--color-interactive-primary);
+  }
+
+  .games-access-menu__item--danger {
+    color: var(--color-text-danger);
+  }
+
+  .games-access-menu__item--danger:hover {
+    background: rgb(178 59 88 / 10%);
+    color: var(--color-text-danger);
+  }
+
+  .games-password-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .games-password-form > * {
+    width: 100%;
+  }
+
+  .games-password-modal-form {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .games-join-modal-author {
+    display: flex;
+    min-width: 0;
+  }
+
+  .games-join-password-modal__error {
+    min-height: calc(var(--text-size-main) * var(--line-height-base));
+  }
+}

@@ -195,6 +195,10 @@ function matchesRoutePath(pathname: string, routePath: string): boolean {
     return /^\/posts\/[^/]+$/i.test(normalisedPathname);
   }
 
+  if (normalisedRoutePath === "/games/quiz/:roomId") {
+    return /^\/games\/quiz\/[^/]+$/i.test(normalisedPathname);
+  }
+
   return false;
 }
 
@@ -291,6 +295,16 @@ const routes: Route[] = [
     render: async (p, s) => (await loadGames()).renderGames(p, s),
   },
   {
+    path: "/games/quiz",
+    title: "ARISNET — Quiz",
+    render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
+    path: "/games/quiz/:roomId",
+    title: "ARISNET — Quiz Room",
+    render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
     path: "/games/:roomId",
     title: "ARISNET — Game Room",
     render: async (p, s) => (await loadGames()).renderGames(p, s),
@@ -346,6 +360,7 @@ const chunkMap: Record<string, () => Promise<unknown>> = {
   "/register": loadRegister,
   "/settings": loadSettings,
   "/games": loadGames,
+  "/games/quiz": loadGames,
   "/support/admin": loadSupportAdmin,
 };
 

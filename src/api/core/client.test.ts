@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { trackedFetch } from "../../state/network-status";
 import { captureAppException } from "../../utils/sentry";
-import { ApiError, apiRequest, createApiError, parseJson } from "./client";
+import {
+  ApiError,
+  apiPost,
+  apiRequest,
+  buildApiUrl,
+  createApiError,
+  parseJson,
+  parseResponseBody,
+} from "./client";
 
 vi.mock("../../state/network-status", () => ({
   trackedFetch: vi.fn(),
@@ -42,6 +50,30 @@ describe("api core client", () => {
     expect(error.data).toEqual({ error: "bad request" });
   });
 
+  it("buildApiUrl добавляет query-параметры и пропускает пустые значения", () => {
+    expect(
+      buildApiUrl("/api/demo?exists=1", {
+        q: "test",
+        page: 2,
+        empty: "",
+        skipped: undefined,
+        tag: ["one", "two"],
+      }),
+    ).toBe("/api/demo?exists=1&q=test&page=2&tag=one&tag=two");
+  });
+
+  it("parseResponseBody разбирает не-JSON форматы", async () => {
+    await expect(parseResponseBody(new Response("hello"), "text", "")).resolves.toBe("hello");
+
+    const buffer = await parseResponseBody<ArrayBuffer>(
+      new Response(new Uint8Array([1, 2, 3])),
+      "arrayBuffer",
+      new ArrayBuffer(0),
+    );
+
+    expect(Array.from(new Uint8Array(buffer))).toEqual([1, 2, 3]);
+  });
+
   it("apiRequest сериализует object body в JSON", async () => {
     vi.mocked(trackedFetch).mockResolvedValue(jsonResponse({ id: 1 }));
 
@@ -74,6 +106,38 @@ describe("api core client", () => {
       credentials: "include",
       body,
       headers: { "X-Test": "1" },
+    });
+  });
+
+  it("apiRequest передаёт query, responseType и keepalive", async () => {
+    vi.mocked(trackedFetch).mockResolvedValue(new Response("ok"));
+
+    await expect(
+      apiRequest("/api/ping", {
+        method: "POST",
+        query: { source: "test" },
+        responseType: "text",
+        keepalive: true,
+      }),
+    ).resolves.toBe("ok");
+
+    expect(trackedFetch).toHaveBeenCalledWith("/api/ping?source=test", {
+      method: "POST",
+      credentials: "include",
+      keepalive: true,
+    });
+  });
+
+  it("apiPost использует единый клиент", async () => {
+    vi.mocked(trackedFetch).mockResolvedValue(jsonResponse({ id: 7 }));
+
+    await expect(apiPost("/api/demo", { title: "Hello" })).resolves.toEqual({ id: 7 });
+
+    expect(trackedFetch).toHaveBeenCalledWith("/api/demo", {
+      method: "POST",
+      credentials: "include",
+      body: JSON.stringify({ title: "Hello" }),
+      headers: { "Content-Type": "application/json" },
     });
   });
 

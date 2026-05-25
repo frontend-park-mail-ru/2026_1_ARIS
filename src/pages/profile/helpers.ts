@@ -24,7 +24,11 @@ export function getInitials(firstName: string, lastName: string): string {
 }
 
 export function getAvatarImageSrc(avatarLink?: string): string {
-  return resolveMediaUrl(avatarLink) || "/assets/img/default-avatar.png";
+  const imageSrc = resolveMediaUrl(avatarLink);
+  if (imageSrc.startsWith("/media/") && API_BASE_URL) {
+    return `${API_BASE_URL}${imageSrc}`;
+  }
+  return imageSrc || "/assets/img/default-avatar.png";
 }
 
 export function getAvatarEditorSrc(avatarLink?: string): string {

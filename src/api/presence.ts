@@ -25,15 +25,11 @@ export function markSiteOffline(options: { preferBeacon?: boolean } = {}): Promi
     }
   }
 
-  if (typeof fetch !== "function") {
-    return Promise.resolve();
-  }
-
-  return fetch(PRESENCE_OFFLINE_URL, {
-    method: "POST",
-    credentials: "include",
-    keepalive: true,
-  }).then(() => undefined);
+  return apiRequest<null>(
+    PRESENCE_OFFLINE_URL,
+    { method: "POST", keepalive: true, responseType: "empty" },
+    null,
+  ).then(() => undefined);
 }
 
 export function forceSiteOffline(): Promise<null> {

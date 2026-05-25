@@ -1,0 +1,54 @@
+/* Главное меню лобби и список комнат. */
+@layer pages {
+  .games-lobby-menu,
+  .games-room-list {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .games-lobby-option {
+    display: flex;
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-base);
+    flex-direction: column;
+    gap: var(--space-2);
+    color: var(--color-text-main);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background var(--transition-control),
+      border-color var(--transition-control),
+      transform var(--transition-control);
+  }
+
+  .games-lobby-option:hover {
+    border-color: var(--color-border-default);
+    background: var(--color-interactive-hover);
+    transform: none;
+  }
+
+  .games-lobby-option--skeleton,
+  .games-lobby-option--skeleton:hover {
+    cursor: default;
+    background: var(--color-surface-base);
+    border-color: var(--color-border-default);
+    transform: none;
+  }
+
+  .games-lobby-option strong {
+    font-size: var(--text-size-title);
+    line-height: var(--line-height-tight);
+  }
+
+  .games-lobby-option span {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+    line-height: var(--line-height-base);
+  }
+}

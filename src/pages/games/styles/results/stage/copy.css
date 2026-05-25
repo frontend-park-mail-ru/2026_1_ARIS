@@ -1,0 +1,83 @@
+/* Topline, actions и текстовые элементы карточки stage. */
+@layer pages {
+  .games-stage-card__topline {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 38px;
+  }
+
+  .games-stage-card__actions,
+  .games-question__tools {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  .games-stage-card__actions {
+    align-items: flex-start;
+  }
+
+  .games-stage-card__eyebrow {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .games-stage-card__eyebrow::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: var(--radius-round);
+    background: rgb(53 137 96);
+    box-shadow: 0 0 0 4px rgb(53 137 96 / 12%);
+  }
+
+  .games-stage-card__title,
+  .games-stage-card__question,
+  .games-stage-card__text,
+  .games-stage-card__hint {
+    margin: 0;
+  }
+
+  .games-stage-card__title {
+    color: var(--color-text-main);
+    font-size: 30px;
+    line-height: 1.15;
+  }
+
+  .games-stage-card__question {
+    max-width: 100%;
+    color: var(--color-text-main);
+    font-size: 28px;
+    line-height: 1.16;
+    text-wrap: balance;
+  }
+
+  .games-stage-card__text,
+  .games-stage-card__hint {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+    line-height: var(--line-height-base);
+  }
+
+  .games-stage-card__text--question {
+    padding: var(--space-3);
+    border-left: 3px solid var(--color-border-accent-soft);
+    border-radius: var(--radius-small);
+    background: rgb(255 255 255 / 58%);
+    color: var(--color-text-main);
+  }
+}

@@ -36,14 +36,14 @@ export function initEyeToggle(root: Document | HTMLElement = document): void {
       toggle.setAttribute("aria-pressed", "false");
 
       if (icon instanceof HTMLImageElement) {
-        icon.src = "assets/img/icons/eye-off-thin.svg";
+        icon.src = "/assets/img/icons/eye-off-thin.svg";
       }
     } else {
       input.type = "text";
       toggle.setAttribute("aria-pressed", "true");
 
       if (icon instanceof HTMLImageElement) {
-        icon.src = "assets/img/icons/eye-on-thin.svg";
+        icon.src = "/assets/img/icons/eye-on-thin.svg";
       }
     }
   });

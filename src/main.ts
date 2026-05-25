@@ -63,6 +63,7 @@ const NOINDEX_PATH_PREFIXES = [
   "/games",
   "/support/admin",
   "/support/stats",
+  "/posts",
 ];
 
 // ---------------------------------------------------------------------------
@@ -87,6 +88,8 @@ const loadSearch = () => import(/* webpackChunkName: "page-search" */ "./pages/s
 const loadSettings = () =>
   import(/* webpackChunkName: "page-settings" */ "./pages/settings/settings");
 const loadGames = () => import(/* webpackChunkName: "page-games" */ "./pages/games/games");
+const loadPostRedirect = () =>
+  import(/* webpackChunkName: "page-post-redirect" */ "./pages/posts/post-redirect");
 
 function normalisePathname(pathname: string): string {
   return pathname.replace(/\/+$/g, "") || "/";
@@ -188,6 +191,10 @@ function matchesRoutePath(pathname: string, routePath: string): boolean {
     return /^\/games\/[^/]+$/i.test(normalisedPathname);
   }
 
+  if (normalisedRoutePath === "/posts/:id") {
+    return /^\/posts\/[^/]+$/i.test(normalisedPathname);
+  }
+
   return false;
 }
 
@@ -287,6 +294,11 @@ const routes: Route[] = [
     path: "/games/:roomId",
     title: "ARISNET — Game Room",
     render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
+    path: "/posts/:id",
+    title: "ARISNET",
+    render: async (p, s) => (await loadPostRedirect()).renderPostRedirect(p, s),
   },
   {
     path: "/support",

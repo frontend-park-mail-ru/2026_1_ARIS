@@ -30,7 +30,7 @@ describe("simple api endpoints", () => {
   });
 
   it("кодирует поисковый запрос и limit", async () => {
-    vi.mocked(apiRequest).mockResolvedValue({ users: [], communities: [] });
+    vi.mocked(apiRequest).mockResolvedValue({ users: [], communities: [], posts: [] });
     const signal = new AbortController().signal;
 
     await searchUsersAndCommunities("Софья & ARIS", signal);
@@ -38,7 +38,7 @@ describe("simple api endpoints", () => {
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/search?q=%D0%A1%D0%BE%D1%84%D1%8C%D1%8F+%26+ARIS&limit=20",
       { signal },
-      { users: [], communities: [] },
+      { users: [], communities: [], posts: [] },
     );
   });
 

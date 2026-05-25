@@ -23,9 +23,24 @@ export type SearchCommunity = {
   coverUrl?: string;
 };
 
+export type SearchPost = {
+  id: number;
+  text: string;
+  authorId: number;
+  authorProfileId: number;
+  authorUsername: string;
+  authorFirstName: string;
+  authorLastName: string;
+  authorAvatarId?: number;
+  authorAvatarUrl?: string;
+  communityId?: number;
+  createdAt: string;
+};
+
 export type SearchResponse = {
   users: SearchUser[];
   communities: SearchCommunity[];
+  posts: SearchPost[];
 };
 
 const SEARCH_LIMIT = 20;
@@ -38,5 +53,6 @@ export async function searchUsersAndCommunities(
   return apiRequest<SearchResponse>(`/api/search?${params.toString()}`, signal ? { signal } : {}, {
     users: [],
     communities: [],
+    posts: [],
   });
 }

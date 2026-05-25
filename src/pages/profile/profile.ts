@@ -512,6 +512,22 @@ export async function renderProfile(
   `;
 }
 
+function scrollToHighlightedPost(root: Document | HTMLElement): void {
+  const postId = new URLSearchParams(window.location.search).get("postId");
+  if (!postId) return;
+
+  const card = root.querySelector<HTMLElement>(`[data-profile-post-id="${CSS.escape(postId)}"]`);
+  if (!card) return;
+
+  window.history.replaceState({}, "", window.location.pathname + window.location.hash);
+
+  requestAnimationFrame(() => {
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("profile-post--highlighted");
+    window.setTimeout(() => card.classList.remove("profile-post--highlighted"), 2500);
+  });
+}
+
 export function initProfileToggle(root: Document | HTMLElement = document): void {
   const bindableRoot = root as ProfileRoot;
 
@@ -528,6 +544,7 @@ export function initProfileToggle(root: Document | HTMLElement = document): void
   syncPostComposerUi(root);
   applyProfilePostFilters(root);
   initProfilePostListLayout(root);
+  scrollToHighlightedPost(root);
 }
 
 // Экспортируемый путь для `resolveProfilePath`, который используют другие модули.

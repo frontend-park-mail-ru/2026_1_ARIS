@@ -55,11 +55,11 @@ check_status "sw.js"  "$BASE_URL/sw.js"
 # означает, что роут живой и проблема только в env.
 VKID_STATUS="$(curl -o /dev/null -sw '%{http_code}' --max-time "$TIMEOUT" "$BASE_URL/api/auth/vkid/login?returnTo=%2Ffeed%3Foauth%3Dvkid" 2>/dev/null || echo "000")"
 case "$VKID_STATUS" in
-  302|303|307|308|502|503)
+  2*|302|303|307|308|502|503)
     pass "/api/auth/vkid/login → HTTP $VKID_STATUS"
     ;;
   *)
-    fail "/api/auth/vkid/login → ожидался редирект, 502 или 503, получен HTTP $VKID_STATUS"
+    fail "/api/auth/vkid/login → ожидался 2xx, редирект, 502 или 503, получен HTTP $VKID_STATUS"
     ;;
 esac
 

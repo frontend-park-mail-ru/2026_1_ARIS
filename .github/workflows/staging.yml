@@ -40,8 +40,8 @@ jobs:
             printf 'BUILD_COMMIT=%s\nBUILD_VERSION=%s\n' "$BUILD_COMMIT" "$BUILD_VERSION" > .env.build
             sudo systemctl set-environment BUILD_COMMIT="$BUILD_COMMIT" BUILD_VERSION="$BUILD_VERSION"
             sudo systemctl restart arisfront
-            sleep 5
-            BASE_URL=${{ secrets.STAGING_DEPLOY_BASE_URL }} bash scripts/smoke.sh
+            sleep 10
+            bash scripts/smoke.sh
 
   notify-telegram:
     runs-on: ubuntu-latest

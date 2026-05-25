@@ -161,15 +161,17 @@
 
     /* ================= РАДИУСЫ ================= */
 
-    --radius-xs: 4px;
-    --radius-sm: 6px;
-    --radius-card: 16px;
-    --radius-input: 10px;
-    --radius-small: 8px;
-    --radius-panel: 12px;
-    --radius-pill: 999px;
-    --radius-large: 28px;
-    --radius-content-card: 18px;
+    --radius-ui: 9px;
+    --radius-xs: var(--radius-ui);
+    --radius-sm: var(--radius-ui);
+    --radius-card: var(--radius-ui);
+    --radius-input: var(--radius-ui);
+    --radius-small: var(--radius-ui);
+    --radius-panel: var(--radius-ui);
+    --radius-pill: var(--radius-ui);
+    --radius-control-pill: var(--radius-ui);
+    --radius-large: var(--radius-ui);
+    --radius-content-card: var(--radius-ui);
     --radius-round: 50%;
 
     /* ================= АВАТАР ================= */

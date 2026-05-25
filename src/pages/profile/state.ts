@@ -72,6 +72,7 @@ function createInitialPostComposerState(): PostComposerState {
     errorMessage: "",
     text: "",
     mediaItems: [],
+    fileItems: [],
   };
 }
 
@@ -198,6 +199,7 @@ export function resetPostComposerState(): void {
   postComposerState.errorMessage = "";
   postComposerState.text = "";
   postComposerState.mediaItems = [];
+  postComposerState.fileItems = [];
 }
 
 export function resetPendingProfilePostState(): void {
@@ -224,6 +226,14 @@ export function openEditPostComposer(postId: string): void {
   postComposerState.mediaItems = post.media.map((item) => ({
     mediaID: item.mediaID,
     mediaURL: item.mediaURL,
+    mimeType: item.mimeType,
+    isUploaded: true,
+  }));
+  postComposerState.fileItems = post.files.map((item) => ({
+    mediaID: item.mediaID,
+    mediaURL: item.mediaURL,
+    fileName: item.mediaURL.split("/").filter(Boolean).pop() ?? "",
+    mimeType: item.mimeType,
     isUploaded: true,
   }));
 }
@@ -234,6 +244,15 @@ export function removeComposerMediaItem(index: number): void {
   }
 
   postComposerState.mediaItems.splice(index, 1);
+  publishPostComposerState();
+}
+
+export function removeComposerFileItem(index: number): void {
+  if (index < 0 || index >= postComposerState.fileItems.length || postComposerState.isSaving) {
+    return;
+  }
+
+  postComposerState.fileItems.splice(index, 1);
   publishPostComposerState();
 }
 

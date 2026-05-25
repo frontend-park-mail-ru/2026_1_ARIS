@@ -1,0 +1,86 @@
+/* Таблица очков текущего раунда. */
+@layer pages {
+  .games-round-score-board {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-3);
+    animation: games-score-board-reveal 560ms ease both;
+    animation-delay: 2300ms;
+  }
+
+  .games-round-score-board__header {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .games-round-score-board__header h3 {
+    margin: 0;
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-round-score-table {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .games-round-score-table__head,
+  .games-round-score-row {
+    display: grid;
+    min-width: 0;
+    grid-template-columns:
+      34px
+      minmax(140px, 1.25fr)
+      minmax(86px, 0.8fr)
+      minmax(112px, 1fr)
+      minmax(82px, 0.75fr)
+      minmax(62px, auto);
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .games-round-score-table__head {
+    padding: 0 10px;
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+  }
+
+  .games-round-score-row {
+    padding: 10px;
+    border: 1px solid rgb(95 111 157 / 12%);
+    border-radius: var(--radius-small);
+    background: rgb(255 255 255 / 68%);
+    color: var(--color-text-meta);
+    animation: games-score-row-in 360ms ease both;
+    animation-delay: calc(2420ms + var(--games-score-index, 0) * 80ms);
+  }
+
+  .games-round-score-row--leader {
+    border-color: rgb(53 137 96 / 34%);
+    background: rgb(53 137 96 / 10%);
+  }
+
+  .games-round-score-row > span,
+  .games-round-score-row > time,
+  .games-round-score-row > strong,
+  .games-round-score-table__head > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .games-round-score-row > strong {
+    color: #8a5a00;
+    font-weight: var(--font-weight-bold);
+  }
+}

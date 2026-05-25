@@ -23,6 +23,18 @@ export type LoginPayload = {
 };
 
 /**
+ * Тело запроса для смены пароля.
+ */
+export type ChangePasswordPayload = {
+  /** Текущий пароль пользователя. */
+  oldPassword: string;
+  /** Новый пароль. */
+  newPassword1: string;
+  /** Повтор нового пароля. */
+  newPassword2: string;
+};
+
+/**
  * Тело запроса для регистрации.
  */
 export type RegisterPayload = {
@@ -81,8 +93,12 @@ export type User = {
 
 type RawUser = {
   id?: string | number;
+  profileId?: string | number;
+  profileID?: string | number;
   firstName?: string;
+  first_name?: string;
   lastName?: string;
+  last_name?: string;
   login?: string;
   username?: string;
   email?: string;
@@ -97,26 +113,26 @@ function mapUser(raw: RawUser | null | undefined): User | null {
     return null;
   }
 
-  const id = String(raw.id ?? "").trim();
-  const firstName = String(raw.firstName ?? "").trim();
-  const lastName = String(raw.lastName ?? "").trim();
+  const id = String(raw.id ?? raw.profileId ?? raw.profileID ?? "").trim();
+  const login = String(raw.login ?? raw.username ?? "").trim();
+  const email = String(raw.email ?? "").trim();
+  const firstName = String(raw.firstName ?? raw.first_name ?? "").trim();
+  const lastName = String(raw.lastName ?? raw.last_name ?? "").trim();
 
-  if (!id || !firstName || !lastName) {
+  if (!id) {
     return null;
   }
 
   const user: User = {
     id,
-    firstName,
+    firstName: firstName || login || email || "Пользователь",
     lastName,
   };
 
-  const login = String(raw.login ?? raw.username ?? "").trim();
   if (login) {
     user.login = login;
   }
 
-  const email = String(raw.email ?? "").trim();
   if (email) {
     user.email = email;
   }
@@ -194,6 +210,13 @@ export async function registerUser(payload: RegisterPayload): Promise<User> {
 export async function logoutUser(): Promise<unknown> {
   await apiRequest<unknown>("/api/auth/logout", { method: "POST" });
   return;
+}
+
+/**
+ * Меняет пароль текущего авторизованного пользователя.
+ */
+export async function changePassword(payload: ChangePasswordPayload): Promise<{ ok?: boolean }> {
+  return apiRequest<{ ok?: boolean }>("/api/auth/password", { method: "POST", body: payload }, {});
 }
 
 /**

@@ -163,6 +163,8 @@ export function createRouter(
 
     if (!matchedRoute) {
       document.title = "ARISNET — 404";
+      root.removeAttribute("data-route-loading");
+      root.removeAttribute("data-route-loading-path");
       root.innerHTML = "<h1>404</h1><p>Page not found</p>";
       return;
     }
@@ -175,8 +177,13 @@ export function createRouter(
     const skeleton = hooks.getSkeleton?.(path);
     const skeletonShownAt = skeleton ? Date.now() : 0;
     if (skeleton) {
+      root.setAttribute("data-route-loading", "true");
+      root.setAttribute("data-route-loading-path", path);
       root.innerHTML = skeleton;
       if (resetScroll) window.scrollTo(0, 0);
+    } else {
+      root.removeAttribute("data-route-loading");
+      root.removeAttribute("data-route-loading-path");
     }
 
     let html: string;
@@ -209,10 +216,18 @@ export function createRouter(
       if (navId !== currentNavId) return;
     }
 
-    await applyWithViewTransition(() => {
+    const applyRenderedHtml = () => {
       if (resetScroll && !skeleton) window.scrollTo(0, 0);
       root.innerHTML = html;
-    });
+      root.removeAttribute("data-route-loading");
+      root.removeAttribute("data-route-loading-path");
+    };
+
+    if (skeleton) {
+      applyRenderedHtml();
+    } else {
+      await applyWithViewTransition(applyRenderedHtml);
+    }
 
     await hooks.afterRender?.(root);
     window.dispatchEvent(new CustomEvent("apprender"));

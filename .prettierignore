@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+allure-results/
+allure-report/
+
+mobile/android/.gradle/
+mobile/android/**/build/

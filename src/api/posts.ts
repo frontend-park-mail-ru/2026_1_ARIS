@@ -32,6 +32,8 @@ export type PostPayload = {
 export type PostMedia = {
   mediaID: number;
   mediaURL: string;
+  mimeType?: string;
+  name?: string;
 };
 
 export type PostFile = PostMedia;
@@ -62,6 +64,7 @@ export type PostResponse = {
   updatedAt?: string;
   likes?: number;
   isLiked?: boolean;
+  comments?: number;
 };
 
 function parseNumericCount(value: unknown): number | undefined {
@@ -105,6 +108,12 @@ type RawPostMedia = {
   mediaUrl?: string;
   media_url?: string;
   url?: string;
+  mimeType?: string;
+  mime_type?: string;
+  name?: string;
+  fileName?: string;
+  file_name?: string;
+  originalName?: string;
 };
 
 type RawPostAuthor = {
@@ -145,6 +154,9 @@ type RawPost = {
   liked?: boolean | number | string;
   isLiked?: boolean | number | string;
   is_liked?: boolean | number | string;
+  comments?: number | string;
+  commentsCount?: number | string;
+  comments_count?: number | string;
 };
 
 type ProfilePostsResponse = {
@@ -185,6 +197,8 @@ export type PostComment = {
   createdAt: string;
   updatedAt: string;
   repliesCount: number;
+  likes: number;
+  isLiked: boolean;
 };
 
 type RawPostComment = {
@@ -197,7 +211,12 @@ type RawPostComment = {
   createdAt?: string;
   updatedAt?: string;
   repliesCount?: number | string;
+  likes?: number | string;
+  isLiked?: boolean | number | string;
+  is_liked?: boolean | number | string;
 };
+
+type RawPostCommentRepliesBatch = Record<string, RawPostComment[] | null | undefined>;
 
 type CommentListOptions = {
   limit?: number;
@@ -227,11 +246,18 @@ function mapUploadedMedia(raw: UploadedMediaPayload | null | undefined): Uploade
     return null;
   }
 
-  return { mediaID, mediaURL };
+  const mimeType = String(
+    "mimeType" in raw ? (raw.mimeType ?? "") : "mime_type" in raw ? (raw.mime_type ?? "") : "",
+  ).trim();
+
+  return { mediaID, mediaURL, ...(mimeType ? { mimeType } : {}) };
 }
 
 function mapPostMedia(raw: RawPostMedia | null | undefined): PostMedia | null {
-  return mapUploadedMedia(raw);
+  const base = mapUploadedMedia(raw);
+  if (!base) return null;
+  const name = (raw?.name ?? raw?.fileName ?? raw?.file_name ?? raw?.originalName ?? "").trim();
+  return { ...base, ...(name ? { name } : {}) };
 }
 
 function mapAttachmentPayload(
@@ -289,6 +315,7 @@ function mapPost(raw: RawPost): PostResponse {
       : [];
   const communityId = Number(raw.communityId);
   const likes = parseNumericCount(raw.likes);
+  const comments = parseNumericCount(raw.comments ?? raw.commentsCount ?? raw.comments_count);
   const rawIsLiked = parseBooleanFlag(raw.isLiked ?? raw.is_liked ?? raw.liked);
   const resolvedPostId = Number(raw.id ?? raw.ID ?? 0);
   const isLiked = resolvePostLikeState(resolvedPostId, rawIsLiked);
@@ -323,6 +350,7 @@ function mapPost(raw: RawPost): PostResponse {
     ...(updatedAt ? { updatedAt: String(updatedAt) } : {}),
     ...(typeof likes === "number" ? { likes } : {}),
     ...(typeof isLiked === "boolean" ? { isLiked } : {}),
+    ...(typeof comments === "number" ? { comments } : {}),
   };
 }
 
@@ -371,6 +399,8 @@ function mapPostComment(raw: RawPostComment): PostComment | null {
     createdAt: String(raw.createdAt ?? ""),
     updatedAt: String(raw.updatedAt ?? ""),
     repliesCount: parseNumericCount(raw.repliesCount) ?? 0,
+    likes: parseNumericCount(raw.likes) ?? 0,
+    isLiked: parseBooleanFlag(raw.isLiked ?? raw.is_liked) ?? false,
   };
 }
 
@@ -530,6 +560,36 @@ export async function getPostCommentReplies(
   return mapPostComments(data);
 }
 
+export async function getPostCommentRepliesBatch(
+  postId: string | number,
+  parentIds: Array<string | number>,
+  options: CommentListOptions = {},
+): Promise<Record<string, PostComment[]>> {
+  const normalizedParentIds = parentIds
+    .map((id) => String(id).trim())
+    .filter((id, index, ids) => id && ids.indexOf(id) === index);
+
+  if (!normalizedParentIds.length) {
+    return {};
+  }
+
+  const params = new URLSearchParams();
+  params.set("parentIds", normalizedParentIds.join(","));
+  if (typeof options.limit === "number") params.set("limit", String(options.limit));
+  if (typeof options.offset === "number") params.set("offset", String(options.offset));
+
+  const data = await apiRequest<RawPostCommentRepliesBatch>(
+    `/api/post/${encodeURIComponent(String(postId))}/comments/replies?${params.toString()}`,
+    { ...(options.signal ? { signal: options.signal } : {}) },
+    {},
+  );
+
+  return normalizedParentIds.reduce<Record<string, PostComment[]>>((result, parentId) => {
+    result[parentId] = mapPostComments(data[parentId]);
+    return result;
+  }, {});
+}
+
 export async function createPostComment(
   postId: string | number,
   payload: PostCommentPayload,
@@ -568,6 +628,34 @@ export async function deletePostComment(
     { method: "DELETE" },
     null,
   );
+}
+
+export async function likePostComment(
+  postId: string | number,
+  commentId: string | number,
+): Promise<PostComment> {
+  const data = await apiRequest<RawPostComment>(
+    `/api/post/${encodeURIComponent(String(postId))}/comments/${encodeURIComponent(String(commentId))}/likes`,
+    { method: "POST" },
+    {},
+  );
+  const comment = mapPostComment(data);
+  if (!comment) throw new Error("Не удалось поставить лайк.");
+  return comment;
+}
+
+export async function unlikePostComment(
+  postId: string | number,
+  commentId: string | number,
+): Promise<PostComment> {
+  const data = await apiRequest<RawPostComment>(
+    `/api/post/${encodeURIComponent(String(postId))}/comments/${encodeURIComponent(String(commentId))}/likes`,
+    { method: "DELETE" },
+    {},
+  );
+  const comment = mapPostComment(data);
+  if (!comment) throw new Error("Не удалось убрать лайк.");
+  return comment;
 }
 
 export async function createPost(payload: PostPayload): Promise<PostResponse> {

@@ -127,6 +127,8 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
   const isCommunitiesListRoute = currentPath === "/communities";
   const isCommunitiesRoute = isCommunitiesListRoute || currentPath.startsWith("/communities/");
   const isChatsRoute = currentPath === "/chats";
+  const isGamesRoute = currentPath === "/games" || currentPath.startsWith("/games/");
+  const isGamesCatalogRoute = currentPath === "/games";
   const isSettingsRoute = currentPath === "/settings";
   const isForYouActive = getFeedMode() === "for-you";
   const isByTimeActive = getFeedMode() === "by-time";
@@ -168,6 +170,13 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
         attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
       })}
       ${renderMobileNavItem({
+        href: "/games",
+        label: t("nav.games"),
+        icon: "/assets/img/icons/star.svg",
+        isActive: isGamesRoute,
+        attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+      })}
+      ${renderMobileNavItem({
         href: "/settings",
         label: t("nav.settings"),
         icon: "/assets/img/icons/settings.svg",
@@ -185,7 +194,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           label: t("nav.feed"),
           icon: "/assets/img/icons/home.svg",
           isActive: isFeedRoute,
-          reloadOnClick: true,
+          reloadOnClick: isFeedRoute,
           attributes: isFeedRoute ? 'data-sidebar-feed-refresh="true"' : "",
         })}
 
@@ -223,6 +232,15 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           isActive: isChatsRoute,
           attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
           preventWhenActive: true,
+        })}
+
+        ${renderSidebarItem({
+          href: "/games",
+          label: t("nav.games"),
+          icon: "/assets/img/icons/star.svg",
+          isActive: isGamesRoute,
+          attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
+          preventWhenActive: isGamesCatalogRoute,
         })}
 
         ${renderSidebarItem({

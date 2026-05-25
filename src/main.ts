@@ -29,6 +29,7 @@ import "./pages/support-admin/support-admin.scss";
 import "./pages/support-stats/support-stats.scss";
 import "./pages/search/search.css";
 import "./pages/settings/settings.css";
+import "./pages/games/games.css";
 
 import "./components/postcard/postcard-element";
 import { createRouter, type Route } from "./router/router";
@@ -45,6 +46,7 @@ import { captureAppException, initSentry, syncSentryUser } from "./utils/sentry"
 import { initSupportIframe } from "./utils/support-widget";
 import { applyLanguage, initLanguageFromStorage } from "./state/language";
 import { applyTheme, initThemeFromStorage } from "./state/theme";
+import { syncSitePresenceWithSession } from "./state/presence";
 import { resetUserSettingsSyncState, syncUserSettingsWithServer } from "./state/user-settings";
 
 const SITE_ORIGIN = "https://arisnet.ru";
@@ -58,8 +60,10 @@ const NOINDEX_PATH_PREFIXES = [
   "/communities",
   "/profile",
   "/id",
+  "/games",
   "/support/admin",
   "/support/stats",
+  "/posts",
 ];
 
 // ---------------------------------------------------------------------------
@@ -83,6 +87,9 @@ const loadSupportStats = () =>
 const loadSearch = () => import(/* webpackChunkName: "page-search" */ "./pages/search/search");
 const loadSettings = () =>
   import(/* webpackChunkName: "page-settings" */ "./pages/settings/settings");
+const loadGames = () => import(/* webpackChunkName: "page-games" */ "./pages/games/games");
+const loadPostRedirect = () =>
+  import(/* webpackChunkName: "page-post-redirect" */ "./pages/posts/post-redirect");
 
 function normalisePathname(pathname: string): string {
   return pathname.replace(/\/+$/g, "") || "/";
@@ -180,6 +187,18 @@ function matchesRoutePath(pathname: string, routePath: string): boolean {
     return /^\/communities\/[^/]+$/i.test(normalisedPathname);
   }
 
+  if (normalisedRoutePath === "/games/:roomId") {
+    return /^\/games\/[^/]+$/i.test(normalisedPathname);
+  }
+
+  if (normalisedRoutePath === "/posts/:id") {
+    return /^\/posts\/[^/]+$/i.test(normalisedPathname);
+  }
+
+  if (normalisedRoutePath === "/games/quiz/:roomId") {
+    return /^\/games\/quiz\/[^/]+$/i.test(normalisedPathname);
+  }
+
   return false;
 }
 
@@ -271,6 +290,31 @@ const routes: Route[] = [
     render: async (p, s) => (await loadSettings()).renderSettings(p, s),
   },
   {
+    path: "/games",
+    title: "ARISNET — Games",
+    render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
+    path: "/games/quiz",
+    title: "ARISNET — Quiz",
+    render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
+    path: "/games/quiz/:roomId",
+    title: "ARISNET — Quiz Room",
+    render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
+    path: "/games/:roomId",
+    title: "ARISNET — Game Room",
+    render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
+    path: "/posts/:id",
+    title: "ARISNET",
+    render: async (p, s) => (await loadPostRedirect()).renderPostRedirect(p, s),
+  },
+  {
     path: "/support",
     title: "ARISNET — Support",
     render: async () => (await loadSupport()).renderSupportWidget(),
@@ -315,6 +359,8 @@ const chunkMap: Record<string, () => Promise<unknown>> = {
   "/login": loadLogin,
   "/register": loadRegister,
   "/settings": loadSettings,
+  "/games": loadGames,
+  "/games/quiz": loadGames,
   "/support/admin": loadSupportAdmin,
 };
 
@@ -369,6 +415,7 @@ void (async () => {
 
   try {
     await initSession();
+    await syncSitePresenceWithSession();
     await syncSettingsForSession("init-sync");
     syncSentryUser(getSessionUser());
   } catch (error) {
@@ -435,6 +482,8 @@ window.addEventListener("sessionchange", async (event: Event) => {
     if (detail?.key === "init") {
       return;
     }
+
+    await syncSitePresenceWithSession();
 
     if (detail?.key === "user") {
       markAppRendering();

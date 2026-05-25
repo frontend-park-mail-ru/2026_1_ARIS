@@ -16,7 +16,7 @@ import { getSessionUser } from "../../state/session";
 import { resolveProfilePath } from "../../pages/profile/profile-data";
 import { renderAvatarMarkup } from "../../utils/avatar";
 import { formatPersonName } from "../../utils/display-name";
-import { resolveMediaUrl } from "../../utils/media";
+import { getMediaFileName, isVideoMedia, resolveMediaUrl } from "../../utils/media";
 import { getLanguageMode } from "../../state/language";
 import { t } from "../../state/i18n";
 
@@ -52,6 +52,10 @@ export type PostcardPost = {
   reposts: number;
   /** Список изображений поста в порядке отображения. */
   images?: string[];
+  /** Фото и видео вложения поста. */
+  media?: Array<{ url: string; mimeType?: string }>;
+  /** Файловые вложения поста. */
+  files?: Array<{ url: string; name?: string }>;
 };
 
 type PostcardStatOptions = {
@@ -67,6 +71,7 @@ type PostcardMediaOptions = {
 
 type RenderPostcardOptions = {
   prioritizeMedia?: boolean;
+  afterFooterHtml?: string;
 };
 
 type PostcardRoot = (Document | HTMLElement) & {
@@ -217,6 +222,22 @@ function renderPostcardMediaImage(src: string, prioritize = false): string {
   return `<img class="postcard__media-item" loading="${prioritize ? "eager" : "lazy"}"${prioritize ? ' fetchpriority="high"' : ""} decoding="async" src="${resolveMediaSrc(src)}" alt="" data-post-image-open>`;
 }
 
+function renderPostcardMediaItem(
+  item: { url: string; mimeType?: string },
+  prioritize = false,
+  className = "postcard__media-item",
+): string {
+  const src = resolveMediaSrc(item.url);
+  if (isVideoMedia(item.url, item.mimeType)) {
+    return `<video class="${className}" src="${escapeHtml(src)}" controls preload="metadata"></video>`;
+  }
+
+  return renderPostcardMediaImage(item.url, prioritize).replace(
+    'class="postcard__media-item"',
+    `class="${className}"`,
+  );
+}
+
 /**
  * Рендерит сетку изображений поста.
  *
@@ -230,54 +251,57 @@ function renderPostcardMediaImage(src: string, prioritize = false): string {
  *   prioritizeFirstImage: true,
  * });
  */
-function renderPostcardMedia(images: string[] = [], options: PostcardMediaOptions = {}): string {
-  if (images.length === 0) {
+function renderPostcardMedia(
+  media: Array<{ url: string; mimeType?: string }> = [],
+  options: PostcardMediaOptions = {},
+): string {
+  if (media.length === 0) {
     return "";
   }
 
   const prioritizeFirstImage = Boolean(options.prioritizeFirstImage);
 
-  if (images.length === 1) {
+  if (media.length === 1) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--single">
-          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
+          ${renderPostcardMediaItem(media[0] ?? { url: "" }, prioritizeFirstImage)}
         </div>
       </div>
     `;
   }
 
-  if (images.length === 2) {
+  if (media.length === 2) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--double">
-          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
-          ${renderPostcardMediaImage(images[1] ?? "")}
+          ${renderPostcardMediaItem(media[0] ?? { url: "" }, prioritizeFirstImage)}
+          ${renderPostcardMediaItem(media[1] ?? { url: "" })}
         </div>
       </div>
     `;
   }
 
-  if (images.length === 3) {
+  if (media.length === 3) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--triple">
-          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage).replace('class="postcard__media-item"', 'class="postcard__media-item postcard__media-item--featured"')}
-          ${renderPostcardMediaImage(images[1] ?? "")}
-          ${renderPostcardMediaImage(images[2] ?? "")}
+          ${renderPostcardMediaItem(media[0] ?? { url: "" }, prioritizeFirstImage, "postcard__media-item postcard__media-item--featured")}
+          ${renderPostcardMediaItem(media[1] ?? { url: "" })}
+          ${renderPostcardMediaItem(media[2] ?? { url: "" })}
         </div>
       </div>
     `;
   }
 
-  if (images.length === 4) {
+  if (media.length === 4) {
     return `
       <div class="postcard__media">
         <div class="postcard__media-grid postcard__media-grid--quad">
-          ${images
+          ${media
             .slice(0, 4)
-            .map((image, index) =>
-              renderPostcardMediaImage(image, prioritizeFirstImage && index === 0),
+            .map((item, index) =>
+              renderPostcardMediaItem(item, prioritizeFirstImage && index === 0),
             )
             .join("")}
         </div>
@@ -285,18 +309,18 @@ function renderPostcardMedia(images: string[] = [], options: PostcardMediaOption
     `;
   }
 
-  if (images.length === 5) {
+  if (media.length === 5) {
     return `
       <div class="postcard__media postcard__media--five">
         <div class="postcard__media-row postcard__media-row--top">
-          ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
-          ${renderPostcardMediaImage(images[1] ?? "")}
+          ${renderPostcardMediaItem(media[0] ?? { url: "" }, prioritizeFirstImage)}
+          ${renderPostcardMediaItem(media[1] ?? { url: "" })}
         </div>
 
         <div class="postcard__media-row postcard__media-row--bottom">
-          ${renderPostcardMediaImage(images[2] ?? "")}
-          ${renderPostcardMediaImage(images[3] ?? "")}
-          ${renderPostcardMediaImage(images[4] ?? "")}
+          ${renderPostcardMediaItem(media[2] ?? { url: "" })}
+          ${renderPostcardMediaItem(media[3] ?? { url: "" })}
+          ${renderPostcardMediaItem(media[4] ?? { url: "" })}
         </div>
       </div>
     `;
@@ -305,19 +329,39 @@ function renderPostcardMedia(images: string[] = [], options: PostcardMediaOption
   return `
     <div class="postcard__media postcard__media--five-plus">
       <div class="postcard__media-row postcard__media-row--top">
-        ${renderPostcardMediaImage(images[0] ?? "", prioritizeFirstImage)}
-        ${renderPostcardMediaImage(images[1] ?? "")}
-        ${renderPostcardMediaImage(images[2] ?? "")}
+        ${renderPostcardMediaItem(media[0] ?? { url: "" }, prioritizeFirstImage)}
+        ${renderPostcardMediaItem(media[1] ?? { url: "" })}
+        ${renderPostcardMediaItem(media[2] ?? { url: "" })}
       </div>
 
       <div class="postcard__media-row postcard__media-row--bottom">
-        ${renderPostcardMediaImage(images[3] ?? "")}
-        ${renderPostcardMediaImage(images[4] ?? "")}
+        ${renderPostcardMediaItem(media[3] ?? { url: "" })}
+        ${renderPostcardMediaItem(media[4] ?? { url: "" })}
         <div class="postcard__media-overlay">
-          ${renderPostcardMediaImage(images[5] ?? "")}
-          <span class="postcard__media-overlay-count">+${images.length - 5}</span>
+          ${renderPostcardMediaItem(media[5] ?? { url: "" })}
+          <span class="postcard__media-overlay-count">+${media.length - 5}</span>
         </div>
       </div>
+    </div>
+  `;
+}
+
+function renderPostcardFiles(files: Array<{ url: string; name?: string }> = []): string {
+  const cleanFiles = files.filter((f) => f.url.trim());
+  if (!cleanFiles.length) return "";
+
+  return `
+    <div class="postcard__files">
+      ${cleanFiles
+        .map(
+          (file) => `
+            <a class="postcard__file" href="${escapeHtml(resolveMediaUrl(file.url))}" target="_blank" rel="noopener noreferrer">
+              <span class="postcard__file-icon" aria-hidden="true">□</span>
+              <span class="postcard__file-name">${escapeHtml(file.name || getMediaFileName(file.url, t("chats.file")))}</span>
+            </a>
+          `,
+        )
+        .join("")}
     </div>
   `;
 }
@@ -396,9 +440,10 @@ export function renderPostcardInner(
       </div>
 
       ${renderPostcardMedia(
-        post.images || [],
+        post.media?.length ? post.media : (post.images || []).map((image) => ({ url: image })),
         options.prioritizeMedia ? { prioritizeFirstImage: true } : {},
       )}
+      ${renderPostcardFiles(post.files)}
 
       <footer class="postcard__footer">
         ${statsMarkup}
@@ -411,6 +456,7 @@ export function renderPostcardInner(
           aria-label="${exactTime ? `${t("postcard.exactDateAria")} ${escapeHtml(exactTime.replace(/\n/g, ", "))}` : escapeHtml(displayTime)}"
         >${escapeHtml(displayTime)}</time>
       </footer>
+      ${options.afterFooterHtml ?? ""}
     </article>
   `;
 }

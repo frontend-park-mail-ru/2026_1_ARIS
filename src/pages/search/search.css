@@ -92,6 +92,35 @@
     text-overflow: ellipsis;
   }
 
+  .search-result-card__post-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .search-result-card__post-header .search-result-card__meta {
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .search-result-card__post-text {
+    margin-top: 4px;
+    font-size: var(--text-size-meta);
+    color: var(--color-text-main);
+    text-decoration: none;
+    line-height: 1.45;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  .search-result-card__post-text:hover {
+    text-decoration: underline;
+    color: var(--color-interactive-primary);
+  }
+
   .search-page__error {
     margin: var(--space-3) 0 0;
     font-size: var(--text-size-main);

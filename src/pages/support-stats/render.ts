@@ -3,10 +3,21 @@
  *
  * Содержит функции генерации HTML и обновления DOM для страницы.
  */
-import type { SupportStats, Ticket } from "../../api/support";
+import type { SupportStats, Ticket, TicketStatus } from "../../api/support";
+
+const STATUS_LABELS: Record<TicketStatus, string> = {
+  open: "Открыто",
+  in_progress: "В работе",
+  waiting_user: "Ожидает пользователя",
+  closed: "Закрыто",
+};
 
 function escapeHtml(str: string | number): string {
-  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function renderStatCard(label: string, value: string | number, accent = false): string {
@@ -18,7 +29,59 @@ function renderStatCard(label: string, value: string | number, accent = false): 
   `;
 }
 
-export function renderStats(stats: SupportStats): string {
+function formatDate(iso: string): string {
+  if (!iso) return "";
+  try {
+    return new Intl.DateTimeFormat("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function renderRecentComplaints(tickets: Ticket[] | null): string {
+  const content =
+    tickets === null
+      ? `<p class="ss-placeholder__text">Не удалось загрузить последние жалобы.</p>`
+      : tickets.length
+        ? `
+          <div class="ss-complaints">
+            ${tickets
+              .slice(0, 8)
+              .map(
+                (ticket) => `
+                  <article class="ss-complaint">
+                    <header>
+                      <span class="ss-complaint__status">${escapeHtml(STATUS_LABELS[ticket.status] ?? ticket.status)}</span>
+                      <time>${escapeHtml(formatDate(ticket.createdAt))}</time>
+                    </header>
+                    <strong>${escapeHtml(ticket.title)}</strong>
+                    <p>${escapeHtml(ticket.description)}</p>
+                    <a href="/support/admin" data-link>Открыть в панели поддержки</a>
+                  </article>
+                `,
+              )
+              .join("")}
+          </div>
+        `
+        : `<p class="ss-placeholder__text">Пока нет жалоб.</p>`;
+
+  return `
+    <section class="ss-section">
+      <h2 class="ss-section__title">Последние жалобы</h2>
+      <div class="ss-placeholder">
+        ${content}
+      </div>
+    </section>
+  `;
+}
+
+export function renderStats(stats: SupportStats, complaints: Ticket[] | null = []): string {
   const avgRating = stats.avgRating === null ? "—" : stats.avgRating.toFixed(1);
 
   return `
@@ -54,6 +117,8 @@ export function renderStats(stats: SupportStats): string {
         ${renderStatCard("Другое", stats.byCategory.other)}
       </div>
     </section>
+
+    ${renderRecentComplaints(complaints)}
   `;
 }
 

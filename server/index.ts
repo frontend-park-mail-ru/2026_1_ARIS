@@ -1,6 +1,8 @@
 import express, { NextFunction, Request, Response } from "express";
 import http from "http";
 import https from "https";
+import net from "net";
+import fs from "fs";
 import morgan from "morgan";
 import path from "path";
 
@@ -23,18 +25,44 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+function setCacheHeaders(res: Response, filePath: string): void {
+  if (filePath.endsWith(".html")) {
+    res.setHeader("Cache-Control", "no-cache");
+  } else if (/\.[0-9a-f]{8,}\.(js|css)$/i.test(filePath)) {
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  } else {
+    res.setHeader("Cache-Control", "public, max-age=3600");
+  }
+}
+
+// Serve pre-compressed .gz files when the client accepts gzip encoding.
+// Falls through to express.static for files without a .gz counterpart.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const acceptEncoding = req.headers["accept-encoding"] ?? "";
+  if (!acceptEncoding.includes("gzip") || req.method !== "GET") {
+    next();
+    return;
+  }
+
+  const relativePath = req.path.replace(/^\//, "");
+  const gzPath = path.resolve(distDir, `${relativePath}.gz`);
+
+  if (!fs.existsSync(gzPath)) {
+    next();
+    return;
+  }
+
+  const originalPath = path.resolve(distDir, relativePath);
+  setCacheHeaders(res, originalPath);
+  res.type(path.extname(relativePath));
+  res.setHeader("Content-Encoding", "gzip");
+  res.setHeader("Vary", "Accept-Encoding");
+  res.sendFile(gzPath);
+});
+
 app.use(
   express.static(distDir, {
-    setHeaders(res, filePath) {
-      if (filePath.endsWith(".html")) {
-        res.setHeader("Cache-Control", "no-cache");
-      } else if (/\.[0-9a-f]{8,}\.(js|css)$/i.test(filePath)) {
-        // Content-hashed bundles are immutable — cache for 1 year
-        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      } else {
-        res.setHeader("Cache-Control", "public, max-age=3600");
-      }
-    },
+    setHeaders: setCacheHeaders,
   }),
 );
 app.use(express.static(publicDir));
@@ -49,14 +77,14 @@ app.get("/health", (_req: Request, res: Response) => {
   });
 });
 
-app.get(/^\/api\/auth\/vkid\//, async (req: Request, res: Response) => {
+function proxyHttpRequest(req: Request, res: Response, errorMessage = "Backend proxy error"): void {
   const targetUrl = new URL(req.originalUrl, backendUrl);
   const transport = targetUrl.protocol === "https:" ? https : http;
 
   const proxyReq = transport.request(
     targetUrl,
     {
-      method: "GET",
+      method: req.method,
       headers: {
         ...req.headers,
         host: targetUrl.host,
@@ -72,13 +100,21 @@ app.get(/^\/api\/auth\/vkid\//, async (req: Request, res: Response) => {
 
   proxyReq.on("error", () => {
     if (!res.headersSent) {
-      res.status(502).send("VK ID proxy error");
+      res.status(502).send(errorMessage);
     } else {
       res.end();
     }
   });
 
-  proxyReq.end();
+  req.pipe(proxyReq);
+}
+
+app.use(/^\/api(\/|$)/, (req: Request, res: Response) => {
+  proxyHttpRequest(req, res);
+});
+
+app.use(/^\/media(\/|$)/, (req: Request, res: Response) => {
+  proxyHttpRequest(req, res);
 });
 
 app.get("/image-proxy", async (req: Request, res: Response) => {
@@ -126,6 +162,41 @@ app.get(/.*/, (req: Request, res: Response, next: NextFunction) => {
 });
 
 const server = app.listen(port, host);
+
+server.on("upgrade", (req, socket, head) => {
+  if (!req.url?.startsWith("/ws/")) {
+    socket.destroy();
+    return;
+  }
+
+  const targetUrl = new URL(req.url, backendUrl);
+  const targetPort = Number(targetUrl.port || (targetUrl.protocol === "https:" ? 443 : 80));
+  const targetSocket = net.connect(targetPort, targetUrl.hostname, () => {
+    const headers = [
+      `${req.method || "GET"} ${targetUrl.pathname}${targetUrl.search} HTTP/${req.httpVersion}`,
+      `Host: ${targetUrl.host}`,
+      `X-Forwarded-Host: ${req.headers.host || ""}`,
+      `X-Forwarded-Proto: ${req.headers["x-forwarded-proto"]?.toString() || "http"}`,
+      ...Object.entries(req.headers)
+        .filter(([key]) => key.toLowerCase() !== "host")
+        .map(([key, value]) =>
+          Array.isArray(value) ? `${key}: ${value.join(", ")}` : `${key}: ${value ?? ""}`,
+        ),
+      "",
+      "",
+    ].join("\r\n");
+
+    targetSocket.write(headers);
+    if (head.length > 0) {
+      targetSocket.write(head);
+    }
+    targetSocket.pipe(socket);
+    socket.pipe(targetSocket);
+  });
+
+  targetSocket.on("error", () => socket.destroy());
+  socket.on("error", () => targetSocket.destroy());
+});
 
 server.on("listening", () => {
   console.log(`Server listening on http://${host}:${port}`);

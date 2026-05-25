@@ -12,7 +12,8 @@ export function updateFeedStatusElement(): void {
   const status = document.querySelector("[data-feed-status]");
   if (!(status instanceof HTMLElement) || !activeFeedState) return;
 
-  const hasMore = activeFeedState.renderedCount < activeFeedState.items.length;
+  const hasMore =
+    activeFeedState.renderedCount < activeFeedState.items.length || activeFeedState.hasMore;
   status.classList.toggle("feed-infinite-status--hidden", !hasMore);
   status.textContent = activeFeedState.isLoadingMore
     ? "Загружаем ещё публикации..."
@@ -41,7 +42,11 @@ export function appendMoreFeedCards(): void {
   initPostcardExpand(list);
   updateFeedStatusElement();
 
-  if (activeFeedState && activeFeedState.renderedCount >= activeFeedState.items.length) {
+  if (
+    activeFeedState &&
+    activeFeedState.renderedCount >= activeFeedState.items.length &&
+    !activeFeedState.hasMore
+  ) {
     disconnectFeedObserver();
   }
 }
@@ -53,7 +58,7 @@ export function disconnectFeedObserver(): void {
 }
 
 /** Подключает IntersectionObserver к sentinel-элементу в конце списка. */
-export function bindFeedInfiniteScroll(): void {
+export function bindFeedInfiniteScroll(onServerFetch?: () => Promise<void>): void {
   const list = document.querySelector("[data-feed-list]");
   if (!(list instanceof HTMLElement)) return;
 
@@ -66,11 +71,23 @@ export function bindFeedInfiniteScroll(): void {
   feedObserver = new IntersectionObserver(
     (entries) => {
       if (!entries[0]?.isIntersecting || !activeFeedState || activeFeedState.isLoadingMore) return;
-      setActiveFeedState({ ...activeFeedState, isLoadingMore: true });
-      updateFeedStatusElement();
-      appendMoreFeedCards();
-      if (activeFeedState) setActiveFeedState({ ...activeFeedState, isLoadingMore: false });
-      updateFeedStatusElement();
+
+      if (activeFeedState.renderedCount < activeFeedState.items.length) {
+        setActiveFeedState({ ...activeFeedState, isLoadingMore: true });
+        updateFeedStatusElement();
+        appendMoreFeedCards();
+        if (activeFeedState) setActiveFeedState({ ...activeFeedState, isLoadingMore: false });
+        updateFeedStatusElement();
+      } else if (activeFeedState.hasMore && onServerFetch) {
+        setActiveFeedState({ ...activeFeedState, isLoadingMore: true });
+        updateFeedStatusElement();
+        void onServerFetch().finally(() => {
+          if (activeFeedState) setActiveFeedState({ ...activeFeedState, isLoadingMore: false });
+          updateFeedStatusElement();
+        });
+      } else {
+        disconnectFeedObserver();
+      }
     },
     { rootMargin: "200px" },
   );
@@ -79,11 +96,11 @@ export function bindFeedInfiniteScroll(): void {
 }
 
 /** Инициализирует бесконечную прокрутку для текущего центрального блока ленты. */
-export function initFeedInfiniteScroll(): void {
+export function initFeedInfiniteScroll(onServerFetch?: () => Promise<void>): void {
   const center = document.querySelector("[data-feed-center]");
   if (!(center instanceof HTMLElement) || !activeFeedState) return;
 
-  bindFeedInfiniteScroll();
+  bindFeedInfiniteScroll(onServerFetch);
   initPostcardExpand(center);
   updateFeedStatusElement();
 }

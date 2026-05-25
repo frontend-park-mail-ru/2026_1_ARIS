@@ -29,7 +29,7 @@ jobs:
 
             cd ${{ secrets.DEPLOY_PATH }}
             git fetch origin
-            git switch -C "${{ github.ref_name }}" "origin/${{ github.ref_name }}"
+            git switch -f -C "${{ github.ref_name }}" "origin/${{ github.ref_name }}"
 
             NODE_ENV=development npm ci
 

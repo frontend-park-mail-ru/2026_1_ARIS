@@ -1,0 +1,192 @@
+/* Кнопки, inline errors и сообщения страницы игр. */
+@layer pages {
+  .games-button {
+    display: inline-flex;
+    width: fit-content;
+    min-width: 0;
+    min-height: var(--control-height);
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--space-4);
+    border: 1px solid transparent;
+    border-radius: var(--radius-small);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--line-height-solid);
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      background var(--transition-control),
+      border-color var(--transition-control),
+      color var(--transition-control),
+      transform var(--transition-control);
+  }
+
+  .games-create-actions__submit,
+  .games-join-actions__submit {
+    width: 100%;
+  }
+
+  .games-room-actions > .games-button {
+    width: 100%;
+  }
+
+  .games-panel__header > .games-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .games-button:active {
+    transform: var(--control-press-transform);
+  }
+
+  .games-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+    transform: none;
+  }
+
+  .games-button--primary {
+    background: var(--color-interactive-primary);
+    color: var(--color-text-on-primary);
+  }
+
+  .games-panel--play .games-button--primary {
+    min-height: 48px;
+    border-color: rgb(74 81 208 / 18%);
+    background: linear-gradient(180deg, rgb(83 91 224), rgb(58 65 198));
+    box-shadow: 0 12px 24px rgb(74 81 208 / 22%);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .games-button--primary:hover:not(:disabled) {
+    background: var(--color-interactive-primary-hover);
+  }
+
+  .games-panel--play .games-button--primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgb(73 81 214), rgb(48 55 186));
+    box-shadow: 0 14px 28px rgb(74 81 208 / 26%);
+    transform: translateY(-1px);
+  }
+
+  .games-button--start {
+    min-width: 160px;
+  }
+
+  .games-button--danger {
+    border-color: var(--color-border-danger);
+    background: rgb(178 59 88 / 12%);
+    color: var(--color-text-danger);
+  }
+
+  .games-button--danger:hover:not(:disabled) {
+    background: rgb(178 59 88 / 18%);
+  }
+
+  .games-button--ready {
+    border-color: rgb(53 137 96 / 40%);
+    background: rgb(53 137 96 / 14%);
+    color: rgb(27 115 76);
+  }
+
+  .games-button--ready:hover:not(:disabled) {
+    background: rgb(53 137 96 / 20%);
+  }
+
+  .games-button--secondary,
+  .games-button--ghost {
+    border-color: var(--color-border-default);
+    background: var(--color-surface-base);
+    color: var(--color-text-main);
+  }
+
+  .games-panel--play .games-button--secondary {
+    border-color: rgb(95 111 157 / 22%);
+    background: rgb(255 255 255 / 72%);
+    box-shadow: 0 8px 20px rgb(33 45 88 / 7%);
+  }
+
+  .games-button--secondary:hover:not(:disabled),
+  .games-button--ghost:hover:not(:disabled) {
+    background: var(--color-interactive-hover);
+  }
+
+  .games-message {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid rgb(53 137 96 / 42%);
+    border-radius: var(--radius-content-card);
+    background: rgb(226 245 235);
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-base);
+  }
+
+  .games-layout--with-chat > .games-message {
+    grid-column: 1 / -1;
+  }
+
+  .games-message__icon {
+    display: inline-flex;
+    width: 26px;
+    height: 26px;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: var(--radius-round);
+    background: rgb(53 137 96);
+    color: var(--color-text-on-primary);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-solid);
+  }
+
+  .games-message__link {
+    display: inline;
+    margin-left: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-interactive-primary);
+    font: inherit;
+    font-weight: var(--font-weight-medium);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+
+  .games-message__link:hover {
+    color: var(--color-interactive-primary-hover);
+  }
+
+  .games-message__link:focus-visible {
+    outline: none;
+    border-radius: 4px;
+    box-shadow: var(--control-focus-ring);
+  }
+
+  .games-message--error {
+    border-color: var(--color-border-danger);
+    background: rgb(252 233 238);
+    color: var(--color-text-error);
+  }
+
+  .games-message--error .games-message__icon {
+    background: rgb(178 59 88);
+  }
+
+  .games-inline-error {
+    margin: 0;
+    color: var(--color-text-error);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--line-height-base);
+  }
+
+  .games-form--invite .games-inline-error {
+    grid-column: 1 / -1;
+  }
+}

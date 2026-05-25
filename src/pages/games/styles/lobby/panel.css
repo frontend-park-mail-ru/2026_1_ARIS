@@ -1,0 +1,269 @@
+/* Каркас lobby-панелей, header комнаты и detail cards. */
+@layer pages {
+  .games-panel {
+    display: flex;
+    min-width: 0;
+    padding: var(--space-5);
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .games-panel__header {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .games-panel__header > div {
+    min-width: 0;
+  }
+
+  .games-panel__title-row {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .games-section-title-row {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .games-panel__title-hint {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .games-section-title-hint {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .games-panel__back-button {
+    flex: 0 0 auto;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .games-panel__footer {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .games-panel__footer--join {
+    display: grid;
+    width: min(100%, 280px);
+    max-width: 280px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .games-panel__footer--join > * {
+    width: 100%;
+  }
+
+  .games-panel__footer--rooms {
+    width: min(100%, 304px);
+    max-width: 304px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .games-panel__footer--join-single {
+    display: grid;
+    width: min(100%, 304px);
+    max-width: 304px;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .games-panel__footer--join-single > * {
+    width: 100%;
+    min-width: 0;
+    justify-self: stretch;
+  }
+
+  .games-play-header {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .games-room-header {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .games-room-header__top,
+  .games-room-header__bottom {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .games-room-header__top {
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .games-room-header__bottom {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .games-room-heading-group {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .games-room-heading-hint {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .games-room-heading {
+    min-width: 0;
+    margin: 0;
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+  }
+
+  .games-play-header__title {
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+  }
+
+  .games-room-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: var(--space-2);
+  }
+
+  .games-room-actions > * {
+    width: 100%;
+    min-height: 72px;
+  }
+
+  .games-room-details {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .games-room-detail-card {
+    position: relative;
+    z-index: 40;
+    display: grid;
+    min-width: 0;
+    min-height: 72px;
+    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-base);
+  }
+
+  .games-room-detail-card--full {
+    width: 100%;
+  }
+
+  .games-room-detail-card--ranked {
+    align-items: center;
+  }
+
+  .games-room-detail-card__content {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .games-room-detail-card__label-row {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .games-room-detail-card__hint {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .games-room-detail-card__label {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+    line-height: var(--line-height-base);
+  }
+
+  .games-room-detail-card__value {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--line-height-base);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .games-room-detail-card__code {
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+  }
+
+  .games-room-detail-card__copy {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .games-room-detail-card--inline .games-room-detail-card__content {
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    gap: var(--space-2);
+  }
+}

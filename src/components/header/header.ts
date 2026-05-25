@@ -11,6 +11,7 @@
 import { clearSessionUser, getSessionUser } from "../../state/session";
 import { renderButton } from "../button/button";
 import { logoutUser } from "../../api/auth";
+import { stopSitePresence } from "../../state/presence";
 import { renderAvatarMarkup, escapeHtml } from "../../utils/avatar";
 import { formatPersonName } from "../../utils/display-name";
 import { t } from "../../state/i18n";
@@ -453,6 +454,24 @@ export function renderHeader(): string {
 }
 
 /**
+ * Перерисовывает шапку по актуальному состоянию сессии.
+ *
+ * Нужен для публичных маршрутов, где во время перехода может оказаться
+ * гостевой shell, хотя пользователь уже восстановлен из persistent-сессии.
+ */
+export function refreshHeader(): void {
+  const header = document.querySelector<HTMLElement>(".header");
+  if (!header) return;
+
+  const template = document.createElement("template");
+  template.innerHTML = renderHeader().trim();
+  const nextHeader = template.content.firstElementChild;
+  if (!(nextHeader instanceof HTMLElement)) return;
+
+  header.replaceWith(nextHeader);
+}
+
+/**
  * Инициализирует интерактивное поведение header.
  *
  * @param {Document | HTMLElement} [root=document] Корень, внутри которого живёт header.
@@ -553,6 +572,7 @@ export function initHeader(root: Document | HTMLElement = document): void {
     }
 
     try {
+      await stopSitePresence({ notifyBackend: true, force: true });
       await logoutUser();
       clearSessionUser();
       window.location.href = "/";

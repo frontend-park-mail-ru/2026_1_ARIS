@@ -41,14 +41,14 @@ const user: User = {
 describe("session state", () => {
   beforeEach(() => {
     vi.stubGlobal("localStorage", createMemoryStorage());
-    sessionStore.reset({ user: null, feedMode: "by-time" });
+    sessionStore.reset({ user: null, feedMode: "for-you" });
     window.history.replaceState({}, "", "/feed");
   });
 
   afterEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
-    sessionStore.reset({ user: null, feedMode: "by-time" });
+    sessionStore.reset({ user: null, feedMode: "for-you" });
   });
 
   it("сохраняет и очищает пользователя с событием sessionchange", () => {
@@ -82,6 +82,26 @@ describe("session state", () => {
     window.removeEventListener("sessionchange", listener);
   });
 
+  it("лениво восстанавливает пользователя из localStorage при чтении сессии", () => {
+    localStorage.setItem("arisfront:session-user", JSON.stringify(user));
+    sessionStore.patch({ user: null });
+
+    expect(getSessionUser()).toEqual(user);
+    expect(sessionStore.get().user).toEqual(user);
+  });
+
+  it("восстанавливает сохранённую сессию с id и login даже без имени", () => {
+    localStorage.setItem("arisfront:session-user", JSON.stringify({ profileID: 9, login: "demo" }));
+    sessionStore.patch({ user: null });
+
+    expect(getSessionUser()).toEqual({
+      id: "9",
+      firstName: "demo",
+      lastName: "",
+      login: "demo",
+    });
+  });
+
   it("сохраняет режим ленты", () => {
     const listener = vi.fn();
     window.addEventListener("sessionchange", listener);
@@ -95,16 +115,16 @@ describe("session state", () => {
     window.removeEventListener("sessionchange", listener);
   });
 
-  it("не делает auth-probe на публичной гостевой странице", async () => {
+  it("делает auth-probe на публичной странице, чтобы не терять cookie-сессию", async () => {
     const listener = vi.fn();
     window.addEventListener("sessionchange", listener);
 
     await initSession();
 
-    expect(getCurrentUser).not.toHaveBeenCalled();
+    expect(getCurrentUser).toHaveBeenCalledTimes(1);
     expect(listener).toHaveBeenCalledTimes(1);
     expect(listener.mock.calls[0]?.[0]).toMatchObject({
-      detail: { key: "init", state: { user: null, feedMode: "by-time" } },
+      detail: { key: "init", state: { user: null, feedMode: "for-you" } },
     });
 
     window.removeEventListener("sessionchange", listener);

@@ -38,8 +38,10 @@ export type PostcardModel = {
   reposts: number;
   /** Ссылки на изображения поста. */
   images: string[];
-  /** Ссылки на файловые вложения поста. */
-  files: string[];
+  /** Фото и видео вложения поста. */
+  media: Array<{ url: string; mimeType?: string }>;
+  /** Файловые вложения поста. */
+  files: Array<{ url: string; name?: string }>;
 };
 
 function parseNumericCount(value: unknown): number | undefined {
@@ -78,6 +80,7 @@ function parseBooleanFlag(value: unknown): boolean | undefined {
 type FeedRequestOptions = {
   cursor?: string;
   limit?: number;
+  mode?: string;
   signal?: AbortSignal;
 };
 
@@ -93,6 +96,7 @@ type FeedMedia = {
   id?: string;
   mimeType?: string;
   mediaLink?: string;
+  name?: string;
 };
 
 type FeedItem = {
@@ -187,8 +191,16 @@ export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
     comments: item.comments ?? 0,
     reposts: item.reposts ?? 0,
     images: medias.map((m) => m.mediaLink ?? "").filter(Boolean),
+    media: medias
+      .map((m) => ({
+        url: m.mediaLink ?? "",
+        ...(m.mimeType ? { mimeType: m.mimeType } : {}),
+      }))
+      .filter((m) => m.url),
     files: Array.isArray(item.files)
-      ? item.files.map((m) => m.mediaLink ?? "").filter(Boolean)
+      ? item.files
+          .map((m) => ({ url: m.mediaLink ?? "", ...(m.name ? { name: m.name } : {}) }))
+          .filter((f) => f.url)
       : [],
   };
 }
@@ -219,11 +231,13 @@ export function mapFeedResponse(response?: FeedResponse) {
 export async function getFeed({
   cursor = "",
   limit = 20,
+  mode = "",
   signal,
 }: FeedRequestOptions = {}): Promise<FeedResponse> {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
   if (limit) params.set("limit", String(limit));
+  if (mode) params.set("mode", mode);
 
   return apiRequest<FeedResponse>(`/api/feed?${params}`, { ...(signal ? { signal } : {}) }, {});
 }
@@ -266,4 +280,23 @@ export async function getPopularPosts(): Promise<PopularPostsResponse> {
  */
 export async function getPublicPopularPosts(): Promise<PopularPostsResponse> {
   return apiRequest<PopularPostsResponse>("/api/public/popular-posts", {}, {});
+}
+
+export type FeedEventItem = {
+  postId: number;
+  type: "view" | "hide" | "report";
+  dwellMs?: number;
+  position?: number;
+  source?: string;
+};
+
+/**
+ * POST /api/feed/events — фиксирует события взаимодействия с постами в ленте.
+ *
+ * @param {FeedEventItem[]} events Список событий.
+ * @returns {Promise<void>}
+ */
+export async function postFeedEvents(events: FeedEventItem[]): Promise<void> {
+  if (!events.length) return;
+  await apiRequest("/api/feed/events", { method: "POST", body: { events } }, {});
 }

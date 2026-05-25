@@ -14,6 +14,7 @@ import { renderChatsSkeleton } from "../pages/chats/skeleton";
 import { renderFriendsSkeleton } from "../pages/friends/skeleton";
 import { renderProfileSkeleton } from "../pages/profile/skeleton";
 import { renderCommunitiesSkeleton } from "../pages/communities/skeleton";
+import { renderGamesSkeleton } from "../pages/games/render/skeleton";
 import { initAvatarFallback } from "../utils/avatar-fallback";
 
 export { type Route, type RouteParams } from "@aris/router";
@@ -66,6 +67,7 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
       if (p === "/friends") return renderFriendsSkeleton();
       if (p.startsWith("/communities")) return renderCommunitiesSkeleton(p);
       if (p.startsWith("/profile") || p.startsWith("/id")) return renderProfileSkeleton();
+      if (p.startsWith("/games")) return renderGamesSkeleton(p);
       return null;
     },
     afterRender: async (nextRoot) => {
@@ -131,6 +133,12 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
           /* webpackChunkName: "page-settings" */ "../pages/settings/settings"
         );
         initSettings(nextRoot);
+      }
+      if (nextRoot.querySelector("[data-games-page]")) {
+        const { initGames } = await import(
+          /* webpackChunkName: "page-games" */ "../pages/games/games"
+        );
+        initGames(nextRoot);
       }
     },
   });

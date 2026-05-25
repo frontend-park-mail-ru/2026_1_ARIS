@@ -1,0 +1,83 @@
+/* Форма ответа и индикатор принятого ответа. */
+@layer pages {
+  .games-answer-form--play {
+    display: grid;
+    width: 100%;
+    margin-top: 2px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--space-2);
+  }
+
+  .games-answer-form.games-answer-form--accepted {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .games-answer-form--play .games-field--answer {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .games-answer-form__label {
+    color: var(--color-text-meta);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+  }
+
+  .games-answer-form--play .games-inline-error {
+    grid-column: 1 / -1;
+  }
+
+  .games-answer-accepted {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    box-sizing: border-box;
+    grid-column: 1 / -1;
+    padding: 0 14px;
+    border: 1px solid rgb(53 137 96 / 34%);
+    border-radius: var(--radius-small);
+    background: linear-gradient(180deg, rgb(236 252 244 / 86%), rgb(255 255 255 / 76%));
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+    line-height: 48px;
+    box-shadow: 0 10px 22px rgb(53 137 96 / 8%);
+  }
+
+  .games-answer-progress__item {
+    display: flex;
+    min-width: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-glass-soft);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-muted);
+    color: var(--color-text-meta);
+    flex-direction: column;
+    gap: 2px;
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-base);
+  }
+
+  .games-answer-progress__item strong,
+  .games-answer-progress__item small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .games-answer-progress__item strong {
+    color: var(--color-text-main);
+  }
+
+  .games-answer-progress__item small {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-medium);
+  }
+}

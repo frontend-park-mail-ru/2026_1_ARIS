@@ -4,8 +4,10 @@
  * Содержит функции генерации HTML и обновления DOM для страницы.
  */
 import { renderPostcard } from "../../components/postcard/postcard";
-import { getFeedMode } from "../../state/session";
+import { getFeedMode, getSessionUser } from "../../state/session";
+import { escapeHtml, renderAvatarMarkup } from "../../utils/avatar";
 import { t } from "../../state/i18n";
+import { formatPersonName } from "../../utils/display-name";
 import type { PostcardModel } from "../../api/feed";
 
 type RenderFeedCardsOptions = {
@@ -116,16 +118,64 @@ export function renderFeedStatus(hasMore: boolean, isLoading: boolean): string {
  * @param {RenderFeedCardsOptions} [options={}] Дополнительные настройки рендера.
  * @returns {string} HTML списка карточек.
  */
+function renderFeedPostComments(postId: string): string {
+  const sessionUser = getSessionUser();
+  const userName = sessionUser
+    ? formatPersonName(sessionUser.firstName, sessionUser.lastName) || t("widgetbar.userFallback")
+    : "";
+
+  return `
+    <div class="profile-post__comments feed-post-comments" data-feed-post-comments="${escapeHtml(postId)}" hidden>
+      <div class="profile-post__comment-list" data-feed-comment-list="${escapeHtml(postId)}"></div>
+      ${
+        sessionUser
+          ? `
+        <div class="profile-comment-compose">
+          ${renderAvatarMarkup(
+            "profile-comment-compose__avatar",
+            userName,
+            sessionUser.avatarLink,
+            {
+              width: 32,
+              height: 32,
+            },
+          )}
+          <form class="profile-post__comment-form" data-feed-comment-form="${escapeHtml(postId)}" novalidate>
+            <input
+              type="text"
+              class="profile-post__comment-input"
+              placeholder="${t("profile.commentPlaceholder")}"
+              data-feed-comment-input="${escapeHtml(postId)}"
+              maxlength="2000"
+              autocomplete="off"
+            >
+            <button type="submit" class="profile-post__comment-send">${t("profile.commentSubmit")}</button>
+          </form>
+        </div>
+        <p class="profile-post__comment-error" data-feed-comment-error="${escapeHtml(postId)}" hidden></p>
+      `
+          : ""
+      }
+    </div>
+  `;
+}
+
 export function renderFeedCards(
   items: PostcardModel[],
   options: RenderFeedCardsOptions = {},
 ): string {
   return items
-    .map((item, index) =>
-      renderPostcard(item, {
-        prioritizeMedia: Boolean(options.prioritizeFirstCardMedia) && index === 0,
-      }),
-    )
+    .map((item, index) => {
+      const postId = String(item.id ?? "");
+      return `
+        <div class="feed-post-wrap" data-feed-post-wrap="${escapeHtml(postId)}">
+          ${renderPostcard(item, {
+            prioritizeMedia: Boolean(options.prioritizeFirstCardMedia) && index === 0,
+            afterFooterHtml: postId ? renderFeedPostComments(postId) : "",
+          })}
+        </div>
+      `;
+    })
     .join("");
 }
 
@@ -134,10 +184,16 @@ export function renderFeedCards(
  *
  * @param {PostcardModel[]} items Полный набор карточек.
  * @param {number} renderedCount Количество карточек, видимых сразу.
+ * @param {boolean} serverHasMore Есть ли ещё страницы на сервере.
  * @returns {string} HTML центральной колонки.
  */
-export function renderIncrementalFeedCenter(items: PostcardModel[], renderedCount: number): string {
+export function renderIncrementalFeedCenter(
+  items: PostcardModel[],
+  renderedCount: number,
+  serverHasMore: boolean,
+): string {
   const visibleItems = items.slice(0, renderedCount);
+  const hasMore = renderedCount < items.length || serverHasMore;
 
   return `
     <section class="app-layout__center" data-feed-center>
@@ -145,7 +201,7 @@ export function renderIncrementalFeedCenter(items: PostcardModel[], renderedCoun
       <div class="feed-stream" data-feed-list>
         ${renderFeedCards(visibleItems, { prioritizeFirstCardMedia: true })}
       </div>
-      ${renderFeedStatus(renderedCount < items.length, false)}
+      ${renderFeedStatus(hasMore, false)}
     </section>
   `;
 }

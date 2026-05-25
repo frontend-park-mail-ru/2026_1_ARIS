@@ -41,12 +41,10 @@ type SessionChangeDetail = {
  */
 export const sessionStore = new StateManager<SessionState>({
   user: null,
-  feedMode: "by-time",
+  feedMode: "for-you",
 });
 
 const SESSION_USER_STORAGE_KEY = "arisfront:session-user";
-const PUBLIC_GUEST_SESSION_PATHS = new Set(["/", "/feed", "/login", "/register", "/support"]);
-
 /**
  * Извлекает ссылку на аватар из произвольного payload профиля.
  *
@@ -95,23 +93,33 @@ function readPersistedSessionUser(): User | null {
       return null;
     }
 
-    const parsed = JSON.parse(raw) as User | null;
+    const parsed = JSON.parse(raw) as (User & Record<string, unknown>) | null;
     if (!parsed || typeof parsed !== "object") {
       return null;
     }
 
-    const nextUser: User = {
-      id: String(parsed.id ?? ""),
-      firstName: String(parsed.firstName ?? ""),
-      lastName: String(parsed.lastName ?? ""),
-    };
+    const id = String(parsed.id ?? parsed.profileId ?? parsed.profileID ?? "").trim();
+    const login = String(parsed.login ?? parsed.username ?? "").trim();
+    const email = String(parsed.email ?? "").trim();
+    const firstName = String(parsed.firstName ?? parsed.first_name ?? "").trim();
+    const lastName = String(parsed.lastName ?? parsed.last_name ?? "").trim();
 
-    if (typeof parsed.login === "string") {
-      nextUser.login = parsed.login;
+    if (!id) {
+      return null;
     }
 
-    if (typeof parsed.email === "string") {
-      nextUser.email = parsed.email;
+    const nextUser: User = {
+      id,
+      firstName: firstName || login || email || "Пользователь",
+      lastName,
+    };
+
+    if (login) {
+      nextUser.login = login;
+    }
+
+    if (email) {
+      nextUser.email = email;
     }
 
     if (typeof parsed.avatarLink === "string") {
@@ -229,20 +237,8 @@ function clearSuccessfulVkIdOauthMarker(): void {
  *   await getCurrentUser();
  * }
  */
-function shouldProbeBackendSession(savedUser: User | null): boolean {
-  if (savedUser) {
-    return true;
-  }
-
-  if (typeof window === "undefined") {
-    return true;
-  }
-
-  if (hasSuccessfulVkIdOauthMarker()) {
-    return true;
-  }
-
-  return !PUBLIC_GUEST_SESSION_PATHS.has(normalizePathname(window.location.pathname));
+function shouldProbeBackendSession(_savedUser: User | null): boolean {
+  return true;
 }
 
 /**
@@ -274,7 +270,18 @@ export function getSessionState(): SessionState {
  * Возвращает текущего авторизованного пользователя.
  */
 export function getSessionUser(): User | null {
-  return sessionStore.get().user;
+  const user = sessionStore.get().user;
+  if (user) {
+    return user;
+  }
+
+  const persistedUser = readPersistedSessionUser();
+  if (!persistedUser) {
+    return null;
+  }
+
+  sessionStore.patch({ user: persistedUser });
+  return persistedUser;
 }
 
 /**
@@ -360,7 +367,7 @@ export async function initSession(): Promise<void> {
   const savedMode = localStorage.getItem("feedMode");
   const savedUser = readPersistedSessionUser();
   sessionStore.patch({
-    feedMode: savedMode && isFeedMode(savedMode) ? savedMode : "by-time",
+    feedMode: savedMode && isFeedMode(savedMode) ? savedMode : "for-you",
     user: savedUser,
   });
 

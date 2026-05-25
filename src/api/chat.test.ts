@@ -4,6 +4,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "./core/client";
 import {
+  addStickerToPack,
+  createStickerPack,
   createOrResolvePrivateChatId,
   createPrivateChat,
   deleteMessageReaction,
@@ -15,6 +17,8 @@ import {
   setMessageReaction,
   subscribeToChatMessages,
   updateChatMessageText,
+  uploadChatVoice,
+  uploadStickerImage,
 } from "./chat";
 import { getSessionUser } from "../state/session";
 
@@ -71,6 +75,7 @@ describe("chat api", () => {
         id: "7",
         title: "Софья",
         avatarLink: "/media/a.png",
+        isOnline: false,
         updatedAt: "2026-05-04",
         createdAt: undefined,
       },
@@ -150,6 +155,32 @@ describe("chat api", () => {
     );
   });
 
+  it("загружает голосовое сообщение и отправляет audio media id", async () => {
+    const voiceBlob = new Blob(["voice"], { type: "audio/webm" });
+    vi.mocked(apiRequest)
+      .mockResolvedValueOnce({ media: [{ media_id: "42", url: "/media/voice.webm" }] })
+      .mockResolvedValueOnce({ id: 3, text: "", authorId: 7, media: [] });
+
+    await expect(uploadChatVoice(voiceBlob)).resolves.toEqual({
+      mediaID: 42,
+      mediaURL: "/media/voice.webm",
+    });
+    await sendChatMessage("7", { media: [{ mediaID: 42 }] });
+
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      1,
+      "/api/media/upload?for=chat",
+      { method: "POST", body: expect.any(FormData) },
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      2,
+      "/api/chats/7/messages",
+      { method: "POST", body: { media: [{ mediaID: 42 }] } },
+      {},
+    );
+  });
+
   it("возвращает inert subscription для гостя", () => {
     vi.mocked(getSessionUser).mockReturnValue(null);
 
@@ -207,7 +238,9 @@ describe("chat api", () => {
   it("поддерживает новый контракт сообщений, стикеров и реакций", async () => {
     vi.mocked(apiRequest)
       .mockResolvedValueOnce({ id: 3, text: "edited", authorId: 7 })
-      .mockResolvedValueOnce([{ id: "1", uid: "pack-uid", title: "ARIS demo stickers" }])
+      .mockResolvedValueOnce([
+        { id: "1", uid: "pack-uid", title: "ARIS demo stickers", authorId: null },
+      ])
       .mockResolvedValueOnce([
         {
           id: "5",
@@ -218,15 +251,26 @@ describe("chat api", () => {
           url: "/media/99",
         },
       ])
+      .mockResolvedValueOnce({ id: "2", uid: "new-pack-uid", title: "Mine", authorId: "7" })
+      .mockResolvedValueOnce({
+        id: "6",
+        uid: "created-sticker-uid",
+        packId: "2",
+        mediaId: "100",
+        mimeType: "image/png",
+        url: "/media/100",
+      })
+      .mockResolvedValueOnce({ media: [{ mediaID: 100, mediaURL: "/media/100" }] })
       .mockResolvedValueOnce({ id: 3, text: "reacted", authorId: 7, myReaction: "❤️" })
       .mockResolvedValueOnce({ id: 3, text: "reacted", authorId: 7 });
 
     await updateChatMessageText("7", 3, "edited");
-    await expect(getStickerPacks({ limit: 10, offset: 5 })).resolves.toEqual([
+    await expect(getStickerPacks({ search: "demo", limit: 10, offset: 5 })).resolves.toEqual([
       {
         id: "1",
         uid: "pack-uid",
         title: "ARIS demo stickers",
+        authorId: null,
       },
     ]);
     await expect(getStickersByPack(1)).resolves.toEqual([
@@ -239,6 +283,20 @@ describe("chat api", () => {
         url: "/media/99",
       },
     ]);
+    await expect(createStickerPack({ title: " Mine " })).resolves.toMatchObject({
+      id: "2",
+      title: "Mine",
+    });
+    await expect(addStickerToPack(2, { mediaID: 100, sortOrder: 0 })).resolves.toMatchObject({
+      id: "6",
+      mediaId: "100",
+    });
+    await expect(
+      uploadStickerImage(new File(["png"], "s.png", { type: "image/png" })),
+    ).resolves.toEqual({
+      mediaID: 100,
+      mediaURL: "/media/100",
+    });
     await expect(setMessageReaction("7", 3, "❤️")).resolves.toMatchObject({
       myReaction: "❤️",
     });
@@ -250,16 +308,39 @@ describe("chat api", () => {
       { method: "PUT", body: { text: "edited" } },
       {},
     );
-    expect(apiRequest).toHaveBeenNthCalledWith(2, "/api/sticker-packs?limit=10&offset=5", {}, []);
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      2,
+      "/api/sticker-packs?search=demo&limit=10&offset=5",
+      {},
+      [],
+    );
     expect(apiRequest).toHaveBeenNthCalledWith(3, "/api/sticker-packs/1/stickers", {}, []);
     expect(apiRequest).toHaveBeenNthCalledWith(
       4,
+      "/api/sticker-packs",
+      { method: "POST", body: { title: "Mine" } },
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      5,
+      "/api/sticker-packs/2/stickers",
+      { method: "POST", body: { mediaID: 100, sortOrder: 0 } },
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      6,
+      "/api/media/upload?for=sticker",
+      expect.objectContaining({ method: "POST", body: expect.any(FormData) }),
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      7,
       "/api/chats/7/messages/3/reaction",
       { method: "PUT", body: { type: "❤️" } },
       {},
     );
     expect(apiRequest).toHaveBeenNthCalledWith(
-      5,
+      8,
       "/api/chats/7/messages/3/reaction",
       { method: "DELETE" },
       {},

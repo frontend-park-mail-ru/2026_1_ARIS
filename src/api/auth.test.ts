@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "./core/client";
 import {
   ApiError,
+  changePassword,
   getCurrentUser,
   loginUser,
   logoutUser,
@@ -58,8 +59,8 @@ describe("auth api", () => {
     );
   });
 
-  it("registerUser возвращает пустого пользователя при некорректном payload", async () => {
-    vi.mocked(apiRequest).mockResolvedValue({ id: 0 });
+  it("registerUser получает 400 ответ", async () => {
+    vi.mocked(apiRequest).mockRejectedValue(new Error("400 Bad Request"));
 
     await expect(
       registerUser({
@@ -71,7 +72,21 @@ describe("auth api", () => {
         password1: "secret",
         password2: "secret",
       }),
-    ).resolves.toEqual({ id: "", firstName: "", lastName: "" });
+    ).rejects.toThrow("400 Bad Request");
+  });
+
+  it("loginUser считает пользователя авторизованным при id и login без имени", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({
+      profileID: 9,
+      login: "demo",
+    });
+
+    await expect(loginUser({ login: "demo", password: "secret" })).resolves.toEqual({
+      id: "9",
+      firstName: "demo",
+      lastName: "",
+      login: "demo",
+    });
   });
 
   it("getCurrentUser возвращает null на ApiError и пробрасывает неизвестные ошибки", async () => {
@@ -85,11 +100,21 @@ describe("auth api", () => {
   });
 
   it("logoutUser и validateRegisterStepOne вызывают нужные endpoints", async () => {
-    vi.mocked(apiRequest).mockResolvedValueOnce(undefined).mockResolvedValueOnce({ ok: true });
+    vi.mocked(apiRequest)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({ ok: true });
 
     await logoutUser();
     await expect(
       validateRegisterStepOne({ login: "demo", password1: "secret", password2: "secret" }),
+    ).resolves.toEqual({ ok: true });
+    await expect(
+      changePassword({
+        oldPassword: "secret-old",
+        newPassword1: "secret-new",
+        newPassword2: "secret-new",
+      }),
     ).resolves.toEqual({ ok: true });
 
     expect(apiRequest).toHaveBeenNthCalledWith(1, "/api/auth/logout", { method: "POST" });
@@ -99,6 +124,19 @@ describe("auth api", () => {
       {
         method: "POST",
         body: { login: "demo", password1: "secret", password2: "secret" },
+      },
+      {},
+    );
+    expect(apiRequest).toHaveBeenNthCalledWith(
+      3,
+      "/api/auth/password",
+      {
+        method: "POST",
+        body: {
+          oldPassword: "secret-old",
+          newPassword1: "secret-new",
+          newPassword2: "secret-new",
+        },
       },
       {},
     );

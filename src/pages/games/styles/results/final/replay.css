@@ -1,0 +1,117 @@
+/* Блок готовности к повторной игре. */
+@layer pages {
+  .games-replay-action {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid rgb(74 86 209 / 26%);
+    border-radius: var(--radius-small);
+    background: rgb(255 255 255 / 78%);
+    box-shadow: var(--shadow-card-soft);
+    animation: games-score-row-in 420ms ease both;
+  }
+
+  .games-replay-action--waiting {
+    border-color: rgb(53 137 96 / 38%);
+  }
+
+  .games-replay-action__copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    grid-column: 1;
+  }
+
+  .games-replay-action__copy strong {
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    line-height: var(--line-height-tight);
+  }
+
+  .games-replay-action__copy span {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .games-replay-action__players {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 6px;
+    grid-column: 1 / -1;
+  }
+
+  .games-replay-player {
+    display: grid;
+    min-width: 0;
+    max-width: 100%;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 8px;
+    border: 1px solid rgb(95 111 157 / 16%);
+    border-radius: var(--radius-small);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    overflow: hidden;
+  }
+
+  .games-replay-player__avatar {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-round);
+    object-fit: cover;
+    overflow: hidden;
+  }
+
+  .games-replay-player__name {
+    min-width: 0;
+    color: var(--color-text-main);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .games-replay-player__status {
+    padding: 3px 6px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    line-height: 1;
+    text-transform: lowercase;
+  }
+
+  .games-replay-player--ready {
+    border-color: rgb(53 137 96 / 38%);
+    background: rgb(53 137 96 / 16%);
+  }
+
+  .games-replay-player--ready .games-replay-player__status {
+    background: rgb(53 137 96 / 14%);
+    color: rgb(39 116 80);
+  }
+
+  .games-replay-player--waiting {
+    border-color: rgb(178 59 88 / 28%);
+    background: rgb(178 59 88 / 12%);
+  }
+
+  .games-replay-player--waiting .games-replay-player__status {
+    background: rgb(178 59 88 / 12%);
+    color: rgb(151 42 68);
+  }
+
+  .games-replay-action__button {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    min-width: 180px;
+    white-space: normal;
+  }
+}

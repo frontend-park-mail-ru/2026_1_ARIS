@@ -1,5 +1,5 @@
 describe("чаты", () => {
-  it("отображает список чатов и выбранный диалог", () => {
+  it("отображает список чатов без выбранного диалога", () => {
     cy.mockAuthApi();
     cy.mockChatsApi();
 
@@ -7,7 +7,10 @@ describe("чаты", () => {
 
     cy.wait("@chats");
     cy.contains("[data-chat-select='chat-2']", "Аня Орлова").should("be.visible");
-    cy.contains(".chat-bubble__text", "Привет, как дела?").should("be.visible");
+    cy.contains(".chat-view__empty", "Выбери чат слева, чтобы открыть переписку.").should(
+      "be.visible",
+    );
+    cy.get(".chat-bubble__text").should("not.exist");
   });
 
   it("фильтрует чаты по названию", () => {

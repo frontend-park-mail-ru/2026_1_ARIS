@@ -54,6 +54,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
   const originalPath = path.resolve(distDir, relativePath);
   setCacheHeaders(res, originalPath);
+  res.type(path.extname(relativePath));
   res.setHeader("Content-Encoding", "gzip");
   res.setHeader("Vary", "Accept-Encoding");
   res.sendFile(gzPath);

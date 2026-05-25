@@ -80,7 +80,7 @@ jobs:
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             git fetch --all
             git switch -f -C dev origin/dev
-            NODE_ENV=production npm ci --omit=dev
+            HUSKY=0 NODE_ENV=production npm ci --omit=dev
             BUILD_VERSION=$(node -p "require('./package.json').version")
             printf 'BUILD_COMMIT=%s\nBUILD_VERSION=%s\n' "${{ github.sha }}" "$BUILD_VERSION" > .env.build
             sudo systemctl set-environment BUILD_COMMIT="${{ github.sha }}" BUILD_VERSION="$BUILD_VERSION"

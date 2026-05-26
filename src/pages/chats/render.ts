@@ -46,6 +46,11 @@ function isOwnStickerPack(pack?: StickerPack): boolean {
 
 let isSelectedChatPinnedToBottom = true;
 let shouldScrollChatToBottom = false;
+let hydrateChatsDynamicMedia: ((root: ParentNode) => void) | null = null;
+
+export function setChatsDynamicMediaHydrator(hydrator: ((root: ParentNode) => void) | null): void {
+  hydrateChatsDynamicMedia = hydrator;
+}
 
 /** Карта из chatId в последнюю известную позицию прокрутки для этого чата. */
 export const chatScrollStateById = new Map<string, PersistedChatScrollState>();
@@ -278,8 +283,44 @@ function renderMessageDateDivider(value: string | undefined, dateKey: string): s
   `;
 }
 
+const VIDEO_NOTE_RING_RADIUS = 54;
+const VIDEO_NOTE_CIRCUMFERENCE = +(2 * Math.PI * VIDEO_NOTE_RING_RADIUS).toFixed(2);
+
+function renderVideoNote(message: ChatViewMessage): string {
+  if (!message.videoNote?.url) return "";
+  const url = resolveMediaUrl(message.videoNote.url);
+  return `
+    <div
+      class="video-note"
+      data-chat-video-note
+      data-video-note-state="unplayed"
+    >
+      <svg class="video-note__ring" viewBox="0 0 120 120" aria-hidden="true">
+        <circle class="video-note__ring-bg" cx="60" cy="60" r="${VIDEO_NOTE_RING_RADIUS}"/>
+        <circle
+          class="video-note__ring-progress"
+          cx="60" cy="60" r="${VIDEO_NOTE_RING_RADIUS}"
+          stroke-dasharray="${VIDEO_NOTE_CIRCUMFERENCE}"
+          stroke-dashoffset="${VIDEO_NOTE_CIRCUMFERENCE}"
+          data-video-note-ring
+        />
+      </svg>
+      <video
+        class="video-note__video"
+        src="${escapeHtml(url)}"
+        preload="auto"
+        muted
+        playsinline
+        data-video-note-video
+      ></video>
+      <span class="video-note__duration" data-video-note-duration aria-hidden="true">0:00</span>
+    </div>
+  `;
+}
+
 function isAudioAttachment(item: MessageAttachment): boolean {
   const mimeType = item.mimeType.trim().toLowerCase();
+  if (mimeType.startsWith("video/")) return false;
   if (mimeType.startsWith("audio/")) return true;
   return /\.(aac|aif|aiff|flac|m4a|mp3|oga|ogg|opus|wav|weba|webm)(?:[?#].*)?$/i.test(item.url);
 }
@@ -296,15 +337,31 @@ function isRenderedVoiceAttachment(message: ChatViewMessage, item: MessageAttach
   return isAudioAttachment(item);
 }
 
+function isRenderedVideoNoteAttachment(message: ChatViewMessage, item: MessageAttachment): boolean {
+  const vn = message.videoNote;
+  if (!vn) return false;
+  if (vn.mediaID && Number(item.id) === vn.mediaID) return true;
+  const vnUrl = resolveMediaUrl(vn.url);
+  const itemUrl = resolveMediaUrl(item.url);
+  if (vnUrl && itemUrl && vnUrl === itemUrl) return true;
+  return item.mimeType.trim().toLowerCase().startsWith("video/");
+}
+
 function renderMessageMedia(message: ChatViewMessage): string {
-  const media = (message.media ?? []).filter((item) => !isRenderedVoiceAttachment(message, item));
-  const files = (message.files ?? []).filter((item) => !isRenderedVoiceAttachment(message, item));
+  const media = (message.media ?? []).filter(
+    (item) =>
+      !isRenderedVoiceAttachment(message, item) && !isRenderedVideoNoteAttachment(message, item),
+  );
+  const files = (message.files ?? []).filter(
+    (item) =>
+      !isRenderedVoiceAttachment(message, item) && !isRenderedVideoNoteAttachment(message, item),
+  );
 
   const mediaMarkup = media
     .map((item) => {
       const src = resolveMediaUrl(item.url);
       if (isVideoMedia(item.url, item.mimeType)) {
-        return `<video class="chat-bubble__media-item" src="${escapeHtml(src)}" controls preload="metadata"></video>`;
+        return `<video class="chat-bubble__media-item" src="${escapeHtml(src)}" controls preload="auto"></video>`;
       }
       return `<img class="chat-bubble__media-item" src="${escapeHtml(src)}" alt="" loading="lazy" data-post-image-open>`;
     })
@@ -356,6 +413,7 @@ function renderMessageBubble(message: ChatViewMessage): string {
         </h3>
         ${message.text ? `<p class="chat-bubble__text">${escapeHtml(message.text)}</p>` : ""}
         ${renderVoiceAttachment(message)}
+        ${renderVideoNote(message)}
         ${renderMessageMedia(message)}
       </div>
       <div class="chat-bubble__meta">
@@ -638,10 +696,49 @@ function renderStickerPicker(): string {
 }
 
 function renderCompose(selectedThread: ChatViewThread, composeDraft: string): string {
+  const videoNoteRecording =
+    chatsState.videoNoteRecording?.chatId === selectedThread.id
+      ? chatsState.videoNoteRecording
+      : undefined;
   const recording =
     chatsState.voiceRecording?.chatId === selectedThread.id ? chatsState.voiceRecording : undefined;
   const voiceDraft =
     chatsState.voiceDraft?.chatId === selectedThread.id ? chatsState.voiceDraft : undefined;
+
+  if (videoNoteRecording) {
+    return `
+      <div class="video-note-overlay video-note-overlay--active" aria-hidden="true">
+        <div class="video-note-overlay__preview">
+          <video
+            class="video-note-overlay__video"
+            muted
+            playsinline
+            data-chat-video-note-preview
+          ></video>
+        </div>
+      </div>
+      <div class="chat-compose chat-compose--recording">
+        <button
+          type="button"
+          class="chat-compose__voice-cancel"
+          data-chat-video-note-cancel
+          aria-label="${t("chats.voiceCancel")}"
+          title="${t("chats.voiceCancel")}"
+        >×</button>
+        <div class="chat-compose__recording" role="status" aria-live="polite">
+          <span class="chat-compose__record-dot" aria-hidden="true"></span>
+          <span class="chat-compose__record-time" data-chat-video-note-timer>${escapeHtml(formatVoiceRecordingLiveTime(videoNoteRecording.elapsedMs))}</span>
+        </div>
+        <button
+          type="button"
+          class="chat-compose__send chat-compose__send--voice"
+          data-chat-video-note-send
+          aria-label="Отправить видеосообщение"
+          title="Отправить видеосообщение"
+        >${t("chats.send")}</button>
+      </div>
+    `;
+  }
 
   if (voiceDraft) {
     return `
@@ -742,6 +839,13 @@ function renderCompose(selectedThread: ChatViewThread, composeDraft: string): st
           data-chat-voice-file
           hidden
         >
+        <button
+          type="button"
+          class="chat-compose__voice chat-compose__video-note-btn"
+          data-chat-video-note-record
+          aria-label="Записать видеосообщение"
+          title="Записать видеосообщение"
+        ><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="1" y="4" width="12" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M13 8l5-3v10l-5-3V8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
         <input type="file" multiple data-chat-attachment-input hidden>
       </div>
       <button type="submit" class="chat-compose__send">${t("chats.send")}</button>
@@ -1033,6 +1137,7 @@ export function refreshChatsPage(root: ParentNode = document): void {
   }
 
   rememberSelectedChatScroll(container);
+  hydrateChatsDynamicMedia?.(container);
 }
 
 /** Обновляет только оверлей элементов управления прокруткой без полного перерендера. */

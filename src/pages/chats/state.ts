@@ -101,6 +101,13 @@ export function resetChatsStateMutable(): void {
   if (chatsState.voiceDraft) {
     URL.revokeObjectURL(chatsState.voiceDraft.localUrl);
   }
+  if (chatsState.videoNoteRecording) {
+    window.clearInterval(chatsState.videoNoteRecording.timerId);
+    if (chatsState.videoNoteRecording.recorder.state !== "inactive") {
+      chatsState.videoNoteRecording.recorder.stop();
+    }
+    chatsState.videoNoteRecording.stream.getTracks().forEach((track) => track.stop());
+  }
   chatsStore.reset(createInitialChatsState());
   setHasHydratedPersistedChatsUiState(false);
   setChatsPageMounted(false);

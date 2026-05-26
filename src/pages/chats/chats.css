@@ -1038,8 +1038,8 @@
 
   .chat-scroll-button-wrap {
     position: absolute;
-    right: 20px;
-    bottom: 82px;
+    right: 24px;
+    bottom: 104px;
     z-index: 2;
     display: inline-flex;
     align-items: center;
@@ -1408,7 +1408,11 @@
 
     .chat-scroll-indicator-wrap,
     .chat-scroll-button-wrap {
-      bottom: 72px;
+      bottom: 84px;
+    }
+
+    .chat-scroll-button-wrap {
+      right: 16px;
     }
   }
 
@@ -1452,6 +1456,204 @@
     .chat-emoji-picker {
       border-color: rgb(143 161 255 / 20%);
       background: rgb(18 24 44 / 98%);
+    }
+  }
+
+  /* -------------------------------------------------------------------------
+   * Видеосообщение-кружочек
+   * ---------------------------------------------------------------------- */
+
+  .video-note {
+    --vn-size: 120px;
+
+    position: relative;
+    display: inline-block;
+    width: var(--vn-size);
+    height: var(--vn-size);
+    margin-top: 6px;
+    margin-bottom: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+      width 200ms ease,
+      height 200ms ease;
+  }
+
+  .video-note--expanded {
+    --vn-size: 240px;
+
+    margin-bottom: 24px;
+  }
+
+  .video-note__video {
+    position: absolute;
+    z-index: 1;
+    inset: 8px;
+    width: calc(100% - 16px);
+    height: calc(100% - 16px);
+    border-radius: 50%;
+    object-fit: cover;
+    background: #000;
+  }
+
+  .video-note__ring {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .video-note__ring-bg {
+    fill: none;
+    stroke: rgb(108 118 214 / 18%);
+    stroke-width: 2.5;
+    opacity: 0;
+  }
+
+  .video-note__ring-progress {
+    fill: none;
+    stroke: var(--color-interactive-primary);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    opacity: 0;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    filter: drop-shadow(
+      0 0 5px color-mix(in srgb, var(--color-interactive-primary) 48%, transparent)
+    );
+    will-change: stroke-dashoffset;
+    transition:
+      opacity 0.16s ease,
+      stroke-dashoffset 0.08s linear;
+  }
+
+  .video-note--resetting .video-note__ring-progress {
+    transition: none;
+  }
+
+  .video-note--expanded .video-note__ring-bg,
+  .video-note--expanded.video-note--playing .video-note__ring-progress {
+    opacity: 1;
+  }
+
+  [data-video-note-state="unplayed"] .video-note__ring-bg {
+    stroke: var(--color-interactive-primary);
+    stroke-width: 3;
+    opacity: 0.35;
+  }
+
+  .video-note__duration {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    color: var(--color-text-muted);
+    font-size: var(--text-size-caption);
+    line-height: var(--line-height-solid);
+    pointer-events: none;
+  }
+
+  /* -------------------------------------------------------------------------
+   * Оверлей записи видеосообщения
+   * ---------------------------------------------------------------------- */
+
+  .video-note-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 100px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 200ms;
+  }
+
+  .video-note-overlay--active {
+    pointer-events: none;
+    opacity: 1;
+  }
+
+  .video-note-overlay__preview {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow:
+      0 8px 32px rgb(0 0 0 / 38%),
+      0 0 0 3px var(--color-interactive-primary);
+  }
+
+  .video-note-overlay__video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+
+  .video-note-overlay__ring {
+    position: absolute;
+    inset: -4px;
+    width: calc(100% + 8px);
+    height: calc(100% + 8px);
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .video-note-overlay__ring-bg {
+    fill: none;
+    stroke: rgb(255 255 255 / 20%);
+    stroke-width: 4;
+  }
+
+  .video-note-overlay__ring-progress {
+    fill: none;
+    stroke: var(--color-interactive-primary);
+    stroke-width: 4;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    transition: stroke-dashoffset 0.1s linear;
+  }
+
+  @media (width <= 768px) {
+    .video-note {
+      --vn-size: 108px;
+
+      margin-bottom: 16px;
+    }
+
+    .video-note--expanded {
+      --vn-size: clamp(188px, calc(100vw - 104px), 220px);
+
+      margin-bottom: 22px;
+    }
+
+    .video-note__video {
+      inset: 7px;
+      width: calc(100% - 14px);
+      height: calc(100% - 14px);
+    }
+
+    .video-note__duration {
+      top: calc(100% + 3px);
+      font-size: 11px;
+    }
+
+    .video-note-overlay {
+      align-items: center;
+      padding: 0 var(--space-4) max(96px, env(safe-area-inset-bottom));
+    }
+
+    .video-note-overlay__preview {
+      width: min(190px, calc(100vw - 96px));
+      height: min(190px, calc(100vw - 96px));
     }
   }
 }

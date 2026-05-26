@@ -709,7 +709,8 @@
 
   .community-modal__header {
     display: flex;
-    align-items: start;
+    min-height: var(--modal-close-size, 45px);
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
   }
@@ -1095,8 +1096,8 @@
     box-shadow: 0 0 0 3px rgb(87 105 240 / 10%);
   }
 
-  .community-form__button,
-  .community-modal__button {
+  .community-form__button {
+    width: 100%;
     min-height: 40px;
     padding: 9px 14px;
     border: 1px solid var(--color-interactive-primary);
@@ -1109,8 +1110,8 @@
     cursor: pointer;
   }
 
-  .community-form__button {
-    width: 100%;
+  .community-modal__button {
+    justify-content: center;
   }
 
   .community-media-editor {
@@ -1236,44 +1237,12 @@
   }
 
   .community-media-editor__button {
-    min-height: 38px;
-    padding: 8px 16px;
-    border: 1px solid var(--color-interactive-primary);
-    border-radius: var(--radius-small);
-    background: var(--color-surface-base);
-    color: var(--color-interactive-primary);
-    font: inherit;
-    font-size: var(--text-size-body-lg);
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-      background-color var(--transition-control),
-      color var(--transition-control),
-      box-shadow var(--transition-control),
-      transform var(--transition-control);
+    justify-content: center;
   }
 
   .community-media-editor__button:disabled {
     opacity: 0.65;
     cursor: default;
-  }
-
-  .community-media-editor__button:focus-visible {
-    outline: none;
-    box-shadow: var(--control-focus-ring);
-  }
-
-  .community-media-editor__button:hover:not(:disabled) {
-    background: var(--color-surface-muted);
-  }
-
-  .community-media-editor__button:active:not(:disabled) {
-    transform: var(--control-press-transform);
-  }
-
-  .community-media-editor__button--secondary {
-    background: var(--color-surface-base);
-    color: var(--color-interactive-primary);
   }
 
   .community-media-editor__button--full {
@@ -1282,8 +1251,6 @@
 
   .community-media-editor__tool-button {
     flex: 1 1 0;
-    min-height: 34px;
-    padding: 8px 12px;
   }
 
   .community-media-editor__zoom-label {
@@ -1303,11 +1270,6 @@
     color: var(--color-text-error);
     font-size: var(--text-size-caption);
     line-height: var(--line-height-base);
-  }
-
-  .community-modal__button--primary {
-    background: var(--color-interactive-primary);
-    color: var(--color-text-on-primary);
   }
 
   .community-modal__button:disabled {
@@ -1331,8 +1293,6 @@
     min-width: 0;
     flex: 1 1 174px;
     white-space: nowrap;
-    padding: 13px 16px;
-    min-height: 46px;
   }
 
   .community-form__helper {

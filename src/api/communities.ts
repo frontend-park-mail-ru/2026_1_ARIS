@@ -1,5 +1,5 @@
 /**
- * API для работы с сообществами.
+ * API для работы с группами.
  */
 import { apiRequest } from "./core/client";
 

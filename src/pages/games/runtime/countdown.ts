@@ -12,10 +12,18 @@ export type CreateGamesCountdownRuntimeOptions = {
 };
 
 /** Проверяет, есть ли в root элементы, которым нужен игровой countdown. */
-function hasCountdownElements(root: Document | HTMLElement): boolean {
+function hasCountdownRuntimeElements(root: Document | HTMLElement): boolean {
   return Boolean(
     root.querySelector(
-      "[data-games-countdown], [data-games-timer-deadline], [data-games-final-results-until]",
+      [
+        "[data-games-countdown]",
+        "[data-games-timer-deadline]",
+        "[data-games-final-results-until]",
+        "[data-games-score-shell]",
+        "[data-games-round-points-badge]",
+        "[data-games-score-animate]",
+        "[data-games-scoreboard-list]",
+      ].join(", "),
     ),
   );
 }
@@ -43,7 +51,7 @@ export function createGamesCountdownRuntime(
     start(root) {
       stop();
       update(root);
-      if (!hasCountdownElements(root)) return;
+      if (!hasCountdownRuntimeElements(root)) return;
 
       timerId = window.setInterval(() => {
         const currentRoot = options.getRoot();

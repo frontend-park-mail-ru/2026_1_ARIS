@@ -29,7 +29,7 @@ export function renderHeaderSkeleton(): string {
               ${t("header.register")}
             </button>
 
-            <button type="button" class="button button--secondary button--small" data-open-auth-modal="login">
+            <button type="button" class="button button--neutral button--small" data-open-auth-modal="login">
               ${t("header.login")}
             </button>
           </div>

@@ -65,8 +65,8 @@
   }
 
   .games-round-score-row--leader {
-    border-color: rgb(53 137 96 / 34%);
-    background: rgb(53 137 96 / 10%);
+    border-color: rgb(95 111 157 / 12%);
+    background: rgb(255 255 255 / 68%);
   }
 
   .games-round-score-row > span,

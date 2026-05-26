@@ -1,7 +1,7 @@
 /**
  * Базовый компонент кнопки приложения.
  */
-type ButtonVariant = "primary" | "secondary" | "surface";
+type ButtonVariant = "primary" | "secondary" | "surface" | "neutral";
 type ButtonTag = "button" | "link";
 type ButtonType = "button" | "submit" | "reset";
 

@@ -1,5 +1,5 @@
 /**
- * Страница сообществ.
+ * Страница групп.
  */
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
@@ -37,7 +37,13 @@ import {
   updatePost,
   uploadPostImages,
 } from "../../api/posts";
-import { renderCommentItemHtml, renderSingleCommentHtml } from "../../utils/post-comment-render";
+import {
+  COMMENT_PAGE_SIZE,
+  renderCommentItemsHtml,
+  renderCommentsListHtml,
+  renderMoreCommentsButtonHtml,
+  renderSingleCommentHtml,
+} from "../../utils/post-comment-render";
 import { getMyProfile, uploadProfileAvatar } from "../../api/profile";
 import { getSessionUser } from "../../state/session";
 import { t } from "../../state/i18n";
@@ -272,7 +278,7 @@ function scheduleCommunitiesBackendSearch(root: ParentNode): void {
         if (requestId !== communitiesSearchRequestId) return;
         communitiesState.searchResults = [];
         communitiesState.errorMessage =
-          error instanceof Error ? error.message : "Не удалось выполнить поиск сообществ.";
+          error instanceof Error ? error.message : "Не удалось выполнить поиск групп.";
       })
       .finally(() => {
         if (requestId !== communitiesSearchRequestId) return;
@@ -346,6 +352,11 @@ function syncCommunityPostCommentCountUi(postId: string): void {
     });
 }
 
+function getCommunityPostCommentTotal(postId: string, loadedCount: number): number {
+  const postCount = communitiesState.activePosts.find((item) => item.id === postId)?.comments ?? 0;
+  return Math.max(postCount, loadedCount);
+}
+
 function isCommunityCommentListEmpty(postId: string): boolean {
   const listEl = document.querySelector<HTMLElement>(
     `[data-community-post-comment-list="${CSS.escape(postId)}"]`,
@@ -364,7 +375,7 @@ async function loadCommunityPostComments(postId: string): Promise<void> {
   listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
 
   try {
-    const comments = await getPostComments(postId, { limit: 50 });
+    const comments = await getPostComments(postId, { limit: COMMENT_PAGE_SIZE, offset: 0 });
     if (!comments.length) {
       listEl.innerHTML = `<p class="profile-comment-empty">${t("profile.commentsEmpty")}</p>`;
       loadedCommunityCommentPostIds.add(postId);
@@ -376,22 +387,13 @@ async function loadCommunityPostComments(postId: string): Promise<void> {
       .map((comment) => comment.id);
     const firstReplies =
       parentIds.length > 0 ? await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 }) : {};
-    const post = communitiesState.activePosts.find((item) => item.id === postId);
-    const headerText = t("profile.commentsHeader").replace(
-      "{{n}}",
-      String(post?.comments ?? comments.length),
-    );
+    const totalCount = getCommunityPostCommentTotal(postId, comments.length);
     const canReply = canCommentActiveCommunity();
 
-    listEl.innerHTML =
-      `<p class="profile-comment-header-label">${escapeHtml(headerText)}</p>` +
-      comments
-        .map((comment) =>
-          renderCommentItemHtml(comment, firstReplies[comment.id]?.[0], {
-            showReply: canReply,
-          }),
-        )
-        .join("");
+    listEl.innerHTML = renderCommentsListHtml(postId, comments, firstReplies, {
+      totalCount,
+      showReply: canReply,
+    });
 
     const expanded = expandedCommunityReplies.get(postId);
     if (expanded && expanded.size > 0) {
@@ -415,6 +417,55 @@ async function loadCommunityPostComments(postId: string): Promise<void> {
     loadedCommunityCommentPostIds.delete(postId);
   } finally {
     loadingCommunityCommentPostIds.delete(postId);
+  }
+}
+
+async function loadMoreCommunityPostComments(
+  postId: string,
+  button: HTMLButtonElement,
+): Promise<void> {
+  const listEl = document.querySelector<HTMLElement>(
+    `[data-community-post-comment-list="${CSS.escape(postId)}"]`,
+  );
+  if (!listEl) return;
+
+  const offset = listEl.querySelectorAll("[data-comment-item]").length;
+  button.disabled = true;
+
+  try {
+    const comments = await getPostComments(postId, {
+      limit: COMMENT_PAGE_SIZE,
+      offset,
+    });
+
+    if (!comments.length) {
+      button.remove();
+      return;
+    }
+
+    const parentIds = comments
+      .filter((comment) => comment.repliesCount > 0)
+      .map((comment) => comment.id);
+    const firstReplies =
+      parentIds.length > 0 ? await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 }) : {};
+    const canReply = canCommentActiveCommunity();
+    const nextLoadedCount = offset + comments.length;
+    const totalCount = getCommunityPostCommentTotal(postId, nextLoadedCount);
+
+    button.insertAdjacentHTML(
+      "beforebegin",
+      renderCommentItemsHtml(comments, firstReplies, { showReply: canReply }),
+    );
+
+    const nextButtonHtml = renderMoreCommentsButtonHtml(postId, nextLoadedCount, totalCount);
+    if (nextButtonHtml) {
+      button.outerHTML = nextButtonHtml;
+    } else {
+      button.remove();
+    }
+  } catch (error) {
+    console.error("[communities] load more comments failed", error);
+    button.disabled = false;
   }
 }
 
@@ -553,7 +604,7 @@ async function ensureCommunitiesLoaded(signal?: AbortSignal): Promise<void> {
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     communitiesState.errorMessage =
-      error instanceof Error ? error.message : "Не удалось загрузить сообщества.";
+      error instanceof Error ? error.message : "Не удалось загрузить группы.";
     communitiesState.items = [];
   } finally {
     communitiesState.loading = false;
@@ -917,11 +968,7 @@ async function saveCommunityForm(root: ParentNode): Promise<void> {
       return;
     }
 
-    window.history.pushState(
-      {},
-      "",
-      `/communities/${encodeURIComponent(String(saved.community.id))}`,
-    );
+    window.history.pushState({}, "", `/groups/${encodeURIComponent(String(saved.community.id))}`);
     window.dispatchEvent(new PopStateEvent("popstate"));
   } catch (error) {
     communitiesState.form.isSaving = false;
@@ -1616,7 +1663,7 @@ export async function renderCommunities(
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") throw error;
       communitiesState.errorMessage =
-        error instanceof Error ? error.message : "Не удалось загрузить сообщество.";
+        error instanceof Error ? error.message : "Не удалось загрузить группу.";
       setActiveCommunity(null);
     }
 
@@ -2103,6 +2150,15 @@ export function initCommunities(root: Document | HTMLElement = document): void {
       return;
     }
 
+    const showMoreCommentsBtn = target.closest("[data-show-more-comments]");
+    if (showMoreCommentsBtn instanceof HTMLButtonElement) {
+      if (!showMoreCommentsBtn.closest("[data-community-post-comments]")) return;
+      const postId = showMoreCommentsBtn.getAttribute("data-show-more-comments-post") ?? "";
+      if (!postId || showMoreCommentsBtn.disabled) return;
+      void loadMoreCommunityPostComments(postId, showMoreCommentsBtn);
+      return;
+    }
+
     const showRepliesBtn = target.closest("[data-show-replies]");
     if (showRepliesBtn instanceof HTMLButtonElement && target.closest("[data-communities-page]")) {
       const commentId = showRepliesBtn.getAttribute("data-show-replies") ?? "";
@@ -2144,16 +2200,11 @@ export function initCommunities(root: Document | HTMLElement = document): void {
           const isNowLiked = updated.isLiked;
           commentLikeBtn.setAttribute("aria-pressed", String(isNowLiked));
           commentLikeBtn.classList.toggle("profile-comment__like--liked", isNowLiked);
-          const countSpan = commentLikeBtn.querySelector("span:last-child");
-          if (
-            countSpan &&
-            countSpan !== commentLikeBtn.querySelector(".profile-comment__like-icon")
-          ) {
+          const countSpan = commentLikeBtn.querySelector<HTMLElement>(
+            ".profile-comment__like-count",
+          );
+          if (countSpan) {
             countSpan.textContent = updated.likes > 0 ? String(updated.likes) : "";
-          } else if (updated.likes > 0) {
-            const span = document.createElement("span");
-            span.textContent = String(updated.likes);
-            commentLikeBtn.appendChild(span);
           }
         })
         .catch((error: unknown) => {
@@ -2452,7 +2503,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
           communitiesState.loaded = false;
           communitiesState.deleteConfirmId = null;
           if (communitiesState.activeCommunity?.community.id === Number(id)) {
-            window.history.pushState({}, "", "/communities");
+            window.history.pushState({}, "", "/groups");
             window.dispatchEvent(new PopStateEvent("popstate"));
             return;
           }
@@ -2460,7 +2511,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         })
         .catch((error: unknown) => {
           communitiesState.errorMessage =
-            error instanceof Error ? error.message : "Не удалось удалить сообщество.";
+            error instanceof Error ? error.message : "Не удалось удалить группу.";
           communitiesState.deleteConfirmId = null;
           refreshCommunitiesPage(root);
         });
@@ -2570,7 +2621,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         } catch (error) {
           communitiesState.membershipLoading = false;
           communitiesState.errorMessage =
-            error instanceof Error ? error.message : "Не удалось вступить в сообщество.";
+            error instanceof Error ? error.message : "Не удалось вступить в группу.";
           refreshCommunitiesPage(root);
         }
       })();
@@ -2650,7 +2701,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
           communitiesState.membershipLoading = false;
           communitiesState.leaveConfirmId = null;
           communitiesState.errorMessage =
-            error instanceof Error ? error.message : "Не удалось покинуть сообщество.";
+            error instanceof Error ? error.message : "Не удалось покинуть группу.";
           refreshCommunitiesPage(root);
         }
       })();
@@ -2685,7 +2736,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         })
         .catch((error: unknown) => {
           communitiesState.errorMessage =
-            error instanceof Error ? error.message : "Не удалось переключить ленту сообщества.";
+            error instanceof Error ? error.message : "Не удалось переключить ленту группы.";
           refreshCommunitiesPage(root);
         });
       return;

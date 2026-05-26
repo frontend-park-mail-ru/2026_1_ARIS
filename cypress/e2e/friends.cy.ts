@@ -16,6 +16,51 @@ describe("друзья", () => {
     cy.contains("[data-friend-id='2']", "Аня Орлова").should("not.exist");
   });
 
+  it("сначала показывает друзей из списка, потом пользователей сайта", () => {
+    cy.mockAuthApi();
+    cy.intercept("GET", "**/api/search?*", {
+      body: {
+        users: [
+          {
+            profileId: 2,
+            userAccountId: 2,
+            username: "anya",
+            firstName: "Аня",
+            lastName: "Орлова",
+          },
+          {
+            profileId: 8,
+            userAccountId: 8,
+            username: "alina",
+            firstName: "Алина",
+            lastName: "Новикова",
+          },
+        ],
+        communities: [],
+        posts: [],
+      },
+    }).as("siteSearch");
+
+    cy.visitApp({ path: "/friends", authenticated: true });
+    cy.wait("@friendsAccepted");
+
+    cy.get("[data-friends-search]").type("ан");
+    cy.wait("@siteSearch");
+
+    cy.contains(".friends-results-section__heading", "Все друзья").should("be.visible");
+    cy.contains("[data-friend-id='2']", "Аня Орлова").should("be.visible");
+    cy.contains(".friends-results-section__heading", "Пользователи сайта").should("be.visible");
+    cy.contains("[data-friend-id='8']", "Алина Новикова").should("be.visible");
+
+    cy.get("[data-friend-id='2']").then(($friend) => {
+      cy.get("[data-friend-id='8']").then(($siteUser) => {
+        expect($friend[0].getBoundingClientRect().top).to.be.lessThan(
+          $siteUser[0].getBoundingClientRect().top,
+        );
+      });
+    });
+  });
+
   it("переключается на входящие заявки и принимает друга", () => {
     let incoming = [...friends.incoming];
     cy.mockAuthApi();

@@ -65,7 +65,9 @@ export function createRouter(root: HTMLElement, routes: Route[]): AppRouter {
       if (p === "/" || p === "/feed") return renderFeedSkeleton();
       if (p.startsWith("/chats")) return renderChatsSkeleton();
       if (p === "/friends") return renderFriendsSkeleton();
-      if (p.startsWith("/communities")) return renderCommunitiesSkeleton(p);
+      if (p.startsWith("/groups") || p.startsWith("/communities")) {
+        return renderCommunitiesSkeleton(p);
+      }
       if (p.startsWith("/profile") || p.startsWith("/id")) return renderProfileSkeleton();
       if (p.startsWith("/games")) return renderGamesSkeleton(p);
       return null;

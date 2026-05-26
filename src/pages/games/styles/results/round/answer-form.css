@@ -38,14 +38,17 @@
     box-sizing: border-box;
     grid-column: 1 / -1;
     padding: 0 14px;
-    border: 1px solid rgb(53 137 96 / 34%);
+    border: 1px solid rgb(95 111 157 / 24%);
     border-radius: var(--radius-small);
-    background: linear-gradient(180deg, rgb(236 252 244 / 86%), rgb(255 255 255 / 76%));
+    background:
+      linear-gradient(135deg, rgb(95 111 157 / 14%), rgb(95 111 157 / 7%)), rgb(244 246 249);
     color: var(--color-text-main);
     font-size: var(--text-size-main);
     font-weight: var(--font-weight-bold);
     line-height: 48px;
-    box-shadow: 0 10px 22px rgb(53 137 96 / 8%);
+    box-shadow:
+      0 14px 28px rgb(33 45 88 / 10%),
+      0 0 0 1px rgb(95 111 157 / 10%) inset;
   }
 
   .games-answer-progress__item {

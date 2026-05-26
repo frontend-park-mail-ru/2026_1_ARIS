@@ -42,6 +42,35 @@ describe("simple api endpoints", () => {
     );
   });
 
+  it("нормализует отсутствующие секции ответа поиска", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({
+      users: [
+        {
+          profileId: 2,
+          userAccountId: 2,
+          username: "anya",
+          firstName: "Аня",
+          lastName: "Орлова",
+        },
+      ],
+      communities: null,
+    });
+
+    await expect(searchUsersAndCommunities("аня")).resolves.toEqual({
+      users: [
+        {
+          profileId: 2,
+          userAccountId: 2,
+          username: "anya",
+          firstName: "Аня",
+          lastName: "Орлова",
+        },
+      ],
+      communities: [],
+      posts: [],
+    });
+  });
+
   it("вызывает endpoints виджетбара", async () => {
     vi.mocked(apiRequest).mockResolvedValue({ items: [] });
     const signal = new AbortController().signal;

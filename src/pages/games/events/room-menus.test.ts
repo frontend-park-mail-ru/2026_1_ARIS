@@ -45,7 +45,7 @@ describe("games room menu events", () => {
 
     expect(handleGamesRoomMenusClick(new MouseEvent("click"), button, options)).toBe(true);
 
-    expect(options.setGamesState).toHaveBeenCalledWith({
+    expect(options.setGamesOverlayState).toHaveBeenCalledWith({
       playerMenuProfileId: "player-1",
       floatingMenuAnchorX: 10,
       floatingMenuAnchorY: 20,
@@ -90,7 +90,7 @@ describe("games room menu events", () => {
 
     handleGamesRoomMenusClick(new MouseEvent("click"), button, options);
 
-    expect(options.setGamesState).toHaveBeenCalledWith({
+    expect(options.setGamesOverlayState).toHaveBeenCalledWith({
       playerMenuProfileId: "",
       questionMenuKey: "",
       titleMenuOpen: false,

@@ -124,8 +124,11 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
     currentPath.startsWith("/profile/") ||
     /^\/id[^/]+$/.test(currentPath);
   const isFriendsRoute = currentPath === "/friends";
-  const isCommunitiesListRoute = currentPath === "/communities";
-  const isCommunitiesRoute = isCommunitiesListRoute || currentPath.startsWith("/communities/");
+  const isCommunitiesListRoute = currentPath === "/groups" || currentPath === "/communities";
+  const isCommunitiesRoute =
+    isCommunitiesListRoute ||
+    currentPath.startsWith("/groups/") ||
+    currentPath.startsWith("/communities/");
   const isChatsRoute = currentPath === "/chats";
   const isGamesRoute = currentPath === "/games" || currentPath.startsWith("/games/");
   const isGamesCatalogRoute = currentPath === "/games";
@@ -142,13 +145,6 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
         isActive: isFeedRoute,
       })}
       ${renderMobileNavItem({
-        href: "/profile",
-        label: t("nav.profile"),
-        icon: "/assets/img/icons/profile.svg",
-        isActive: isProfileRoute,
-        attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
-      })}
-      ${renderMobileNavItem({
         href: "/friends",
         label: t("nav.friends"),
         icon: "/assets/img/icons/friends.svg",
@@ -156,7 +152,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
         attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
       })}
       ${renderMobileNavItem({
-        href: "/communities",
+        href: "/groups",
         label: t("nav.communities"),
         icon: "/assets/img/icons/communities.svg",
         isActive: isCommunitiesRoute,
@@ -174,13 +170,6 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
         label: t("nav.games"),
         icon: "/assets/img/icons/star.svg",
         isActive: isGamesRoute,
-        attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
-      })}
-      ${renderMobileNavItem({
-        href: "/settings",
-        label: t("nav.settings"),
-        icon: "/assets/img/icons/settings.svg",
-        isActive: isSettingsRoute,
         attributes: isAuthorised ? "" : 'data-open-auth-modal="login"',
       })}
     </nav>
@@ -217,7 +206,7 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
         })}
 
         ${renderSidebarItem({
-          href: "/communities",
+          href: "/groups",
           label: t("nav.communities"),
           icon: "/assets/img/icons/communities.svg",
           isActive: isCommunitiesRoute,

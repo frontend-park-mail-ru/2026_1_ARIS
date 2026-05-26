@@ -3,7 +3,7 @@
  *
  * Отвечает за:
  * - отображение автора, текста и вложений;
- * - рендер счётчиков лайков, репостов и комментариев;
+ * - рендер счётчиков лайков и комментариев;
  * - управление раскрытием длинного текста;
  * - приоритизацию главного изображения для LCP.
  *
@@ -48,7 +48,7 @@ export type PostcardPost = {
   isLiked?: boolean;
   /** Количество комментариев. */
   comments: number;
-  /** Количество репостов. */
+  /** Количество репостов. Не используется в UI. */
   reposts: number;
   /** Список изображений поста в порядке отображения. */
   images?: string[];
@@ -93,7 +93,6 @@ function formatStatCount(count: number): string {
 function getPostcardStatAccessibleName(action: string, count: number): string {
   const nounByAction: Record<string, string> = {
     like: t("postcard.likeNoun"),
-    repost: t("postcard.repostNoun"),
     comment: t("postcard.commentNoun"),
   };
 
@@ -398,11 +397,6 @@ export function renderPostcardInner(
   const statsMarkup = `
     <div class="postcard__stats">
       ${renderPostcardStat(likeStatOptions)}
-      ${renderPostcardStat({
-        icon: "/assets/img/icons/repost.svg",
-        count: post.reposts,
-        action: "repost",
-      })}
       ${renderPostcardStat({
         icon: "/assets/img/icons/chat.svg",
         count: post.comments,

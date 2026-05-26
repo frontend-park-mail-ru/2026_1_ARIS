@@ -30,9 +30,15 @@ import {
   likePostComment,
   unlikePostComment,
 } from "../../api/posts";
-import { renderCommentItemHtml, renderSingleCommentHtml } from "../../utils/post-comment-render";
+import {
+  COMMENT_PAGE_SIZE,
+  renderCommentItemsHtml,
+  renderCommentsListHtml,
+  renderMoreCommentsButtonHtml,
+  renderSingleCommentHtml,
+} from "../../utils/post-comment-render";
 import { getFeedMode, getSessionUser } from "../../state/session";
-import { escapeHtml, prepareAvatarLinks } from "../../utils/avatar";
+import { prepareAvatarLinks } from "../../utils/avatar";
 import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 import { t } from "../../state/i18n";
 
@@ -203,6 +209,11 @@ function syncFeedPostCommentCountUi(postId: string): void {
     });
 }
 
+function getFeedPostCommentTotal(postId: string, loadedCount: number): number {
+  const postCount = activeFeedState?.items.find((item) => item.id === postId)?.comments ?? 0;
+  return Math.max(postCount, loadedCount);
+}
+
 function isFeedCommentListEmpty(postId: string): boolean {
   const listEl = document.querySelector<HTMLElement>(
     `[data-feed-comment-list="${CSS.escape(postId)}"]`,
@@ -301,7 +312,7 @@ async function loadFeedComments(postId: string): Promise<void> {
   loadingFeedCommentPostIds.add(postId);
   listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
   try {
-    const comments = await getPostComments(postId, { limit: 50 });
+    const comments = await getPostComments(postId, { limit: COMMENT_PAGE_SIZE, offset: 0 });
     if (!comments.length) {
       listEl.innerHTML = `<p class="profile-comment-empty">${t("profile.commentsEmpty")}</p>`;
       loadedFeedCommentPostIds.add(postId);
@@ -312,17 +323,9 @@ async function loadFeedComments(postId: string): Promise<void> {
       .map((comment) => comment.id);
     const firstReplies =
       parentIds.length > 0 ? await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 }) : {};
-    const post = activeFeedState?.items.find((item) => item.id === postId);
-    const headerText = t("profile.commentsHeader").replace(
-      "{{n}}",
-      String(post?.comments ?? comments.length),
-    );
+    const totalCount = getFeedPostCommentTotal(postId, comments.length);
 
-    listEl.innerHTML =
-      `<p class="profile-comment-header-label">${escapeHtml(headerText)}</p>` +
-      comments
-        .map((comment) => renderCommentItemHtml(comment, firstReplies[comment.id]?.[0]))
-        .join("");
+    listEl.innerHTML = renderCommentsListHtml(postId, comments, firstReplies, { totalCount });
 
     const expanded = expandedFeedReplies.get(postId);
     if (expanded && expanded.size > 0) {
@@ -346,6 +349,48 @@ async function loadFeedComments(postId: string): Promise<void> {
     loadedFeedCommentPostIds.delete(postId);
   } finally {
     loadingFeedCommentPostIds.delete(postId);
+  }
+}
+
+async function loadMoreFeedComments(postId: string, button: HTMLButtonElement): Promise<void> {
+  const listEl = document.querySelector<HTMLElement>(
+    `[data-feed-comment-list="${CSS.escape(postId)}"]`,
+  );
+  if (!listEl) return;
+
+  const offset = listEl.querySelectorAll("[data-comment-item]").length;
+  button.disabled = true;
+
+  try {
+    const comments = await getPostComments(postId, {
+      limit: COMMENT_PAGE_SIZE,
+      offset,
+    });
+
+    if (!comments.length) {
+      button.remove();
+      return;
+    }
+
+    const parentIds = comments
+      .filter((comment) => comment.repliesCount > 0)
+      .map((comment) => comment.id);
+    const firstReplies =
+      parentIds.length > 0 ? await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 }) : {};
+    const nextLoadedCount = offset + comments.length;
+    const totalCount = getFeedPostCommentTotal(postId, nextLoadedCount);
+
+    button.insertAdjacentHTML("beforebegin", renderCommentItemsHtml(comments, firstReplies));
+
+    const nextButtonHtml = renderMoreCommentsButtonHtml(postId, nextLoadedCount, totalCount);
+    if (nextButtonHtml) {
+      button.outerHTML = nextButtonHtml;
+    } else {
+      button.remove();
+    }
+  } catch (error) {
+    console.error("[feed] load more comments failed", error);
+    button.disabled = false;
   }
 }
 
@@ -376,6 +421,14 @@ function bindFeedCommentActions(): void {
     const target = event.target;
     if (!(target instanceof Element)) return;
     if (!(target.closest("[data-feed-list]") instanceof HTMLElement)) return;
+
+    const showMoreCommentsBtn = target.closest("[data-show-more-comments]");
+    if (showMoreCommentsBtn instanceof HTMLButtonElement) {
+      const postId = showMoreCommentsBtn.getAttribute("data-show-more-comments-post") ?? "";
+      if (!postId || showMoreCommentsBtn.disabled) return;
+      void loadMoreFeedComments(postId, showMoreCommentsBtn);
+      return;
+    }
 
     const showRepliesBtn = target.closest("[data-show-replies]");
     if (showRepliesBtn instanceof HTMLButtonElement) {
@@ -416,16 +469,11 @@ function bindFeedCommentActions(): void {
           const isNowLiked = updated.isLiked;
           commentLikeBtn.setAttribute("aria-pressed", String(isNowLiked));
           commentLikeBtn.classList.toggle("profile-comment__like--liked", isNowLiked);
-          const countSpan = commentLikeBtn.querySelector("span:last-child");
-          if (
-            countSpan &&
-            countSpan !== commentLikeBtn.querySelector(".profile-comment__like-icon")
-          ) {
+          const countSpan = commentLikeBtn.querySelector<HTMLElement>(
+            ".profile-comment__like-count",
+          );
+          if (countSpan) {
             countSpan.textContent = updated.likes > 0 ? String(updated.likes) : "";
-          } else if (updated.likes > 0) {
-            const span = document.createElement("span");
-            span.textContent = String(updated.likes);
-            commentLikeBtn.appendChild(span);
           }
         })
         .catch((error: unknown) => {
@@ -538,8 +586,16 @@ function bindFeedCommentActions(): void {
 
 function getSortedFeedItems(items: PostcardModel[]): PostcardModel[] {
   if (getCurrentFeedMode() === "for-you") {
-    return items;
+    const shuffled = [...items];
+
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex]!, shuffled[index]!];
+    }
+
+    return shuffled;
   }
+
   return [...items].sort((a, b) => new Date(b.timeRaw).getTime() - new Date(a.timeRaw).getTime());
 }
 
@@ -674,7 +730,7 @@ async function fetchNextFeedPage(): Promise<void> {
       ? await getFeed({ cursor, limit: 20, mode })
       : await getPublicFeed({ cursor, limit: 20 });
     const mapped = mapFeedResponse(response);
-    const allItems = [...activeFeedState.items, ...mapped.items];
+    const allItems = [...activeFeedState.items, ...getSortedFeedItems(mapped.items)];
 
     feedItemsCache.set(`${authKey}:${mode}`, allItems);
     persistFeedItems(authKey, mode, allItems);

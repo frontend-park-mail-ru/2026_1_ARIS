@@ -15,7 +15,7 @@ export function escapeHtml(value: string): string {
 }
 
 export function getCommunityUrl(community: Community): string {
-  return `/communities/${encodeURIComponent(String(community.id))}`;
+  return `/groups/${encodeURIComponent(String(community.id))}`;
 }
 
 export function getCommunityName(community: Community): string {

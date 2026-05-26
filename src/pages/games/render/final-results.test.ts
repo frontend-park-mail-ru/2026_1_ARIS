@@ -124,7 +124,7 @@ describe("games final results render", () => {
     expect(html).toContain("Ada Lovelace");
     expect(html).toContain("Таблица участников");
     expect(html).toContain("How many moons does Mars have?");
-    expect(html).toContain("data-games-replay-toggle");
+    expect(html).not.toContain("data-games-replay-toggle");
   });
 
   it("рендерит изменения рейтинга для рейтинговой игры", () => {
@@ -149,5 +149,34 @@ describe("games final results render", () => {
     expect(html).toContain("Изменения в рейтинге");
     expect(html).toContain("1000 -> 1015");
     expect(html).toContain("+15 рейтинга");
+  });
+
+  it("показывает красные крестики в архивной таблице, если игрок не ответил", () => {
+    const baseQuestion = createRoom().questions[0];
+    if (!baseQuestion) throw new Error("Missing test question");
+
+    const room = createRoom({
+      questions: [
+        {
+          ...baseQuestion,
+          answers: [
+            {
+              profileId: "1",
+              answer: 2,
+              distance: 0,
+              answeredAt: "",
+              responseTimeMs: 900,
+              isWinner: true,
+            },
+          ],
+        },
+      ],
+    });
+    const html = renderFinal(room);
+
+    expect(html).toContain('class="games-results-table__missing"');
+    expect(html).not.toContain("нет ответа");
+    expect(html).not.toContain("без ответа");
+    expect(html).not.toContain("нет времени");
   });
 });

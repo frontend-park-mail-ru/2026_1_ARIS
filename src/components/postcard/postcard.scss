@@ -283,7 +283,7 @@
     &__stats {
       display: flex; // блок статистики — flex-контейнер
       align-items: center; // stat-элементы выровнены по вертикали
-      gap: var(--postcard-stats-gap); // расстояние между like/repost/comment
+      gap: var(--postcard-stats-gap); // расстояние между статами
       flex-shrink: 0; // блок статистики не сжимается
     }
 
@@ -291,6 +291,7 @@
       display: flex; // stat-элемент — flex-контейнер
       align-items: center; // иконка и число на одной линии
       gap: var(--postcard-stat-gap); // расстояние между иконкой и числом
+      min-width: 44px;
       padding: var(--postcard-stat-padding); // увеличиваем кликабельную область stat-элемента
 
       &-link,
@@ -356,6 +357,7 @@
       }
 
       &-count {
+        min-width: 2.5ch;
         color: var(--color-text-meta);
         font-size: var(--text-size-main);
         font-weight: var(--font-weight-medium);

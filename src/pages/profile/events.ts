@@ -105,7 +105,18 @@ const expandedPosts = new Set<string>();
 const expandedReplies = new Map<string, Set<string>>();
 
 export { renderSingleCommentHtml, renderCommentItemHtml } from "../../utils/post-comment-render";
-import { renderSingleCommentHtml, renderCommentItemHtml } from "../../utils/post-comment-render";
+import {
+  COMMENT_PAGE_SIZE,
+  renderCommentItemsHtml,
+  renderCommentsListHtml,
+  renderMoreCommentsButtonHtml,
+  renderSingleCommentHtml,
+} from "../../utils/post-comment-render";
+
+function getProfilePostCommentTotal(postId: string, loadedCount: number): number {
+  const postCount = currentProfilePosts.find((post) => post.id === postId)?.comments ?? 0;
+  return Math.max(postCount, loadedCount);
+}
 
 async function loadAndRenderPostComments(
   root: Document | HTMLElement,
@@ -118,7 +129,7 @@ async function loadAndRenderPostComments(
 
   listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
 
-  const comments = await getPostComments(postId, { limit: 50 });
+  const comments = await getPostComments(postId, { limit: COMMENT_PAGE_SIZE, offset: 0 });
 
   const parentIds = comments.filter((c) => c.repliesCount > 0).map((c) => c.id);
   let firstReplies: Record<string, PostComment[]> = {};
@@ -126,20 +137,14 @@ async function loadAndRenderPostComments(
     firstReplies = await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 });
   }
 
-  const post = currentProfilePosts.find((p) => p.id === postId);
-  const headerText = t("profile.commentsHeader").replace(
-    "{{n}}",
-    String(post?.comments ?? comments.length),
-  );
+  const totalCount = getProfilePostCommentTotal(postId, comments.length);
 
   if (!comments.length) {
     listEl.innerHTML = `<p class="profile-comment-empty">${t("profile.commentsEmpty")}</p>`;
     return;
   }
 
-  listEl.innerHTML =
-    `<p class="profile-comment-header-label">${escapeHtml(headerText)}</p>` +
-    comments.map((c) => renderCommentItemHtml(c, firstReplies[c.id]?.[0])).join("");
+  listEl.innerHTML = renderCommentsListHtml(postId, comments, firstReplies, { totalCount });
 
   const expanded = expandedReplies.get(postId);
   if (expanded && expanded.size > 0) {
@@ -155,6 +160,50 @@ async function loadAndRenderPostComments(
         });
       }
     }
+  }
+}
+
+async function loadMoreProfilePostComments(
+  root: Document | HTMLElement,
+  postId: string,
+  button: HTMLButtonElement,
+): Promise<void> {
+  const listEl = root.querySelector<HTMLElement>(
+    `[data-profile-post-comment-list="${CSS.escape(postId)}"]`,
+  );
+  if (!listEl) return;
+
+  const offset = listEl.querySelectorAll("[data-comment-item]").length;
+  button.disabled = true;
+
+  try {
+    const comments = await getPostComments(postId, {
+      limit: COMMENT_PAGE_SIZE,
+      offset,
+    });
+
+    if (!comments.length) {
+      button.remove();
+      return;
+    }
+
+    const parentIds = comments.filter((c) => c.repliesCount > 0).map((c) => c.id);
+    const firstReplies =
+      parentIds.length > 0 ? await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 }) : {};
+    const nextLoadedCount = offset + comments.length;
+    const totalCount = getProfilePostCommentTotal(postId, nextLoadedCount);
+
+    button.insertAdjacentHTML("beforebegin", renderCommentItemsHtml(comments, firstReplies));
+
+    const nextButtonHtml = renderMoreCommentsButtonHtml(postId, nextLoadedCount, totalCount);
+    if (nextButtonHtml) {
+      button.outerHTML = nextButtonHtml;
+    } else {
+      button.remove();
+    }
+  } catch (error) {
+    console.error("[profile] load more comments failed", error);
+    button.disabled = false;
   }
 }
 
@@ -262,19 +311,6 @@ function updateProfileFriendActions(
   }
 
   actionsRoot.replaceWith(nextActionsRoot);
-}
-
-function collapseProfileDetails(root: Document | HTMLElement): void {
-  const more = root.querySelector<HTMLElement>(".profile-card__more");
-  const button = root.querySelector<HTMLButtonElement>("[data-profile-toggle]");
-
-  if (!more || !button || more.hidden) {
-    return;
-  }
-
-  more.hidden = true;
-  button.setAttribute("aria-expanded", "false");
-  button.textContent = "показать подробнее";
 }
 
 function closeProfileFriendMenus(root: Document | HTMLElement): void {
@@ -571,6 +607,15 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       return;
     }
 
+    const showMoreCommentsBtn = target.closest("[data-show-more-comments]");
+    if (showMoreCommentsBtn instanceof HTMLButtonElement) {
+      if (!showMoreCommentsBtn.closest("[data-profile-post-comments]")) return;
+      const postId = showMoreCommentsBtn.getAttribute("data-show-more-comments-post") ?? "";
+      if (!postId || showMoreCommentsBtn.disabled) return;
+      void loadMoreProfilePostComments(root, postId, showMoreCommentsBtn);
+      return;
+    }
+
     const showRepliesBtn = target.closest("[data-show-replies]");
     if (showRepliesBtn instanceof HTMLButtonElement) {
       const commentId = showRepliesBtn.getAttribute("data-show-replies") ?? "";
@@ -608,16 +653,11 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           const isNowLiked = updated.isLiked;
           commentLikeBtn.setAttribute("aria-pressed", String(isNowLiked));
           commentLikeBtn.classList.toggle("profile-comment__like--liked", isNowLiked);
-          const countSpan = commentLikeBtn.querySelector("span:last-child");
-          if (
-            countSpan &&
-            countSpan !== commentLikeBtn.querySelector(".profile-comment__like-icon")
-          ) {
+          const countSpan = commentLikeBtn.querySelector<HTMLElement>(
+            ".profile-comment__like-count",
+          );
+          if (countSpan) {
             countSpan.textContent = updated.likes > 0 ? String(updated.likes) : "";
-          } else if (updated.likes > 0) {
-            const span = document.createElement("span");
-            span.textContent = String(updated.likes);
-            commentLikeBtn.appendChild(span);
           }
         })
         .catch((error: unknown) => {
@@ -1355,10 +1395,6 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     if (editButton instanceof HTMLButtonElement) {
       event.preventDefault();
       event.stopPropagation();
-      const editor = root.querySelector<HTMLElement>("[data-profile-editor]");
-      if (editor?.hidden) {
-        collapseProfileDetails(root);
-      }
       toggleProfileEditor(root);
       return;
     }

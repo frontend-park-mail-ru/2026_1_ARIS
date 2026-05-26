@@ -1,3 +1,5 @@
+import { scoreValueAnimationMs } from "../constants";
+
 /**
  * Считает easing для плавного добора счёта.
  */
@@ -14,12 +16,11 @@ function animateScoreValue(
   to: number,
   formatScore: (value: number) => string,
 ): void {
-  const durationMs = 720;
   const startedAt = performance.now();
   element.dataset.gamesScoreAnimated = "true";
 
   const tick = (now: number) => {
-    const progress = Math.min(1, (now - startedAt) / durationMs);
+    const progress = Math.min(1, (now - startedAt) / scoreValueAnimationMs);
     const value = from + (to - from) * easeOutCubic(progress);
     element.textContent = formatScore(progress >= 1 ? to : value);
     if (progress < 1) {
@@ -40,6 +41,12 @@ export function syncScoreboardAnimations(
   formatScore: (value: number) => string,
 ): void {
   const now = Date.now();
+
+  root.querySelectorAll<HTMLElement>("[data-games-score-shell]").forEach((scoreShell) => {
+    const showAt = Number(scoreShell.dataset.gamesScoreShowAt ?? 0);
+    if (!Number.isFinite(showAt) || now < showAt) return;
+    scoreShell.classList.add("games-game-player__score--showing-round-points");
+  });
 
   root.querySelectorAll<HTMLElement>("[data-games-round-points-badge]").forEach((badge) => {
     const startAt = Number(badge.dataset.gamesRoundPointsStartAt ?? 0);

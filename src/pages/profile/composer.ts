@@ -44,14 +44,14 @@ export function renderPostComposerModal(): string {
         <div class="profile-post-modal__toolbar">
           <button
             type="button"
-            class="profile-post-modal__button profile-post-modal__button--secondary"
+            class="button button--neutral profile-post-modal__button profile-post-modal__button--secondary"
             data-profile-post-pick-image
           >
             ${t("profile.addMedia")}
           </button>
           <button
             type="button"
-            class="profile-post-modal__button profile-post-modal__button--secondary"
+            class="button button--neutral profile-post-modal__button profile-post-modal__button--secondary"
             data-profile-post-pick-file
           >
             ${t("profile.addFiles")}
@@ -66,14 +66,14 @@ export function renderPostComposerModal(): string {
         <div class="profile-post-modal__actions">
           <button
             type="button"
-            class="profile-post-modal__button profile-post-modal__button--primary"
+            class="button button--primary profile-post-modal__button profile-post-modal__button--primary"
             data-profile-post-save
           >
             ${t("profile.publishPost")}
           </button>
           <button
             type="button"
-            class="profile-post-modal__button"
+            class="button button--neutral profile-post-modal__button"
             data-profile-post-close
           >
             ${t("friends.cancel")}
@@ -108,14 +108,14 @@ export function renderPostDeleteModal(): string {
         <div class="profile-post-delete-modal__actions">
           <button
             type="button"
-            class="profile-post-delete-modal__button profile-post-delete-modal__button--primary"
+            class="button button--primary profile-post-delete-modal__button profile-post-delete-modal__button--primary"
             data-profile-post-delete-confirm
           >
             ${t("profile.deletePost")}
           </button>
           <button
             type="button"
-            class="profile-post-delete-modal__button"
+            class="button button--neutral profile-post-delete-modal__button"
             data-profile-post-delete-close
           >
             ${t("friends.cancel")}

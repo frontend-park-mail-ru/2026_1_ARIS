@@ -6,4 +6,5 @@
 
 export const gameRoomSystemMessagesStorageKey = "aris.games.roomSystemMessages";
 export const maxStoredRoomSystemMessages = 300;
-export const finalRoundResultHoldMs = 20000;
+export const roundResultCountdownMs = 5000;
+export const scoreValueAnimationMs = 1180;

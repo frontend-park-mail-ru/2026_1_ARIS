@@ -106,9 +106,34 @@ function renderPasswordSection(): string {
 
       ${renderButton({
         text: t("settings.changePassword"),
-        variant: "secondary",
+        variant: "neutral",
         className: "settings-section__action",
         attributes: "data-password-modal-open",
+      })}
+    </section>
+  `;
+}
+
+function renderProfileSection(): string {
+  const currentUser = getSessionUser();
+  const profilePath = currentUser?.id ? `/id${encodeURIComponent(currentUser.id)}` : "/profile";
+
+  return `
+    <section class="settings-section" aria-labelledby="settings-profile-title">
+      <div class="settings-section__body">
+        <h2 class="settings-section__title" id="settings-profile-title">${t(
+          "settings.profileTitle",
+        )}</h2>
+        <span class="settings-section__label">${t("settings.profileHint")}</span>
+      </div>
+
+      ${renderButton({
+        text: t("settings.openProfile"),
+        tag: "link",
+        href: profilePath,
+        withDataLink: true,
+        variant: "neutral",
+        className: "settings-section__action",
       })}
     </section>
   `;
@@ -168,6 +193,8 @@ function renderSettingsPanel(loadError = ""): string {
         <header class="settings-panel__header">
           <h1 class="settings-panel__title">${t("settings.title")}</h1>
         </header>
+
+        ${renderProfileSection()}
 
         <section class="settings-section" aria-labelledby="settings-appearance-title">
           <div class="settings-section__body">

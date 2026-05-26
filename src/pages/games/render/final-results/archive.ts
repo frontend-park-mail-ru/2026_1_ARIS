@@ -6,10 +6,16 @@ import {
   formatStoredAnswer,
   getQuestionPositionLabel,
   getRoundResultRows,
+  isMissingRoundAnswer,
 } from "../../round/model";
 import { getPlayerFullName } from "../../room/profile/players";
 import { renderResultsPlayerCell } from "./player-cell";
 import type { RenderFinalGameStageOptions } from "./types";
+
+/** Рендерит красный крестик для пустой ячейки результата. */
+function renderMissingResultCell(tag: "span" | "time" = "span"): string {
+  return `<${tag} class="games-results-table__missing" aria-label="Нет ответа">×</${tag}>`;
+}
 
 /** Рендерит архив ответов игроков по одному завершенному вопросу. */
 function renderFinalQuestionResults(
@@ -31,13 +37,26 @@ function renderFinalQuestionResults(
       ${entries
         .map(({ player, answer, place }, index) => {
           const playerLabel = getPlayerFullName(player);
+          const hasAnswer = !isMissingRoundAnswer(answer);
           return `
-            <article class="games-results-table__row${index === 0 ? " games-results-table__row--winner" : ""}" style="--games-result-index: ${index}">
+            <article class="games-results-table__row${player.isMe ? " games-results-table__row--me" : ""}${index === 0 ? " games-results-table__row--winner" : ""}" style="--games-result-index: ${index}">
               <span class="games-results-table__rank">${place}</span>
               ${renderResultsPlayerCell(player, playerLabel, options)}
-              <span>${escapeHtml(formatStoredAnswer(answer?.answer ?? null))}</span>
-              <span>${escapeHtml(formatResultTableDistance(answer))}</span>
-              <time>${escapeHtml(formatDurationMs(answer?.responseTimeMs))}</time>
+              ${
+                hasAnswer
+                  ? `<span>${escapeHtml(formatStoredAnswer(answer?.answer ?? null))}</span>`
+                  : renderMissingResultCell()
+              }
+              ${
+                hasAnswer
+                  ? `<span>${escapeHtml(formatResultTableDistance(answer))}</span>`
+                  : renderMissingResultCell()
+              }
+              ${
+                hasAnswer && Number.isFinite(answer?.responseTimeMs)
+                  ? `<time>${escapeHtml(formatDurationMs(answer?.responseTimeMs))}</time>`
+                  : renderMissingResultCell("time")
+              }
             </article>
           `;
         })

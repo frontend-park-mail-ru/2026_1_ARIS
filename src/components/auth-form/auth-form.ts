@@ -110,7 +110,7 @@ function renderVkIdAuth(): string {
 
       ${renderButton({
         text: '<span class="auth-form__vkid-mark" aria-hidden="true">VK</span><span>Войти через VK ID</span>',
-        variant: "surface",
+        variant: "neutral",
         tag: "link",
         href: getVkIdLoginUrl(),
         className: "auth-form__oauth-button",
@@ -485,7 +485,7 @@ export function renderAuthForm({
               isModal
                 ? renderButton({
                     text: "Создать аккаунт",
-                    variant: "secondary",
+                    variant: "neutral",
                     tag: "button",
                     type: "button",
                     className: "auth-form__secondary-link",
@@ -493,7 +493,7 @@ export function renderAuthForm({
                   })
                 : renderButton({
                     text: "Создать аккаунт",
-                    variant: "secondary",
+                    variant: "neutral",
                     tag: "link",
                     href: "/register",
                     withDataLink: true,

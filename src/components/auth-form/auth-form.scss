@@ -327,12 +327,6 @@
       }
     }
 
-    &__oauth-button {
-      gap: 10px;
-      color: var(--color-text-main);
-      font-weight: var(--font-weight-medium);
-    }
-
     &__vkid-mark {
       display: inline-flex;
       width: var(--auth-form-vkid-size);

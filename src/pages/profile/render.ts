@@ -14,6 +14,7 @@ import {
   renderAvatar,
 } from "./helpers";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
+import { renderCommentCompose } from "../../components/comment-compose/comment-compose";
 import { renderAvatarMarkup } from "../../utils/avatar";
 import { formatPersonName } from "../../utils/display-name";
 import { getMediaFileName, isVideoMedia, resolveMediaUrl } from "../../utils/media";
@@ -217,14 +218,14 @@ export function renderDeleteFriendModal(profile: DisplayProfile): string {
         <div class="profile-delete-modal__actions">
           <button
             type="button"
-            class="profile-delete-modal__button profile-delete-modal__button--primary"
+            class="button button--primary profile-delete-modal__button profile-delete-modal__button--primary"
             data-profile-confirm-delete="${escapeHtml(profile.id)}"
           >
             ${t("profile.removeFriend")}
           </button>
           <button
             type="button"
-            class="profile-delete-modal__button"
+            class="button button--neutral profile-delete-modal__button"
             data-profile-delete-modal-close
           >
             ${t("friends.cancel")}
@@ -772,29 +773,16 @@ export function renderProfilePosts(
                         ${
                           sessionUser
                             ? `
-                        <div class="profile-comment-compose">
-                          ${renderAvatarMarkup(
-                            "profile-comment-compose__avatar",
+                        ${renderCommentCompose({
+                          postId: post.id,
+                          userName:
                             formatPersonName(sessionUser.firstName, sessionUser.lastName) ||
-                              t("widgetbar.userFallback"),
-                            sessionUser.avatarLink,
-                            { width: 32, height: 32 },
-                          )}
-                          <form class="profile-post__comment-form" data-profile-post-comment-form="${escapeHtml(post.id)}" novalidate>
-                            <input
-                              type="text"
-                              class="profile-post__comment-input"
-                              placeholder="${t("profile.commentPlaceholder")}"
-                              data-profile-post-comment-input="${escapeHtml(post.id)}"
-                              maxlength="2000"
-                              autocomplete="off"
-                            >
-                            <button type="submit" class="profile-post__comment-send">
-                              ${t("profile.commentSubmit")}
-                            </button>
-                          </form>
-                        </div>
-                        <p class="profile-post__comment-error" data-profile-post-comment-error="${escapeHtml(post.id)}" hidden></p>
+                            t("widgetbar.userFallback"),
+                          avatarLink: sessionUser.avatarLink,
+                          formAttribute: "data-profile-post-comment-form",
+                          inputAttribute: "data-profile-post-comment-input",
+                          errorAttribute: "data-profile-post-comment-error",
+                        })}
                         `
                             : ""
                         }
@@ -814,12 +802,8 @@ export function renderProfilePosts(
                             <span class="profile-post__stat-icon">
                               <img src="/assets/img/icons/heart.svg" class="profile-post__icon" alt="" />
                             </span>
-                            <span>${post.likes}</span>
+                            <span class="profile-post__stat-count">${post.likes}</span>
                           </button>
-                          <span class="profile-post__stat">
-                            <img src="/assets/img/icons/repost.svg" class="profile-post__icon" alt="" />
-                            ${post.reposts}
-                          </span>
                           <button
                             type="button"
                             class="profile-post__stat profile-post__stat-button"
@@ -827,7 +811,7 @@ export function renderProfilePosts(
                             aria-expanded="false"
                           >
                             <img src="/assets/img/icons/chat.svg" class="profile-post__icon" alt="" />
-                            <span data-profile-post-comment-count="${escapeHtml(post.id)}">${post.comments}</span>
+                            <span class="profile-post__stat-count" data-profile-post-comment-count="${escapeHtml(post.id)}">${post.comments}</span>
                           </button>
                         </div>
                         <time
@@ -924,7 +908,12 @@ function formatProfilePostRelativeTime(iso?: string, fallback = ""): string {
   }).format(createdAt);
 }
 
-export function renderSection(title: string, content: string, action = ""): string {
+export function renderSection(
+  title: string,
+  content: string,
+  action = "",
+  titleAttributes = "",
+): string {
   if (!content.trim()) {
     return "";
   }
@@ -932,7 +921,7 @@ export function renderSection(title: string, content: string, action = ""): stri
   return `
     <section class="profile-section">
       <header class="profile-section__header">
-        <h2 class="profile-section__title">${escapeHtml(title)}</h2>
+        <h2 class="profile-section__title" ${titleAttributes}>${escapeHtml(title)}</h2>
         ${action}
       </header>
       <div class="profile-section__body">

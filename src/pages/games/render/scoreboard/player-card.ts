@@ -63,7 +63,7 @@ export function renderGameScoreboardPlayerCard(
       <span class="games-game-player__info">
         ${nameView}
       </span>
-      <span class="games-game-player__score">
+      <span class="games-game-player__score${scoreAnimationStartAt > 0 ? " games-game-player__score--pending-round-points" : ""}"${scoreAnimationStartAt > 0 ? ` data-games-score-shell data-games-score-show-at="${scoreAnimationStartAt}"` : ""}>
         <strong${
           scoreAnimationStartAt > 0
             ? ` data-games-score-animate data-games-score-from="${displayScore}" data-games-score-to="${finalScore}" data-games-score-start-at="${scoreAnimationStartAt}"`

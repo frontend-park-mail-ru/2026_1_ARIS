@@ -1,6 +1,26 @@
 import type { HandleGamesRoomMenusClickOptions } from "./types";
 
 /**
+ * Синхронизирует aria-expanded у кнопок меню без пересборки основного контента.
+ */
+function syncQuestionMenuToggleState(
+  toggle: HTMLElement,
+  questionKey: string,
+  isOpen: boolean,
+): void {
+  toggle.ownerDocument
+    .querySelectorAll<HTMLElement>("[data-games-question-menu-toggle]")
+    .forEach((button) => {
+      button.setAttribute(
+        "aria-expanded",
+        button.getAttribute("data-games-question-menu-toggle") === questionKey && isOpen
+          ? "true"
+          : "false",
+      );
+    });
+}
+
+/**
  * Обрабатывает player menu toggle.
  */
 function handlePlayerMenuToggleClick(
@@ -10,7 +30,7 @@ function handlePlayerMenuToggleClick(
 ): boolean {
   event.preventDefault();
   const profileId = toggle.getAttribute("data-games-player-menu-toggle") ?? "";
-  options.setGamesState({
+  options.setGamesOverlayState({
     playerMenuProfileId: options.state.playerMenuProfileId === profileId ? "" : profileId,
     ...options.getFloatingMenuAnchor(toggle),
     questionMenuKey: "",
@@ -34,10 +54,12 @@ function handleQuestionMenuToggleClick(
   event.preventDefault();
   const questionKey = toggle.getAttribute("data-games-question-menu-toggle") ?? "";
   if (!questionKey) return true;
-  options.setGamesState({
+  const isOpen = options.state.questionMenuKey !== questionKey;
+  syncQuestionMenuToggleState(toggle, questionKey, isOpen);
+  options.setGamesOverlayState({
     ...options.getFloatingMenuAnchor(toggle),
     ...options.closeGamesMenus(),
-    questionMenuKey: options.state.questionMenuKey === questionKey ? "" : questionKey,
+    questionMenuKey: isOpen ? questionKey : "",
     message: "",
     error: "",
     errorTarget: "",
@@ -54,7 +76,7 @@ function handleTitleMenuToggleClick(
   options: HandleGamesRoomMenusClickOptions,
 ): boolean {
   event.preventDefault();
-  options.setGamesState({
+  options.setGamesOverlayState({
     ...options.getFloatingMenuAnchor(toggle),
     ...options.closeGamesMenus(),
     titleMenuOpen: !options.state.titleMenuOpen,
@@ -74,7 +96,7 @@ function handlePasswordMenuToggleClick(
   options: HandleGamesRoomMenusClickOptions,
 ): boolean {
   event.preventDefault();
-  options.setGamesState({
+  options.setGamesOverlayState({
     ...options.getFloatingMenuAnchor(toggle),
     ...options.closeGamesMenus(),
     passwordMenuOpen: !options.state.passwordMenuOpen,

@@ -101,6 +101,23 @@
     margin-top: var(--space-4);
   }
 
+  .friends-results-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .friends-results-section + .friends-results-section {
+    margin-top: 18px;
+  }
+
+  .friends-results-section__heading {
+    margin: 0;
+    color: var(--color-text-meta);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-medium);
+  }
+
   .friends-card {
     display: grid;
     grid-template-columns: 89px minmax(0, 1fr) auto;
@@ -272,6 +289,7 @@
 
   .friends-modal__header {
     display: flex;
+    min-height: var(--modal-close-size, 45px);
     align-items: center;
     justify-content: space-between;
     gap: 12px;
@@ -325,42 +343,15 @@
   }
 
   .friends-modal__button {
-    min-height: 44px;
-    padding: 10px 18px;
-    border: 1px solid var(--color-interactive-primary);
-    border-radius: var(--radius-small);
-    background: var(--color-surface-base);
-    color: var(--color-interactive-primary);
-    font-size: var(--text-size-body-lg);
-    cursor: pointer;
-    transition:
-      background-color var(--transition-control),
-      color var(--transition-control),
-      box-shadow var(--transition-control),
-      transform var(--transition-control);
+    justify-content: center;
   }
 
   .friends-modal__button--primary {
     flex: 1 1 174px;
-    background: var(--color-interactive-primary);
-    color: var(--color-text-on-primary);
   }
 
   .friends-modal__button:not(.friends-modal__button--primary) {
     flex: 0 0 96px;
-  }
-
-  .friends-modal__button:focus-visible {
-    outline: none;
-    box-shadow: var(--control-focus-ring);
-  }
-
-  .friends-modal__button:hover:not(.friends-modal__button--primary) {
-    background: var(--color-surface-muted);
-  }
-
-  .friends-modal__button:active:not(:disabled) {
-    transform: var(--control-press-transform);
   }
 
   @media (width <= 768px) {

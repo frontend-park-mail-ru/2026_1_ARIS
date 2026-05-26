@@ -348,7 +348,7 @@ function renderGuestHeader(): string {
 
         ${renderButton({
           text: t("header.login"),
-          variant: "secondary",
+          variant: "neutral",
           tag: "button",
           type: "button",
           className: "button--small",

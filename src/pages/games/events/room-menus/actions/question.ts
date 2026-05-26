@@ -11,7 +11,7 @@ function handleQuestionCopyAction(
   if (!action.startsWith("question-copy:")) return false;
   const questionKey = action.slice("question-copy:".length);
   void options.handleCopyQuestionAnswer(questionKey).catch(() => {
-    options.setGamesState({ ...options.closeGamesMenus(), message: "", error: "" });
+    options.setGamesOverlayState({ ...options.closeGamesMenus(), message: "", error: "" });
     options.showAppToast("Не удалось скопировать вопрос.");
   });
   return true;
@@ -31,7 +31,7 @@ function handleQuestionReportAction(
     options.reportedQuestionKeys.has(questionKey) ||
     options.reportingQuestionKeys.has(questionKey)
   ) {
-    options.setGamesState({
+    options.setGamesOverlayState({
       ...options.closeGamesMenus(),
       message: "",
       error: "",

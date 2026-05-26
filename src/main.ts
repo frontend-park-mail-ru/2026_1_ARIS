@@ -8,6 +8,7 @@ import "./styles/tokens.css";
 import "./styles/layout.scss";
 
 import "./components/button/button.scss";
+import "./components/comment-compose/comment-compose.scss";
 import "./components/header/header.scss";
 import "./components/input/input.scss";
 import "./components/logo/logo.scss";

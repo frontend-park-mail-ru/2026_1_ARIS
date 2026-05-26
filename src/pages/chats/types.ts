@@ -76,13 +76,10 @@ export type StickerPickerState = {
   open: boolean;
   loading: boolean;
   stickersLoading: boolean;
-  saving: boolean;
   errorMessage: string;
-  search: string;
   packs: StickerPack[];
   activePackId: string;
   stickersByPackId: Map<string, Sticker[]>;
-  newPackTitle: string;
 };
 
 /**

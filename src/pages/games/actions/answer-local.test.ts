@@ -93,11 +93,17 @@ describe("games answer local action", () => {
       }),
     );
     expect(syncCurrentAnswerFormDom).toHaveBeenCalledTimes(1);
-    expect(syncPlayersRailAnswerDom).toHaveBeenCalledTimes(1);
+    expect(syncPlayersRailAnswerDom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentQuestion: expect.objectContaining({ hasAnswered: true }),
+      }),
+    );
   });
 
-  it("делает полный state update, если incoming-комната не совпадает с текущим вопросом", () => {
+  it("не перерисовывает комнату полностью, если incoming-комната не совпадает с текущим вопросом", () => {
     const setGamesState = vi.fn();
+    const patchGamesState = vi.fn();
+    const syncCurrentAnswerFormDom = vi.fn();
     const currentRoom = createRoom();
     const incomingRoom = createRoom({
       currentQuestion: { ...currentRoom.currentQuestion!, id: "q2" },
@@ -108,17 +114,21 @@ describe("games answer local action", () => {
       currentRoom,
       incomingRoom,
       setGamesState,
-      patchGamesState: vi.fn(),
-      syncCurrentAnswerFormDom: vi.fn(),
+      patchGamesState,
+      syncCurrentAnswerFormDom,
       syncPlayersRailAnswerDom: vi.fn(),
     });
 
-    expect(setGamesState).toHaveBeenCalledWith(
+    expect(setGamesState).not.toHaveBeenCalled();
+    expect(patchGamesState).toHaveBeenCalledWith(
       expect.objectContaining({
-        room: incomingRoom,
         submittedQuestionId: "q1",
         submittedAnswerValue: "7",
+        room: expect.objectContaining({
+          currentQuestion: expect.objectContaining({ id: "q1", hasAnswered: true }),
+        }),
       }),
     );
+    expect(syncCurrentAnswerFormDom).toHaveBeenCalledTimes(1);
   });
 });

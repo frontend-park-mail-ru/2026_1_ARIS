@@ -247,6 +247,10 @@ export function validateProfileFormLive(form: HTMLFormElement): void {
 export function toggleProfileEditor(root: ParentNode, forceExpanded?: boolean): void {
   const editor = root.querySelector("[data-profile-editor]");
   const button = root.querySelector("[data-profile-edit-toggle]");
+  const infoView = root.querySelector("[data-profile-info-view]");
+  const infoTitle = root.querySelector("[data-profile-info-title]");
+  const more = root.querySelector(".profile-card__more");
+  const moreButton = root.querySelector("[data-profile-more-toggle]");
 
   if (!(editor instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) {
     return;
@@ -254,6 +258,26 @@ export function toggleProfileEditor(root: ParentNode, forceExpanded?: boolean): 
 
   const isExpanded = forceExpanded ?? editor.hidden;
   editor.hidden = !isExpanded;
+  if (infoView instanceof HTMLElement) {
+    infoView.hidden = isExpanded;
+  }
+  if (infoTitle instanceof HTMLElement) {
+    infoTitle.textContent = isExpanded
+      ? (infoTitle.dataset.profileInfoEditTitle ?? infoTitle.textContent)
+      : (infoTitle.dataset.profileInfoDefaultTitle ?? infoTitle.textContent);
+  }
+  if (more instanceof HTMLElement) {
+    if (isExpanded) {
+      more.dataset.profilePreviousHidden = String(more.hidden);
+      more.hidden = true;
+    } else if (typeof more.dataset.profilePreviousHidden === "string") {
+      more.hidden = more.dataset.profilePreviousHidden === "true";
+      delete more.dataset.profilePreviousHidden;
+    }
+  }
+  if (moreButton instanceof HTMLElement) {
+    moreButton.hidden = isExpanded;
+  }
   button.textContent = isExpanded ? "скрыть форму" : "редактировать";
   button.setAttribute("aria-expanded", String(isExpanded));
 }

@@ -5,6 +5,15 @@ import { handleTitleFloatingMenuAction } from "./actions/title";
 import type { HandleGamesRoomMenusClickOptions } from "./types";
 
 /**
+ * Сбрасывает раскрытое состояние кнопок вопроса без пересборки карточки итогов.
+ */
+function closeQuestionMenuToggleState(target: Element): void {
+  target.ownerDocument
+    .querySelectorAll<HTMLElement>("[data-games-question-menu-toggle]")
+    .forEach((button) => button.setAttribute("aria-expanded", "false"));
+}
+
+/**
  * Обрабатывает action-кнопки floating menu.
  */
 export function handleFloatingMenuActionClick(
@@ -14,7 +23,8 @@ export function handleFloatingMenuActionClick(
 ): boolean {
   if (target.closest("[data-floating-menu-close]")) {
     event.preventDefault();
-    options.setGamesState({
+    closeQuestionMenuToggleState(target);
+    options.setGamesOverlayState({
       ...options.closeGamesMenus(),
       message: "",
       error: "",
@@ -27,6 +37,7 @@ export function handleFloatingMenuActionClick(
   if (!(floatingMenuActionButton instanceof HTMLElement)) return false;
 
   event.preventDefault();
+  closeQuestionMenuToggleState(target);
   const action = floatingMenuActionButton.getAttribute("data-floating-menu-action") ?? "";
   if (handleQuestionFloatingMenuAction(action, options)) return true;
   if (handleTitleFloatingMenuAction(action, options)) return true;

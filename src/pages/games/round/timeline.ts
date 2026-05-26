@@ -1,4 +1,5 @@
 import type { GameRoom } from "../../../api/games";
+import { roundResultCountdownMs } from "../shared/constants";
 import {
   getRoundAnswerShowcaseItems,
   getRoundPointsByProfile,
@@ -16,7 +17,7 @@ function getRoundTimelinePlayerLabel(player: GameRoom["players"][number]): strin
 
 /** Возвращает задержку раскрытия карточки ответа. */
 export function getRoundResultCardDelayMs(revealIndex: number): number {
-  return revealIndex === 0 ? 220 : 1400 + (revealIndex - 1) * 1050;
+  return revealIndex === 0 ? 260 : 1600 + (revealIndex - 1) * 1300;
 }
 
 /** Возвращает максимальный индекс раскрытия ответов раунда. */
@@ -43,7 +44,7 @@ export function getRoundTimesRevealDelayMs(
   room: GameRoom,
   question: GameRoom["questions"][number],
 ): number {
-  return getRoundAnswersRevealEndDelayMs(room, question) + 450;
+  return getRoundAnswersRevealEndDelayMs(room, question) + 600;
 }
 
 /** Возвращает последовательность начисления очков игрокам. */
@@ -74,7 +75,7 @@ export function getRoundScoreAnimationStartDelayMs(
 
 /** Возвращает шаг задержки между начислениями очков. */
 export function getRoundScoreStepDelayMs(): number {
-  return 900;
+  return 1250;
 }
 
 /** Возвращает задержку финальной сортировки scoreboard. */
@@ -98,6 +99,14 @@ export function getRoundResultTimerDelayMs(
   return getRoundScoreboardSortDelayMs(room, question) + 850;
 }
 
+/** Возвращает задержку полного перехода к следующему этапу после результата раунда. */
+export function getRoundResultTransitionEndDelayMs(
+  room: GameRoom,
+  question: GameRoom["questions"][number],
+): number {
+  return getRoundResultTimerDelayMs(room, question) + roundResultCountdownMs;
+}
+
 /** Возвращает timestamp начала таймлайна результата раунда. */
 export function getRoundResultTimelineStartMs(question: GameRoom["questions"][number]): number {
   const completedAtMs = question.completedAt
@@ -112,4 +121,14 @@ export function getRoundResultTimerStartMs(
   question: GameRoom["questions"][number],
 ): number {
   return getRoundResultTimelineStartMs(question) + getRoundResultTimerDelayMs(room, question);
+}
+
+/** Возвращает timestamp завершения перехода к следующему этапу. */
+export function getRoundResultTransitionEndMs(
+  room: GameRoom,
+  question: GameRoom["questions"][number],
+): number {
+  return (
+    getRoundResultTimelineStartMs(question) + getRoundResultTransitionEndDelayMs(room, question)
+  );
 }

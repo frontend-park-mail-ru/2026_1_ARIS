@@ -2,6 +2,7 @@
  * Рендер страницы сообществ.
  */
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
+import { renderCommentCompose } from "../../components/comment-compose/comment-compose";
 import { renderAvatarMarkup, resolveAvatarSrc } from "../../utils/avatar";
 import { getMediaFileName, isVideoMedia, resolveMediaUrl } from "../../utils/media";
 import { formatPersonName } from "../../utils/display-name";
@@ -475,31 +476,14 @@ function renderCommunityPostComments(postId: string, bundle: CommunityBundle): s
       ${
         canComment && sessionUser
           ? `
-            <div class="profile-comment-compose">
-              ${renderAvatarMarkup(
-                "profile-comment-compose__avatar",
-                userName,
-                sessionUser.avatarLink,
-                {
-                  width: 32,
-                  height: 32,
-                },
-              )}
-              <form class="profile-post__comment-form" data-community-post-comment-form="${escapeHtml(postId)}" novalidate>
-                <input
-                  type="text"
-                  class="profile-post__comment-input"
-                  placeholder="${t("profile.commentPlaceholder")}"
-                  data-community-post-comment-input="${escapeHtml(postId)}"
-                  maxlength="2000"
-                  autocomplete="off"
-                >
-                <button type="submit" class="profile-post__comment-send">
-                  ${t("profile.commentSubmit")}
-                </button>
-              </form>
-            </div>
-            <p class="profile-post__comment-error" data-community-post-comment-error="${escapeHtml(postId)}" hidden></p>
+            ${renderCommentCompose({
+              postId,
+              userName,
+              avatarLink: sessionUser.avatarLink,
+              formAttribute: "data-community-post-comment-form",
+              inputAttribute: "data-community-post-comment-input",
+              errorAttribute: "data-community-post-comment-error",
+            })}
           `
           : ""
       }
@@ -597,12 +581,8 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
             <span class="profile-post__stat-icon">
               <img src="/assets/img/icons/heart.svg" class="profile-post__icon" alt="" />
             </span>
-            <span>${post.likes}</span>
+            <span class="profile-post__stat-count">${post.likes}</span>
           </button>
-          <span class="profile-post__stat">
-            <img src="/assets/img/icons/repost.svg" class="profile-post__icon" alt="" />
-            ${post.reposts}
-          </span>
           <button
             type="button"
             class="profile-post__stat profile-post__stat-button"
@@ -610,7 +590,7 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
             aria-expanded="false"
           >
             <img src="/assets/img/icons/chat.svg" class="profile-post__icon" alt="" />
-            <span data-community-post-comment-count="${escapeHtml(post.id)}">${post.comments}</span>
+            <span class="profile-post__stat-count" data-community-post-comment-count="${escapeHtml(post.id)}">${post.comments}</span>
           </button>
         </div>
         <time
@@ -937,12 +917,12 @@ export function renderCommunityFormModal(): string {
             ${
               form.step > 1
                 ? `
-                  <button type="button" class="community-modal__button" data-community-form-prev>
+                  <button type="button" class="button button--neutral community-modal__button" data-community-form-prev>
                     ${t("communities.formBack")}
                   </button>
                 `
                 : `
-                  <button type="button" class="community-modal__button" data-community-form-close>
+                  <button type="button" class="button button--neutral community-modal__button" data-community-form-close>
                     ${t("communities.formCancel")}
                   </button>
                 `
@@ -950,12 +930,12 @@ export function renderCommunityFormModal(): string {
             ${
               form.step < 4
                 ? `
-                  <button type="button" class="community-modal__button community-modal__button--primary" data-community-form-next ${isCheckingName ? 'aria-busy="true"' : ""}>
+                  <button type="button" class="button button--primary community-modal__button community-modal__button--primary" data-community-form-next ${isCheckingName ? 'aria-busy="true"' : ""}>
                     ${t("communities.formNext")}
                   </button>
                 `
                 : `
-                  <button type="submit" class="community-modal__button community-modal__button--primary" ${form.isSaving ? "disabled" : ""}>
+                  <button type="submit" class="button button--primary community-modal__button community-modal__button--primary" ${form.isSaving ? "disabled" : ""}>
                     ${
                       form.isSaving
                         ? t("communities.formSaving")
@@ -1194,25 +1174,25 @@ function renderCommunityMediaEditor(kind: "avatar" | "cover"): string {
 
       <div class="community-media-editor__controls" data-community-media-zoom-wrap="${kind}" hidden>
         <div class="community-media-editor__tools">
-          <button
-            type="button"
-            class="community-media-editor__button community-media-editor__button--secondary community-media-editor__tool-button"
-            data-community-media-rotate-left="${kind}"
-          >
+            <button
+              type="button"
+              class="button button--neutral community-media-editor__button community-media-editor__button--secondary community-media-editor__tool-button"
+              data-community-media-rotate-left="${kind}"
+            >
             ${t("communities.formRotateLeft")}
           </button>
-          <button
-            type="button"
-            class="community-media-editor__button community-media-editor__button--secondary community-media-editor__tool-button"
-            data-community-media-rotate-right="${kind}"
-          >
+            <button
+              type="button"
+              class="button button--neutral community-media-editor__button community-media-editor__button--secondary community-media-editor__tool-button"
+              data-community-media-rotate-right="${kind}"
+            >
             ${t("communities.formRotateRight")}
           </button>
         </div>
 
         <button
           type="button"
-          class="community-media-editor__button community-media-editor__button--secondary community-media-editor__button--full community-media-editor__button--danger"
+          class="button button--neutral community-media-editor__button community-media-editor__button--secondary community-media-editor__button--full community-media-editor__button--danger"
           data-community-media-delete="${kind}"
           ${canResetChanges ? "" : "hidden"}
         >
@@ -1341,7 +1321,7 @@ export function renderCommunityPostModal(): string {
           <div class="profile-post-modal__toolbar">
             <button
               type="button"
-              class="profile-post-modal__button profile-post-modal__button--secondary"
+              class="button button--neutral profile-post-modal__button profile-post-modal__button--secondary"
               data-community-post-pick-image
               ${composer.isSaving || composer.mediaItems.length >= 5 ? "disabled" : ""}
             >
@@ -1349,7 +1329,7 @@ export function renderCommunityPostModal(): string {
             </button>
             <button
               type="button"
-              class="profile-post-modal__button profile-post-modal__button--secondary"
+              class="button button--neutral profile-post-modal__button profile-post-modal__button--secondary"
               data-community-post-pick-file
               ${composer.isSaving || composer.fileItems.length >= 10 ? "disabled" : ""}
             >
@@ -1395,12 +1375,12 @@ export function renderCommunityPostModal(): string {
           <div class="profile-post-modal__actions">
             <button
               type="submit"
-              class="profile-post-modal__button profile-post-modal__button--primary"
+              class="button button--primary profile-post-modal__button profile-post-modal__button--primary"
               data-community-post-save
             >
               ${submitLabel}
             </button>
-            <button type="button" class="profile-post-modal__button" data-community-post-close>
+            <button type="button" class="button button--neutral profile-post-modal__button" data-community-post-close>
               ${t("friends.cancel")}
             </button>
           </div>
@@ -1622,14 +1602,14 @@ export function renderCommunityPostDeleteModal(): string {
         <div class="profile-post-delete-modal__actions">
           <button
             type="button"
-            class="profile-post-delete-modal__button profile-post-delete-modal__button--primary"
+            class="button button--primary profile-post-delete-modal__button profile-post-delete-modal__button--primary"
             data-community-post-delete-confirm
           >
             ${t("communities.removePost")}
           </button>
           <button
             type="button"
-            class="profile-post-delete-modal__button"
+            class="button button--neutral profile-post-delete-modal__button"
             data-community-post-delete-close
           >
             ${t("friends.cancel")}
@@ -1695,10 +1675,10 @@ export function renderMemberConfirmModal(): string {
         <p class="community-modal__text">${text}</p>
 
         <div class="community-modal__actions">
-          <button type="button" class="community-modal__button community-modal__button--primary" data-member-confirm-ok>
+          <button type="button" class="button button--primary community-modal__button community-modal__button--primary" data-member-confirm-ok>
             ${t("communities.confirm")}
           </button>
-          <button type="button" class="community-modal__button" data-member-confirm-close>
+          <button type="button" class="button button--neutral community-modal__button" data-member-confirm-close>
             ${t("friends.cancel")}
           </button>
         </div>
@@ -1740,10 +1720,10 @@ export function renderCommunityLeaveModal(): string {
         </p>
 
         <div class="community-modal__actions">
-          <button type="button" class="community-modal__button community-modal__button--primary" data-community-leave-confirm="${id}">
+          <button type="button" class="button button--primary community-modal__button community-modal__button--primary" data-community-leave-confirm="${id}">
             ${t("communities.confirm")}
           </button>
-          <button type="button" class="community-modal__button" data-community-leave-close>
+          <button type="button" class="button button--neutral community-modal__button" data-community-leave-close>
             ${t("friends.cancel")}
           </button>
         </div>
@@ -1779,10 +1759,10 @@ export function renderCommunityDeleteModal(): string {
         <p class="community-modal__text">${t("communities.deleteText")}</p>
 
         <div class="community-modal__actions">
-          <button type="button" class="community-modal__button community-modal__button--primary" data-community-delete-confirm="${id}">
+          <button type="button" class="button button--primary community-modal__button community-modal__button--primary" data-community-delete-confirm="${id}">
             ${t("communities.delete")}
           </button>
-          <button type="button" class="community-modal__button" data-community-delete-close>
+          <button type="button" class="button button--neutral community-modal__button" data-community-delete-close>
             ${t("friends.cancel")}
           </button>
         </div>

@@ -1016,7 +1016,7 @@ describe("игровая комната", () => {
     cy.location("pathname").should("eq", "/id1");
   });
 
-  it("позволяет всем игрокам запросить повторную игру", () => {
+  it("скрывает блок повторной игры на финальном экране", () => {
     cy.mockAuthApi();
     const finalRoom = {
       ...roomResponse("finished", "50"),
@@ -1029,73 +1029,16 @@ describe("игровая комната", () => {
       ),
       winnerProfileId: "2",
     };
-    let replayCalls = 0;
 
     cy.intercept("GET", "**/api/games/rooms/50", { body: finalRoom }).as("gameRoom50");
     cy.intercept("GET", "**/api/games/rooms/50/messages*", { body: [] }).as("roomMessages50");
-    cy.intercept("PATCH", "**/api/games/rooms/50/replay", (req) => {
-      replayCalls += 1;
-      if (replayCalls === 1) {
-        expect(req.body).to.deep.equal({ isReady: true });
-        req.reply({
-          body: {
-            ...finalRoom,
-            players: [
-              { ...roomPlayers[0], score: 1, isReady: true },
-              { ...roomPlayers[1], score: 2, isReady: false },
-            ],
-          },
-        });
-        return;
-      }
-      if (replayCalls === 2) {
-        expect(req.body).to.deep.equal({ isReady: false });
-        req.reply({ body: finalRoom });
-        return;
-      }
-      if (replayCalls === 3) {
-        expect(req.body).to.deep.equal({ isReady: true });
-      }
-      req.reply({
-        body: {
-          ...roomResponse("active", "50"),
-          players: [
-            { ...roomPlayers[0], score: 0, isReady: false },
-            { ...roomPlayers[1], score: 0, isReady: false },
-          ],
-          currentQuestion: null,
-          nextQuestionAt: new Date(Date.now() + 10_000).toISOString(),
-          questions: [],
-          winnerProfileId: "",
-        },
-      });
-    }).as("replayRoom50");
 
     cy.visitApp({ path: "/games/quiz/50", authenticated: true });
     cy.wait("@gameRoom50");
     cy.wait("@roomMessages50");
 
-    cy.contains("[data-games-replay-toggle]", "Сыграть еще раз").scrollIntoView();
-    cy.contains("[data-games-replay-toggle]", "Сыграть еще раз").click({ force: true });
-    cy.wait("@replayRoom50");
-    cy.contains("[data-games-replay-toggle]", "Ждем других игроков. Отменить").should("exist");
-    cy.contains(".games-replay-action", "Ждем игроков: 1 из 2").should("exist");
-    cy.get(".games-replay-action__meter").should("not.exist");
-    cy.get(".games-replay-player--ready").should("have.length", 1).and("contain", "готов");
-    cy.get(".games-replay-player--waiting").should("have.length", 1).and("contain", "ждет");
-
-    cy.contains("[data-games-replay-toggle]", "Ждем других игроков. Отменить").scrollIntoView();
-    cy.contains("[data-games-replay-toggle]", "Ждем других игроков. Отменить").click({
-      force: true,
-    });
-    cy.wait("@replayRoom50");
-    cy.contains("[data-games-replay-toggle]", "Сыграть еще раз").should("exist");
-
-    cy.contains("[data-games-replay-toggle]", "Сыграть еще раз").scrollIntoView();
-    cy.contains("[data-games-replay-toggle]", "Сыграть еще раз").click({ force: true });
-    cy.wait("@replayRoom50");
-    cy.contains(".games-stage-card__title", "Первый вопрос через").should("be.visible");
-    cy.get(".games-start-countdown__value").should("be.visible");
+    cy.get(".games-replay-action").should("not.exist");
+    cy.get("[data-games-replay-toggle]").should("not.exist");
   });
 
   it("красиво показывает итоги раунда перед следующим вопросом", () => {
@@ -1157,13 +1100,13 @@ describe("игровая комната", () => {
       .and("not.contain", "клеток");
     cy.get("[data-games-round-next-timer].games-question-countdown")
       .should("be.visible")
-      .and("not.have.attr", "data-games-timer-total-ms");
+      .and("have.attr", "data-games-timer-total-ms", "5000");
     cy.get("[data-games-round-next-timer].games-question-countdown").should(($timer) => {
       const start = new Date($timer.attr("data-games-timer-start") ?? "").getTime();
       const deadline = new Date($timer.attr("data-games-timer-deadline") ?? "").getTime();
       const delayUntil = Number($timer.attr("data-games-timer-delay-until") ?? "0");
       expect(start).to.equal(delayUntil);
-      expect(deadline).to.be.greaterThan(start);
+      expect(deadline - start).to.equal(5000);
     });
     cy.contains(
       "[data-games-round-next-timer] .games-question-countdown__line",
@@ -1228,7 +1171,7 @@ describe("игровая комната", () => {
       .and("not.contain", "4.20 сек")
       .should("have.attr", "style")
       .and("include", "--games-answer-side: -1")
-      .and("include", "--games-result-delay: 2450ms");
+      .and("include", "--games-result-delay: 2900ms");
     cy.get("[data-games-round-result-card]")
       .eq(1)
       .should("contain", "Аня")
@@ -1238,7 +1181,7 @@ describe("игровая комната", () => {
       .and("not.contain", "3.10 сек")
       .should("have.attr", "style")
       .and("include", "--games-answer-side: 0")
-      .and("include", "--games-result-delay: 3500ms");
+      .and("include", "--games-result-delay: 4200ms");
     cy.get("[data-games-round-result-card]")
       .eq(2)
       .should("contain", "Игорь")
@@ -1248,7 +1191,7 @@ describe("игровая комната", () => {
       .and("not.contain", "нет времени")
       .should("have.class", "games-answer-axis-card--missing")
       .should("have.attr", "style")
-      .and("include", "--games-result-delay: 1400ms");
+      .and("include", "--games-result-delay: 1600ms");
     cy.get("[data-games-round-result-card]").eq(0).should("not.contain", "Вы");
     cy.contains("[data-games-room-players-rail] .games-game-player", "Аня")
       .find("[data-games-round-points-badge]")

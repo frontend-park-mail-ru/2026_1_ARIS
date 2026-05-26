@@ -586,8 +586,16 @@ function bindFeedCommentActions(): void {
 
 function getSortedFeedItems(items: PostcardModel[]): PostcardModel[] {
   if (getCurrentFeedMode() === "for-you") {
-    return items;
+    const shuffled = [...items];
+
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex]!, shuffled[index]!];
+    }
+
+    return shuffled;
   }
+
   return [...items].sort((a, b) => new Date(b.timeRaw).getTime() - new Date(a.timeRaw).getTime());
 }
 
@@ -722,7 +730,7 @@ async function fetchNextFeedPage(): Promise<void> {
       ? await getFeed({ cursor, limit: 20, mode })
       : await getPublicFeed({ cursor, limit: 20 });
     const mapped = mapFeedResponse(response);
-    const allItems = [...activeFeedState.items, ...mapped.items];
+    const allItems = [...activeFeedState.items, ...getSortedFeedItems(mapped.items)];
 
     feedItemsCache.set(`${authKey}:${mode}`, allItems);
     persistFeedItems(authKey, mode, allItems);

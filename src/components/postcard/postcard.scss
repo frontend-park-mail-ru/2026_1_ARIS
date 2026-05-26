@@ -6,8 +6,9 @@
     --postcard-header-gap: 10px; // расстояние между аватаркой и автором в шапке
     --postcard-media-height: 320px; // базовая высота медиа-блока
     --postcard-media-row-height: 155px; // высота строки в двухрядных сетках медиа
+    --postcard-footer-offset: 4px; // дополнительный отступ сверху у футера
     --postcard-stats-gap: 20px; // расстояние между группами статистики внизу карточки
-    --postcard-stat-gap: 6px; // расстояние между иконкой и числом внутри stat-элемента
+    --postcard-stat-gap: 2px; // расстояние между иконкой и числом внутри stat-элемента
     --postcard-stat-padding: 4px; // внутренний отступ у stat-элемента, чтобы увеличить кликабельную область
     --postcard-stat-icon-size: 18px; // размер иконок статистики
     --postcard-expand-offset: 4px; // отступ сверху у кнопки "читать полностью"
@@ -276,6 +277,7 @@
     &__footer {
       display: flex; // футер — flex-контейнер
       width: 100%; // футер занимает всю ширину карточки
+      margin-top: var(--postcard-footer-offset);
       align-items: center; // статистика и время выровнены по вертикали
       justify-content: space-between; // статистика слева, время справа
     }

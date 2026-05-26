@@ -342,7 +342,7 @@ function renderRegisterStepActions(step: RegisterStep): string {
 
         ${renderButton({
           text: "Уже есть аккаунт? Войти",
-          variant: "secondary",
+          variant: "neutral",
           tag: "button",
           type: "button",
           className: "auth-form__secondary-link",
@@ -364,7 +364,7 @@ function renderRegisterStepActions(step: RegisterStep): string {
 
       ${renderButton({
         text: "Назад",
-        variant: "secondary",
+        variant: "neutral",
         tag: "button",
         type: "button",
         className: "auth-form__secondary-link",

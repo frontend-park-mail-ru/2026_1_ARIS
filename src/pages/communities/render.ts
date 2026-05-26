@@ -3,6 +3,7 @@
  */
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderCommentCompose } from "../../components/comment-compose/comment-compose";
+import { renderInput } from "../../components/input/input";
 import { renderAvatarMarkup, resolveAvatarSrc } from "../../utils/avatar";
 import { getMediaFileName, isVideoMedia, resolveMediaUrl } from "../../utils/media";
 import { formatPersonName } from "../../utils/display-name";
@@ -1015,37 +1016,32 @@ function renderCommunityFormStepContent(step: CommunityFormStep): string {
   if (step === 1) {
     return `
       <div class="community-form__step">
-        <label class="community-form__field">
+        <div class="community-form__field">
           <span class="community-form__field-label">
             ${t("communities.formName")}
             ${renderCommunityFormHelpTooltip(t("communities.formTitleHint"))}
           </span>
-          <input
-            name="title"
-            value="${escapeHtml(form.title)}"
-            maxlength="64"
-            required
-            data-community-title
-            placeholder="${t("communities.formPickTitle")}"
-          >
-        </label>
-        <label class="community-form__field">
+          ${renderInput({
+            name: "title",
+            value: escapeHtml(form.title),
+            placeholder: t("communities.formPickTitle"),
+            className: "community-form__input",
+            attributes: `maxlength="64" required data-community-title aria-label="${t("communities.formName")}"`,
+          })}
+        </div>
+        <div class="community-form__field">
           <span class="community-form__field-label">
             ${t("communities.formUsername")}
             ${renderCommunityFormHelpTooltip(t("communities.formUsernameHint"), "right")}
           </span>
-          <input
-            name="username"
-            value="${escapeHtml(form.username)}"
-            maxlength="20"
-            required
-            autocapitalize="off"
-            autocomplete="off"
-            spellcheck="false"
-            data-community-username
-            placeholder="${t("communities.formUsernamePlaceholder")}"
-          >
-        </label>
+          ${renderInput({
+            name: "username",
+            value: escapeHtml(form.username),
+            placeholder: t("communities.formUsernamePlaceholder"),
+            className: "community-form__input",
+            attributes: `maxlength="20" required autocapitalize="off" autocomplete="off" spellcheck="false" data-community-username aria-label="${t("communities.formUsername")}"`,
+          })}
+        </div>
         <p class="community-form__helper${form.username ? "" : " community-form__helper--hidden"}" data-community-form-address-preview>
           ${form.username ? t("communities.formAddressPreview").replace("{username}", escapeHtml(form.username)) : "&nbsp;"}
         </p>

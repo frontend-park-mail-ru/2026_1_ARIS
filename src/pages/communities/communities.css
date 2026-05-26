@@ -1030,9 +1030,9 @@
     box-shadow: 0 0 0 3px rgb(87 105 240 / 14%);
   }
 
-  .community-form__field input,
-  .community-form__field textarea,
-  .community-form__field select {
+  .community-form__field > input,
+  .community-form__field > textarea,
+  .community-form__field > select {
     width: 100%;
     padding: 9px 12px;
     border: 1px solid rgb(203 210 222 / 88%);
@@ -1048,12 +1048,12 @@
     line-height: var(--line-height-relaxed);
   }
 
-  .community-form__field input:focus,
-  .community-form__field textarea:focus,
-  .community-form__field select:focus {
-    border-color: rgb(87 105 240 / 70%);
+  .community-form__field > input:focus,
+  .community-form__field > textarea:focus,
+  .community-form__field > select:focus {
+    border-color: var(--color-border-default);
     outline: none;
-    box-shadow: 0 0 0 3px rgb(87 105 240 / 14%);
+    box-shadow: 0 0 0 1px var(--color-border-default);
   }
 
   .community-form__type-grid {
@@ -1861,9 +1861,9 @@
       box-shadow: 0 0 0 1px rgb(143 161 255 / 10%);
     }
 
-    .community-form__field input,
-    .community-form__field textarea,
-    .community-form__field select,
+    .community-form__field > input,
+    .community-form__field > textarea,
+    .community-form__field > select,
     .community-form__type-option,
     .community-members-manager__role-current {
       border-color: var(--color-border-default);
@@ -1891,16 +1891,16 @@
       color: var(--color-text-muted);
     }
 
-    .community-form__field input::placeholder,
-    .community-form__field textarea::placeholder {
+    .community-form__field > input::placeholder,
+    .community-form__field > textarea::placeholder {
       color: var(--color-text-placeholder);
     }
 
-    .community-form__field input:focus,
-    .community-form__field textarea:focus,
-    .community-form__field select:focus {
-      border-color: var(--color-border-strong);
-      box-shadow: var(--control-focus-ring);
+    .community-form__field > input:focus,
+    .community-form__field > textarea:focus,
+    .community-form__field > select:focus {
+      border-color: var(--color-border-default);
+      box-shadow: 0 0 0 1px var(--color-border-default);
     }
 
     .community-form__type-option--active,

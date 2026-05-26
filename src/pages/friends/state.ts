@@ -5,6 +5,7 @@
  */
 import {
   getFriends,
+  getUserFriends,
   getIncomingFriendRequests,
   getOutgoingFriendRequests,
   type Friend,
@@ -29,6 +30,8 @@ export const friendAvatarCache = new Map<string, string>();
 export const friendsStore = new StateManager<FriendsState>({
   loaded: false,
   loadedForUserId: "",
+  viewedProfileId: "",
+  viewedProfileName: "",
   loading: false,
   errorMessage: "",
   query: "",
@@ -79,6 +82,8 @@ export function getFriendsErrorMessage(
  */
 export function resetFriendsState(): void {
   friendsState.loaded = false;
+  friendsState.viewedProfileId = "";
+  friendsState.viewedProfileName = "";
   friendsState.loading = false;
   friendsState.errorMessage = "";
   friendsState.query = "";
@@ -278,6 +283,17 @@ export async function hydrateDisplayFriendAvatarLinks(
  * @param {AbortSignal} [signal] Сигнал отмены запроса.
  * @returns {Promise<FriendsData>} Наборы друзей для всех вкладок.
  */
+export async function loadUserFriendsFromBackend(
+  profileId: string,
+  signal?: AbortSignal,
+): Promise<FriendsData> {
+  const friends = await getUserFriends(profileId, "accepted", signal);
+  const hydratedFriends = await hydrateFriendAvatarLinks(friends, signal);
+  const mappedFriends = await Promise.all(hydratedFriends.map(mapFriendToDisplay));
+
+  return { friends: mappedFriends, incoming: [], outgoing: [] };
+}
+
 export async function loadFriendsFromBackend(signal?: AbortSignal): Promise<FriendsData> {
   const [friends, incoming, outgoing] = await Promise.all([
     getFriends("accepted", signal),

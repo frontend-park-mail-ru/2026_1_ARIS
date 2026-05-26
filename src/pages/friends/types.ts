@@ -51,6 +51,10 @@ export type FriendsState = {
   outgoing: DisplayFriend[];
   /** Пользователь, выбранный в модальном окне удаления. */
   deleteModalFriend: DisplayFriend | null;
+  /** Идентификатор чужого профиля, если открыта страница его друзей. */
+  viewedProfileId: string;
+  /** Имя чужого профиля, если оно передано из карточки профиля. */
+  viewedProfileName: string;
 };
 
 /**

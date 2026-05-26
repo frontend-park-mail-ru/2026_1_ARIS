@@ -215,7 +215,7 @@ export function mapFeedResponse(response?: FeedResponse) {
   return {
     items: Array.isArray(response?.posts) ? response.posts.map(mapFeedItemToPostcard) : [],
     nextCursor: response?.nextCursor ?? "",
-    hasMore: Boolean(response?.hasMore),
+    hasMore: Boolean(response?.hasMore && response?.nextCursor),
   };
 }
 

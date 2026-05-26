@@ -483,7 +483,7 @@ export function renderFriends(profile: DisplayProfile): string {
           ? `
             <footer class="profile-friends-card__footer">
               <a
-                href="/friends"
+                href="${profile.isOwnProfile ? "/friends" : `/friends?profileId=${encodeURIComponent(profile.id)}&name=${encodeURIComponent(formatPersonName(profile.firstName, profile.lastName) || profile.username || t("widgetbar.userFallback"))}`}"
                 data-link
                 class="profile-friends-card__more"
               >

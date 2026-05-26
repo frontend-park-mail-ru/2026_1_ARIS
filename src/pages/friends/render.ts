@@ -61,6 +61,7 @@ function getFriendsTabTitle(tab: FriendsTab): string {
 }
 
 function renderFriendActions(friend: DisplayFriend): string {
+  if (friendsState.viewedProfileId) return "";
   const friendId = escapeHtml(friend.profileId);
   let items = "";
 
@@ -206,25 +207,41 @@ export function renderDeleteModal(): string {
   `;
 }
 
+function renderFriendsSummary(totalCount: number, isReadOnlyProfileFriends: boolean): string {
+  const count = getFriendsCountLabel(totalCount);
+  if (isReadOnlyProfileFriends) {
+    const name = friendsState.viewedProfileName || t("widgetbar.userFallback");
+    const message =
+      totalCount === 0
+        ? t("friends.profileEmptySummary").replace("{name}", name)
+        : t("friends.profileSummary").replace("{name}", name).replace("{count}", count);
+    return escapeHtml(message);
+  }
+
+  const message =
+    totalCount === 0 ? t("friends.emptySummary") : t("friends.summary").replace("{count}", count);
+  return escapeHtml(message);
+}
+
 /** Рендерит полное содержимое страницы друзей. */
 export function renderFriendsContent(): string {
   const totalCount = friendsState.friends.length;
+  const isReadOnlyProfileFriends = Boolean(friendsState.viewedProfileId);
 
   return `
     <section class="friends-page" data-friends-page>
       <section class="friends-panel content-card">
         <header class="friends-panel__header">
           <p class="friends-panel__summary">
-            ${
-              totalCount === 0
-                ? t("friends.emptySummary")
-                : t("friends.summary").replace("{count}", getFriendsCountLabel(totalCount))
-            }
+            ${renderFriendsSummary(totalCount, isReadOnlyProfileFriends)}
           </p>
           <button type="button" class="friends-panel__discover" disabled hidden>${t("friends.find")}</button>
         </header>
 
-        <nav class="friends-tabs" aria-label="${t("friends.filterAria")}">
+        ${
+          isReadOnlyProfileFriends
+            ? ""
+            : `<nav class="friends-tabs" aria-label="${t("friends.filterAria")}">
           ${(["accepted", "incoming", "outgoing"] as FriendsTab[])
             .map((tab) => {
               const count =
@@ -244,7 +261,8 @@ export function renderFriendsContent(): string {
               `;
             })
             .join("")}
-        </nav>
+        </nav>`
+        }
 
         <label class="friends-search search-field" aria-label="${t("friends.search")}">
           <img class="friends-search__icon search-field__icon" src="/assets/img/icons/search.svg" alt="">
@@ -264,7 +282,7 @@ export function renderFriendsContent(): string {
         </div>
       </section>
 
-      ${renderDeleteModal()}
+      ${isReadOnlyProfileFriends ? "" : renderDeleteModal()}
     </section>
   `;
 }

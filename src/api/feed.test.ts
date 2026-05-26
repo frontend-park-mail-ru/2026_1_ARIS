@@ -75,6 +75,11 @@ describe("feed api", () => {
       nextCursor: "abc",
       hasMore: true,
     });
+    expect(mapFeedResponse({ posts: [], nextCursor: "", hasMore: true })).toEqual({
+      items: [],
+      nextCursor: "",
+      hasMore: false,
+    });
   });
 
   it("строит URL авторизованной и публичной ленты", async () => {

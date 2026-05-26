@@ -346,6 +346,17 @@ function renderPostcardMedia(
   `;
 }
 
+function renderPostcardFileIcon(): string {
+  return `
+    <svg class="postcard__file-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+      <path d="M14 2v5h5"></path>
+      <path d="M9 13h6"></path>
+      <path d="M9 17h4"></path>
+    </svg>
+  `;
+}
+
 function renderPostcardFiles(files: Array<{ url: string; name?: string }> = []): string {
   const cleanFiles = files.filter((f) => f.url.trim());
   if (!cleanFiles.length) return "";
@@ -356,7 +367,7 @@ function renderPostcardFiles(files: Array<{ url: string; name?: string }> = []):
         .map(
           (file) => `
             <a class="postcard__file" href="${escapeHtml(resolveMediaUrl(file.url))}" target="_blank" rel="noopener noreferrer">
-              <span class="postcard__file-icon" aria-hidden="true">□</span>
+              ${renderPostcardFileIcon()}
               <span class="postcard__file-name">${escapeHtml(file.name || getMediaFileName(file.url, t("chats.file")))}</span>
             </a>
           `,

@@ -28,7 +28,7 @@ describe("communities api", () => {
     vi.clearAllMocks();
   });
 
-  it("нормализует список сообществ, роли и legacy permissions", async () => {
+  it("нормализует список групп, роли и legacy permissions", async () => {
     vi.mocked(apiRequest).mockResolvedValue({
       items: [
         {
@@ -88,7 +88,7 @@ describe("communities api", () => {
     );
   });
 
-  it("нормализует участников сообщества", async () => {
+  it("нормализует участников группы", async () => {
     vi.mocked(apiRequest).mockResolvedValue({
       items: [
         {
@@ -139,7 +139,7 @@ describe("communities api", () => {
     );
   });
 
-  it("проверяет занятость названия и адреса сообщества", async () => {
+  it("проверяет занятость названия и адреса группы", async () => {
     vi.mocked(apiRequest).mockResolvedValue({
       exists: true,
       titleExists: true,
@@ -161,7 +161,7 @@ describe("communities api", () => {
     );
   });
 
-  it("вызывает endpoints членства и CRUD сообщества", async () => {
+  it("вызывает endpoints членства и CRUD группы", async () => {
     vi.mocked(apiRequest).mockResolvedValue({ profileId: 7, userAccountId: 3, role: "member" });
 
     await joinCommunity(10);

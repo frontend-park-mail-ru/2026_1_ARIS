@@ -2,7 +2,7 @@
  * Страница поиска.
  *
  * Отвечает за:
- * - рендер результатов поиска по людям, сообществам и постам
+ * - рендер результатов поиска по людям, группам и постам
  * - предзаполнение поискового инпута в хедере текущим запросом
  */
 import { renderHeader } from "../../components/header/header";
@@ -64,7 +64,7 @@ function renderUserCard(user: SearchUser): string {
 
 function renderCommunityCard(community: SearchCommunity): string {
   const name = community.title || t("search.communityFallback");
-  const communityPath = `/communities/${encodeURIComponent(String(community.id))}`;
+  const communityPath = `/groups/${encodeURIComponent(String(community.id))}`;
 
   return `
     <article class="search-result-card">

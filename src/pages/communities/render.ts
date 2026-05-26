@@ -1,5 +1,5 @@
 /**
- * Рендер страницы сообществ.
+ * Рендер страницы групп.
  */
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderCommentCompose } from "../../components/comment-compose/comment-compose";

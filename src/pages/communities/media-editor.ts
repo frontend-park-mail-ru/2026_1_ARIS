@@ -602,5 +602,5 @@ export function cancelCommunityMediaDrag(kind: CommunityMediaEditorKind, root: P
 }
 
 export function getCommunityMediaAvatarInitials(): string {
-  return getAvatarInitials(communitiesState.form.title || "Сообщество");
+  return getAvatarInitials(communitiesState.form.title || "Группа");
 }

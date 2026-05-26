@@ -1,5 +1,5 @@
 /**
- * Скелетоны страницы сообществ.
+ * Скелетоны страницы групп.
  */
 import { renderHeaderSkeleton } from "../../components/header/header-skeleton";
 import { renderSidebar } from "../../components/sidebar/sidebar";
@@ -86,8 +86,8 @@ function renderCommunityDetailSkeletonRail(): string {
   `;
 }
 
-export function renderCommunitiesSkeleton(path = "/communities"): string {
-  const isDetailRoute = /^\/communities\/[^/]+$/.test(path.replace(/\/+$/g, ""));
+export function renderCommunitiesSkeleton(path = "/groups"): string {
+  const isDetailRoute = /^\/(?:groups|communities)\/[^/]+$/.test(path.replace(/\/+$/g, ""));
 
   return `
     <div class="app-page">

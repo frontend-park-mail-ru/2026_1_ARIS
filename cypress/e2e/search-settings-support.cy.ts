@@ -42,7 +42,7 @@ describe("поиск, настройки и поддержка", () => {
     cy.visitApp({ path: "/search", authenticated: true });
 
     cy.contains(".search-panel__title", "Поиск").should("be.visible");
-    cy.contains("Введите запрос, чтобы найти людей, сообщества и публикации.").should("be.visible");
+    cy.contains("Введите запрос, чтобы найти людей, группы и публикации.").should("be.visible");
   });
 
   it("сохраняет тёмную тему в настройках", () => {

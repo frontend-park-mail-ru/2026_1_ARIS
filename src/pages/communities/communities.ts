@@ -1,5 +1,5 @@
 /**
- * Страница сообществ.
+ * Страница групп.
  */
 import { renderHeader } from "../../components/header/header";
 import { renderSidebar } from "../../components/sidebar/sidebar";
@@ -278,7 +278,7 @@ function scheduleCommunitiesBackendSearch(root: ParentNode): void {
         if (requestId !== communitiesSearchRequestId) return;
         communitiesState.searchResults = [];
         communitiesState.errorMessage =
-          error instanceof Error ? error.message : "Не удалось выполнить поиск сообществ.";
+          error instanceof Error ? error.message : "Не удалось выполнить поиск групп.";
       })
       .finally(() => {
         if (requestId !== communitiesSearchRequestId) return;
@@ -604,7 +604,7 @@ async function ensureCommunitiesLoaded(signal?: AbortSignal): Promise<void> {
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     communitiesState.errorMessage =
-      error instanceof Error ? error.message : "Не удалось загрузить сообщества.";
+      error instanceof Error ? error.message : "Не удалось загрузить группы.";
     communitiesState.items = [];
   } finally {
     communitiesState.loading = false;
@@ -968,11 +968,7 @@ async function saveCommunityForm(root: ParentNode): Promise<void> {
       return;
     }
 
-    window.history.pushState(
-      {},
-      "",
-      `/communities/${encodeURIComponent(String(saved.community.id))}`,
-    );
+    window.history.pushState({}, "", `/groups/${encodeURIComponent(String(saved.community.id))}`);
     window.dispatchEvent(new PopStateEvent("popstate"));
   } catch (error) {
     communitiesState.form.isSaving = false;
@@ -1667,7 +1663,7 @@ export async function renderCommunities(
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") throw error;
       communitiesState.errorMessage =
-        error instanceof Error ? error.message : "Не удалось загрузить сообщество.";
+        error instanceof Error ? error.message : "Не удалось загрузить группу.";
       setActiveCommunity(null);
     }
 
@@ -2507,7 +2503,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
           communitiesState.loaded = false;
           communitiesState.deleteConfirmId = null;
           if (communitiesState.activeCommunity?.community.id === Number(id)) {
-            window.history.pushState({}, "", "/communities");
+            window.history.pushState({}, "", "/groups");
             window.dispatchEvent(new PopStateEvent("popstate"));
             return;
           }
@@ -2515,7 +2511,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         })
         .catch((error: unknown) => {
           communitiesState.errorMessage =
-            error instanceof Error ? error.message : "Не удалось удалить сообщество.";
+            error instanceof Error ? error.message : "Не удалось удалить группу.";
           communitiesState.deleteConfirmId = null;
           refreshCommunitiesPage(root);
         });
@@ -2625,7 +2621,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         } catch (error) {
           communitiesState.membershipLoading = false;
           communitiesState.errorMessage =
-            error instanceof Error ? error.message : "Не удалось вступить в сообщество.";
+            error instanceof Error ? error.message : "Не удалось вступить в группу.";
           refreshCommunitiesPage(root);
         }
       })();
@@ -2705,7 +2701,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
           communitiesState.membershipLoading = false;
           communitiesState.leaveConfirmId = null;
           communitiesState.errorMessage =
-            error instanceof Error ? error.message : "Не удалось покинуть сообщество.";
+            error instanceof Error ? error.message : "Не удалось покинуть группу.";
           refreshCommunitiesPage(root);
         }
       })();
@@ -2740,7 +2736,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         })
         .catch((error: unknown) => {
           communitiesState.errorMessage =
-            error instanceof Error ? error.message : "Не удалось переключить ленту сообщества.";
+            error instanceof Error ? error.message : "Не удалось переключить ленту группы.";
           refreshCommunitiesPage(root);
         });
       return;

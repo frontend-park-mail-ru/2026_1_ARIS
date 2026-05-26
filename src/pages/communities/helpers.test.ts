@@ -68,11 +68,11 @@ describe("communities helpers", () => {
     languageStore.reset({ language: "RU" });
   });
 
-  it("экранирует HTML, строит URL и fallback имени сообщества", () => {
+  it("экранирует HTML, строит URL и fallback имени группы", () => {
     expect(escapeHtml(`<b title="x&y">'`)).toBe("&lt;b title=&quot;x&amp;y&quot;&gt;&#39;");
-    expect(getCommunityUrl(createBundle().community)).toBe("/communities/10");
+    expect(getCommunityUrl(createBundle().community)).toBe("/groups/10");
     expect(getCommunityName({ ...createBundle().community, title: "", username: "aris" })).toBe(
-      "Сообщество",
+      "Группа",
     );
   });
 
@@ -88,7 +88,7 @@ describe("communities helpers", () => {
   });
 
   it("создаёт slug для кириллицы и fallback для пустого названия", () => {
-    expect(slugifyCommunityTitle("  Тестовое Сообщество!  ")).toBe("testovoe-soobschestvo");
+    expect(slugifyCommunityTitle("  Тестовая Группа!  ")).toBe("testovaya-gruppa");
     expect(slugifyCommunityTitle("!!!")).toBe("community-1777896000000");
   });
 
@@ -103,7 +103,7 @@ describe("communities helpers", () => {
     );
   });
 
-  it("маппит пост сообщества в ProfilePost и проверяет права редактирования", () => {
+  it("маппит пост группы в ProfilePost и проверяет права редактирования", () => {
     const bundle = createBundle("member");
     const post: PostResponse = {
       id: 55,
@@ -141,7 +141,7 @@ describe("communities helpers", () => {
     expect(canDeleteCommunityPost(mapped, createBundle("moderator"), 1)).toBe(true);
   });
 
-  it("разрешает редактировать официальный пост при праве писать от имени сообщества", () => {
+  it("разрешает редактировать официальный пост при праве писать от имени группы", () => {
     const bundle = createBundle("admin");
     const officialPost = mapPostToCommunityPost(
       {

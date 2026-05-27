@@ -1,8 +1,9 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { GamePlayer, GameRoom } from "../../../api/games";
+import { languageStore } from "../../../state/language";
 import { renderFinalGameStage } from "./final-results";
 
 function createPlayer(overrides: Partial<GamePlayer> = {}): GamePlayer {
@@ -69,7 +70,6 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
         status: "completed",
         text: "How many moons does Mars have?",
         correctAnswer: 2,
-        answerUnit: "",
         answers: [
           {
             profileId: ada.profileId,
@@ -117,6 +117,10 @@ function renderFinal(room: GameRoom): string {
 }
 
 describe("games final results render", () => {
+  afterEach(() => {
+    languageStore.reset({ language: "RU" });
+  });
+
   it("рендерит победителя, таблицу участников и архив вопросов", () => {
     const html = renderFinal(createRoom());
 
@@ -125,6 +129,17 @@ describe("games final results render", () => {
     expect(html).toContain("Таблица участников");
     expect(html).toContain("How many moons does Mars have?");
     expect(html).not.toContain("data-games-replay-toggle");
+  });
+
+  it("рендерит финальные итоги на английском языке интерфейса", () => {
+    languageStore.reset({ language: "EN" });
+
+    const html = renderFinal(createRoom());
+
+    expect(html).toContain("Winner:");
+    expect(html).toContain("Player standings");
+    expect(html).toContain("Questions and answers");
+    expect(html).toContain("Correct answer");
   });
 
   it("рендерит изменения рейтинга для рейтинговой игры", () => {

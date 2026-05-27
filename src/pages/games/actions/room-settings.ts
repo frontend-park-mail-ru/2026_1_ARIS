@@ -8,6 +8,7 @@ import { ApiError } from "../../../api/core/client";
 import { getInlineRoomLoadingPatch, getPasswordActionSuccessPatch } from "../state/action-patches";
 import { getRoomUpdatePatch } from "../state/room-update-patches";
 import type { GamesPageState } from "../state/store";
+import { gameT } from "../shared/i18n";
 
 type SetGamesState = (patch: Partial<GamesPageState>) => void;
 
@@ -69,7 +70,7 @@ export async function renameRoomTitle(options: RenameRoomTitleOptions): Promise<
         renameTitleModalOpen: false,
         titleMenuOpen: false,
         loading: false,
-        message: "Название комнаты изменено",
+        message: gameT("room.titleUpdated"),
         messageReturnRoomId: "",
         messageReturnInviteCode: "",
         messageReturnPassword: "",

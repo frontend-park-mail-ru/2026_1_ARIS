@@ -29,11 +29,11 @@ export function getNumericFieldError(input: HTMLInputElement, validateEmpty = fa
   const max = Number(input.dataset.gamesNumberMax);
 
   if (Number.isFinite(min) && numberValue < min) {
-    return input.dataset.gamesNumberMinMessage ?? `Минимум ${min}`;
+    return input.dataset.gamesNumberMinMessage ?? gameT("common.minValue", { value: min });
   }
 
   if (Number.isFinite(max) && numberValue > max) {
-    return input.dataset.gamesNumberMaxMessage ?? `Максимум ${max}`;
+    return input.dataset.gamesNumberMaxMessage ?? gameT("common.maxValue", { value: max });
   }
 
   return "";

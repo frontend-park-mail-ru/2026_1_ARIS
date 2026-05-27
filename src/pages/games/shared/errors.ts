@@ -1,5 +1,6 @@
 import { ApiError } from "../../../api/core/client";
 import { extractGameRoomFromResponse, type GameRoom } from "../../../api/games";
+import { gameT } from "./i18n";
 
 /** Проверяет отмену async-операции через AbortController. */
 export function isAbortError(error: unknown): boolean {
@@ -16,7 +17,7 @@ export function getErrorMessage(error: unknown, fallback: string): string {
   const looksLikeHtml = /<\s*html[\s>]/i.test(message) || /<\s*body[\s>]/i.test(message);
 
   if (looksLikeHtml) {
-    return "Игровой сервис пока недоступен. Сервер вернул HTML-страницу ошибки вместо JSON.";
+    return gameT("common.htmlError");
   }
 
   return message.length > 220 ? `${message.slice(0, 220)}...` : message;
@@ -25,10 +26,10 @@ export function getErrorMessage(error: unknown, fallback: string): string {
 /** Возвращает текст ошибки загрузки списка комнат. */
 export function getRoomsErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 404) {
-    return "Текущий сервер не отдает список комнат. Можно создать комнату или войти по коду приглашения.";
+    return gameT("rooms.unsupportedError");
   }
 
-  return getErrorMessage(error, "Не удалось загрузить список комнат.");
+  return getErrorMessage(error, gameT("rooms.loadError"));
 }
 
 /** Проверяет ошибку входа, когда комната не найдена. */

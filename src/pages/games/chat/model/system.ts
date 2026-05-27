@@ -3,6 +3,7 @@ import {
   gameRoomSystemMessagesStorageKey,
   maxStoredRoomSystemMessages,
 } from "../../shared/constants";
+import { gameT } from "../../shared/i18n";
 import { sortRoomChatMessages } from "./sorting";
 
 let roomSystemMessageCounter = 0;
@@ -19,13 +20,14 @@ export function isRoomSystemMessage(message: GameRoomMessage): boolean {
  */
 export function createRoomSystemMessage(roomId: string, text: string): GameRoomMessage {
   roomSystemMessageCounter += 1;
+  const serverName = gameT("common.server");
   return {
     id: `system:${roomId}:${Date.now()}:${roomSystemMessageCounter}`,
     roomId,
     authorProfileId: "",
     authorUserAccountId: "",
-    authorName: "Сервер",
-    authorFirstName: "Сервер",
+    authorName: serverName,
+    authorFirstName: serverName,
     authorLastName: "",
     authorUsername: "server",
     authorAvatarId: "",
@@ -54,13 +56,14 @@ export function readStoredRoomSystemMessages(): Record<string, GameRoomMessage[]
           const id = String(rawMessage.id ?? "");
           const text = String(rawMessage.text ?? "");
           if (!id.startsWith("system:") || !text) return null;
+          const serverName = gameT("common.server");
           return {
             id,
             roomId: String(rawMessage.roomId ?? roomId),
             authorProfileId: "",
             authorUserAccountId: "",
-            authorName: "Сервер",
-            authorFirstName: "Сервер",
+            authorName: serverName,
+            authorFirstName: serverName,
             authorLastName: "",
             authorUsername: "server",
             authorAvatarId: "",

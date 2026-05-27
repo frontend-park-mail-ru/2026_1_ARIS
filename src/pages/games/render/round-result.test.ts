@@ -1,8 +1,9 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GamePlayer, GameRoom } from "../../../api/games";
+import { languageStore } from "../../../state/language";
 import { renderRoundResultStage } from "./round-result";
 
 function createPlayer(overrides: Partial<GamePlayer> = {}): GamePlayer {
@@ -68,7 +69,6 @@ function createRoom(status: GameRoom["status"] = "active"): GameRoom {
         status: "completed",
         text: "How many moons does Mars have?",
         correctAnswer: 2,
-        answerUnit: "",
         answers: [
           {
             profileId: ada.profileId,
@@ -100,6 +100,11 @@ function createRoom(status: GameRoom["status"] = "active"): GameRoom {
 }
 
 describe("games round result render", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    languageStore.reset({ language: "RU" });
+  });
+
   it("рендерит раскрытие ответов и таймер следующего вопроса", () => {
     const room = createRoom("active");
     const html = renderRoundResultStage({
@@ -119,6 +124,20 @@ describe("games round result render", () => {
     expect(html).toContain("Ada");
   });
 
+  it("рендерит итоги раунда на английском языке интерфейса", () => {
+    languageStore.reset({ language: "EN" });
+    const room = createRoom("active");
+    const html = renderRoundResultStage({
+      room,
+      question: room.questions[0]!,
+      renderPlayerCell: (_player, label) => `<span>${label}</span>`,
+    });
+
+    expect(html).toContain("Round results");
+    expect(html).toContain("Next question");
+    expect(html).toContain("Question 1 of 1");
+  });
+
   it("рендерит hidden-маркер окна финальных итогов", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-25T00:00:12.000Z"));
@@ -131,7 +150,5 @@ describe("games round result render", () => {
 
     expect(html).toContain("data-games-final-results-until");
     expect(html).toContain("Итоги игры");
-
-    vi.useRealTimers();
   });
 });

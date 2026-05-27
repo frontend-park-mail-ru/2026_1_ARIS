@@ -1,5 +1,6 @@
 import { escapeHtml, renderAvatarMarkup } from "../../../../utils/avatar";
 import { getPlayerFullName } from "../../room/profile/players";
+import { gameT } from "../../shared/i18n";
 import type { RenderFinalGameStageOptions } from "./types";
 
 /** Рендерит действие повторной игры после финальных итогов. */
@@ -12,20 +13,20 @@ export function renderReplayAction(options: RenderFinalGameStageOptions): string
   const isWaiting = currentPlayer.isReady;
   const nextReadyValue = isWaiting ? "false" : "true";
   const allReady = totalCount > 0 && readyCount >= totalCount;
-  const buttonText = isWaiting ? "Ждем других игроков. Отменить" : "Сыграть еще раз";
+  const buttonText = isWaiting ? gameT("replay.buttonReady") : gameT("replay.buttonIdle");
   const statusText = allReady
-    ? "Запускаем повтор..."
+    ? gameT("replay.allReady")
     : isWaiting
-      ? `Ждем игроков: ${readyCount} из ${totalCount}`
-      : `Готовы к повтору: ${readyCount} из ${totalCount}`;
+      ? gameT("replay.waitingCount", { ready: readyCount, total: totalCount })
+      : gameT("replay.readyCount", { ready: readyCount, total: totalCount });
 
   return `
-    <section class="games-replay-action${isWaiting ? " games-replay-action--waiting" : ""}" aria-label="Повторная игра">
+    <section class="games-replay-action${isWaiting ? " games-replay-action--waiting" : ""}" aria-label="${escapeHtml(gameT("replay.actionAria"))}">
       <div class="games-replay-action__copy">
-        <strong>Сыграть еще раз</strong>
+        <strong>${escapeHtml(gameT("replay.title"))}</strong>
         <span>${escapeHtml(statusText)}</span>
       </div>
-      <div class="games-replay-action__players" aria-label="Готовность игроков">
+      <div class="games-replay-action__players" aria-label="${escapeHtml(gameT("replay.playersAria"))}">
         ${room.players
           .map((player) => {
             const playerLabel = getPlayerFullName(player);
@@ -42,7 +43,7 @@ export function renderReplayAction(options: RenderFinalGameStageOptions): string
               <span class="games-replay-player${player.isReady ? " games-replay-player--ready" : " games-replay-player--waiting"}">
                 ${avatarMarkup}
                 <span class="games-replay-player__name">${escapeHtml(playerLabel)}</span>
-                <span class="games-replay-player__status">${player.isReady ? "готов" : "ждет"}</span>
+                <span class="games-replay-player__status">${escapeHtml(player.isReady ? gameT("replay.statusReady") : gameT("replay.statusWaiting"))}</span>
               </span>
             `;
           })

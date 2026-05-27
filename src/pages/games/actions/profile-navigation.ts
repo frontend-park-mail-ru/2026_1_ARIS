@@ -1,5 +1,6 @@
 import type { GameRoom } from "../../../api/games";
 import type { GameProfileNavigationConfirm, GamesPageState } from "../state/store";
+import { gameT } from "../shared/i18n";
 
 export type ProfileNavigationConfirmOptions = {
   room: GameRoom | null;
@@ -26,7 +27,7 @@ export function getProfileNavigationConfirmFromLink(
     link.dataset.gamesProfileName?.trim() ||
     (player ? options.getPlayerFullName(player) : "") ||
     link.textContent?.trim() ||
-    "Пользователь";
+    gameT("common.userFallback");
   const avatarUrl =
     link.dataset.gamesProfileAvatar?.trim() || (player ? options.getPlayerAvatarUrl(player) : "");
 

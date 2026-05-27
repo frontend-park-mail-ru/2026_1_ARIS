@@ -3,6 +3,7 @@ import { escapeHtml } from "../../../../utils/avatar";
 import { getQuestionPositionLabel } from "../../round/model";
 import { getRoundResultTimerStartMs } from "../../round/timeline";
 import { roundResultCountdownMs } from "../../shared/constants";
+import { gameT } from "../../shared/i18n";
 
 /**
  * Рендерит таймер перехода от результата раунда к следующему экрану.
@@ -26,7 +27,7 @@ export function renderRoundResultCountdown(
     >
       <div class="games-question-countdown__line">
         <span>${escapeHtml(getQuestionPositionLabel(room, question.position))}.</span>
-        <span>${escapeHtml(options.label)}: <strong class="games-question-countdown__value" data-games-timer-value>--</strong> сек.</span>
+        <span>${escapeHtml(options.label)}: <strong class="games-question-countdown__value" data-games-timer-value>--</strong> ${escapeHtml(gameT("gameplay.secondsShort"))}.</span>
       </div>
       <span class="games-question-countdown__bar" aria-hidden="true">
         <span class="games-question-countdown__bar-fill" data-games-timer-progress></span>

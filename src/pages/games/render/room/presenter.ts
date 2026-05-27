@@ -63,11 +63,11 @@ function getStartTooltipLines(options: RenderRoomPanelPresenterOptions): string[
   const hasEnoughPlayers = room.players.length >= 2;
 
   if (room.status !== "waiting" || state.loading) return [];
-  if (!currentUserIsCreator) return ["Только администратор комнаты может начать игру"];
+  if (!currentUserIsCreator) return [gameT("room.startAdminOnly")];
 
   return [
-    !hasEnoughPlayers ? "В комнате должно быть как минимум 2 игрока." : "",
-    !allPlayersReady ? "Все игроки должны быть готовы к игре." : "",
+    !hasEnoughPlayers ? gameT("room.needTwoPlayers") : "",
+    !allPlayersReady ? gameT("room.allPlayersReadyRequired") : "",
   ].filter(Boolean);
 }
 

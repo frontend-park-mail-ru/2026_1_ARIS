@@ -1,4 +1,5 @@
 import { escapeHtml } from "../../../../../utils/avatar";
+import { gameT } from "../../../shared/i18n";
 import type { RenderRoomPanelOptions } from "./types";
 
 /** Рендерит кнопку старта с подсказками по недостающим условиям. */
@@ -7,7 +8,7 @@ function renderStartButton(options: RenderRoomPanelOptions): string {
   return `
     <div class="games-tooltip-anchor${startTooltipLines.length ? " games-tooltip-anchor--with-tooltip" : ""}">
       <button type="button" class="games-button games-button--primary games-button--start" data-games-start-open ${canStartRoom && !loading ? "" : "disabled"}>
-        Начать игру
+        ${escapeHtml(gameT("room.startGame"))}
       </button>
       ${
         startTooltipLines.length
@@ -32,7 +33,7 @@ function renderRoomExitAction(options: RenderRoomPanelOptions): string {
   if (canDisbandRoom) {
     return `
       <button type="button" class="games-button games-button--danger" data-games-disband-open ${loading ? "disabled" : ""}>
-        Распустить комнату
+        ${escapeHtml(gameT("room.disbandRoom"))}
       </button>
     `;
   }
@@ -40,7 +41,7 @@ function renderRoomExitAction(options: RenderRoomPanelOptions): string {
   if (canLeaveRoom) {
     return `
       <button type="button" class="games-button games-button--danger" data-games-leave-open ${loading ? "disabled" : ""}>
-        Покинуть комнату
+        ${escapeHtml(gameT("room.leaveRoom"))}
       </button>
     `;
   }

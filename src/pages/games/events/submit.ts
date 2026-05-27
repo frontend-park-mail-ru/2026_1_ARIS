@@ -1,4 +1,5 @@
 import type { GamesErrorTarget, GamesPageState } from "../state/store";
+import { gameT } from "../shared/i18n";
 
 type RoomChatPatch = Pick<
   Partial<GamesPageState>,
@@ -65,7 +66,7 @@ function handleRoomChatSubmit(form: HTMLFormElement, options: BindGamesSubmitEve
     options.setRoomChatState(
       {
         roomChatSending: false,
-        roomChatError: options.getErrorMessage(error, "Не удалось отправить сообщение."),
+        roomChatError: options.getErrorMessage(error, gameT("chat.sendError")),
       },
       { scrollToBottom: false },
     );
@@ -84,7 +85,7 @@ function handleGameFormSubmit(form: HTMLFormElement, options: BindGamesSubmitEve
     options.setGamesState({
       loading: false,
       message: "",
-      error: options.getErrorMessage(error, "Не удалось выполнить действие."),
+      error: options.getErrorMessage(error, gameT("common.actionError")),
       errorTarget,
     });
   });

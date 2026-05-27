@@ -1,6 +1,7 @@
 import type { GameRoom } from "../../../../api/games";
 import { formatStoredAnswer, getQuestionAnswer } from "../../round/model";
 import type { ReportableGameQuestion } from "../../state/store";
+import { gameT } from "../../shared/i18n";
 import { getCurrentRoomPlayer } from "../selectors";
 
 /**
@@ -50,9 +51,11 @@ export function getQuestionCorrectAnswer(
 export function getQuestionClipboardText(question: ReportableGameQuestion): string {
   const correctAnswer = getQuestionCorrectAnswer(question);
   const correctAnswerLabel =
-    typeof correctAnswer === "number" ? formatStoredAnswer(correctAnswer) : "не раскрыт";
+    typeof correctAnswer === "number"
+      ? formatStoredAnswer(correctAnswer)
+      : gameT("report.notRevealed");
 
-  return `${question.text}\nПравильный ответ: ${correctAnswerLabel}`;
+  return `${question.text}\n${gameT("report.correctAnswer", { answer: correctAnswerLabel })}`;
 }
 
 /**
@@ -63,12 +66,12 @@ export function getQuestionReporterAnswerLabel(
   question: ReportableGameQuestion,
 ): string {
   const player = getCurrentRoomPlayer(room);
-  if (!player?.profileId) return "неизвестно";
+  if (!player?.profileId) return gameT("report.unknown");
 
   if ("answers" in question) {
     const answer = getQuestionAnswer(question, player.profileId);
     return formatStoredAnswer(answer?.answer ?? null);
   }
 
-  return question.hasAnswered ? "ответ отправлен, значение пока не раскрыто" : "нет ответа";
+  return question.hasAnswered ? gameT("report.answeredHidden") : gameT("report.noAnswer");
 }

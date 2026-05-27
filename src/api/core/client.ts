@@ -4,6 +4,7 @@
  * Содержит клиентские запросы и нормализацию данных для интерфейса.
  */
 import { trackedFetch } from "../../state/network-status";
+import { getLanguageMode } from "../../state/language";
 import { captureAppException } from "../../utils/sentry";
 
 /**
@@ -31,6 +32,16 @@ export type ApiQuery = URLSearchParams | Record<string, ApiQueryValue | readonly
 
 export type ApiResponseType = "json" | "text" | "blob" | "arrayBuffer" | "empty";
 
+function getApiInvalidResponseMessage(): string {
+  return getLanguageMode() === "EN" ? "Invalid server response" : "Некорректный ответ сервера";
+}
+
+function getApiRequestErrorMessage(requestUrl: string): string {
+  return getLanguageMode() === "EN"
+    ? `Request to ${requestUrl} failed`
+    : `Ошибка запроса к ${requestUrl}`;
+}
+
 /**
  * Безопасно разбирает JSON-тело ответа.
  * Возвращает `fallback`, если тело пустое или не поддаётся разбору.
@@ -41,7 +52,7 @@ export async function parseJson<T>(response: Response, fallback: T): Promise<T> 
   try {
     return text ? (JSON.parse(text) as T) : fallback;
   } catch {
-    return { error: text || "Некорректный ответ сервера" } as T;
+    return { error: text || getApiInvalidResponseMessage() } as T;
   }
 }
 
@@ -148,6 +159,10 @@ function isBodyInit(value: unknown): value is BodyInit {
   );
 }
 
+function getInterfaceLanguageHeader(): string {
+  return getLanguageMode() === "EN" ? "en" : "ru";
+}
+
 /**
  * Выполняет типизированный API-запрос с автоматическим разбором JSON и обработкой ошибок.
  * GET- и HEAD-запросы дедуплицируются: одновременные вызовы одного URL получают один `Promise`.
@@ -169,10 +184,11 @@ export async function apiRequest<T>(
     responseType = "json",
   } = options;
   const requestUrl = buildApiUrl(url, query);
+  const interfaceLanguage = getInterfaceLanguageHeader();
 
   // Запросы с AbortSignal не дедуплицируются: каждый вызов управляет своим жизненным циклом сам.
   const dedup = (method === "GET" || method === "HEAD") && !signal;
-  const dedupKey = `${method}:${requestUrl}`;
+  const dedupKey = `${method}:${requestUrl}:${interfaceLanguage}`;
 
   if (dedup && inFlightRequests.has(dedupKey)) {
     return inFlightRequests.get(dedupKey) as Promise<T>;
@@ -183,25 +199,31 @@ export async function apiRequest<T>(
   if (cache) requestInit.cache = cache;
   if (keepalive !== undefined) requestInit.keepalive = keepalive;
 
+  const languageHeaders = {
+    "Accept-Language": interfaceLanguage,
+  };
+
   if (body !== undefined) {
     if (isBodyInit(body)) {
       requestInit.body = body;
-      if (Object.keys(headers).length > 0) {
-        requestInit.headers = headers;
-      }
+      requestInit.headers = { ...languageHeaders, ...headers };
     } else {
       requestInit.body = JSON.stringify(body);
-      requestInit.headers = { "Content-Type": "application/json", ...headers };
+      requestInit.headers = { ...languageHeaders, "Content-Type": "application/json", ...headers };
     }
-  } else if (Object.keys(headers).length > 0) {
-    requestInit.headers = headers;
+  } else {
+    requestInit.headers = { ...languageHeaders, ...headers };
   }
 
   const promise = trackedFetch(requestUrl, requestInit)
     .then(async (response) => {
       if (!response.ok) {
         const data = await parseJson<unknown>(response, emptyFallback);
-        const apiError = createApiError(`Ошибка запроса к ${requestUrl}`, response.status, data);
+        const apiError = createApiError(
+          getApiRequestErrorMessage(requestUrl),
+          response.status,
+          data,
+        );
 
         if (response.status >= 500) {
           captureAppException(apiError, {

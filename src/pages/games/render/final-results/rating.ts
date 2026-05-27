@@ -1,6 +1,7 @@
 import { escapeHtml, renderAvatarMarkup } from "../../../../utils/avatar";
 import { formatRatingDelta, formatSeasonTitle } from "../../shared/formatters";
 import { getPlayerFullNameByProfile } from "../../room/profile/players";
+import { gameT } from "../../shared/i18n";
 import type { RenderFinalGameStageOptions } from "./types";
 
 /** Возвращает CSS-класс изменения рейтинга. */
@@ -15,14 +16,16 @@ export function renderRatingChanges(options: RenderFinalGameStageOptions): strin
   const { room, getPlayerAvatarUrl, renderProfileLink } = options;
   if (!room.isRanked) return "";
   if (!room.ratingChanges.length) {
-    return `<p class="games-stage-card__hint">Рейтинг пересчитается после сохранения результата.</p>`;
+    return `<p class="games-stage-card__hint">${escapeHtml(gameT("rating.pending"))}</p>`;
   }
-  const seasonTitle = formatSeasonTitle(room.ratingChanges[0]?.seasonTitle || "Текущий сезон");
+  const seasonTitle = formatSeasonTitle(
+    room.ratingChanges[0]?.seasonTitle || gameT("leaderboard.seasonFallback"),
+  );
 
   return `
-    <section class="games-rating-summary" aria-label="Изменение рейтинга">
+    <section class="games-rating-summary" aria-label="${escapeHtml(gameT("rating.changesAria"))}">
       <header class="games-rating-summary__header">
-        <strong>Изменения в рейтинге</strong>
+        <strong>${escapeHtml(gameT("rating.changesTitle"))}</strong>
         <span>${escapeHtml(seasonTitle)}</span>
       </header>
       <div class="games-rating-summary__list">
@@ -49,7 +52,7 @@ export function renderRatingChanges(options: RenderFinalGameStageOptions): strin
                   label: playerLabel,
                   content: avatarMarkup,
                   avatarUrl,
-                  ariaLabel: `Открыть профиль ${playerLabel}`,
+                  ariaLabel: gameT("leaderboard.openProfile", { name: playerLabel }),
                 })}
                 ${renderProfileLink({
                   profileId: change.profileId,

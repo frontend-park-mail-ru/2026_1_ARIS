@@ -59,7 +59,6 @@ function createRoom(completedAt: string): GameRoom {
         status: "completed",
         text: "Question",
         correctAnswer: 2,
-        answerUnit: "",
         answers: [],
         winnerProfileId: "",
         startedAt: "",

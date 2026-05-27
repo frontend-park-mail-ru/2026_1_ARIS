@@ -5,6 +5,7 @@ import { roundResultCountdownMs } from "../shared/constants";
 import { renderRoundResultCountdown } from "./round-result/countdown";
 import { renderRoundAnswerShowcase } from "./round-result/showcase";
 import type { RenderRoundResultStageOptions } from "./round-result/types";
+import { gameT } from "../shared/i18n";
 
 export type { RenderRoundResultStageOptions } from "./round-result/types";
 
@@ -19,21 +20,21 @@ export function renderRoundResultStage(options: RenderRoundResultStageOptions): 
   const resultTimer = room.nextQuestionAt
     ? renderRoundResultCountdown(room, question, {
         deadlineAt: timerDeadlineAt,
-        label: "Следующий вопрос",
+        label: gameT("results.nextQuestion"),
         startAtMs: timerStartAtMs,
         durationMs: roundResultCountdownMs,
       })
     : finalResultsUntil
       ? renderRoundResultCountdown(room, question, {
           deadlineAt: finalResultsUntil.toISOString(),
-          label: "Итоги игры",
+          label: gameT("results.gameResults"),
           startAtMs: timerStartAtMs,
           durationMs: roundResultCountdownMs,
         })
       : "";
 
   return `
-    <section class="games-game-stage games-game-stage--result" aria-label="Итоги раунда">
+    <section class="games-game-stage games-game-stage--result" aria-label="${escapeHtml(gameT("results.roundResultsAria"))}">
       <div class="games-stage-card games-stage-card--result">
         ${finalResultsUntil ? `<span hidden data-games-final-results-until="${escapeHtml(finalResultsUntil.toISOString())}"></span>` : ""}
         ${resultTimer}

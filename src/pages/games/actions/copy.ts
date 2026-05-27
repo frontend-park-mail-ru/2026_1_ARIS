@@ -5,6 +5,7 @@
  * команд копирования.
  */
 import type { GameRoom } from "../../../api/games";
+import { gameT } from "../shared/i18n";
 import type { GamesPageState, ReportableGameQuestion } from "../state/store";
 
 type CopyActionOptions = {
@@ -33,7 +34,7 @@ export async function copyInviteCodeAction(
 ): Promise<void> {
   if (!code) return;
   await options.copyText(code);
-  options.showToast("Код приглашения скопирован в буфер обмена");
+  options.showToast(gameT("copy.inviteCode"));
 }
 
 /**
@@ -46,7 +47,7 @@ export async function copyRoomTitleAction(
   if (!title) return;
   await options.copyText(title);
   options.setGamesState({ titleMenuOpen: false, message: "", error: "", errorTarget: "" });
-  options.showToast("Название комнаты скопировано в буфер обмена");
+  options.showToast(gameT("copy.roomTitle"));
 }
 
 /**
@@ -62,5 +63,5 @@ export async function copyQuestionAnswerAction(
 
   await options.copyText(options.getQuestionClipboardText(question));
   options.setGamesState({ ...options.closeMenus(), message: "", error: "", errorTarget: "" });
-  options.showToast("Вопрос и ответ скопированы в буфер обмена");
+  options.showToast(gameT("copy.questionAnswer"));
 }

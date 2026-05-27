@@ -1,5 +1,6 @@
 import type { GameRoomMessage } from "../../../../api/games";
 import { ApiError } from "../../../../api/core/client";
+import { gameT } from "../../shared/i18n";
 import { isAbortError } from "./errors";
 import type { CreateGamesRoomChatRuntimeOptions, LoadRoomChatMessagesOptions } from "./types";
 
@@ -85,7 +86,7 @@ function handleRoomChatLoadError(
     options.setChatState(
       {
         roomChatLoading: false,
-        roomChatError: "Идет загрузка сообщений...",
+        roomChatError: gameT("chat.loading"),
       },
       { scrollToBottom: false },
     );
@@ -95,7 +96,7 @@ function handleRoomChatLoadError(
   options.setChatState(
     {
       roomChatLoading: false,
-      roomChatError: options.formatError(error, "Не удалось загрузить чат комнаты."),
+      roomChatError: options.formatError(error, gameT("chat.loadError")),
     },
     { scrollToBottom: false },
   );

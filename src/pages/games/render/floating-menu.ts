@@ -5,6 +5,7 @@ import {
 } from "../../../components/floating-menu/floating-menu";
 import type { GamesPageState } from "../state/store";
 import { findReportableQuestion } from "../room/question-report";
+import { gameT } from "../shared/i18n";
 
 export type GamesFloatingMenuOptions = {
   state: GamesPageState;
@@ -55,11 +56,15 @@ export function getGamesFloatingMenuItems(options: GamesFloatingMenuOptions): Fl
     return [
       {
         action: `question-copy:${state.questionMenuKey}`,
-        label: "Скопировать",
+        label: gameT("menu.copy"),
       },
       {
         action: `question-report:${state.questionMenuKey}`,
-        label: isReported ? "Жалоба отправлена" : isReporting ? "Отправляем..." : "Пожаловаться",
+        label: isReported
+          ? gameT("menu.reportSent")
+          : isReporting
+            ? gameT("menu.reporting")
+            : gameT("menu.report"),
         danger: true,
       },
     ];
@@ -69,11 +74,11 @@ export function getGamesFloatingMenuItems(options: GamesFloatingMenuOptions): Fl
     return [
       {
         action: `player-admin:${state.playerMenuProfileId}`,
-        label: "Назначить администратором",
+        label: gameT("menu.assignAdmin"),
       },
       {
         action: `player-kick:${state.playerMenuProfileId}`,
-        label: "Удалить из комнаты",
+        label: gameT("menu.kickPlayer"),
         danger: true,
       },
     ];
@@ -83,13 +88,13 @@ export function getGamesFloatingMenuItems(options: GamesFloatingMenuOptions): Fl
     return [
       {
         action: "title-copy",
-        label: "Скопировать",
+        label: gameT("menu.copy"),
       },
       ...(isCurrentRoomCreator(room)
         ? [
             {
               action: "title-rename",
-              label: "Переименовать",
+              label: gameT("menu.rename"),
             },
           ]
         : []),
@@ -101,15 +106,15 @@ export function getGamesFloatingMenuItems(options: GamesFloatingMenuOptions): Fl
       return [
         {
           action: "password-toggle-visibility",
-          label: state.passwordVisible ? "Скрыть пароль" : "Показать пароль",
+          label: state.passwordVisible ? gameT("menu.hidePassword") : gameT("menu.showPassword"),
         },
         {
           action: "password-change",
-          label: "Изменить пароль",
+          label: gameT("menu.changePassword"),
         },
         {
           action: "password-remove",
-          label: "Удалить пароль",
+          label: gameT("menu.removePassword"),
           danger: true,
         },
       ];
@@ -118,7 +123,7 @@ export function getGamesFloatingMenuItems(options: GamesFloatingMenuOptions): Fl
     return [
       {
         action: "password-set",
-        label: "Поставить пароль",
+        label: gameT("menu.setPassword"),
       },
     ];
   }

@@ -49,7 +49,6 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
       id: "q1",
       position: 1,
       text: "Question",
-      answerUnit: "",
       startedAt: "",
       deadlineAt: "",
       hasAnswered: false,

@@ -1,6 +1,7 @@
 import type { GameRoom } from "../../../../api/games";
 import { escapeHtml, renderAvatarMarkup } from "../../../../utils/avatar";
 import { getPlayerFullName } from "../../room/profile/players";
+import { gameT } from "../../shared/i18n";
 import type { RenderFinalGameStageOptions } from "./types";
 
 /** Рендерит ячейку игрока в таблицах финальных результатов. */
@@ -26,7 +27,7 @@ export function renderResultsPlayerCell(
               label: playerFullName,
               content: avatarMarkup,
               avatarUrl,
-              ariaLabel: `Открыть профиль ${playerFullName}`,
+              ariaLabel: gameT("leaderboard.openProfile", { name: playerFullName }),
             })
           : avatarMarkup
       }

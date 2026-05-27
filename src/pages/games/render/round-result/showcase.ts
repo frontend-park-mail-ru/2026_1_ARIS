@@ -5,6 +5,7 @@ import {
   getRoundScoreRows,
 } from "../../round/model";
 import { getRoundTimesRevealDelayMs } from "../../round/timeline";
+import { gameT } from "../../shared/i18n";
 import type { RenderRoundResultStageOptions } from "./types";
 import { renderRoundAnswerShowcaseItem } from "./showcase/cards";
 
@@ -22,7 +23,7 @@ export function renderRoundAnswerShowcase(options: RenderRoundResultStageOptions
   return `
     <div class="games-round-result-cinema" data-games-round-result-cinema>
       <h2 class="games-stage-card__question">${escapeHtml(question.text)}</h2>
-      <section class="games-answer-axis" aria-label="Ответы и правильное значение" data-games-answer-axis>
+      <section class="games-answer-axis" aria-label="${escapeHtml(gameT("results.answerAxisAria"))}" data-games-answer-axis>
         <div class="games-answer-axis__list">
           ${showcaseItems
             .map((item, index) =>

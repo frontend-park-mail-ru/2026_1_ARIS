@@ -4,8 +4,8 @@ import {
   getPauseVotePercent,
   getQuestionPositionLabel,
 } from "../../round/model";
+import { gameT } from "../../shared/i18n";
 import { getPlayerFullName, getPlayerFullNameByProfile } from "../../room/profile/players";
-import { getReadyVerb } from "../../room/profile/system-messages";
 import type { RenderPauseActionOptions, RenderPauseStageOptions } from "./types";
 
 /**
@@ -20,13 +20,13 @@ export function renderPauseAction(options: RenderPauseActionOptions): string {
   if (canPause) {
     return `
       <button type="button" class="games-button games-button--secondary games-play-header__action" data-games-pause-room ${loading ? "disabled" : ""}>
-        Пауза 2 мин
+        ${escapeHtml(gameT("gameplay.pauseButton"))}
       </button>
     `;
   }
 
   if (room.status === "active" && !room.pauseUntilAt && currentPlayer?.pauseUsed) {
-    return `<span class="games-play-header__note">Пауза уже использована</span>`;
+    return `<span class="games-play-header__note">${escapeHtml(gameT("gameplay.pauseUsed"))}</span>`;
   }
 
   return "";
@@ -37,18 +37,21 @@ export function renderPauseAction(options: RenderPauseActionOptions): string {
  */
 export function renderPauseStage(options: RenderPauseStageOptions): string {
   const { room, loading, pausedByPlayer, canForceResume, currentPlayer } = options;
-  const votesLabel = `${room.pauseForceVotes} из ${room.pauseForceVotesRequired}`;
+  const votesLabel = gameT("gameplay.forceVotes", {
+    current: room.pauseForceVotes,
+    required: room.pauseForceVotesRequired,
+  });
   const pausedQuestion = room.currentQuestion ?? getLatestCompletedQuestion(room);
   const votePercent = getPauseVotePercent(room);
   const votePlayers = room.players.filter((player) => player.profileId !== room.pausedByProfileId);
 
   return `
-    <section class="games-game-stage games-game-stage--pause" aria-label="Игра на паузе">
+    <section class="games-game-stage games-game-stage--pause" aria-label="${escapeHtml(gameT("gameplay.pausedAria"))}">
       <div class="games-stage-card games-stage-card--pause">
         <div class="games-pause-hero">
-          <h2 class="games-stage-card__title">Игра остановлена на 2 минуты</h2>
+          <h2 class="games-stage-card__title">${escapeHtml(gameT("gameplay.pauseTitle"))}</h2>
           <p class="games-stage-card__text games-pause-hero__author">
-            ${escapeHtml(pausedByPlayer ? `${getPlayerFullNameByProfile(room, pausedByPlayer.profileId)} ${getReadyVerb(pausedByPlayer)} игру на паузу.` : "Игрок поставил игру на паузу.")}
+            ${escapeHtml(pausedByPlayer ? gameT("gameplay.pauseByPlayer", { player: getPlayerFullNameByProfile(room, pausedByPlayer.profileId) }) : gameT("gameplay.pauseByUnknown"))}
           </p>
           <div
             class="games-question-timer-strip games-question-countdown games-pause-countdown"
@@ -57,7 +60,7 @@ export function renderPauseStage(options: RenderPauseStageOptions): string {
             data-games-timer-total-ms="120000"
           >
             <div class="games-question-countdown__line">
-              <span>До продолжения: <strong class="games-question-countdown__value" data-games-timer-value>--</strong> сек.</span>
+              <span>${escapeHtml(gameT("gameplay.pauseResumeIn"))}: <strong class="games-question-countdown__value" data-games-timer-value>--</strong> ${escapeHtml(gameT("gameplay.secondsShort"))}.</span>
             </div>
             <span class="games-question-countdown__bar" aria-hidden="true">
               <span class="games-question-countdown__bar-fill" data-games-timer-progress></span>
@@ -77,7 +80,7 @@ export function renderPauseStage(options: RenderPauseStageOptions): string {
         <div class="games-force-resume" style="--games-force-progress: ${votePercent}%">
           <div class="games-force-resume__header">
             <span class="games-force-resume__count">${escapeHtml(votesLabel)}</span>
-            <span class="games-force-resume__text">голосов за продолжение</span>
+            <span class="games-force-resume__text">${escapeHtml(gameT("gameplay.forceVotesText"))}</span>
           </div>
           <span class="games-force-resume__meter" aria-hidden="true">
             <span class="games-force-resume__meter-fill"></span>
@@ -98,12 +101,12 @@ export function renderPauseStage(options: RenderPauseStageOptions): string {
           canForceResume
             ? `
               <button type="button" class="games-button games-button--primary" data-games-force-resume ${loading ? "disabled" : ""}>
-                Продолжить игру принудительно
+                ${escapeHtml(gameT("gameplay.forceResume"))}
               </button>
             `
             : currentPlayer?.profileId === room.pausedByProfileId
-              ? `<p class="games-stage-card__hint">Вы поставили паузу. Остальные игроки могут проголосовать за продолжение.</p>`
-              : `<p class="games-stage-card__hint">Ваш голос за продолжение уже учтен.</p>`
+              ? `<p class="games-stage-card__hint">${escapeHtml(gameT("gameplay.pauseOwnerHint"))}</p>`
+              : `<p class="games-stage-card__hint">${escapeHtml(gameT("gameplay.pauseVotedHint"))}</p>`
         }
       </div>
     </section>

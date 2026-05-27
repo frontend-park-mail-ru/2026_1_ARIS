@@ -1,5 +1,6 @@
 import { getPasswordModeFromAction } from "../shared";
 import type { HandleGamesRoomMenusClickOptions } from "../types";
+import { gameT } from "../../../shared/i18n";
 
 /**
  * Обрабатывает action пароля комнаты из floating menu.
@@ -13,7 +14,7 @@ export function handlePasswordFloatingMenuAction(
       options.setGamesState({
         ...options.closeGamesMenus(),
         message: "",
-        error: "Не удалось изменить отображение пароля.",
+        error: gameT("room.passwordDisplayError"),
         errorTarget: "password",
       });
     });

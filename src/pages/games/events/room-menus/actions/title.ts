@@ -1,4 +1,5 @@
 import type { HandleGamesRoomMenusClickOptions } from "../types";
+import { gameT } from "../../../shared/i18n";
 
 /**
  * Обрабатывает action названия комнаты из floating menu.
@@ -9,7 +10,7 @@ export function handleTitleFloatingMenuAction(
 ): boolean {
   if (action === "title-copy") {
     void options.handleCopyRoomTitle(options.getRoomTitleValue(options.state.room)).catch(() => {
-      options.setGamesState({ message: "", error: "Не удалось скопировать название комнаты." });
+      options.setGamesState({ message: "", error: gameT("copy.roomTitleError") });
     });
     return true;
   }

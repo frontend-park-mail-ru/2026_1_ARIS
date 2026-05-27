@@ -1,4 +1,5 @@
 import type { GameRoom } from "../../../../api/games";
+import { gameT } from "../../shared/i18n";
 import type { GameQuestion } from "./types";
 
 /** Возвращает завершённые вопросы комнаты в серверном порядке. */
@@ -19,5 +20,8 @@ export function getQuestionPositionLabel(room: GameRoom, position?: number): str
     room.currentQuestion?.position ||
     room.currentQuestionIndex ||
     Math.min(getCompletedQuestions(room).length + 1, room.questionCount);
-  return `Вопрос ${Math.min(Math.max(currentPosition, 1), room.questionCount)} из ${room.questionCount}`;
+  return gameT("results.questionPosition", {
+    current: Math.min(Math.max(currentPosition, 1), room.questionCount),
+    total: room.questionCount,
+  });
 }

@@ -67,7 +67,6 @@ function createRoom(): GameRoom {
         status: "completed",
         text: "How many moons does Mars have?",
         correctAnswer: 2,
-        answerUnit: "",
         answers: [
           {
             profileId: player.profileId,

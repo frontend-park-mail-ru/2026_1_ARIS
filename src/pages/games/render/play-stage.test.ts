@@ -1,8 +1,9 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { GamePlayer, GameRoom } from "../../../api/games";
+import { languageStore } from "../../../state/language";
 import {
   renderActiveRoundStage,
   renderGameStartingStage,
@@ -71,7 +72,6 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
       id: "q1",
       position: 1,
       text: "How many moons does Mars have?",
-      answerUnit: "",
       startedAt: "2026-05-25T00:00:00.000Z",
       deadlineAt: "2026-05-25T00:00:30.000Z",
       hasAnswered: false,
@@ -85,6 +85,10 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
 }
 
 describe("games play stage render", () => {
+  afterEach(() => {
+    languageStore.reset({ language: "RU" });
+  });
+
   it("рендерит активный вопрос и ошибку формы ответа", () => {
     const html = renderActiveRoundStage({
       room: createRoom(),
@@ -99,13 +103,28 @@ describe("games play stage render", () => {
     expect(html).toContain('data-error="answer"');
   });
 
+  it("рендерит активный вопрос на английском языке интерфейса", () => {
+    languageStore.reset({ language: "EN" });
+
+    const html = renderActiveRoundStage({
+      room: createRoom(),
+      submittedQuestionId: "",
+      submittedAnswerValue: "",
+      renderInlineError: () => "",
+    });
+
+    expect(html).toContain("Current question");
+    expect(html).toContain("Enter a number");
+    expect(html).toContain("Submit answer");
+    expect(html).toContain("Time left");
+  });
+
   it("рендерит подтверждение отправленного ответа", () => {
     const room = createRoom({
       currentQuestion: {
         id: "q1",
         position: 1,
         text: "How many moons does Mars have?",
-        answerUnit: "",
         startedAt: "2026-05-25T00:00:00.000Z",
         deadlineAt: "2026-05-25T00:00:30.000Z",
         hasAnswered: true,

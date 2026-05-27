@@ -1,5 +1,6 @@
 import type { GameRoom } from "../../../api/games";
 import type { GamesPageState } from "../state/store";
+import { gameT } from "../shared/i18n";
 
 export type HandleGamesJoinPasswordClickOptions = {
   rooms: GameRoom[];
@@ -49,7 +50,7 @@ function setJoinOwnRoomError(options: HandleGamesJoinPasswordClickOptions, error
   options.setGamesState({
     loading: false,
     message: "",
-    error: options.getErrorMessage(error, "Не удалось вернуться в свою комнату."),
+    error: options.getErrorMessage(error, gameT("room.recoverOwnError")),
     errorTarget: "form",
   });
 }

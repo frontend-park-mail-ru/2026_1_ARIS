@@ -3,6 +3,7 @@ import { escapeHtml, renderAvatarMarkup } from "../../../../utils/avatar";
 import { formatRoundPointBadge, formatRoundPointValue } from "../../shared/formatters";
 import { getPlayerPlaceByScores } from "../../round/model";
 import { getGamePlayerLabel, getPlayerFullName } from "../../room/profile/players";
+import { gameT } from "../../shared/i18n";
 import type { RenderGameScoreboardOptions } from "./types";
 import type { getGameScoreboardModel } from "./model";
 
@@ -32,7 +33,7 @@ export function renderGameScoreboardPlayerCard(
         label: playerFullName,
         content: avatarMarkup,
         avatarUrl,
-        ariaLabel: `Открыть профиль ${playerFullName}`,
+        ariaLabel: gameT("leaderboard.openProfile", { name: playerFullName }),
       })
     : avatarMarkup;
   const nameView = player.profileId

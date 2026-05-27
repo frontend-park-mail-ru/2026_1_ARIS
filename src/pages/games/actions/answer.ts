@@ -1,6 +1,7 @@
 import { submitGameAnswer, type GameRoom } from "../../../api/games";
 import { parseGameAnswer } from "../room/state/action-model";
 import type { GamesPageState } from "../state/store";
+import { gameT } from "../shared/i18n";
 
 export type SubmitRoomAnswerOptions = {
   room: GameRoom | null;
@@ -43,7 +44,7 @@ export async function submitRoomAnswerValue(options: SubmitRoomAnswerValueOption
   const answer = parseGameAnswer(options.value);
   if (answer === null) {
     options.setGamesState({
-      error: "Введите числовой ответ.",
+      error: gameT("gameplay.answerRequired"),
       errorTarget: "answer",
       message: "",
     });

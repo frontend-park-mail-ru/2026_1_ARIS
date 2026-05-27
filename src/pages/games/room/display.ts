@@ -1,4 +1,5 @@
 import type { GameRoom } from "../../../api/games";
+import { gameT } from "../shared/i18n";
 
 export type GameRoomDisplayService = ReturnType<typeof createGameRoomDisplayService>;
 
@@ -36,11 +37,11 @@ export function createGameRoomDisplayService() {
    */
   function getRoomPasswordDisplayValue(room: GameRoom, passwordVisible: boolean): string {
     if (!room.hasPassword) {
-      return "Без пароля";
+      return gameT("room.noPassword");
     }
 
     if (passwordVisible) {
-      return room.password.trim() || "Пароль не получен";
+      return room.password.trim() || gameT("room.passwordUnavailable");
     }
 
     const length = Math.max(room.password.trim().length, 8);

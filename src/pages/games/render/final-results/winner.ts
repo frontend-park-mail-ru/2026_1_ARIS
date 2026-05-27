@@ -1,6 +1,7 @@
 import { escapeHtml, renderAvatarMarkup } from "../../../../utils/avatar";
 import { getComputedWinnerProfileId } from "../../round/model";
 import { getPlayerFullNameByProfile } from "../../room/profile/players";
+import { gameT } from "../../shared/i18n";
 import type { RenderFinalGameStageOptions } from "./types";
 
 /** Рендерит hero-блок победителя в финальных итогах. */
@@ -11,14 +12,14 @@ export function renderFinalWinnerHero(
   const { room, getPlayerAvatarUrl, renderProfileLink } = options;
   const winnerProfileId = getComputedWinnerProfileId(room);
   const summary = completedCount
-    ? `Сыграно вопросов: ${completedCount} из ${room.questionCount}`
-    : "Игра завершена";
+    ? gameT("results.playedQuestions", { completed: completedCount, total: room.questionCount })
+    : gameT("results.gameFinished");
 
   if (!winnerProfileId) {
     return `
       <div class="games-final-hero">
-        <h2 class="games-stage-card__title">Победитель:</h2>
-        <div class="games-final-winner-card games-final-winner-card--draw">Ничья</div>
+        <h2 class="games-stage-card__title">${escapeHtml(gameT("results.winnerTitle"))}</h2>
+        <div class="games-final-winner-card games-final-winner-card--draw">${escapeHtml(gameT("results.draw"))}</div>
         <p>${escapeHtml(summary)}</p>
       </div>
     `;
@@ -39,14 +40,14 @@ export function renderFinalWinnerHero(
 
   return `
     <div class="games-final-hero">
-      <h2 class="games-stage-card__title">Победитель:</h2>
+      <h2 class="games-stage-card__title">${escapeHtml(gameT("results.winnerTitle"))}</h2>
       ${renderProfileLink({
         profileId: winnerProfileId,
         className: "games-final-winner-card games-player-name-link",
         label: winnerName,
         content: `${avatarMarkup}<strong>${escapeHtml(winnerName)}</strong>`,
         avatarUrl,
-        ariaLabel: `Открыть профиль ${winnerName}`,
+        ariaLabel: gameT("leaderboard.openProfile", { name: winnerName }),
       })}
       <p>${escapeHtml(summary)}</p>
     </div>

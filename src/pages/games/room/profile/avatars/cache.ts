@@ -1,4 +1,5 @@
 import type { GameRoomMessage } from "../../../../../api/games";
+import { gameT } from "../../../shared/i18n";
 import { getPlayerFullName } from "../players";
 import type { GamePlayer, GameRoomAvatarCaches } from "./types";
 
@@ -76,7 +77,9 @@ export function rememberGamePlayerAvatar(
   if (!avatarUrl) return;
   const username = player.username.trim().toLowerCase();
   const fullName = getPlayerFullName(player).trim();
-  const normalizedFullName = fullName && fullName !== "Игрок" ? fullName.toLowerCase() : "";
+  const fallbackName = gameT("common.playerFallback");
+  const normalizedFullName =
+    fullName && fullName !== fallbackName && fullName !== "Игрок" ? fullName.toLowerCase() : "";
   const keys = [
     player.profileId ? `profile:${player.profileId}` : "",
     player.userAccountId ? `account:${player.userAccountId}` : "",

@@ -82,7 +82,6 @@ function createRoom(): GameRoom {
         status: "completed",
         text: "Первый вопрос",
         correctAnswer: 100,
-        answerUnit: "",
         answers: [
           {
             profileId: ada.profileId,
@@ -120,7 +119,6 @@ function createRoom(): GameRoom {
         status: "completed",
         text: "Второй вопрос",
         correctAnswer: 50,
-        answerUnit: "",
         answers: [
           {
             profileId: ada.profileId,

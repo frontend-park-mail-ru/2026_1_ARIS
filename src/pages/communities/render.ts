@@ -491,7 +491,7 @@ function renderCommunityPostComments(postId: string, bundle: CommunityBundle): s
   `;
 }
 
-function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string {
+export function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string {
   const canEdit = canEditCommunityPost(post, bundle, communitiesState.viewerProfileId);
   const canDelete = canDeleteCommunityPost(post, bundle, communitiesState.viewerProfileId);
   const isOfficialPost = Number(post.authorId) === bundle.community.profileId;
@@ -605,9 +605,11 @@ function renderCommunityPost(post: ProfilePost, bundle: CommunityBundle): string
   `;
 }
 
-function renderCommunityPostSkeleton(): string {
+export function renderCommunityPostSkeleton(postId?: string): string {
+  const skeletonAttr = postId ? ` data-community-post-skeleton="${escapeHtml(postId)}"` : "";
+
   return `
-    <article class="profile-post content-card community-posts__saving-card" aria-hidden="true">
+    <article class="profile-post content-card community-posts__saving-card"${skeletonAttr} aria-hidden="true">
       <div class="profile-post__header">
         <div class="profile-post__author">
           <span class="avatar-skeleton community-skeleton__post-avatar"></span>

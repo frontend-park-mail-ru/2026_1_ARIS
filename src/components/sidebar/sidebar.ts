@@ -34,9 +34,37 @@ type SidebarRoot = (Document | HTMLElement) & {
   __sidebarBound?: boolean;
 };
 
+const BACK_TO_TOP_VISIBLE_OFFSET = 360;
+let isBackToTopVisibilityBound = false;
+
 function normalisePath(path: string): string {
   const noTrailing = (path || "/").replace(/\/+$/g, "");
   return noTrailing === "" ? "/" : noTrailing;
+}
+
+function shouldUseSmoothScroll(): boolean {
+  return !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
+
+function scrollPageToTop(): void {
+  window.scrollTo({
+    top: 0,
+    left: 0,
+    behavior: shouldUseSmoothScroll() ? "smooth" : "auto",
+  });
+}
+
+function syncBackToTopVisibility(): void {
+  const shouldShow = window.scrollY > BACK_TO_TOP_VISIBLE_OFFSET;
+  document.querySelectorAll<HTMLElement>("[data-scroll-top-card]").forEach((card) => {
+    card.hidden = !shouldShow;
+  });
+}
+
+function bindBackToTopVisibility(): void {
+  if (isBackToTopVisibilityBound) return;
+  window.addEventListener("scroll", syncBackToTopVisibility, { passive: true });
+  isBackToTopVisibilityBound = true;
 }
 
 /**
@@ -106,6 +134,21 @@ function renderMobileNavItem({
       </span>
       <span class="mobile-nav__label">${label}</span>
     </a>
+  `;
+}
+
+function renderBackToTopControl(): string {
+  const label = t("sidebar.backToTop");
+
+  return `
+    <section class="sidebar-card sidebar-card--scroll-top" data-scroll-top-card hidden>
+      ${renderSidebarItem({
+        label,
+        icon: "/assets/img/icons/arrow-up.svg",
+        isStub: true,
+        attributes: `data-scroll-top aria-label="${label}" title="${label}"`,
+      })}
+    </section>
   `;
 }
 
@@ -267,6 +310,8 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
           `
           : ""
       }
+
+      ${renderBackToTopControl()}
     </aside>
     ${mobileNav}
   `;
@@ -280,6 +325,8 @@ export function renderSidebar({ isAuthorised = false }: RenderSidebarOptions = {
  */
 export function initSidebar(root: Document | HTMLElement = document): void {
   const bindableRoot = root as SidebarRoot;
+  bindBackToTopVisibility();
+  syncBackToTopVisibility();
   if (bindableRoot.__sidebarBound) return;
 
   root.addEventListener(
@@ -305,6 +352,13 @@ export function initSidebar(root: Document | HTMLElement = document): void {
         return;
       }
 
+      const scrollTopButton = target.closest("[data-scroll-top]");
+      if (scrollTopButton instanceof HTMLButtonElement) {
+        event.preventDefault();
+        scrollPageToTop();
+        return;
+      }
+
       const button = target.closest("[data-feed-mode]");
       if (!button) return;
 
@@ -312,6 +366,8 @@ export function initSidebar(root: Document | HTMLElement = document): void {
 
       const mode = button.getAttribute("data-feed-mode");
       if (mode !== "for-you" && mode !== "by-time") return;
+
+      if (mode === getFeedMode()) return;
 
       if (mode === "for-you") {
         clearFeedCache();
@@ -351,4 +407,6 @@ export function refreshSidebar(): void {
   if (mobileNav instanceof HTMLElement && newMobileNav instanceof HTMLElement) {
     domPatch(mobileNav, newMobileNav);
   }
+
+  syncBackToTopVisibility();
 }

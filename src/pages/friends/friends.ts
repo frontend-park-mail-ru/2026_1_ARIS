@@ -236,6 +236,7 @@ export async function renderFriends(
     ...friendsState.incoming.map((friend) => friend.avatarLink),
     ...friendsState.outgoing.map((friend) => friend.avatarLink),
   ]);
+  const widgetbarMarkup = await renderWidgetbar({ isAuthorised: true });
 
   return `
     <div class="app-page">
@@ -246,9 +247,12 @@ export async function renderFriends(
         </aside>
         <section class="app-layout__center">
           ${renderFriendsContent()}
+          <div class="friends-page__mobile-widgetbar">
+            ${widgetbarMarkup}
+          </div>
         </section>
         <aside class="app-layout__right app-layout__right--optional">
-          ${await renderWidgetbar({ isAuthorised: true })}
+          ${widgetbarMarkup}
         </aside>
       </main>
     </div>

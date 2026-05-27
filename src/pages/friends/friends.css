@@ -4,6 +4,11 @@
     width: 100%;
   }
 
+  .friends-page__mobile-widgetbar {
+    display: none;
+    width: 100%;
+  }
+
   .friends-panel {
     width: 100%;
     padding: var(--space-4) var(--space-4) var(--space-6);
@@ -355,6 +360,10 @@
   }
 
   @media (width <= 768px) {
+    .friends-page__mobile-widgetbar {
+      display: block;
+    }
+
     .friends-panel {
       padding: 20px 14px;
       border-radius: var(--radius-ui);

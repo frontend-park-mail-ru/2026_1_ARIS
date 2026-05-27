@@ -40,6 +40,19 @@
         top: var(--sidebar-sticky-top);
       }
 
+      &--scroll-top {
+        position: fixed;
+        top: calc(var(--layout-padding-top) + 92px);
+        left: var(--layout-padding-x);
+        z-index: 850;
+        width: var(--sidebar-card-width);
+        padding: var(--space-2);
+      }
+
+      &--scroll-top[hidden] {
+        display: none;
+      }
+
       &__title {
         width: 100%;
         margin: 0;
@@ -157,11 +170,19 @@
         justify-content: center;
         min-height: 44px;
       }
+
+      &-card--scroll-top {
+        top: calc(var(--layout-padding-top) + 76px);
+      }
     }
   }
 
   @media (width <= 768px) {
     .sidebar {
+      display: none;
+    }
+
+    .sidebar-card--scroll-top {
       display: none;
     }
 

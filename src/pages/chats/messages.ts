@@ -1,7 +1,7 @@
 /**
  * Загрузка, отправка и синхронизация сообщений страницы чатов.
  */
-import { getChatMessages, sendChatMessage, uploadChatVoice } from "../../api/chat";
+import { getChatMessages, sendChatMessage, uploadChatVoice, uploadVideoNote } from "../../api/chat";
 import type { ChatMessage, MessageAttachment, SendMessagePayload } from "../../api/chat";
 import { getProfileById } from "../../api/profile";
 import { getSessionUser } from "../../state/session";
@@ -32,15 +32,53 @@ import { chatsRoot } from "./state";
 import type { ChatViewMessage, ChatViewThread } from "./types";
 
 const chatAuthorAvatarLinkByProfileId = new Map<string, string | undefined>();
+const AUDIO_ATTACHMENT_RE = /\.(aac|aif|aiff|flac|m4a|mp3|oga|ogg|opus|wav|weba|webm)(?:[?#].*)?$/i;
+const WEBM_ATTACHMENT_RE = /\.webm(?:[?#].*)?$/i;
+
+function getMessageVideoNoteAttachment(
+  message: ChatMessage,
+): import("./types").ChatVideoNoteAttachment | undefined {
+  if (message.type !== "video_note") return undefined;
+  const attachment = message.media[0];
+  if (!attachment) return undefined;
+  const url = resolveMediaUrl(attachment.url);
+  if (!url) return undefined;
+  return {
+    mediaID: Number.isFinite(Number(attachment.id)) ? Number(attachment.id) : undefined,
+    url,
+    mimeType: attachment.mimeType || "video/webm",
+  };
+}
 
 function isAudioAttachment(attachment: MessageAttachment): boolean {
   const mimeType = attachment.mimeType.trim().toLowerCase();
+  if (mimeType.startsWith("video/")) return false;
   if (mimeType.startsWith("audio/")) return true;
-  return /\.(aac|aif|aiff|flac|m4a|mp3|oga|ogg|opus|wav|weba|webm)$/i.test(attachment.url);
+  return (
+    AUDIO_ATTACHMENT_RE.test(attachment.url) || AUDIO_ATTACHMENT_RE.test(attachment.name ?? "")
+  );
+}
+
+function isLegacyAudioOnlyWebmAttachment(
+  message: ChatMessage,
+  attachment: MessageAttachment,
+  attachmentCount: number,
+): boolean {
+  if (message.type === "video_note") return false;
+  if (message.text.trim() || attachmentCount !== 1) return false;
+
+  const mimeType = attachment.mimeType.trim().toLowerCase();
+  if (mimeType !== "video/webm" && !mimeType.startsWith("video/webm;")) return false;
+
+  return WEBM_ATTACHMENT_RE.test(attachment.url) || WEBM_ATTACHMENT_RE.test(attachment.name ?? "");
 }
 
 function getMessageVoiceAttachment(message: ChatMessage): ChatViewMessage["voice"] {
-  const attachment = [...message.media, ...message.files].find(isAudioAttachment);
+  if (message.type === "video_note") return undefined;
+  const attachments = [...message.media, ...message.files];
+  const attachment =
+    attachments.find(isAudioAttachment) ??
+    attachments.find((item) => isLegacyAudioOnlyWebmAttachment(message, item, attachments.length));
   if (!attachment) return undefined;
 
   const url = resolveMediaUrl(attachment.url);
@@ -49,7 +87,9 @@ function getMessageVoiceAttachment(message: ChatMessage): ChatViewMessage["voice
   return {
     mediaID: Number.isFinite(Number(attachment.id)) ? Number(attachment.id) : undefined,
     url,
-    mimeType: attachment.mimeType || "audio/mpeg",
+    mimeType: attachment.mimeType.startsWith("video/")
+      ? "audio/webm"
+      : attachment.mimeType || "audio/mpeg",
   };
 }
 
@@ -137,7 +177,7 @@ export function getMessagesFingerprint(messages: ChatViewMessage[] | undefined):
   return (messages ?? [])
     .map(
       (m) =>
-        `${m.id}:${m.createdAt ?? ""}:${m.text}:${m.voice?.url ?? ""}:${m.stickerId ?? ""}:${m.media?.length ?? 0}:${m.files?.length ?? 0}`,
+        `${m.id}:${m.createdAt ?? ""}:${m.text}:${m.voice?.url ?? ""}:${m.videoNote?.url ?? ""}:${m.stickerId ?? ""}:${m.media?.length ?? 0}:${m.files?.length ?? 0}`,
     )
     .join("|");
 }
@@ -174,6 +214,7 @@ export function addPendingOutgoing(chatId: string, message: ChatViewMessage): vo
     localId: message.id,
     text: message.text,
     voice: message.voice,
+    videoNote: message.videoNote,
     stickerId: message.stickerId ? Number(message.stickerId) : undefined,
     createdAt: message.createdAt,
   });
@@ -198,6 +239,7 @@ export function queueOutgoingForRetry(chatId: string, message: ChatViewMessage):
     localId: message.id,
     text: message.text,
     voice: message.voice,
+    videoNote: message.videoNote,
     stickerId: message.stickerId ? Number(message.stickerId) : undefined,
     createdAt: message.createdAt,
   });
@@ -306,6 +348,7 @@ export function mapMessageToViewMessage(
       ? getCurrentUserProfilePath()
       : resolvePersonPath(message.authorName ?? thread.title, message.authorId || undefined),
     voice: getMessageVoiceAttachment(message),
+    videoNote: getMessageVideoNoteAttachment(message),
   };
 }
 
@@ -328,6 +371,7 @@ export function reconcilePendingOutgoing(
   const matchedPending = pending.find((item) => {
     if (item.text !== incomingMessage.text) return false;
     if (Boolean(item.voice) !== Boolean(incomingMessage.voice)) return false;
+    if (Boolean(item.videoNote) !== Boolean(incomingMessage.videoNote)) return false;
     if ((item.stickerId ? String(item.stickerId) : "") !== (incomingMessage.stickerId ?? "")) {
       return false;
     }
@@ -361,6 +405,7 @@ export function reconcilePendingOutgoing(
                     waveform: incomingMessage.voice.waveform ?? m.voice?.waveform,
                   }
                 : m.voice,
+              videoNote: incomingMessage.videoNote ?? m.videoNote,
             }
           : m,
       ),
@@ -533,6 +578,7 @@ export async function retryChatMessage(chatId: string, localMessageId: string): 
                     waveform: sentViewMessage.voice.waveform ?? m.voice?.waveform,
                   }
                 : m.voice,
+              videoNote: sentViewMessage.videoNote ?? m.videoNote,
             }
           : m,
       ),
@@ -564,6 +610,20 @@ async function buildRetryMessagePayload(message: ChatViewMessage): Promise<SendM
   if (message.stickerId) {
     return { stickerId: Number(message.stickerId) };
   }
+  if (message.videoNote) {
+    if (message.videoNote.mediaID && message.videoNote.mediaID > 0) {
+      return { type: "video_note", media: [{ mediaID: message.videoNote.mediaID }] };
+    }
+
+    if (!message.videoNote.blob) {
+      throw new Error("Не получилось повторить видеосообщение.");
+    }
+
+    const uploaded = await uploadVideoNote(message.videoNote.blob);
+    message.videoNote.mediaID = uploaded.mediaID;
+    return { type: "video_note", media: [{ mediaID: uploaded.mediaID }] };
+  }
+
   if (!message.voice) {
     return { text: message.text };
   }

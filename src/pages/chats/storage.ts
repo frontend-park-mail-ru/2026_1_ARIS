@@ -5,12 +5,15 @@ import { getSessionUser } from "../../state/session";
 import { chatsState } from "./state";
 import { sortMessagesByCreatedAt } from "./helpers";
 import type {
+  ChatVideoNoteAttachment,
   ChatViewMessage,
   ChatViewThread,
   ChatVoiceAttachment,
   PersistedChatsData,
   PersistedChatsUiState,
 } from "./types";
+
+const LEGACY_WEBM_ATTACHMENT_RE = /\.webm(?:[?#].*)?$/i;
 
 function getChatsUiStorageKey(): string {
   const currentUserId = String(getSessionUser()?.id ?? chatsState.loadedForUserId ?? "");
@@ -57,6 +60,8 @@ function sanitisePersistedMessage(value: unknown): ChatViewMessage | null {
   const id = String(message.id ?? "");
   const authorName = String(message.authorName ?? "");
   if (!id || !authorName) return null;
+  const media = Array.isArray(message.media) ? message.media : [];
+  const files = Array.isArray(message.files) ? message.files : [];
 
   let voice: ChatVoiceAttachment | undefined;
   if (message.voice && typeof message.voice === "object") {
@@ -78,6 +83,40 @@ function sanitisePersistedMessage(value: unknown): ChatViewMessage | null {
     }
   }
 
+  let videoNote: ChatVideoNoteAttachment | undefined;
+  if (message.videoNote && typeof message.videoNote === "object") {
+    const rawVideoNote = message.videoNote as Partial<ChatVideoNoteAttachment>;
+    const videoNoteUrl = typeof rawVideoNote.url === "string" ? rawVideoNote.url : "";
+    if (videoNoteUrl && !videoNoteUrl.startsWith("blob:")) {
+      videoNote = {
+        url: videoNoteUrl,
+        mimeType: String(rawVideoNote.mimeType ?? "video/webm"),
+        mediaID: typeof rawVideoNote.mediaID === "number" ? rawVideoNote.mediaID : undefined,
+      };
+    }
+  }
+
+  if (!voice && !videoNote && !String(message.text ?? "").trim()) {
+    const attachments = [...media, ...files];
+    const legacyWebm = attachments.length === 1 ? attachments[0] : undefined;
+    const legacyMimeType = String(legacyWebm?.mimeType ?? "")
+      .trim()
+      .toLowerCase();
+    const isLegacyWebm =
+      legacyWebm &&
+      (legacyMimeType === "video/webm" || legacyMimeType.startsWith("video/webm;")) &&
+      (LEGACY_WEBM_ATTACHMENT_RE.test(legacyWebm.url) ||
+        LEGACY_WEBM_ATTACHMENT_RE.test(legacyWebm.name ?? ""));
+
+    if (legacyWebm && isLegacyWebm) {
+      voice = {
+        url: legacyWebm.url,
+        mimeType: "audio/webm",
+        mediaID: Number.isFinite(Number(legacyWebm.id)) ? Number(legacyWebm.id) : undefined,
+      };
+    }
+  }
+
   return {
     id,
     text: String(message.text ?? ""),
@@ -86,8 +125,8 @@ function sanitisePersistedMessage(value: unknown): ChatViewMessage | null {
       message.stickerData && typeof message.stickerData === "object"
         ? message.stickerData
         : undefined,
-    media: Array.isArray(message.media) ? message.media : [],
-    files: Array.isArray(message.files) ? message.files : [],
+    media,
+    files,
     authorName,
     isOwn: Boolean(message.isOwn),
     deliveryState: message.deliveryState === "sending" ? "failed" : message.deliveryState,
@@ -95,6 +134,7 @@ function sanitisePersistedMessage(value: unknown): ChatViewMessage | null {
     avatarLink: typeof message.avatarLink === "string" ? message.avatarLink : undefined,
     profilePath: typeof message.profilePath === "string" ? message.profilePath : undefined,
     voice,
+    videoNote,
   };
 }
 

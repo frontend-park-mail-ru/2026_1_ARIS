@@ -8,6 +8,7 @@ import {
   getStickersByPack,
   sendChatMessage,
   uploadChatVoice,
+  uploadVideoNote,
   uploadMessageAttachments,
 } from "../../api/chat";
 import type { AttachmentPayload, MessageAttachment, Sticker } from "../../api/chat";
@@ -33,6 +34,7 @@ import {
   syncSelectedChatPinnedToBottom,
   isSelectedChatPinnedToBottomRef,
   keepSelectedChatPinnedToBottom,
+  setChatsDynamicMediaHydrator,
   scrollChatToBottom,
 } from "./render";
 import {
@@ -53,6 +55,7 @@ import type {
   ChatComposerAttachment,
   ChatViewMessage,
   ChatViewThread,
+  ChatVideoNoteRecordingState,
   ChatVoiceDraftState,
   ChatVoiceRecordingState,
 } from "./types";
@@ -66,9 +69,18 @@ const VOICE_MIME_CANDIDATES = [
   "audio/wav",
 ] as const;
 const VOICE_MAX_DURATION_MS = 10 * 60 * 1000;
+const VIDEO_NOTE_MIME_CANDIDATES = [
+  "video/webm;codecs=vp8,opus",
+  "video/webm",
+  "video/mp4",
+] as const;
+const VIDEO_NOTE_MAX_DURATION_MS = 60 * 1000;
+const VIDEO_NOTE_MIN_DURATION_MS = 1000;
+const VIDEO_NOTE_MAX_SIZE_BYTES = 50 * 1024 * 1024;
 const TRANSIENT_ACTION_ERROR_TIMEOUT_MS = 4000;
 const voiceWaveformRequests = new Set<string>();
 const voicePlaybackAnimationByAudio = new WeakMap<HTMLAudioElement, number>();
+const videoNotePlaybackAnimationByVideo = new WeakMap<HTMLVideoElement, number>();
 let transientActionErrorTimer: number | undefined;
 
 type VoiceSeekState = {
@@ -402,6 +414,14 @@ function pauseOtherVoicePlayers(root: ParentNode, currentAudio: HTMLAudioElement
   });
 }
 
+function pauseAllVoicePlayers(root: ParentNode): void {
+  root.querySelectorAll<HTMLAudioElement>("[data-chat-voice-audio]").forEach((audio) => {
+    if (!audio.paused) audio.pause();
+    stopVoicePlaybackAnimation(audio);
+    updateVoicePlayerUi(audio);
+  });
+}
+
 function hydrateVoicePlayers(root: ParentNode): void {
   root.querySelectorAll<HTMLAudioElement>("[data-chat-voice-audio]").forEach((audio) => {
     const durationMs =
@@ -410,6 +430,185 @@ function hydrateVoicePlayers(root: ParentNode): void {
     updateVoicePlayerUi(audio);
     void loadVoiceWaveform(audio);
   });
+}
+
+function getVideoNote(node: Element | null): HTMLElement | null {
+  const note = node?.closest("[data-chat-video-note]");
+  return note instanceof HTMLElement ? note : null;
+}
+
+function getVideoNoteVideo(note: HTMLElement): HTMLVideoElement | null {
+  const video = note.querySelector("[data-video-note-video]");
+  return video instanceof HTMLVideoElement ? video : null;
+}
+
+function isVideoNoteExpanded(note: HTMLElement): boolean {
+  return note.classList.contains("video-note--expanded");
+}
+
+function updateVideoNoteUi(video: HTMLVideoElement): void {
+  const note = getVideoNote(video);
+  if (!note) return;
+
+  const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+  const currentTime = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+  const progress = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0;
+  const ring = note.querySelector<SVGCircleElement>("[data-video-note-ring]");
+  const durationEl = note.querySelector<HTMLElement>("[data-video-note-duration]");
+  const expanded = isVideoNoteExpanded(note);
+
+  note.classList.toggle("video-note--playing", !video.paused && !video.ended);
+  if (video.ended && expanded) {
+    note.dataset.videoNoteState = "played";
+  }
+
+  if (durationEl) {
+    durationEl.textContent = formatVoicePlaybackTime(duration);
+  }
+
+  if (ring) {
+    const circumference = Number(ring.getAttribute("stroke-dasharray") ?? 0);
+    const visibleProgress = expanded ? progress : 0;
+    ring.style.strokeDashoffset = String(circumference * (1 - visibleProgress));
+  }
+}
+
+function stopVideoNotePlaybackAnimation(video: HTMLVideoElement): void {
+  const animationId = videoNotePlaybackAnimationByVideo.get(video);
+  if (animationId !== undefined) {
+    cancelAnimationFrame(animationId);
+    videoNotePlaybackAnimationByVideo.delete(video);
+  }
+}
+
+function startVideoNotePlaybackAnimation(video: HTMLVideoElement): void {
+  stopVideoNotePlaybackAnimation(video);
+
+  const tick = (): void => {
+    updateVideoNoteUi(video);
+    if (!video.paused && !video.ended) {
+      videoNotePlaybackAnimationByVideo.set(video, requestAnimationFrame(tick));
+    } else {
+      videoNotePlaybackAnimationByVideo.delete(video);
+    }
+  };
+
+  videoNotePlaybackAnimationByVideo.set(video, requestAnimationFrame(tick));
+}
+
+function pauseOtherVideoNotes(root: ParentNode, currentVideo: HTMLVideoElement): void {
+  root.querySelectorAll<HTMLVideoElement>("[data-video-note-video]").forEach((video) => {
+    if (video === currentVideo) return;
+    video.pause();
+    video.muted = true;
+    stopVideoNotePlaybackAnimation(video);
+    getVideoNote(video)?.classList.remove("video-note--expanded");
+    updateVideoNoteUi(video);
+  });
+}
+
+function collapseExpandedVideoNotes(root: ParentNode, except?: HTMLElement): void {
+  root
+    .querySelectorAll<HTMLElement>("[data-chat-video-note].video-note--expanded")
+    .forEach((note) => {
+      if (note === except) return;
+      const video = getVideoNoteVideo(note);
+      note.classList.remove("video-note--expanded");
+      if (video) {
+        video.pause();
+        video.muted = true;
+        stopVideoNotePlaybackAnimation(video);
+        updateVideoNoteUi(video);
+      }
+    });
+}
+
+function playVideoNote(video: HTMLVideoElement): void {
+  void video
+    .play()
+    .then(() => {
+      updateVideoNoteUi(video);
+      startVideoNotePlaybackAnimation(video);
+    })
+    .catch(() => {
+      updateVideoNoteUi(video);
+    });
+}
+
+function keepVideoNoteInView(note: HTMLElement): void {
+  const container = note.closest(".chat-messages");
+  if (!(container instanceof HTMLElement)) return;
+
+  const scrollIntoView = (smooth: boolean): void => {
+    const noteRect = note.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const bottomGap = 20;
+    const overflowBottom = noteRect.bottom + bottomGap - containerRect.bottom;
+    const overflowTop = containerRect.top - noteRect.top;
+    const delta = overflowBottom > 0 ? overflowBottom : overflowTop > 0 ? -overflowTop : 0;
+
+    if (!delta) return;
+    container.scrollBy({ top: delta, behavior: smooth ? "smooth" : "auto" });
+  };
+
+  scrollIntoView(true);
+  requestAnimationFrame(() => scrollIntoView(true));
+  window.setTimeout(() => scrollIntoView(false), 260);
+}
+
+function toggleVideoNote(root: ParentNode, note: HTMLElement): void {
+  const video = getVideoNoteVideo(note);
+  if (!video) return;
+
+  const wasExpanded = isVideoNoteExpanded(note);
+  collapseExpandedVideoNotes(root, note);
+  pauseOtherVideoNotes(root, video);
+
+  if (!wasExpanded) {
+    note.classList.add("video-note--expanded");
+    note.dataset.videoNoteState = "played";
+    video.muted = false;
+    video.currentTime = 0;
+    pauseAllVoicePlayers(root);
+    playVideoNote(video);
+    keepVideoNoteInView(note);
+    return;
+  }
+
+  video.muted = false;
+  if (video.paused || video.ended) {
+    if (video.ended) video.currentTime = 0;
+    playVideoNote(video);
+  } else {
+    video.pause();
+    stopVideoNotePlaybackAnimation(video);
+    updateVideoNoteUi(video);
+  }
+}
+
+function hydrateVideoNotes(root: ParentNode): void {
+  const videos = Array.from(root.querySelectorAll<HTMLVideoElement>("[data-video-note-video]"));
+  videos.forEach((video) => {
+    const note = getVideoNote(video);
+    video.muted = !note || !isVideoNoteExpanded(note);
+    video.playsInline = true;
+    updateVideoNoteUi(video);
+  });
+}
+
+function hydrateVideoNoteRecordingPreview(root: ParentNode): void {
+  const preview = root.querySelector("[data-chat-video-note-preview]");
+  if (!(preview instanceof HTMLVideoElement)) return;
+
+  const recording = chatsState.videoNoteRecording;
+  if (!recording) return;
+
+  if (preview.srcObject !== recording.stream) {
+    preview.srcObject = recording.stream;
+  }
+  preview.muted = true;
+  preview.playsInline = true;
+  void preview.play().catch(() => {});
 }
 
 function getMediaRecorderConstructor(): typeof MediaRecorder | undefined {
@@ -422,7 +621,19 @@ function getSupportedVoiceMimeType(): string {
   return VOICE_MIME_CANDIDATES.find((mimeType) => Recorder.isTypeSupported(mimeType)) ?? "";
 }
 
+function getSupportedVideoNoteMimeType(): string {
+  const Recorder = getMediaRecorderConstructor();
+  if (!Recorder) return "";
+  return VIDEO_NOTE_MIME_CANDIDATES.find((mimeType) => Recorder.isTypeSupported(mimeType)) ?? "";
+}
+
 function isVoiceRecordingSupported(): boolean {
+  return Boolean(
+    typeof navigator.mediaDevices?.getUserMedia === "function" && getMediaRecorderConstructor(),
+  );
+}
+
+function isVideoNoteRecordingSupported(): boolean {
   return Boolean(
     typeof navigator.mediaDevices?.getUserMedia === "function" && getMediaRecorderConstructor(),
   );
@@ -432,11 +643,23 @@ function stopVoiceTracks(recording: ChatVoiceRecordingState): void {
   recording.stream.getTracks().forEach((track) => track.stop());
 }
 
+function stopVideoNoteTracks(recording: ChatVideoNoteRecordingState): void {
+  recording.stream.getTracks().forEach((track) => track.stop());
+}
+
 function clearVoiceRecording(): ChatVoiceRecordingState | undefined {
   const recording = chatsState.voiceRecording;
   if (!recording) return undefined;
   window.clearInterval(recording.timerId);
   chatsState.voiceRecording = undefined;
+  return recording;
+}
+
+function clearVideoNoteRecording(): ChatVideoNoteRecordingState | undefined {
+  const recording = chatsState.videoNoteRecording;
+  if (!recording) return undefined;
+  window.clearInterval(recording.timerId);
+  chatsState.videoNoteRecording = undefined;
   return recording;
 }
 
@@ -489,8 +712,17 @@ function getVoiceFilename(mimeType: string): string {
   return "voice-message.webm";
 }
 
+function getVideoNoteFilename(mimeType: string): string {
+  if (mimeType.includes("mp4")) return "video-note.mp4";
+  return "video-note.webm";
+}
+
 function resolveVoiceBlobType(recording: ChatVoiceRecordingState): string {
   return recording.mimeType || recording.chunks[0]?.type || "audio/webm";
+}
+
+function resolveVideoNoteBlobType(recording: ChatVideoNoteRecordingState): string {
+  return recording.mimeType || recording.chunks[0]?.type || "video/webm";
 }
 
 async function startVoiceRecording(
@@ -556,6 +788,79 @@ async function startVoiceRecording(
   }
 }
 
+async function startVideoNoteRecording(
+  root: Document | HTMLElement,
+  thread: ChatViewThread,
+): Promise<void> {
+  if (thread.source !== "api") {
+    chatsState.actionErrorMessage = t("chats.voiceApiOnly");
+    refreshChatsPage(root);
+    return;
+  }
+
+  if (!isVideoNoteRecordingSupported()) {
+    showTransientActionError(root, "Запись видеосообщений не поддерживается этим браузером.");
+    return;
+  }
+
+  if (chatsState.voiceRecording) {
+    await cancelVoiceRecording(root);
+  }
+  if (chatsState.videoNoteRecording) {
+    await cancelVideoNoteRecording(root);
+  }
+  clearVoiceDraft();
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: {
+        width: { ideal: 480 },
+        height: { ideal: 480 },
+        facingMode: "user",
+      },
+    });
+    const mimeType = getSupportedVideoNoteMimeType();
+    const Recorder = getMediaRecorderConstructor();
+    if (!Recorder) throw new Error("MediaRecorder is unavailable");
+
+    const recorder = new Recorder(stream, mimeType ? { mimeType } : undefined);
+    const startedAt = Date.now();
+    const recording: ChatVideoNoteRecordingState = {
+      chatId: thread.id,
+      recorder,
+      stream,
+      chunks: [],
+      mimeType,
+      startedAt,
+      elapsedMs: 0,
+      timerId: window.setInterval(() => {
+        const activeRecording = chatsState.videoNoteRecording;
+        if (!activeRecording || activeRecording.chatId !== thread.id) return;
+        const elapsedMs = Date.now() - activeRecording.startedAt;
+        activeRecording.elapsedMs = Math.min(elapsedMs, VIDEO_NOTE_MAX_DURATION_MS);
+        if (elapsedMs >= VIDEO_NOTE_MAX_DURATION_MS) {
+          void finishVideoNoteRecording(root);
+          return;
+        }
+        refreshChatsPage(root);
+      }, 100),
+    };
+
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data.size > 0) recording.chunks.push(event.data);
+    });
+
+    recorder.start(1000);
+    chatsState.videoNoteRecording = recording;
+    chatsState.actionErrorMessage = "";
+    refreshChatsPage(root);
+  } catch (error) {
+    console.error("[chats] source=media scope=video-note-record error", error);
+    showTransientActionError(root, "Разрешите доступ к камере и микрофону в настройках браузера.");
+  }
+}
+
 async function stopRecorder(recording: ChatVoiceRecordingState): Promise<Blob> {
   return new Promise((resolve) => {
     recording.recorder.addEventListener(
@@ -577,6 +882,27 @@ async function stopRecorder(recording: ChatVoiceRecordingState): Promise<Blob> {
   });
 }
 
+async function stopVideoNoteRecorder(recording: ChatVideoNoteRecordingState): Promise<Blob> {
+  return new Promise((resolve) => {
+    recording.recorder.addEventListener(
+      "stop",
+      () => {
+        stopVideoNoteTracks(recording);
+        resolve(new Blob(recording.chunks, { type: resolveVideoNoteBlobType(recording) }));
+      },
+      { once: true },
+    );
+
+    if (recording.recorder.state === "inactive") {
+      stopVideoNoteTracks(recording);
+      resolve(new Blob(recording.chunks, { type: resolveVideoNoteBlobType(recording) }));
+      return;
+    }
+
+    recording.recorder.stop();
+  });
+}
+
 async function cancelVoiceRecording(root: Document | HTMLElement): Promise<void> {
   const recording = clearVoiceRecording();
   if (!recording) return;
@@ -584,6 +910,16 @@ async function cancelVoiceRecording(root: Document | HTMLElement): Promise<void>
     recording.recorder.stop();
   }
   stopVoiceTracks(recording);
+  refreshChatsPage(root);
+}
+
+async function cancelVideoNoteRecording(root: Document | HTMLElement): Promise<void> {
+  const recording = clearVideoNoteRecording();
+  if (!recording) return;
+  if (recording.recorder.state !== "inactive") {
+    recording.recorder.stop();
+  }
+  stopVideoNoteTracks(recording);
   refreshChatsPage(root);
 }
 
@@ -812,6 +1148,51 @@ function appendOptimisticVoiceMessage(
   return optimisticMessage;
 }
 
+function appendOptimisticVideoNoteMessage(
+  thread: ChatViewThread,
+  blob: Blob,
+  localUrl: string,
+): ChatViewMessage {
+  const currentUser = getSessionUser();
+  const optimisticMessage: ChatViewMessage = {
+    id: `local-video-note-${Date.now()}`,
+    text: "",
+    authorName: `${currentUser?.firstName ?? "Вы"} ${currentUser?.lastName ?? ""}`.trim(),
+    isOwn: true,
+    deliveryState: "sending",
+    createdAt: new Date().toISOString(),
+    avatarLink: currentUser?.avatarLink,
+    profilePath: getCurrentUserProfilePath(),
+    media: [
+      {
+        id: `local-video-note-media-${Date.now()}`,
+        uid: `local-video-note-media-${Date.now()}`,
+        mimeType: blob.type || "video/webm",
+        url: localUrl,
+        name: getVideoNoteFilename(blob.type),
+      },
+    ],
+    files: [],
+    videoNote: {
+      url: localUrl,
+      mimeType: blob.type || "video/webm",
+      blob,
+    },
+  };
+
+  if (!thread.messages) thread.messages = [];
+  thread.messages = sortMessagesByCreatedAt([...thread.messages, optimisticMessage]);
+  addPendingOutgoing(thread.id, optimisticMessage);
+  updateThreadPreview(thread);
+  sortThreadsByUpdatedAt();
+  clearUnreadIncoming(thread.id);
+  keepSelectedChatPinnedToBottom();
+  queueOutgoingForRetry(thread.id, optimisticMessage);
+  persistChatsData(chatsState.threads);
+
+  return optimisticMessage;
+}
+
 async function sendVoiceBlob(
   root: Document | HTMLElement,
   thread: ChatViewThread,
@@ -917,6 +1298,102 @@ async function sendVoiceBlob(
   }
 }
 
+async function sendVideoNoteBlob(
+  root: Document | HTMLElement,
+  thread: ChatViewThread,
+  blob: Blob,
+  durationMs: number,
+): Promise<void> {
+  if (thread.source !== "api") {
+    chatsState.actionErrorMessage = t("chats.voiceApiOnly");
+    refreshChatsPage(root);
+    return;
+  }
+
+  if (!blob.size) {
+    chatsState.actionErrorMessage = "Запись пустая.";
+    refreshChatsPage(root);
+    return;
+  }
+
+  if (durationMs < VIDEO_NOTE_MIN_DURATION_MS) {
+    chatsState.actionErrorMessage = "Запись слишком короткая.";
+    refreshChatsPage(root);
+    return;
+  }
+
+  if (blob.size > VIDEO_NOTE_MAX_SIZE_BYTES) {
+    chatsState.actionErrorMessage = "Видео слишком длинное, попробуйте снова.";
+    refreshChatsPage(root);
+    return;
+  }
+
+  const localUrl = URL.createObjectURL(blob);
+  const optimisticMessage = appendOptimisticVideoNoteMessage(thread, blob, localUrl);
+  chatsState.actionErrorMessage = "";
+  refreshChatsPage(root);
+
+  try {
+    const uploaded = await uploadVideoNote(blob, getVideoNoteFilename(blob.type));
+    if (optimisticMessage.videoNote) {
+      optimisticMessage.videoNote.mediaID = uploaded.mediaID;
+    }
+
+    const sentMessage = await sendChatMessage(thread.id, {
+      type: "video_note",
+      media: [{ mediaID: uploaded.mediaID }],
+    });
+    const sentViewMessage = mapMessageToViewMessage(sentMessage, thread);
+
+    thread.messages = sortMessagesByCreatedAt(
+      dedupeMessagesById(
+        (thread.messages ?? []).map((message) =>
+          message.id === optimisticMessage.id
+            ? {
+                ...sentViewMessage,
+                deliveryState: undefined,
+                videoNote: sentViewMessage.videoNote
+                  ? {
+                      ...sentViewMessage.videoNote,
+                      mediaID: sentViewMessage.videoNote.mediaID ?? uploaded.mediaID,
+                    }
+                  : {
+                      mediaID: uploaded.mediaID,
+                      url: uploaded.mediaURL,
+                      mimeType: blob.type || "video/webm",
+                    },
+              }
+            : message,
+        ),
+      ),
+    );
+    removePendingOutgoing(thread.id, optimisticMessage.id);
+    updateThreadPreview(thread);
+    sortThreadsByUpdatedAt();
+    persistChatsData(chatsState.threads);
+    URL.revokeObjectURL(localUrl);
+    refreshChatsPage(root);
+  } catch (error) {
+    console.error("[chats] source=api scope=video-note-send error", error);
+    thread.messages = (thread.messages ?? []).map((message) =>
+      message.id === optimisticMessage.id
+        ? { ...message, deliveryState: "failed" as const }
+        : message,
+    );
+    queueOutgoingForRetry(thread.id, { ...optimisticMessage, deliveryState: "failed" });
+    chatsState.actionErrorMessage = isOfflineNetworkError(error)
+      ? "Нет соединения с интернетом."
+      : error instanceof Error
+        ? error.message
+        : "Не удалось отправить видеосообщение.";
+    keepSelectedChatPinnedToBottom();
+    updateThreadPreview(thread);
+    sortThreadsByUpdatedAt();
+    persistChatsData(chatsState.threads);
+    refreshChatsPage(root);
+  }
+}
+
 async function finishVoiceRecording(root: Document | HTMLElement): Promise<void> {
   const recording = clearVoiceRecording();
   if (!recording) return;
@@ -929,6 +1406,21 @@ async function finishVoiceRecording(root: Document | HTMLElement): Promise<void>
   refreshChatsPage(root);
   if (thread) {
     await sendVoiceBlob(root, thread, blob, durationMs);
+  }
+}
+
+async function finishVideoNoteRecording(root: Document | HTMLElement): Promise<void> {
+  const recording = clearVideoNoteRecording();
+  if (!recording) return;
+  const thread = chatsState.threads.find((t) => t.id === recording.chatId);
+  const durationMs = Math.min(
+    VIDEO_NOTE_MAX_DURATION_MS,
+    Math.max(recording.elapsedMs, Date.now() - recording.startedAt),
+  );
+  const blob = await stopVideoNoteRecorder(recording);
+  refreshChatsPage(root);
+  if (thread) {
+    await sendVideoNoteBlob(root, thread, blob, durationMs);
   }
 }
 
@@ -1090,6 +1582,13 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
       if (openPostImageViewerFromTarget(target)) return;
     }
 
+    const videoNote = getVideoNote(target);
+    if (videoNote) {
+      toggleVideoNote(root, videoNote);
+      return;
+    }
+    collapseExpandedVideoNotes(root);
+
     const scrollBottomButton = target.closest("[data-chat-scroll-bottom]");
     if (scrollBottomButton instanceof HTMLButtonElement) {
       if (chatsState.selectedChatId) clearUnreadIncoming(chatsState.selectedChatId);
@@ -1133,6 +1632,26 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
       syncSelectedChatToUrl(chatId);
       refreshChatsPage(root);
       void ensureMessagesLoaded(chatId).then(() => refreshChatsPage(root));
+      return;
+    }
+
+    const videoNoteRecordButton = target.closest("[data-chat-video-note-record]");
+    if (videoNoteRecordButton instanceof HTMLButtonElement) {
+      const selectedThread = chatsState.threads.find((t) => t.id === chatsState.selectedChatId);
+      if (!selectedThread) return;
+      void startVideoNoteRecording(root, selectedThread);
+      return;
+    }
+
+    const videoNoteCancelButton = target.closest("[data-chat-video-note-cancel]");
+    if (videoNoteCancelButton instanceof HTMLButtonElement) {
+      void cancelVideoNoteRecording(root);
+      return;
+    }
+
+    const videoNoteSendButton = target.closest("[data-chat-video-note-send]");
+    if (videoNoteSendButton instanceof HTMLButtonElement) {
+      void finishVideoNoteRecording(root);
       return;
     }
 
@@ -1350,6 +1869,8 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
         syncVoiceDurationToMessages([target.currentSrc || target.src], durationMs);
         updateVoicePlayerUi(target);
         void loadVoiceWaveform(target);
+      } else if (target instanceof HTMLVideoElement && target.matches("[data-video-note-video]")) {
+        updateVideoNoteUi(target);
       }
     },
     true,
@@ -1361,6 +1882,8 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
       const target = event.target;
       if (target instanceof HTMLAudioElement && target.matches("[data-chat-voice-audio]")) {
         updateVoicePlayerUi(target);
+      } else if (target instanceof HTMLVideoElement && target.matches("[data-video-note-video]")) {
+        updateVideoNoteUi(target);
       }
     },
     true,
@@ -1374,6 +1897,14 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
         pauseOtherVoicePlayers(root, target);
         updateVoicePlayerUi(target);
         startVoicePlaybackAnimation(target);
+      } else if (target instanceof HTMLVideoElement && target.matches("[data-video-note-video]")) {
+        const note = getVideoNote(target);
+        if (note && isVideoNoteExpanded(note)) {
+          pauseOtherVideoNotes(root, target);
+          pauseAllVoicePlayers(root);
+        }
+        updateVideoNoteUi(target);
+        startVideoNotePlaybackAnimation(target);
       }
     },
     true,
@@ -1386,6 +1917,16 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
       if (target instanceof HTMLAudioElement && target.matches("[data-chat-voice-audio]")) {
         stopVoicePlaybackAnimation(target);
         updateVoicePlayerUi(target);
+      } else if (target instanceof HTMLVideoElement && target.matches("[data-video-note-video]")) {
+        stopVideoNotePlaybackAnimation(target);
+        const note = getVideoNote(target);
+        if (note) {
+          note.classList.remove("video-note--expanded");
+          note.dataset.videoNoteState = "played";
+        }
+        target.muted = true;
+        target.currentTime = 0;
+        updateVideoNoteUi(target);
       }
     },
     true,
@@ -1399,6 +1940,9 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
         stopVoicePlaybackAnimation(target);
         target.currentTime = 0;
         updateVoicePlayerUi(target);
+      } else if (target instanceof HTMLVideoElement && target.matches("[data-video-note-video]")) {
+        stopVideoNotePlaybackAnimation(target);
+        updateVideoNoteUi(target);
       }
     },
     true,
@@ -1492,5 +2036,11 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
       });
   });
 
-  hydrateVoicePlayers(root);
+  const hydrateDynamicMedia = (container: ParentNode): void => {
+    hydrateVoicePlayers(container);
+    hydrateVideoNotes(container);
+    hydrateVideoNoteRecordingPreview(container);
+  };
+  setChatsDynamicMediaHydrator(hydrateDynamicMedia);
+  hydrateDynamicMedia(root);
 }

@@ -67,6 +67,7 @@ type RawMessage = {
   files?: RawMessageAttachment[];
   reactions?: RawMessageReaction[];
   myReaction?: string | null;
+  type?: string;
   isActive?: boolean;
   createdAt?: string;
   CreatedAt?: string;
@@ -175,6 +176,8 @@ export type ChatMessage = {
   files: MessageAttachment[];
   /** Сводка emoji-реакций. */
   reactions: MessageReaction[];
+  /** Тип сообщения: "text" | "video_note" | "sticker". */
+  type?: string | undefined;
   /** Реакция текущего пользователя. */
   myReaction?: string | undefined;
   /** Активно ли сообщение. */
@@ -231,6 +234,8 @@ export type MessageReactionType = "👍" | "❤️" | "😂" | "😢" | "😡";
  * Тело запроса на отправку сообщения.
  */
 export type SendMessagePayload = {
+  /** Тип сообщения, например "video_note". */
+  type?: string;
   /** Текст сообщения, который нужно отправить в чат. */
   text?: string;
   /** ID сообщения, на которое отвечают. */
@@ -497,6 +502,7 @@ function mapMessage(raw: RawMessage): ChatMessage {
     media,
     files,
     reactions,
+    ...(raw.type ? { type: raw.type } : {}),
     ...(raw.myReaction ? { myReaction: String(raw.myReaction) } : {}),
     isActive: raw.isActive !== false,
     createdAt: raw.createdAt ?? raw.CreatedAt,
@@ -523,6 +529,7 @@ function normaliseSendMessagePayload(payload: SendMessagePayload): SendMessagePa
     : undefined;
 
   return {
+    ...(payload.type === "video_note" ? { type: payload.type } : {}),
     ...(typeof payload.text === "string" ? { text: payload.text } : {}),
     ...(typeof payload.parentMessageId === "number"
       ? { parentMessageId: payload.parentMessageId }
@@ -749,6 +756,28 @@ export async function uploadChatVoice(
 
   if (!uploadedFile) {
     throw new ApiError("Не удалось загрузить голосовое сообщение.", 200, data);
+  }
+
+  return uploadedFile;
+}
+
+export async function uploadVideoNote(
+  blob: Blob,
+  filename = "video_note.webm",
+): Promise<UploadedChatMedia> {
+  const formData = new FormData();
+  formData.append("files", blob, filename);
+
+  const data = await apiRequest<UploadChatMediaResponse>(
+    "/api/media/upload?for=video_note",
+    { method: "POST", body: formData },
+    {},
+  );
+  const uploadedMedia = Array.isArray(data.media) ? data.media : [];
+  const uploadedFile = mapUploadedChatMedia(uploadedMedia[0]);
+
+  if (!uploadedFile) {
+    throw new ApiError("Не удалось загрузить видеосообщение.", 200, data);
   }
 
   return uploadedFile;

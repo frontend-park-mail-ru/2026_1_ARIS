@@ -795,7 +795,9 @@ function initViewTracking(): void {
                   position: pos >= 0 ? pos : 0,
                   source: "feed",
                 };
-                void postFeedEvents([event]);
+                void postFeedEvents([event]).catch((error: unknown) => {
+                  console.info("[feed] view event failed", error);
+                });
               }, 1000),
             );
           }

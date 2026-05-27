@@ -2,7 +2,28 @@ import type { GameRoom, GameRoomMessage } from "../../../../../api/games";
 import { createRoomSystemMessage } from "../../../chat/model";
 import { gameT } from "../../../shared/i18n";
 import { getSystemPlayerFullName } from "./names";
-import { formatRoomModeLabel, getRoomJoinLeavePlayerLabel } from "./verbs";
+import {
+  formatRoomModeLabel,
+  getAssignedAdminVerb,
+  getJoinedVerb,
+  getLeftVerb,
+  getReadyVerb,
+  getRoomJoinLeavePlayerLabel,
+} from "./verbs";
+
+/**
+ * Возвращает игрока по profileId из предыдущей или новой версии комнаты.
+ */
+function getSystemPlayer(
+  previousRoom: GameRoom,
+  nextRoom: GameRoom,
+  profileId: string,
+): GameRoom["players"][number] | undefined {
+  return (
+    nextRoom.players.find((item) => item.profileId === profileId) ??
+    previousRoom.players.find((item) => item.profileId === profileId)
+  );
+}
 
 /**
  * Возвращает имя игрока по profileId из предыдущей или новой версии комнаты.
@@ -12,9 +33,7 @@ function getSystemPlayerLabel(
   nextRoom: GameRoom,
   profileId: string,
 ): string {
-  const player =
-    nextRoom.players.find((item) => item.profileId === profileId) ??
-    previousRoom.players.find((item) => item.profileId === profileId);
+  const player = getSystemPlayer(previousRoom, nextRoom, profileId);
   return getSystemPlayerFullName(player) || gameT("common.playerFallback");
 }
 
@@ -35,6 +54,7 @@ function pushRoomSettingsMessages(
     nextRoom.createdByProfileId &&
     previousRoom.createdByProfileId !== nextRoom.createdByProfileId
   ) {
+    const previousAdmin = getSystemPlayer(previousRoom, nextRoom, previousRoom.createdByProfileId);
     const previousAdminLabel = getSystemPlayerLabel(
       previousRoom,
       nextRoom,
@@ -46,7 +66,11 @@ function pushRoomSettingsMessages(
       nextRoom.createdByProfileId,
     );
     messages.push(
-      gameT("system.adminAssigned", { previous: previousAdminLabel, next: nextAdminLabel }),
+      gameT("system.adminAssigned", {
+        previous: previousAdminLabel,
+        verb: getAssignedAdminVerb(previousAdmin),
+        next: nextAdminLabel,
+      }),
     );
   }
 
@@ -82,13 +106,23 @@ function pushRoomRosterMessages(
 ): void {
   nextRoom.players.forEach((player) => {
     if (!player.profileId || previousPlayersByProfile.has(player.profileId)) return;
-    messages.push(gameT("system.joined", { player: getRoomJoinLeavePlayerLabel(player) }));
+    messages.push(
+      gameT("system.joined", {
+        player: getRoomJoinLeavePlayerLabel(player),
+        verb: getJoinedVerb(player),
+      }),
+    );
   });
 
   previousRoom.players.forEach((player) => {
     if (!player.profileId || nextPlayersByProfile.has(player.profileId)) return;
     if (consumeDisconnectRemoval?.(nextRoom.id, player.profileId)) return;
-    messages.push(gameT("system.left", { player: getRoomJoinLeavePlayerLabel(player) }));
+    messages.push(
+      gameT("system.left", {
+        player: getRoomJoinLeavePlayerLabel(player),
+        verb: getLeftVerb(player),
+      }),
+    );
   });
 }
 
@@ -118,6 +152,7 @@ function pushRoomReadyMessages(
     messages.push(
       gameT("system.readyChanged", {
         player: playerLabel,
+        verb: getReadyVerb(player),
         status: player.isReady ? gameT("room.ready") : gameT("room.notReady"),
         suffix: readySuffix,
       }),

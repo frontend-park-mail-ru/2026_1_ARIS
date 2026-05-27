@@ -5,7 +5,7 @@ import {
   type GameRoomMessage,
 } from "../../../api/games";
 import { createRoomSystemMessage } from "../chat/model";
-import { getRoomJoinLeavePlayerLabel } from "../room/profile/system-messages";
+import { getRemovedVerb, getRoomJoinLeavePlayerLabel } from "../room/profile/system-messages";
 import { normalizeLobbyRoomUpdate } from "../room/state/lobby-updates";
 import { gameT } from "../shared/i18n";
 import { getInlineRoomLoadingPatch } from "../state/action-patches";
@@ -48,7 +48,10 @@ function getKickPlayerSystemMessages(
   return [
     createRoomSystemMessage(
       room.id,
-      gameT("system.removed", { player: getRoomJoinLeavePlayerLabel(removedPlayer) }),
+      gameT("system.removed", {
+        player: getRoomJoinLeavePlayerLabel(removedPlayer),
+        verb: getRemovedVerb(removedPlayer),
+      }),
     ),
   ];
 }

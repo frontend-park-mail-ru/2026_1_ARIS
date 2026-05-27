@@ -109,7 +109,6 @@ import {
   mapPostToCommunityPost,
   canManageCommunityMemberRole,
   canRemoveCommunityMember,
-  escapeHtml,
 } from "./helpers";
 import {
   refreshCommunitiesList,

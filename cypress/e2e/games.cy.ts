@@ -541,7 +541,7 @@ describe("игровая комната", () => {
     cy.get('input[name="inviteCode"]').should("have.value", "AB12CD");
     cy.get('input[name="password"]').should("have.value", "wrong-password");
     cy.get("[data-games-invite-code-error]").should("have.text", "");
-    cy.contains("[data-games-join-password-error]", "Пароль неверный").should("be.visible");
+    cy.contains("[data-games-join-password-error]", "Неверный пароль").should("be.visible");
     cy.contains(".games-inline-error", "Неверный пароль").should("not.exist");
   });
 
@@ -1146,7 +1146,7 @@ describe("игровая комната", () => {
       .should("contain", "Игорь")
       .and("contain", "#3")
       .and("contain", "×")
-      .and("contain", "нет ответа")
+      .and("contain", "Нет ответа")
       .and("not.contain", "0 очков")
       .and("not.contain", "нет времени")
       .should("have.class", "games-answer-axis-card--missing");
@@ -1186,7 +1186,7 @@ describe("игровая комната", () => {
       .eq(2)
       .should("contain", "Игорь")
       .and("contain", "×")
-      .and("contain", "нет ответа")
+      .and("contain", "Нет ответа")
       .and("not.contain", "0 очков")
       .and("not.contain", "нет времени")
       .should("have.class", "games-answer-axis-card--missing")

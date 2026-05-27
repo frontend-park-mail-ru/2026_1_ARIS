@@ -1753,6 +1753,13 @@
     min-width: 0;
   }
 
+  .profile-comment__head {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+  }
+
   .profile-comment__author {
     font-size: var(--text-size-main);
     font-weight: var(--font-weight-medium);
@@ -1765,6 +1772,26 @@
     text-decoration: underline;
   }
 
+  .profile-comment__actions {
+    display: inline-flex;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .profile-comment__menu-toggle {
+    width: 28px;
+    height: 24px;
+  }
+
+  .profile-comment__menu-toggle span {
+    width: 3px;
+    height: 3px;
+  }
+
+  .profile-comment__menu {
+    z-index: 9100;
+  }
+
   .profile-comment__bubble {
     padding: 0;
     border: none;
@@ -1775,6 +1802,76 @@
     color: var(--color-text-main);
     overflow-wrap: anywhere;
     white-space: pre-wrap;
+  }
+
+  .profile-comment-edit {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .profile-comment-edit__field {
+    width: 100%;
+    min-height: 64px;
+    padding: 10px 12px;
+    border: 1px solid rgb(138 146 190 / 28%);
+    border-radius: var(--radius-small);
+    background: rgb(244 247 252 / 82%);
+    color: var(--color-text-main);
+    font: inherit;
+    font-size: var(--text-size-main);
+    line-height: var(--line-height-base);
+    resize: vertical;
+  }
+
+  .profile-comment-edit__field:focus {
+    border-color: rgb(74 81 208 / 45%);
+    outline: none;
+    box-shadow: var(--control-focus-ring);
+  }
+
+  .profile-comment-edit__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .profile-comment-edit__save,
+  .profile-comment-edit__cancel {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border: none;
+    border-radius: var(--radius-small);
+    font: inherit;
+    font-size: var(--text-size-caption);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+  }
+
+  .profile-comment-edit__save {
+    background: var(--color-interactive-primary);
+    color: var(--color-text-on-primary);
+  }
+
+  .profile-comment-edit__cancel {
+    background: rgb(138 146 190 / 14%);
+    color: var(--color-text-main);
+  }
+
+  .profile-comment-edit__save:disabled,
+  .profile-comment-edit__cancel:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  .profile-comment-edit__error {
+    margin: 0;
+    color: rgb(197 48 78);
+    font-size: var(--text-size-caption);
   }
 
   .profile-comment__footer {

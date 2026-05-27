@@ -29,6 +29,8 @@ import {
   getPostCommentRepliesBatch,
   likePostComment,
   unlikePostComment,
+  updatePostComment,
+  deletePostComment,
 } from "../../api/posts";
 import {
   COMMENT_PAGE_SIZE,
@@ -40,6 +42,23 @@ import {
 import { getFeedMode, getSessionUser } from "../../state/session";
 import { prepareAvatarLinks } from "../../utils/avatar";
 import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
+import {
+  completeFixedCommentBlockSkeleton,
+  restoreFixedCommentBlockSkeleton,
+  showFixedCommentBlockSkeleton,
+} from "../../utils/comment-block-loading";
+import {
+  bindFloatingCommentMenuActions,
+  cancelCommentEdit,
+  closeCommentMenus,
+  confirmCommentDelete,
+  finishCommentEdit,
+  openCommentEditForm,
+  positionCommentMenu,
+  setCommentEditError,
+} from "../../utils/comment-actions";
+import { waitForMinimumLoadingTime } from "../../utils/loading-state";
+import { showAppToast } from "../../utils/toast";
 import { t } from "../../state/i18n";
 
 import type { FeedMode, FeedAuthKey, FeedCenterResult, ActiveFeedState } from "./types";
@@ -196,9 +215,7 @@ function updateActiveFeedPostCommentCount(postId: string, comments: number): voi
 
 function syncFeedPostCommentCountUi(postId: string): void {
   const post = activeFeedState?.items.find((item) => item.id === postId);
-  if (!post) {
-    return;
-  }
+  if (!post) return;
 
   document
     .querySelectorAll<HTMLElement>(
@@ -226,6 +243,62 @@ function findFeedPostCard(target: Element): HTMLElement | null {
   const card = target.closest<HTMLElement>("[data-post-id]");
 
   return card?.closest("[data-feed-list]") instanceof HTMLElement ? card : null;
+}
+
+function restoreFeedCommentForm(
+  postId: string,
+  text: string,
+  replyToId?: string,
+  placeholder?: string,
+): void {
+  const form = document.querySelector<HTMLFormElement>(
+    `[data-feed-comment-form="${CSS.escape(postId)}"]`,
+  );
+  const input = form?.querySelector<HTMLInputElement>(
+    `[data-feed-comment-input="${CSS.escape(postId)}"]`,
+  );
+  const submitBtn = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const errorEl = document.querySelector<HTMLElement>(
+    `[data-feed-comment-error="${CSS.escape(postId)}"]`,
+  );
+
+  if (form && replyToId) {
+    form.dataset.feedPostReplyTo = replyToId;
+  }
+
+  if (input) {
+    input.value = text;
+    if (placeholder) input.placeholder = placeholder;
+  }
+  if (submitBtn) submitBtn.disabled = false;
+
+  if (errorEl) {
+    errorEl.textContent = t("profile.commentSendError");
+    errorEl.hidden = false;
+  }
+}
+
+function resetFeedCommentForm(postId: string): void {
+  const form = document.querySelector<HTMLFormElement>(
+    `[data-feed-comment-form="${CSS.escape(postId)}"]`,
+  );
+  const input = form?.querySelector<HTMLInputElement>(
+    `[data-feed-comment-input="${CSS.escape(postId)}"]`,
+  );
+  const submitBtn = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const errorEl = document.querySelector<HTMLElement>(
+    `[data-feed-comment-error="${CSS.escape(postId)}"]`,
+  );
+
+  if (form) delete form.dataset.feedPostReplyTo;
+  if (input) {
+    input.value = "";
+    input.placeholder = t("profile.commentPlaceholder");
+  }
+  if (submitBtn) submitBtn.disabled = false;
+  if (errorEl) {
+    errorEl.hidden = true;
+  }
 }
 
 function bindFeedLikeActions(): void {
@@ -302,7 +375,10 @@ function bindFeedImageViewerActions(): void {
   isFeedImageViewerBound = true;
 }
 
-async function loadFeedComments(postId: string): Promise<void> {
+async function loadFeedComments(
+  postId: string,
+  options: { showLoading?: boolean } = {},
+): Promise<void> {
   const listEl = document.querySelector<HTMLElement>(
     `[data-feed-comment-list="${CSS.escape(postId)}"]`,
   );
@@ -310,7 +386,9 @@ async function loadFeedComments(postId: string): Promise<void> {
   if (loadingFeedCommentPostIds.has(postId)) return;
 
   loadingFeedCommentPostIds.add(postId);
-  listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
+  if (options.showLoading !== false) {
+    listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
+  }
   try {
     const comments = await getPostComments(postId, { limit: COMMENT_PAGE_SIZE, offset: 0 });
     if (!comments.length) {
@@ -394,6 +472,81 @@ async function loadMoreFeedComments(postId: string, button: HTMLButtonElement): 
   }
 }
 
+async function reloadFeedCommentsAfterMutation(
+  postId: string,
+  options: { skeletonState?: Parameters<typeof completeFixedCommentBlockSkeleton>[0] } = {},
+): Promise<void> {
+  loadingFeedCommentPostIds.delete(postId);
+  loadedFeedCommentPostIds.delete(postId);
+  await loadFeedComments(postId, { showLoading: !options.skeletonState });
+  completeFixedCommentBlockSkeleton(options.skeletonState ?? null);
+}
+
+function openFeedCommentMenu(toggle: HTMLButtonElement): void {
+  const commentId = toggle.getAttribute("data-comment-menu-toggle") ?? "";
+  const postId = toggle.getAttribute("data-comment-menu-post") ?? "";
+  if (!commentId || !postId) return;
+
+  const menu = document.querySelector<HTMLElement>(
+    `[data-comment-menu="${CSS.escape(commentId)}"][data-comment-menu-post="${CSS.escape(postId)}"]`,
+  );
+  const isExpanded = toggle.getAttribute("aria-expanded") === "true";
+  closeCommentMenus(document);
+
+  if (!menu || isExpanded) return;
+
+  const floatingMenu = menu.cloneNode(true);
+  if (!(floatingMenu instanceof HTMLElement)) return;
+
+  floatingMenu.dataset.commentMenuFloating = "";
+  positionCommentMenu(floatingMenu, toggle);
+  document.body.appendChild(floatingMenu);
+  bindFloatingCommentMenuActions(floatingMenu, document, {
+    onEdit: (targetPostId, targetCommentId) => {
+      openCommentEditForm(document, targetPostId, targetCommentId);
+    },
+    onDelete: (targetPostId, targetCommentId, removedCount) => {
+      void deleteFeedComment(targetPostId, targetCommentId, removedCount);
+    },
+  });
+  floatingMenu.hidden = false;
+  toggle.setAttribute("aria-expanded", "true");
+}
+
+async function deleteFeedComment(
+  postId: string,
+  commentId: string,
+  removedCount: number,
+): Promise<void> {
+  if (!(await confirmCommentDelete())) return;
+
+  const commentsEl = document.querySelector<HTMLElement>(
+    `[data-feed-post-comments="${CSS.escape(postId)}"]`,
+  );
+  const skeletonStartedAt = Date.now();
+  const skeletonState = commentsEl
+    ? showFixedCommentBlockSkeleton({
+        commentsEl,
+        postId,
+        listAttribute: "data-feed-comment-list",
+      })
+    : null;
+
+  try {
+    await deletePostComment(postId, commentId);
+    await waitForMinimumLoadingTime(skeletonStartedAt);
+    const currentCount = activeFeedState?.items.find((item) => item.id === postId)?.comments ?? 0;
+    updateActiveFeedPostCommentCount(postId, Math.max(0, currentCount - removedCount));
+    syncFeedPostCommentCountUi(postId);
+    expandedFeedReplies.get(postId)?.delete(commentId);
+    await reloadFeedCommentsAfterMutation(postId, { skeletonState });
+  } catch (error) {
+    console.error("[feed] comment delete failed", error);
+    restoreFixedCommentBlockSkeleton(skeletonState);
+    showAppToast(t("profile.commentDeleteError"));
+  }
+}
+
 function restoreOpenFeedComments(): void {
   openFeedCommentPostIds.forEach((postId) => {
     const commentsEl = document.querySelector<HTMLElement>(
@@ -420,7 +573,26 @@ function bindFeedCommentActions(): void {
   document.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const commentMenuToggle = target.closest("[data-comment-menu-toggle]");
+    if (commentMenuToggle instanceof HTMLButtonElement) {
+      if (!(commentMenuToggle.closest("[data-feed-list]") instanceof HTMLElement)) return;
+      openFeedCommentMenu(commentMenuToggle);
+      return;
+    }
+
+    if (!target.closest("[data-comment-menu]") && !target.closest("[data-comment-menu-toggle]")) {
+      closeCommentMenus(document);
+    }
+
     if (!(target.closest("[data-feed-list]") instanceof HTMLElement)) return;
+
+    const commentEditCancel = target.closest("[data-comment-edit-cancel]");
+    if (commentEditCancel instanceof HTMLButtonElement) {
+      const commentId = commentEditCancel.getAttribute("data-comment-edit-cancel") ?? "";
+      if (commentId) cancelCommentEdit(document, commentId);
+      return;
+    }
 
     const showMoreCommentsBtn = target.closest("[data-show-more-comments]");
     if (showMoreCommentsBtn instanceof HTMLButtonElement) {
@@ -473,7 +645,7 @@ function bindFeedCommentActions(): void {
             ".profile-comment__like-count",
           );
           if (countSpan) {
-            countSpan.textContent = updated.likes > 0 ? String(updated.likes) : "";
+            countSpan.textContent = String(Math.max(0, updated.likes));
           }
         })
         .catch((error: unknown) => {
@@ -535,6 +707,35 @@ function bindFeedCommentActions(): void {
   document.addEventListener("submit", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLFormElement)) return;
+
+    const editCommentId = target.getAttribute("data-comment-edit-form");
+    if (editCommentId) {
+      const postId = target.getAttribute("data-comment-edit-post") ?? "";
+      if (!postId) return;
+
+      event.preventDefault();
+      const input = target.querySelector<HTMLTextAreaElement>(
+        `[data-comment-edit-input="${CSS.escape(editCommentId)}"]`,
+      );
+      const submitBtn = target.querySelector<HTMLButtonElement>('button[type="submit"]');
+      const text = input?.value.trim() ?? "";
+      if (!input || !text) return;
+
+      if (submitBtn) submitBtn.disabled = true;
+      void updatePostComment(postId, editCommentId, text)
+        .then((updated) => {
+          finishCommentEdit(document, editCommentId, updated.text);
+        })
+        .catch((error: unknown) => {
+          console.error("[feed] comment update failed", error);
+          setCommentEditError(document, editCommentId, t("profile.commentEditError"));
+        })
+        .finally(() => {
+          if (submitBtn) submitBtn.disabled = false;
+        });
+      return;
+    }
+
     const postId = target.dataset.feedCommentForm;
     if (!postId) return;
 
@@ -555,45 +756,69 @@ function bindFeedCommentActions(): void {
 
     const replyToId = target.dataset.feedPostReplyTo?.trim();
     const commentPayload = replyToId ? { text, parentCommentId: Number(replyToId) } : { text };
+    const inputPlaceholder = input.placeholder;
+    const skeletonStartedAt = Date.now();
+    const commentsEl = target.closest<HTMLElement>(
+      `[data-feed-post-comments="${CSS.escape(postId)}"]`,
+    );
+    const skeletonState = commentsEl
+      ? showFixedCommentBlockSkeleton({
+          commentsEl,
+          postId,
+          listAttribute: "data-feed-comment-list",
+        })
+      : null;
 
     void createPostComment(postId, commentPayload)
-      .then(() => {
-        input.value = "";
-        delete target.dataset.feedPostReplyTo;
-        input.placeholder = t("profile.commentPlaceholder");
-        loadedFeedCommentPostIds.delete(postId);
-        void loadFeedComments(postId);
-
+      .then(async () => {
+        await waitForMinimumLoadingTime(skeletonStartedAt);
         const currentCount =
           activeFeedState?.items.find((item) => item.id === postId)?.comments ?? 0;
         updateActiveFeedPostCommentCount(postId, currentCount + 1);
         syncFeedPostCommentCountUi(postId);
-      })
-      .catch((error: unknown) => {
-        console.error("[feed] comment submit failed", error);
-        if (errorEl) {
-          errorEl.textContent = t("profile.commentSendError");
-          errorEl.hidden = false;
+        if (replyToId) {
+          if (!expandedFeedReplies.has(postId)) expandedFeedReplies.set(postId, new Set());
+          expandedFeedReplies.get(postId)?.add(replyToId);
         }
+        await reloadFeedCommentsAfterMutation(postId, { skeletonState });
+        resetFeedCommentForm(postId);
+      })
+      .catch(async (error: unknown) => {
+        await waitForMinimumLoadingTime(skeletonStartedAt);
+        console.error("[feed] comment submit failed", error);
+        restoreFixedCommentBlockSkeleton(skeletonState);
+        restoreFeedCommentForm(postId, text, replyToId, inputPlaceholder);
       })
       .finally(() => {
         if (submitBtn) submitBtn.disabled = false;
       });
   });
 
+  window.addEventListener(
+    "scroll",
+    () => {
+      const openMenu = document.querySelector<HTMLElement>("[data-comment-menu]:not([hidden])");
+      if (!openMenu) return;
+
+      const commentId = openMenu.getAttribute("data-comment-menu");
+      const postId = openMenu.getAttribute("data-comment-menu-post");
+      const toggle =
+        commentId && postId
+          ? document.querySelector<HTMLButtonElement>(
+              `[data-feed-list] [data-comment-menu-toggle="${CSS.escape(commentId)}"][data-comment-menu-post="${CSS.escape(postId)}"]`,
+            )
+          : null;
+      if (toggle) positionCommentMenu(openMenu, toggle);
+    },
+    { passive: true },
+  );
+
   isFeedCommentBound = true;
 }
 
-function getSortedFeedItems(items: PostcardModel[]): PostcardModel[] {
+function getOrderedFeedItems(items: PostcardModel[]): PostcardModel[] {
   if (getCurrentFeedMode() === "for-you") {
-    const shuffled = [...items];
-
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-      const randomIndex = Math.floor(Math.random() * (index + 1));
-      [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex]!, shuffled[index]!];
-    }
-
-    return shuffled;
+    return [...items];
   }
 
   return [...items].sort((a, b) => new Date(b.timeRaw).getTime() - new Date(a.timeRaw).getTime());
@@ -605,7 +830,7 @@ async function buildGuestFeedPage(signal?: AbortSignal): Promise<FeedPageResult>
   const response = await getPublicFeed({ limit: 20, ...(signal ? { signal } : {}) });
   const mapped = mapFeedResponse(response);
   return {
-    items: getSortedFeedItems(mapped.items),
+    items: getOrderedFeedItems(mapped.items),
     nextCursor: mapped.nextCursor,
     hasMore: mapped.hasMore,
   };
@@ -617,7 +842,7 @@ async function buildAuthorisedFeedPage(signal?: AbortSignal): Promise<FeedPageRe
     const response = await getFeed({ limit: 20, mode, ...(signal ? { signal } : {}) });
     const mapped = mapFeedResponse(response);
     return {
-      items: getSortedFeedItems(mapped.items),
+      items: getOrderedFeedItems(mapped.items),
       nextCursor: mapped.nextCursor,
       hasMore: mapped.hasMore,
     };
@@ -730,7 +955,7 @@ async function fetchNextFeedPage(): Promise<void> {
       ? await getFeed({ cursor, limit: 20, mode })
       : await getPublicFeed({ cursor, limit: 20 });
     const mapped = mapFeedResponse(response);
-    const allItems = [...activeFeedState.items, ...getSortedFeedItems(mapped.items)];
+    const allItems = [...activeFeedState.items, ...getOrderedFeedItems(mapped.items)];
 
     feedItemsCache.set(`${authKey}:${mode}`, allItems);
     persistFeedItems(authKey, mode, allItems);

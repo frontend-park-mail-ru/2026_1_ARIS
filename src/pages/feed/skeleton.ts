@@ -8,7 +8,7 @@ import { renderSidebar } from "../../components/sidebar/sidebar";
 import { renderWidgetbarSkeleton } from "../../components/widgetbar/widgetbar-skeleton";
 import { getSessionUser } from "../../state/session";
 
-function renderSkeletonCard(): string {
+export function renderFeedPostSkeletonCard(): string {
   return `
     <article class="postcard content-card" aria-hidden="true">
       <header class="postcard__header">
@@ -29,7 +29,7 @@ function renderSkeletonCard(): string {
 
 export function renderFeedSkeleton(): string {
   const isAuthorised = getSessionUser() !== null;
-  const cards = Array.from({ length: 4 }, renderSkeletonCard).join("");
+  const cards = Array.from({ length: 4 }, renderFeedPostSkeletonCard).join("");
 
   return `
     <div class="app-page app-page--feed-loading" data-feed-skeleton>

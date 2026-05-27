@@ -24,6 +24,7 @@ import { searchUsersAndCommunities, type SearchCommunity } from "../../api/searc
 import {
   createPost,
   createPostComment,
+  deletePostComment,
   deletePost,
   getOfficialCommunityPosts,
   getPostComments,
@@ -34,6 +35,7 @@ import {
   likePost,
   unlikePostComment,
   unlikePost,
+  updatePostComment,
   updatePost,
   uploadPostImages,
 } from "../../api/posts";
@@ -51,6 +53,23 @@ import { clearFeedCache } from "../feed/cache";
 import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
 import { prepareAvatarLinks } from "../../utils/avatar";
 import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
+import {
+  completeFixedCommentBlockSkeleton,
+  restoreFixedCommentBlockSkeleton,
+  showFixedCommentBlockSkeleton,
+} from "../../utils/comment-block-loading";
+import {
+  bindFloatingCommentMenuActions,
+  cancelCommentEdit,
+  closeCommentMenus,
+  confirmCommentDelete,
+  finishCommentEdit,
+  openCommentEditForm,
+  positionCommentMenu,
+  setCommentEditError,
+} from "../../utils/comment-actions";
+import { waitForMinimumLoadingTime } from "../../utils/loading-state";
+import { showAppToast } from "../../utils/toast";
 import type { ComposerMediaItem } from "../profile/types";
 import type { CommunitiesParams } from "./types";
 import {
@@ -365,14 +384,76 @@ function isCommunityCommentListEmpty(postId: string): boolean {
   return !listEl || listEl.childElementCount === 0;
 }
 
-async function loadCommunityPostComments(postId: string): Promise<void> {
+function restoreCommunityCommentForm(
+  root: Document | HTMLElement,
+  postId: string,
+  text: string,
+  replyToId?: string,
+  placeholder?: string,
+): void {
+  const form = root.querySelector<HTMLFormElement>(
+    `[data-community-post-comment-form="${CSS.escape(postId)}"]`,
+  );
+  const input = form?.querySelector<HTMLInputElement>(
+    `[data-community-post-comment-input="${CSS.escape(postId)}"]`,
+  );
+  const submitBtn = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const errorEl = root.querySelector<HTMLElement>(
+    `[data-community-post-comment-error="${CSS.escape(postId)}"]`,
+  );
+
+  if (form && replyToId) {
+    form.dataset.communityPostReplyTo = replyToId;
+  }
+
+  if (input) {
+    input.value = text;
+    if (placeholder) input.placeholder = placeholder;
+  }
+  if (submitBtn) submitBtn.disabled = false;
+
+  if (errorEl) {
+    errorEl.textContent = t("profile.commentSendError");
+    errorEl.hidden = false;
+  }
+}
+
+function resetCommunityCommentForm(root: Document | HTMLElement, postId: string): void {
+  const form = root.querySelector<HTMLFormElement>(
+    `[data-community-post-comment-form="${CSS.escape(postId)}"]`,
+  );
+  const input = form?.querySelector<HTMLInputElement>(
+    `[data-community-post-comment-input="${CSS.escape(postId)}"]`,
+  );
+  const submitBtn = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const errorEl = root.querySelector<HTMLElement>(
+    `[data-community-post-comment-error="${CSS.escape(postId)}"]`,
+  );
+
+  if (form) delete form.dataset.communityPostReplyTo;
+  if (input) {
+    input.value = "";
+    input.placeholder = t("profile.commentPlaceholder");
+  }
+  if (submitBtn) submitBtn.disabled = false;
+  if (errorEl) {
+    errorEl.hidden = true;
+  }
+}
+
+async function loadCommunityPostComments(
+  postId: string,
+  options: { showLoading?: boolean } = {},
+): Promise<void> {
   const listEl = document.querySelector<HTMLElement>(
     `[data-community-post-comment-list="${CSS.escape(postId)}"]`,
   );
   if (!listEl || loadingCommunityCommentPostIds.has(postId)) return;
 
   loadingCommunityCommentPostIds.add(postId);
-  listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
+  if (options.showLoading !== false) {
+    listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
+  }
 
   try {
     const comments = await getPostComments(postId, { limit: COMMENT_PAGE_SIZE, offset: 0 });
@@ -466,6 +547,83 @@ async function loadMoreCommunityPostComments(
   } catch (error) {
     console.error("[communities] load more comments failed", error);
     button.disabled = false;
+  }
+}
+
+async function reloadCommunityCommentsAfterMutation(
+  postId: string,
+  options: { skeletonState?: Parameters<typeof completeFixedCommentBlockSkeleton>[0] } = {},
+): Promise<void> {
+  loadingCommunityCommentPostIds.delete(postId);
+  loadedCommunityCommentPostIds.delete(postId);
+  await loadCommunityPostComments(postId, { showLoading: !options.skeletonState });
+  completeFixedCommentBlockSkeleton(options.skeletonState ?? null);
+}
+
+function openCommunityCommentMenu(root: Document | HTMLElement, toggle: HTMLButtonElement): void {
+  const commentId = toggle.getAttribute("data-comment-menu-toggle") ?? "";
+  const postId = toggle.getAttribute("data-comment-menu-post") ?? "";
+  if (!commentId || !postId) return;
+
+  const menu = document.querySelector<HTMLElement>(
+    `[data-comment-menu="${CSS.escape(commentId)}"][data-comment-menu-post="${CSS.escape(postId)}"]`,
+  );
+  const isExpanded = toggle.getAttribute("aria-expanded") === "true";
+  closeCommentMenus(root);
+
+  if (!menu || isExpanded) return;
+
+  const floatingMenu = menu.cloneNode(true);
+  if (!(floatingMenu instanceof HTMLElement)) return;
+
+  floatingMenu.dataset.commentMenuFloating = "";
+  positionCommentMenu(floatingMenu, toggle);
+  document.body.appendChild(floatingMenu);
+  bindFloatingCommentMenuActions(floatingMenu, root, {
+    onEdit: (targetPostId, targetCommentId) => {
+      openCommentEditForm(root, targetPostId, targetCommentId);
+    },
+    onDelete: (targetPostId, targetCommentId, removedCount) => {
+      void deleteCommunityComment(root, targetPostId, targetCommentId, removedCount);
+    },
+  });
+  floatingMenu.hidden = false;
+  toggle.setAttribute("aria-expanded", "true");
+}
+
+async function deleteCommunityComment(
+  root: Document | HTMLElement,
+  postId: string,
+  commentId: string,
+  removedCount: number,
+): Promise<void> {
+  if (!(await confirmCommentDelete())) return;
+
+  const commentsEl = root.querySelector<HTMLElement>(
+    `[data-community-post-comments="${CSS.escape(postId)}"]`,
+  );
+  const skeletonStartedAt = Date.now();
+  const skeletonState = commentsEl
+    ? showFixedCommentBlockSkeleton({
+        commentsEl,
+        postId,
+        listAttribute: "data-community-post-comment-list",
+      })
+    : null;
+
+  try {
+    await deletePostComment(postId, commentId);
+    await waitForMinimumLoadingTime(skeletonStartedAt);
+    const currentCount =
+      communitiesState.activePosts.find((item) => item.id === postId)?.comments ?? 0;
+    updateCommunityPostCommentCount(postId, Math.max(0, currentCount - removedCount));
+    syncCommunityPostCommentCountUi(postId);
+    expandedCommunityReplies.get(postId)?.delete(commentId);
+    await reloadCommunityCommentsAfterMutation(postId, { skeletonState });
+  } catch (error) {
+    console.error("[communities] comment delete failed", error);
+    restoreFixedCommentBlockSkeleton(skeletonState);
+    showAppToast(t("profile.commentDeleteError"));
   }
 }
 
@@ -2059,6 +2217,34 @@ export function initCommunities(root: Document | HTMLElement = document): void {
     const target = event.target;
     if (!(target instanceof HTMLFormElement)) return;
 
+    const editCommentId = target.getAttribute("data-comment-edit-form");
+    if (editCommentId) {
+      const postId = target.getAttribute("data-comment-edit-post") ?? "";
+      if (!postId) return;
+
+      event.preventDefault();
+      const input = target.querySelector<HTMLTextAreaElement>(
+        `[data-comment-edit-input="${CSS.escape(editCommentId)}"]`,
+      );
+      const submitBtn = target.querySelector<HTMLButtonElement>('button[type="submit"]');
+      const text = input?.value.trim() ?? "";
+      if (!input || !text) return;
+
+      if (submitBtn) submitBtn.disabled = true;
+      void updatePostComment(postId, editCommentId, text)
+        .then((updated) => {
+          finishCommentEdit(root, editCommentId, updated.text);
+        })
+        .catch((error: unknown) => {
+          console.error("[communities] comment update failed", error);
+          setCommentEditError(root, editCommentId, t("profile.commentEditError"));
+        })
+        .finally(() => {
+          if (submitBtn) submitBtn.disabled = false;
+        });
+      return;
+    }
+
     if (target.matches("[data-community-form]")) {
       event.preventDefault();
       if (communitiesState.form.step < 4) {
@@ -2095,26 +2281,40 @@ export function initCommunities(root: Document | HTMLElement = document): void {
 
       const replyToId = target.dataset.communityPostReplyTo?.trim();
       const commentPayload = replyToId ? { text, parentCommentId: Number(replyToId) } : { text };
+      const inputPlaceholder = input.placeholder;
+      const skeletonStartedAt = Date.now();
+      const commentsEl = target.closest<HTMLElement>(
+        `[data-community-post-comments="${CSS.escape(commentPostId)}"]`,
+      );
+      const skeletonState = commentsEl
+        ? showFixedCommentBlockSkeleton({
+            commentsEl,
+            postId: commentPostId,
+            listAttribute: "data-community-post-comment-list",
+          })
+        : null;
 
       void createPostComment(commentPostId, commentPayload)
-        .then(() => {
-          input.value = "";
-          delete target.dataset.communityPostReplyTo;
-          input.placeholder = t("profile.commentPlaceholder");
-          loadedCommunityCommentPostIds.delete(commentPostId);
-          void loadCommunityPostComments(commentPostId);
-
+        .then(async () => {
+          await waitForMinimumLoadingTime(skeletonStartedAt);
           const currentCount =
             communitiesState.activePosts.find((item) => item.id === commentPostId)?.comments ?? 0;
           updateCommunityPostCommentCount(commentPostId, currentCount + 1);
           syncCommunityPostCommentCountUi(commentPostId);
-        })
-        .catch((error: unknown) => {
-          console.error("[communities] create comment failed", error);
-          if (errorEl) {
-            errorEl.textContent = t("profile.commentSendError");
-            errorEl.hidden = false;
+          if (replyToId) {
+            if (!expandedCommunityReplies.has(commentPostId)) {
+              expandedCommunityReplies.set(commentPostId, new Set());
+            }
+            expandedCommunityReplies.get(commentPostId)?.add(replyToId);
           }
+          await reloadCommunityCommentsAfterMutation(commentPostId, { skeletonState });
+          resetCommunityCommentForm(root, commentPostId);
+        })
+        .catch(async (error: unknown) => {
+          await waitForMinimumLoadingTime(skeletonStartedAt);
+          console.error("[communities] create comment failed", error);
+          restoreFixedCommentBlockSkeleton(skeletonState);
+          restoreCommunityCommentForm(root, commentPostId, text, replyToId, inputPlaceholder);
         })
         .finally(() => {
           if (submitBtn) submitBtn.disabled = false;
@@ -2125,6 +2325,29 @@ export function initCommunities(root: Document | HTMLElement = document): void {
   root.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const commentMenuToggle = target.closest("[data-comment-menu-toggle]");
+    if (
+      commentMenuToggle instanceof HTMLButtonElement &&
+      target.closest("[data-communities-page]")
+    ) {
+      openCommunityCommentMenu(root, commentMenuToggle);
+      return;
+    }
+
+    if (!target.closest("[data-comment-menu]") && !target.closest("[data-comment-menu-toggle]")) {
+      closeCommentMenus(root);
+    }
+
+    const commentEditCancel = target.closest("[data-comment-edit-cancel]");
+    if (
+      commentEditCancel instanceof HTMLButtonElement &&
+      target.closest("[data-communities-page]")
+    ) {
+      const commentId = commentEditCancel.getAttribute("data-comment-edit-cancel") ?? "";
+      if (commentId) cancelCommentEdit(root, commentId);
+      return;
+    }
 
     const hintButton = target.closest("[data-community-form-hint]");
     if (hintButton instanceof HTMLButtonElement) {
@@ -2204,7 +2427,7 @@ export function initCommunities(root: Document | HTMLElement = document): void {
             ".profile-comment__like-count",
           );
           if (countSpan) {
-            countSpan.textContent = updated.likes > 0 ? String(updated.likes) : "";
+            countSpan.textContent = String(Math.max(0, updated.likes));
           }
         })
         .catch((error: unknown) => {
@@ -3052,6 +3275,21 @@ export function initCommunities(root: Document | HTMLElement = document): void {
         if (postToggle) {
           positionCommunityPostMenu(openPostMenu, postToggle);
         }
+      }
+
+      const openCommentMenu = document.querySelector<HTMLElement>(
+        "[data-comment-menu]:not([hidden])",
+      );
+      if (openCommentMenu) {
+        const commentId = openCommentMenu.getAttribute("data-comment-menu");
+        const postId = openCommentMenu.getAttribute("data-comment-menu-post");
+        const toggle =
+          commentId && postId
+            ? root.querySelector<HTMLButtonElement>(
+                `[data-comment-menu-toggle="${CSS.escape(commentId)}"][data-comment-menu-post="${CSS.escape(postId)}"]`,
+              )
+            : null;
+        if (toggle) positionCommentMenu(openCommentMenu, toggle);
       }
 
       repositionOpenCommunityMemberRoleMenu(root);

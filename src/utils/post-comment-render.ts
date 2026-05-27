@@ -3,8 +3,10 @@ import { renderAvatarMarkup, escapeHtml } from "./avatar";
 import { formatPersonName } from "./display-name";
 import { t } from "../state/i18n";
 import { getLanguageMode } from "../state/language";
+import { getSessionUser } from "../state/session";
 
 export const COMMENT_PAGE_SIZE = 3;
+const COMMENT_EDIT_WINDOW_MS = 10 * 60 * 1000;
 
 function buildCommentAuthorName(author: PostComment["author"]): string {
   return (
@@ -63,6 +65,99 @@ type RenderCommentsListOptions = RenderCommentOptions & {
   totalCount?: number;
 };
 
+function isOwnComment(comment: PostComment): boolean {
+  const sessionUser = getSessionUser();
+  if (!sessionUser) return false;
+
+  return String(comment.author.profileID) === String(sessionUser.id);
+}
+
+function canEditComment(comment: PostComment): boolean {
+  const createdAt = new Date(comment.createdAt).getTime();
+  if (!Number.isFinite(createdAt)) return false;
+
+  return Date.now() - createdAt <= COMMENT_EDIT_WINDOW_MS;
+}
+
+function renderCommentActions(comment: PostComment, isReply: boolean): string {
+  if (!isOwnComment(comment)) return "";
+
+  const canEdit = canEditComment(comment);
+  const removedCount = 1 + (isReply ? 0 : Math.max(0, comment.repliesCount));
+
+  return `
+    <div class="profile-comment__actions">
+      <button
+        type="button"
+        class="profile-post__menu-toggle profile-comment__menu-toggle"
+        data-comment-menu-toggle="${escapeHtml(comment.id)}"
+        data-comment-menu-post="${escapeHtml(comment.postId)}"
+        aria-label="${t("profile.commentActionsAria")}"
+        aria-expanded="false"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <div
+        class="profile-post__menu profile-comment__menu"
+        data-comment-menu="${escapeHtml(comment.id)}"
+        data-comment-menu-post="${escapeHtml(comment.postId)}"
+        hidden
+      >
+        ${
+          canEdit
+            ? `<button
+                type="button"
+                class="profile-post__menu-action"
+                data-comment-edit="${escapeHtml(comment.id)}"
+                data-comment-edit-post="${escapeHtml(comment.postId)}"
+              >${t("profile.editComment")}</button>`
+            : ""
+        }
+        <button
+          type="button"
+          class="profile-post__menu-action profile-post__menu-action--danger"
+          data-comment-delete="${escapeHtml(comment.id)}"
+          data-comment-delete-post="${escapeHtml(comment.postId)}"
+          data-comment-delete-count="${removedCount}"
+        >${t("profile.deleteComment")}</button>
+      </div>
+    </div>
+  `;
+}
+
+export function renderCommentEditFormHtml(postId: string, commentId: string, text: string): string {
+  return `
+    <form
+      class="profile-comment-edit"
+      data-comment-edit-form="${escapeHtml(commentId)}"
+      data-comment-edit-post="${escapeHtml(postId)}"
+      data-comment-edit-original="${escapeHtml(text)}"
+      novalidate
+    >
+      <textarea
+        class="profile-comment-edit__field"
+        data-comment-edit-input="${escapeHtml(commentId)}"
+        maxlength="2000"
+        rows="2"
+        placeholder="${t("profile.commentEditPlaceholder")}"
+      >${escapeHtml(text)}</textarea>
+      <div class="profile-comment-edit__actions">
+        <button type="submit" class="profile-comment-edit__save">
+          ${t("profile.saveComment")}
+        </button>
+        <button
+          type="button"
+          class="profile-comment-edit__cancel"
+          data-comment-edit-cancel="${escapeHtml(commentId)}"
+        >
+          ${t("profile.cancelCommentEdit")}
+        </button>
+      </div>
+      <p class="profile-comment-edit__error" data-comment-edit-error="${escapeHtml(commentId)}" hidden></p>
+    </form>
+  `;
+}
+
 export function renderSingleCommentHtml(
   comment: PostComment,
   isReply = false,
@@ -80,7 +175,9 @@ export function renderSingleCommentHtml(
     { width: 32, height: 32 },
   );
   const likeClass = `profile-comment__like${comment.isLiked ? " profile-comment__like--liked" : ""}`;
-  const likesText = comment.likes > 0 ? String(comment.likes) : "";
+  const likesText = String(Math.max(0, comment.likes));
+  const repliesText = String(Math.max(0, comment.repliesCount));
+  const actionsHtml = renderCommentActions(comment, isReply);
   const replyBtn =
     isReply || !showReply
       ? ""
@@ -90,12 +187,15 @@ export function renderSingleCommentHtml(
         data-reply-author="${escapeHtml(authorName)}"
         aria-label="${t("profile.commentReply")}"
         title="${t("profile.commentReply")}"
-      ><img src="/assets/img/icons/chat.svg" class="profile-comment__reply-icon" alt=""><span class="profile-comment__action-count">${comment.repliesCount > 0 ? comment.repliesCount : ""}</span></button>`;
+      ><img src="/assets/img/icons/chat.svg" class="profile-comment__reply-icon" alt=""><span class="profile-comment__action-count">${escapeHtml(repliesText)}</span></button>`;
 
   return `<div class="profile-comment${isReply ? " profile-comment--reply" : ""}" data-comment-id="${escapeHtml(comment.id)}">
     <a href="${escapeHtml(profilePath)}" data-link class="profile-comment__avatar-link">${avatarHtml}</a>
     <div class="profile-comment__body">
-      <a href="${escapeHtml(profilePath)}" data-link class="profile-comment__author">${escapeHtml(authorName)}</a>
+      <div class="profile-comment__head">
+        <a href="${escapeHtml(profilePath)}" data-link class="profile-comment__author">${escapeHtml(authorName)}</a>
+        ${actionsHtml}
+      </div>
       <div class="profile-comment__bubble">${escapeHtml(comment.text)}</div>
       <div class="profile-comment__footer">
         <button type="button" class="${likeClass}"

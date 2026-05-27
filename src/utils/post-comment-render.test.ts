@@ -25,11 +25,14 @@ function makeComment(id: string, likes = 0): PostComment {
 }
 
 describe("post-comment-render", () => {
-  it("оставляет место под счётчик лайков даже при нуле", () => {
+  it("показывает нулевые счётчики лайков и ответов", () => {
     const html = renderSingleCommentHtml(makeComment("1"));
 
     expect(html).toContain("profile-comment__like-count");
-    expect(html).toContain("profile-comment__action-count profile-comment__like-count");
+    expect(html).toContain(
+      '<span class="profile-comment__action-count profile-comment__like-count">0</span>',
+    );
+    expect(html).toContain('<span class="profile-comment__action-count">0</span>');
   });
 
   it("рендерит кнопку дозагрузки, если комментариев больше первой страницы", () => {

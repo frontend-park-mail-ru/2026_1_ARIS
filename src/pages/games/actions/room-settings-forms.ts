@@ -11,6 +11,7 @@ import {
   type RenameRoomTitleOptions,
   type UpdateRoomPasswordOptions,
 } from "./room-settings";
+import { gameT } from "../shared/i18n";
 
 export type RenameRoomTitleFormOptions = Omit<RenameRoomTitleOptions, "title" | "onDuplicateTitle">;
 
@@ -52,14 +53,18 @@ export async function updateRoomPasswordFromFormAction(
 ): Promise<void> {
   const password = getInputValue(form, "password");
   if (!password) {
-    options.setGamesState({ message: "", error: "Введите пароль.", errorTarget: "password" });
+    options.setGamesState({
+      message: "",
+      error: gameT("room.passwordRequired"),
+      errorTarget: "password",
+    });
     return;
   }
 
   await updateRoomPassword({
     ...options,
     password,
-    successMessage: "Пароль комнаты обновлен",
+    successMessage: gameT("room.passwordUpdated"),
   });
 }
 
@@ -72,6 +77,6 @@ export async function removeRoomPasswordAction(
   await updateRoomPassword({
     ...options,
     password: "",
-    successMessage: "Пароль комнаты убран",
+    successMessage: gameT("room.passwordRemoved"),
   });
 }

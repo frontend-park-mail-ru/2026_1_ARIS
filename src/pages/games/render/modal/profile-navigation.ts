@@ -1,5 +1,6 @@
 import { renderModalCloseButton } from "../../../../components/modal-close/modal-close";
 import { escapeHtml, renderAvatarMarkup } from "../../../../utils/avatar";
+import { gameT } from "../../shared/i18n";
 import type { GameProfileNavigationConfirm } from "../../state/store";
 
 /** Рендерит подтверждение перехода в профиль игрока. */
@@ -20,9 +21,9 @@ export function renderProfileNavigationConfirmModal(
 
   return `
     <div class="games-confirm-modal" data-games-profile-nav-modal>
-      <section class="games-confirm-modal__dialog games-confirm-modal__dialog--profile-nav" role="dialog" aria-modal="true" aria-label="Перейти на страницу пользователя">
+      <section class="games-confirm-modal__dialog games-confirm-modal__dialog--profile-nav" role="dialog" aria-modal="true" aria-label="${escapeHtml(gameT("modal.profileNavAria"))}">
         <div class="games-confirm-modal__header">
-          <h2 class="games-confirm-modal__title">Перейти на страницу пользователя?</h2>
+          <h2 class="games-confirm-modal__title">${escapeHtml(gameT("modal.profileNavTitle"))}</h2>
           ${renderModalCloseButton({
             className: "games-confirm-modal__close",
             attributes: "data-games-profile-nav-close",
@@ -34,10 +35,10 @@ export function renderProfileNavigationConfirmModal(
         </div>
         <div class="games-confirm-modal__actions">
           <button type="button" class="games-button games-button--primary" data-games-profile-nav-confirm>
-            Перейти
+            ${escapeHtml(gameT("modal.profileNavConfirm"))}
           </button>
           <button type="button" class="games-button games-button--secondary" data-games-profile-nav-close>
-            Отмена
+            ${escapeHtml(gameT("modal.cancel"))}
           </button>
         </div>
       </section>

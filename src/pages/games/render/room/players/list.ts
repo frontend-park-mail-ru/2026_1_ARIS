@@ -1,5 +1,6 @@
 import { escapeHtml } from "../../../../../utils/avatar";
 import { getRoomMaxPlayers } from "../../../room/selectors";
+import { gameT } from "../../../shared/i18n";
 import type { RenderPlayerListOptions } from "./types";
 import { renderPlayerProfileLink } from "./profile-link";
 
@@ -12,7 +13,7 @@ export function renderPlayerList(options: RenderPlayerListOptions): string {
   const isCreator = isCurrentRoomCreator(room);
 
   return `
-    <div class="games-scoreboard" aria-label="Игроки в комнате">
+    <div class="games-scoreboard" aria-label="${escapeHtml(gameT("room.playersInRoomAria"))}">
       ${room.players
         .map(
           (player) => `
@@ -30,7 +31,7 @@ export function renderPlayerList(options: RenderPlayerListOptions): string {
                         type="button"
                         class="games-menu-toggle games-player-menu__toggle"
                         data-games-player-menu-toggle="${escapeHtml(player.profileId)}"
-                        aria-label="Действия с игроком"
+                        aria-label="${escapeHtml(gameT("room.playerActionsAria"))}"
                         aria-expanded="${playerMenuProfileId === player.profileId ? "true" : "false"}"
                       >
                         <span></span><span></span><span></span>
@@ -47,7 +48,7 @@ export function renderPlayerList(options: RenderPlayerListOptions): string {
         emptySlots > 0
           ? `
             <div class="games-player-empty-summary">
-              Свободных мест: ${emptySlots}
+              ${escapeHtml(gameT("room.emptySlots", { count: emptySlots }))}
             </div>
           `
           : ""

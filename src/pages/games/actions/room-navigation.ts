@@ -6,6 +6,7 @@ import {
 } from "../state/action-patches";
 import type { GamesPageState } from "../state/store";
 import { createPendingVoluntaryLeave, type PendingVoluntaryLeave } from "../room/lifecycle";
+import { gameT } from "../shared/i18n";
 
 type SetGamesState = (patch: Partial<GamesPageState>) => void;
 
@@ -39,7 +40,7 @@ export async function backToRooms(options: BackToRoomsOptions): Promise<void> {
   let pendingVoluntaryLeave: PendingVoluntaryLeave | null = null;
 
   if (room?.status === "waiting") {
-    setGamesState(getInlineRoomLoadingPatch("Выходим из комнаты..."));
+    setGamesState(getInlineRoomLoadingPatch(gameT("room.leaving")));
     try {
       pendingVoluntaryLeave = createPendingVoluntaryLeave(
         room,

@@ -171,7 +171,7 @@ describe("room entry actions", () => {
       joinInviteCodeValue: "ABC123",
       joinPasswordValue: "bad",
       joinInviteCodeError: "",
-      joinPasswordError: "Пароль неверный",
+      joinPasswordError: "Неверный пароль",
     });
   });
 

@@ -30,7 +30,6 @@ export function getRoomAnswerProgressComparable(room: GameRoom): string {
           text: currentQuestion.text,
           startedAt: currentQuestion.startedAt,
           deadlineAt: currentQuestion.deadlineAt,
-          answerUnit: currentQuestion.answerUnit,
         }
       : null,
     players: [...room.players]

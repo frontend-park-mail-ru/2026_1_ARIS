@@ -5,6 +5,7 @@ import { resetRoomReadyState } from "../../room/state/lobby-updates";
 import { isCurrentRoomCreator } from "../../room/selectors";
 import { fetchNormalizedRoomUpdate } from "./commit";
 import type { ToggleRoomRankedOptions } from "./types";
+import { gameT } from "../../shared/i18n";
 
 /**
  * Обновляет ranked-режим комнаты с optimistic state и сбросом готовности.
@@ -18,7 +19,7 @@ export async function toggleRoomRanked(
   if (!isCurrentRoomCreator(room, options.currentProfileId)) {
     setGamesState({
       message: "",
-      error: "Тип игры может менять только администратор.",
+      error: gameT("room.rankedCreatorOnly"),
       errorTarget: "footer",
     });
     return;

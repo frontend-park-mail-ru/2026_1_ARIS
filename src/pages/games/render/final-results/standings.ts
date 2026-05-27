@@ -2,6 +2,7 @@ import { escapeHtml, renderAvatarMarkup } from "../../../../utils/avatar";
 import { formatRatingDelta, formatGamePoints } from "../../shared/formatters";
 import { getComputedScoresByProfile, getPlayerPlace, getRankedPlayers } from "../../round/model";
 import { getPlayerFullName } from "../../room/profile/players";
+import { gameT } from "../../shared/i18n";
 import { getRatingDeltaClass } from "./rating";
 import type { RenderFinalGameStageOptions } from "./types";
 
@@ -13,7 +14,7 @@ export function renderFinalStandings(options: RenderFinalGameStageOptions): stri
   const ratingByProfile = new Map(room.ratingChanges.map((change) => [change.profileId, change]));
 
   return `
-    <div class="games-final-standings" aria-label="Места игроков">
+    <div class="games-final-standings" aria-label="${escapeHtml(gameT("results.standingsAria"))}">
       ${rankedPlayers
         .map((player, index) => {
           const playerLabel = getPlayerFullName(player);
@@ -39,7 +40,7 @@ export function renderFinalStandings(options: RenderFinalGameStageOptions): stri
                       label: playerLabel,
                       content: avatarMarkup,
                       avatarUrl,
-                      ariaLabel: `Открыть профиль ${playerLabel}`,
+                      ariaLabel: gameT("leaderboard.openProfile", { name: playerLabel }),
                     })
                   : avatarMarkup
               }

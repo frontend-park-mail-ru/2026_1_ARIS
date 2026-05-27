@@ -7,6 +7,7 @@ import {
   truncateQuestionReportText,
 } from "../room/question-report";
 import { getCurrentRoomPlayer } from "../room/selectors";
+import { gameT } from "../shared/i18n";
 
 export type SubmitQuestionReportOptions = {
   room: GameRoom | null;
@@ -44,7 +45,7 @@ export async function submitQuestionReport(options: SubmitQuestionReportOptions)
 
   const question = findReportableQuestion(room, questionKey);
   if (!question) {
-    options.showToast("Не удалось найти вопрос для жалобы");
+    options.showToast(gameT("report.questionMissing"));
     return;
   }
 
@@ -61,11 +62,11 @@ export async function submitQuestionReport(options: SubmitQuestionReportOptions)
       category: "complaint",
       login,
       email,
-      title: `Жалоба на вопрос: ${truncateQuestionReportText(question.text, 72)}`,
+      title: gameT("report.title", { question: truncateQuestionReportText(question.text, 72) }),
       description: buildQuestionReportDescription({ room, question, user }),
     });
     reportedKeys.add(questionKey);
-    options.showToast("Жалоба отправлена администраторам");
+    options.showToast(gameT("report.sent"));
   } finally {
     reportingKeys.delete(questionKey);
     options.syncQuestionReportButtons(questionKey);

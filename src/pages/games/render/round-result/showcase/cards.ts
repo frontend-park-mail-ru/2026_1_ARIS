@@ -8,6 +8,7 @@ import {
   type RoundResultPresentationRow,
 } from "../../../round/model";
 import { getGamePlayerLabel } from "../../../room/profile/players";
+import { gameT } from "../../../shared/i18n";
 import type { RenderPlayerCell } from "../types";
 import { renderRoundResultStyle } from "./style";
 
@@ -35,7 +36,7 @@ function renderRoundCorrectAnswerCard(
  */
 function renderRoundCardAnswer(row: RoundResultPresentationRow): string {
   if (row.isMissingAnswer) {
-    return `<strong class="games-answer-axis-card__answer games-answer-axis-card__answer--missing" aria-label="Нет ответа">×</strong>`;
+    return `<strong class="games-answer-axis-card__answer games-answer-axis-card__answer--missing" aria-label="${escapeHtml(gameT("results.noAnswer"))}">×</strong>`;
   }
 
   const answerLabel = formatStoredAnswer(row.answer?.answer ?? null);
@@ -64,7 +65,7 @@ function renderRoundCardAnswerPack(row: RoundResultPresentationRow): string {
     return `
       <span class="games-answer-axis-card__answer-pack games-answer-axis-card__answer-pack--missing">
         ${renderRoundCardAnswer(row)}
-        <span class="games-answer-axis-card__no-answer">нет ответа</span>
+        <span class="games-answer-axis-card__no-answer">${escapeHtml(gameT("results.noAnswer"))}</span>
       </span>
     `;
   }

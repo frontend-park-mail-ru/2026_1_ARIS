@@ -1,5 +1,6 @@
 import type { GameRoom, GameRoomMessage } from "../../../../../api/games";
 import { isRoomSystemMessage } from "../../../chat/model";
+import { gameT } from "../../../shared/i18n";
 import type { GamePlayer } from "./types";
 
 /**
@@ -29,14 +30,14 @@ export function getRoomChatPlayer(
  * Возвращает имя автора сообщения для списка чата.
  */
 export function getRoomChatAuthorName(room: GameRoom | null, message: GameRoomMessage): string {
-  if (isRoomSystemMessage(message)) return "Сервер";
+  if (isRoomSystemMessage(message)) return gameT("common.server");
   const player = getRoomChatPlayer(room, message);
   return (
     message.authorName.trim() ||
     player?.name ||
     `${message.authorFirstName} ${message.authorLastName}`.trim() ||
     message.authorUsername ||
-    "Игрок"
+    gameT("common.playerFallback")
   );
 }
 
@@ -47,10 +48,10 @@ export function getRoomChatAuthorFirstName(
   room: GameRoom | null,
   message: GameRoomMessage,
 ): string {
-  if (isRoomSystemMessage(message)) return "Сервер";
+  if (isRoomSystemMessage(message)) return gameT("common.server");
   const directName = message.authorFirstName.trim();
   if (directName) return directName;
 
   const fullName = getRoomChatAuthorName(room, message).trim();
-  return fullName.split(/\s+/)[0] || "Игрок";
+  return fullName.split(/\s+/)[0] || gameT("common.playerFallback");
 }

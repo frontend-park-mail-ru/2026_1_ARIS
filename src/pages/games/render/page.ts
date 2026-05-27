@@ -1,4 +1,5 @@
 import { escapeHtml } from "../../../utils/avatar";
+import { gameT } from "../shared/i18n";
 import type { GamesPageState } from "../state/store";
 
 export type RenderGamesContentOptions = {
@@ -27,9 +28,9 @@ export function renderGamesMessage(state: GamesPageState): string {
         ${escapeHtml(state.message)}
         ${
           state.messageReturnRoomId
-            ? `<button type="button" class="games-message__link" data-games-return-room="${escapeHtml(state.messageReturnRoomId)}">${escapeHtml(state.messageReturnRoomLabel || "Войти в вашу комнату?")}</button>`
+            ? `<button type="button" class="games-message__link" data-games-return-room="${escapeHtml(state.messageReturnRoomId)}">${escapeHtml(state.messageReturnRoomLabel || gameT("page.returnRoom"))}</button>`
             : state.messageRefreshRooms
-              ? `<button type="button" class="games-message__link" data-games-refresh-rooms-link>Обновить список комнат?</button>`
+              ? `<button type="button" class="games-message__link" data-games-refresh-rooms-link>${escapeHtml(gameT("page.refreshRooms"))}</button>`
               : ""
         }
       </span>

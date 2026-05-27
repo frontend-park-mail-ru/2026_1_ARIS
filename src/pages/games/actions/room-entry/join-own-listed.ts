@@ -2,6 +2,7 @@ import { ApiError } from "../../../../api/core/client";
 import { joinGameRoom } from "../../../../api/games";
 import { getReturnRoomLoadingPatch, getRoomNotFoundPatch } from "../../state/action-patches";
 import type { JoinOwnListedRoomActionOptions } from "./types";
+import { gameT } from "../../shared/i18n";
 
 /**
  * Возвращает создателя в собственную комнату из списка.
@@ -26,7 +27,7 @@ export async function joinOwnListedRoomAction(
       options.setGamesState({
         loading: false,
         message: "",
-        error: "Не удалось вернуться в свою комнату.",
+        error: gameT("room.recoverOwnError"),
         errorTarget: "form",
       });
       return;

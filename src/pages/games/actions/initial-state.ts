@@ -9,6 +9,7 @@ import {
   isJoinRoomFullError,
   isJoinRoomPasswordError,
 } from "../shared/errors";
+import { gameT } from "../shared/i18n";
 import { createInitialGamesState, type GamesPageState } from "../state/store";
 
 export type LoadInitialGamesStateOptions = {
@@ -83,7 +84,7 @@ export async function loadInitialGamesState(
     if (error instanceof ApiError && error.status === 403) {
       return loadInitialStateThroughJoin(roomId, signal, state, options);
     }
-    state.error = getErrorMessage(error, "Не удалось загрузить игровую комнату.");
+    state.error = getErrorMessage(error, gameT("room.loadError"));
   }
 
   return state;
@@ -113,7 +114,7 @@ async function loadInitialStateThroughJoin(
     if (isJoinRoomFullError(joinError)) {
       options.replaceWithGamesMenuRoute();
       state.roomId = "";
-      state.message = "В этой комнате уже максимальное число участников.";
+      state.message = gameT("room.full");
       return state;
     }
     if (isJoinRoomPasswordError(joinError)) {
@@ -122,7 +123,7 @@ async function loadInitialStateThroughJoin(
       state.errorTarget = "";
       return state;
     }
-    state.error = getErrorMessage(joinError, "Не удалось загрузить игровую комнату.");
+    state.error = getErrorMessage(joinError, gameT("room.loadError"));
   }
   return state;
 }

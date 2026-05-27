@@ -1,5 +1,6 @@
 import type { GamesLobbyMode } from "../../state/store";
 import type { HandleGamesLobbyClickOptions } from "./types";
+import { gameT } from "../../shared/i18n";
 
 /**
  * Проверяет, что строка является режимом лобби игр.
@@ -31,7 +32,7 @@ export function handleLobbyModeClick(
       roomsLoading: false,
       loading: false,
       message: "",
-      error: options.getErrorMessage(error, "Не удалось открыть раздел комнаты."),
+      error: options.getErrorMessage(error, gameT("rooms.openSectionError")),
     });
   });
   return true;

@@ -60,7 +60,6 @@ function createRoom(
       startedAt: "",
       deadlineAt: "",
       hasAnswered: false,
-      answerUnit: "",
     },
     questions: [],
     ratingChanges: [],
@@ -119,7 +118,6 @@ describe("games scoreboard render", () => {
           startedAt: "2026-05-25T10:00:03.000Z",
           deadlineAt: "2026-05-25T10:00:13.000Z",
           hasAnswered: false,
-          answerUnit: "",
         },
         questions: [
           {
@@ -128,7 +126,6 @@ describe("games scoreboard render", () => {
             status: "completed",
             text: "Previous question",
             correctAnswer: 10,
-            answerUnit: "",
             answers: [
               {
                 profileId: "1",

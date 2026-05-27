@@ -9,6 +9,7 @@ import { getInlineRoomLoadingPatch } from "../state/action-patches";
 import { getRoomUpdatePatch } from "../state/room-update-patches";
 import type { GamesPageState } from "../state/store";
 import { canCurrentPlayerForceResume, canCurrentPlayerPause } from "../room/selectors";
+import { gameT } from "../shared/i18n";
 
 type SetGamesState = (patch: Partial<GamesPageState>) => void;
 
@@ -42,7 +43,7 @@ export async function pauseCurrentRoom(options: PauseCurrentRoomOptions): Promis
   setGamesState({
     room: nextRoom,
     loading: false,
-    message: "Игра поставлена на паузу.",
+    message: gameT("room.paused"),
     error: "",
     errorTarget: "",
   });
@@ -62,7 +63,7 @@ export async function forceResumeCurrentRoom(
   setGamesState({
     room: nextRoom,
     loading: false,
-    message: "Голос за продолжение учтен.",
+    message: gameT("room.resumeVoteAccepted"),
     error: "",
     errorTarget: "",
   });
@@ -77,7 +78,7 @@ export async function startCurrentRoom(options: StartCurrentRoomOptions): Promis
 
   setGamesState({
     loading: true,
-    message: "Запускаем игру...",
+    message: gameT("room.starting"),
     messageReturnRoomId: "",
     messageReturnInviteCode: "",
     messageReturnPassword: "",

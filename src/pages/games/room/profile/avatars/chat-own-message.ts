@@ -1,4 +1,5 @@
 import type { GameRoom, GameRoomMessage } from "../../../../../api/games";
+import { gameT } from "../../../shared/i18n";
 import { getPlayerFullName } from "../players";
 import { getCachedRoomChatAuthorAvatar, rememberRoomChatAuthorAvatar } from "./cache";
 import type { RoomChatAvatarServiceOptions } from "./chat-types";
@@ -15,7 +16,9 @@ export function enrichOwnRoomChatMessage(
   const user = options.getSessionUser();
   const fallbackName = player
     ? getPlayerFullName(player)
-    : [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() || user?.login || "Игрок";
+    : [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+      user?.login ||
+      gameT("common.playerFallback");
   const avatarUrl =
     (player ? options.getPlayerAvatarUrl(player) : "") ||
     user?.avatarLink ||

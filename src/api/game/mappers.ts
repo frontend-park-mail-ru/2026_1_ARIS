@@ -3,6 +3,7 @@
  *
  * Нормализуют разные варианты backend-полей в стабильные клиентские модели.
  */
+import { getLanguageMode } from "../../state/language";
 import type {
   CurrentGameQuestion,
   GameAnswer,
@@ -57,6 +58,18 @@ function getFirstString(raw: RawRecord, keys: string[]): string {
   return "";
 }
 
+function getPlayerFallbackName(): string {
+  return getLanguageMode() === "EN" ? "Player" : "Игрок";
+}
+
+function getOpponentFallbackName(): string {
+  return getLanguageMode() === "EN" ? "Opponent" : "Соперник";
+}
+
+function getDefaultSeasonTitle(): string {
+  return getLanguageMode() === "EN" ? "Season 1" : "Сезон 1";
+}
+
 export function normaliseGamePlayerGender(value: unknown): GamePlayerGender {
   const gender = toStringValue(value).toLowerCase();
   if (gender === "male" || gender === "мужской" || gender === "m" || gender === "1") {
@@ -73,7 +86,7 @@ export function mapGamePlayer(value: unknown): GamePlayer {
   const firstName = getFirstString(raw, ["firstName", "FirstName"]);
   const lastName = getFirstString(raw, ["lastName", "LastName"]);
   const login = getFirstString(raw, ["login", "username", "name", "displayName"]);
-  const name = `${firstName} ${lastName}`.trim() || login || "Игрок";
+  const name = `${firstName} ${lastName}`.trim() || login || getPlayerFallbackName();
   const profileId = getFirstString(raw, ["profileId", "profileID", "ProfileID", "id", "ID"]);
   const userAccountId = getFirstString(raw, [
     "userAccountId",
@@ -124,7 +137,6 @@ function mapCurrentQuestion(value: unknown): CurrentGameQuestion | null {
     startedAt: getFirstString(raw, ["startedAt", "StartedAt"]),
     deadlineAt: getFirstString(raw, ["deadlineAt", "DeadlineAt"]),
     hasAnswered: toBoolean(raw.hasAnswered ?? raw.HasAnswered),
-    answerUnit: "",
   };
 }
 
@@ -201,7 +213,6 @@ export function mapRoundQuestion(value: unknown): GameRoundQuestion {
     text: getFirstString(raw, ["text", "Text"]) || getFirstString(question, ["text", "Text"]),
     correctAnswer:
       correctAnswer === null || correctAnswer === undefined ? null : toNumber(correctAnswer),
-    answerUnit: "",
     answers,
     winnerProfileId,
     startedAt: getFirstString(raw, ["startedAt", "StartedAt"]),
@@ -293,7 +304,7 @@ export function mapHistoryItem(value: unknown): GameHistoryItem {
     opponentByScore?.name ||
     room.players.find((player) => !player.isMe)?.name ||
     getFirstString(raw, ["opponentName", "opponent", "OpponentName"]) ||
-    "Соперник";
+    getOpponentFallbackName();
 
   return {
     id: getFirstString(raw, ["id", "ID"]) || room.id,
@@ -346,7 +357,7 @@ export function mapRatingSeason(value: unknown): GameRatingSeason {
   const raw = asRecord(value);
   return {
     seasonNumber: toNumber(raw.seasonNumber ?? raw.SeasonNumber, 1),
-    title: getFirstString(raw, ["title", "Title"]) || "Сезон 1",
+    title: getFirstString(raw, ["title", "Title"]) || getDefaultSeasonTitle(),
     startsAt: getFirstString(raw, ["startsAt", "StartsAt"]),
     endsAt: getFirstString(raw, ["endsAt", "EndsAt"]),
   };
@@ -396,7 +407,7 @@ export function mapRoomMessage(value: unknown): GameRoomMessage {
     getFirstString(author, ["name", "Name", "displayName"]) ||
     `${authorFirstName} ${authorLastName}`.trim() ||
     authorUsername ||
-    "Игрок";
+    getPlayerFallbackName();
   const authorAvatarId =
     getFirstString(raw, ["authorAvatarId", "authorAvatarID", "AuthorAvatarID", "avatarId"]) ||
     getFirstString(author, ["avatarId", "avatarID", "AvatarID"]);

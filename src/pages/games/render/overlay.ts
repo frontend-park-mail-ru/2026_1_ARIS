@@ -12,6 +12,7 @@ import {
   renderStartConfirmModal,
 } from "./modal";
 import type { GamesPageState } from "../state/store";
+import { gameT } from "../shared/i18n";
 
 export type RenderGamesOverlayOptions = {
   state: GamesPageState;
@@ -96,7 +97,7 @@ function renderPlayerActionConfirmModal(
 function renderJoinPasswordOverlay(options: RenderGamesOverlayOptions): string {
   const { state } = options;
   const room = state.rooms.find((item) => item.id === state.joinPasswordRoomId);
-  const roomTitle = room ? options.getRoomTitleValue(room) : "Комната защищена паролем";
+  const roomTitle = room ? options.getRoomTitleValue(room) : gameT("room.passwordProtected");
   const roomId = room?.id || state.joinPasswordRoomId;
   const errorText = state.joinPasswordError || (state.errorTarget === "form" ? state.error : "");
   return renderJoinPasswordModal({

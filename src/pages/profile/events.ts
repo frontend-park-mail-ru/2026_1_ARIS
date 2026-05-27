@@ -114,7 +114,7 @@ import {
   initProfilePostListLayout,
   openProfilePostSearch,
 } from "./post-list";
-import { canEditProfilePost, escapeHtml } from "./helpers";
+import { canEditProfilePost } from "./helpers";
 import type { DisplayProfile } from "./types";
 import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 

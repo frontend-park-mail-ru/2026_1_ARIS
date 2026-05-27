@@ -12,6 +12,8 @@ describe("games i18n", () => {
 
     expect(gameT("catalog.title")).toBe("Игры");
     expect(gameT("catalog.players", { count: "2-8" })).toBe("Игроков: 2-8");
+    expect(gameT("gameplay.answerSubmit")).toBe("Ответить");
+    expect(gameT("results.questionPosition", { current: 1, total: 3 })).toBe("Вопрос 1 из 3");
   });
 
   it("возвращает английские строки для EN-интерфейса", () => {
@@ -19,5 +21,7 @@ describe("games i18n", () => {
 
     expect(gameT("catalog.title")).toBe("Games");
     expect(gameT("catalog.players", { count: "2-8" })).toBe("Players: 2-8");
+    expect(gameT("gameplay.answerSubmit")).toBe("Submit answer");
+    expect(gameT("results.questionPosition", { current: 1, total: 3 })).toBe("Question 1 of 3");
   });
 });

@@ -1,4 +1,5 @@
 import type { GamesPageState } from "../state/store";
+import { gameT } from "../shared/i18n";
 
 export type HandleGamesCopyClickOptions = {
   handleCopyInviteCode: (code: string) => Promise<void>;
@@ -19,7 +20,7 @@ export function handleGamesCopyClick(
     event.preventDefault();
     const code = copyInviteButton.getAttribute("data-games-copy-invite") ?? "";
     void options.handleCopyInviteCode(code).catch(() => {
-      options.setGamesState({ message: "", error: "Не удалось скопировать код приглашения." });
+      options.setGamesState({ message: "", error: gameT("copy.inviteCodeError") });
     });
     return true;
   }
@@ -29,7 +30,7 @@ export function handleGamesCopyClick(
     event.preventDefault();
     const title = copyRoomTitleButton.getAttribute("data-games-copy-room-title") ?? "";
     void options.handleCopyRoomTitle(title).catch(() => {
-      options.setGamesState({ message: "", error: "Не удалось скопировать название комнаты." });
+      options.setGamesState({ message: "", error: gameT("copy.roomTitleError") });
     });
     return true;
   }

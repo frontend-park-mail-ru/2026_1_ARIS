@@ -1,4 +1,5 @@
 import type { PendingVoluntaryLeave } from "../../room/lifecycle";
+import { gameT } from "../../shared/i18n";
 import type { GamesStatePatch, RoomUnavailablePatchOptions } from "./types";
 
 /**
@@ -14,7 +15,7 @@ export function getDisbandRoomSuccessPatch(): GamesStatePatch {
     startConfirmOpen: false,
     kickConfirmProfileId: "",
     socketOpen: false,
-    message: "Комната распущена.",
+    message: gameT("room.disbanded"),
     messageReturnRoomId: "",
     messageReturnInviteCode: "",
     messageReturnPassword: "",

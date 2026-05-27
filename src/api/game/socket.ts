@@ -5,10 +5,12 @@
  */
 import type { GameRoomSocketHandlers, GameRoomSocketSubscription } from "./types";
 import { extractRoomMessageResponse, extractRoomResponse, type RawRecord } from "./mappers";
+import { getLanguageMode } from "../../state/language";
 
 function getGameSocketUrl(roomId: string): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/ws/games/${encodeURIComponent(roomId)}`;
+  const lang = getLanguageMode() === "EN" ? "en" : "ru";
+  return `${protocol}//${window.location.host}/ws/games/${encodeURIComponent(roomId)}?lang=${lang}`;
 }
 
 export function subscribeToGameRoom(

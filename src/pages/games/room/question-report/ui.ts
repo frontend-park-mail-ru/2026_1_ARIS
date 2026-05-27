@@ -1,6 +1,7 @@
 import { escapeHtml } from "../../../../utils/avatar";
 import type { GameRoom } from "../../../../api/games";
 import type { ReportableGameQuestion } from "../../state/store";
+import { gameT } from "../../shared/i18n";
 import { getQuestionReportKey } from "./model";
 import type { QuestionReportState, QuestionReportUiOptions } from "./types";
 
@@ -11,9 +12,9 @@ export function getQuestionReportButtonLabel(
   questionKey: string,
   state: QuestionReportState,
 ): string {
-  if (state.reportedKeys.has(questionKey)) return "Жалоба отправлена";
-  if (state.reportingKeys.has(questionKey)) return "Отправляем...";
-  return "Пожаловаться на вопрос";
+  if (state.reportedKeys.has(questionKey)) return gameT("menu.reportSent");
+  if (state.reportingKeys.has(questionKey)) return gameT("menu.reporting");
+  return gameT("modal.reportTitle");
 }
 
 /**
@@ -92,7 +93,7 @@ export function renderQuestionActionsMenuButton(options: {
       type="button"
       class="games-menu-toggle games-question-menu-toggle"
       data-games-question-menu-toggle="${escapeHtml(questionKey)}"
-      aria-label="Действия с вопросом"
+      aria-label="${escapeHtml(gameT("report.questionActions"))}"
       aria-expanded="${isOpen ? "true" : "false"}"
     >
       <span></span><span></span><span></span>

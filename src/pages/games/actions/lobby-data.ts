@@ -1,5 +1,6 @@
 import type { GameLeaderboard, GameRoom, GameType } from "../../../api/games";
 import type { GamesPageState } from "../state/store";
+import { gameT } from "../shared/i18n";
 
 export type LoadWaitingRoomsActionOptions = {
   preserveMessage?: boolean;
@@ -111,7 +112,7 @@ export async function loadLeaderboardAction(
     if (options?.silent) return;
     deps.setGamesState({
       leaderboardLoading: false,
-      leaderboardError: deps.getErrorMessage(error, "Не удалось загрузить рейтинг."),
+      leaderboardError: deps.getErrorMessage(error, gameT("leaderboard.loadError")),
     });
   }
 }

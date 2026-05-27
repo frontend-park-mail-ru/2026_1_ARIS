@@ -1,5 +1,7 @@
 import type { GameRoomMessage } from "../../../api/games";
+import { getLanguageMode } from "../../../state/language";
 import { escapeHtml, renderAvatarMarkup } from "../../../utils/avatar";
+import { gameT } from "../shared/i18n";
 
 export type RoomChatProfileLinkOptions = {
   profileId: string;
@@ -45,7 +47,7 @@ export function renderRoomChatMessage(
                 label: item.authorName,
                 content: avatarMarkup,
                 avatarUrl: item.avatarUrl,
-                ariaLabel: `Открыть профиль ${item.authorName}`,
+                ariaLabel: gameT("leaderboard.openProfile", { name: item.authorName }),
               })
             : avatarMarkup
         }
@@ -84,12 +86,14 @@ export function renderRoomChat(options: {
   renderProfileLink: (options: RoomChatProfileLinkOptions) => string;
 }): string {
   const hasMessages = options.messages.length > 0;
-  const chatIsRecovering = options.error === "Идет загрузка сообщений...";
+  const loadingText = gameT("chat.loading");
+  const chatIsRecovering =
+    options.error === loadingText || options.error === "Идет загрузка сообщений...";
 
   return `
-    <aside class="games-room-chat content-card" aria-label="Чат комнаты">
+    <aside class="games-room-chat content-card" aria-label="${escapeHtml(gameT("chat.roomAria"))}">
       <header class="games-room-chat__header">
-        <h2 class="games-room-chat__title">Чат комнаты</h2>
+        <h2 class="games-room-chat__title">${escapeHtml(gameT("chat.title"))}</h2>
         <label class="games-room-chat__system-toggle">
           <input
             class="games-room-chat__system-toggle-input"
@@ -98,18 +102,18 @@ export function renderRoomChat(options: {
             ${options.showSystemMessages ? "checked" : ""}
           >
           <span class="games-room-chat__system-toggle-box" aria-hidden="true"></span>
-          <span class="games-room-chat__system-toggle-text">Показывать системные сообщения</span>
+          <span class="games-room-chat__system-toggle-text">${escapeHtml(gameT("chat.showSystem"))}</span>
         </label>
       </header>
       <div class="games-room-chat__messages" data-games-room-chat-messages>
         ${
           (options.loading || chatIsRecovering) && !hasMessages
-            ? `<p class="games-room-chat__empty">Идет загрузка сообщений...</p>`
+            ? `<p class="games-room-chat__empty">${escapeHtml(loadingText)}</p>`
             : hasMessages
               ? options.messages
                   .map((message) => renderRoomChatMessage(message, options.renderProfileLink))
                   .join("")
-              : `<p class="games-room-chat__empty">${options.hasHiddenSystemMessages ? "Системные сообщения скрыты." : "Сообщений пока нет."}</p>`
+              : `<p class="games-room-chat__empty">${escapeHtml(options.hasHiddenSystemMessages ? gameT("chat.hidden") : gameT("chat.empty"))}</p>`
         }
       </div>
       ${
@@ -123,12 +127,12 @@ export function renderRoomChat(options: {
           name="text"
           rows="2"
           maxlength="500"
-          placeholder="Сообщение"
+          placeholder="${escapeHtml(gameT("chat.messagePlaceholder"))}"
           data-games-room-chat-input
           ${options.inputDisabled ? "disabled" : ""}
         >${escapeHtml(options.draft)}</textarea>
         <button type="submit" class="games-button games-button--primary games-room-chat__send" ${options.inputDisabled ? "disabled" : ""}>
-          ${options.sending ? "Отправляем..." : "Отправить"}
+          ${escapeHtml(options.sending ? gameT("chat.sending") : gameT("chat.send"))}
         </button>
       </form>
     </aside>
@@ -139,5 +143,8 @@ export function renderRoomChat(options: {
 export function formatRoomChatTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleTimeString(getLanguageMode() === "EN" ? "en-US" : "ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

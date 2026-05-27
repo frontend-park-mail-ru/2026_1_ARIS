@@ -2,6 +2,7 @@ import type { GameRoom } from "../../../../api/games";
 import { getRoomSocketStateUpdate } from "../../room/state/socket-state";
 import { getRoomUpdatePatch } from "../../state/room-update-patches";
 import type { ApplyRoomSocketStateDeps } from "./types";
+import { gameT } from "../../shared/i18n";
 
 /**
  * Применяет socket-обновление комнаты к state страницы.
@@ -75,7 +76,7 @@ export async function applyRoomSocketState(
   deps.refreshGamesDom();
 
   if (update.becameAdmin) {
-    deps.showToast("Вы назначены администратором комнаты");
+    deps.showToast(gameT("room.assignedAdminToast"));
   }
   if (update.rankedChanged) {
     showRankedChangeToast(update.normalizedRoom, deps);

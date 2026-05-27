@@ -1,6 +1,7 @@
 import type { GameRoom } from "../../../../api/games";
 import { escapeHtml } from "../../../../utils/avatar";
 import { getQuestionPositionLabel } from "../../round/model";
+import { gameT } from "../../shared/i18n";
 import type {
   CurrentQuestion,
   RenderActiveRoundStageOptions,
@@ -16,9 +17,9 @@ export function getSubmittedAnswerLabel(
   submittedAnswerValue: string,
 ): string {
   if (submittedQuestionId !== question.id || !submittedAnswerValue) {
-    return "Ваш ответ принят";
+    return gameT("gameplay.answerAccepted");
   }
-  return `Ваш ответ принят: ${submittedAnswerValue}`;
+  return gameT("gameplay.answerAcceptedValue", { answer: submittedAnswerValue });
 }
 
 /**
@@ -41,21 +42,21 @@ function renderCurrentAnswerForm(
   return `
     <form class="games-answer-form games-answer-form--play" data-games-answer-form>
       <label class="games-field games-field--answer">
-        <span class="games-answer-form__label">Ваш ответ:</span>
+        <span class="games-answer-form__label">${escapeHtml(gameT("gameplay.answerLabel"))}</span>
         <input
           type="number"
           name="answer"
           data-games-answer-input
           inputmode="decimal"
           step="any"
-          placeholder="Введите число"
+          placeholder="${escapeHtml(gameT("gameplay.answerPlaceholder"))}"
           autofocus
           required
         >
       </label>
       ${options.renderInlineError("answer")}
       <button type="submit" class="games-button games-button--primary">
-        Ответить
+        ${escapeHtml(gameT("gameplay.answerSubmit"))}
       </button>
     </form>
   `;
@@ -74,7 +75,7 @@ function renderQuestionCountdown(room: GameRoom, question: CurrentQuestion): str
     >
       <div class="games-question-countdown__line">
         <span>${escapeHtml(getQuestionPositionLabel(room, question.position))}.</span>
-        <span>Осталось: <strong class="games-question-countdown__value" data-games-timer-value>--</strong> сек.</span>
+        <span>${escapeHtml(gameT("gameplay.timeLeft"))}: <strong class="games-question-countdown__value" data-games-timer-value>--</strong> ${escapeHtml(gameT("gameplay.secondsShort"))}.</span>
       </div>
       <span class="games-question-countdown__bar" aria-hidden="true">
         <span class="games-question-countdown__bar-fill" data-games-timer-progress></span>
@@ -93,15 +94,15 @@ export function renderActiveRoundStage(options: RenderActiveRoundStageOptions): 
     return `
       <section class="games-game-stage games-game-stage--waiting">
         <div class="games-stage-card">
-          <span class="games-stage-card__eyebrow">Раунд</span>
-          <h2 class="games-stage-card__title">Готовим следующий вопрос</h2>
+          <span class="games-stage-card__eyebrow">${escapeHtml(gameT("gameplay.round"))}</span>
+          <h2 class="games-stage-card__title">${escapeHtml(gameT("gameplay.nextQuestionLoading"))}</h2>
         </div>
       </section>
     `;
   }
 
   return `
-    <section class="games-game-stage games-game-stage--question" aria-label="Текущий вопрос">
+    <section class="games-game-stage games-game-stage--question" aria-label="${escapeHtml(gameT("gameplay.currentQuestionAria"))}">
       <div class="games-stage-card games-stage-card--question">
         ${renderQuestionCountdown(room, question)}
         <div class="games-question-hero" data-games-question-hero>

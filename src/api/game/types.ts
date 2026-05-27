@@ -40,7 +40,6 @@ export type GameRoundQuestion = {
   status: "pending" | "active" | "completed";
   text: string;
   correctAnswer: number | null;
-  answerUnit: string;
   answers: GameAnswer[];
   winnerProfileId: string;
   startedAt: string;
@@ -55,7 +54,6 @@ export type CurrentGameQuestion = {
   startedAt: string;
   deadlineAt: string;
   hasAnswered: boolean;
-  answerUnit: string;
 };
 
 export type GameStats = {

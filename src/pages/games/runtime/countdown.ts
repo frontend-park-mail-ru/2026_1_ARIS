@@ -9,6 +9,7 @@ export type CreateGamesCountdownRuntimeOptions = {
   getRoot: () => Document | HTMLElement | null;
   formatScore: (value: number) => string;
   onFinalResultsExpired: () => void;
+  onRoundResultExpired?: () => void;
 };
 
 /** Проверяет, есть ли в root элементы, которым нужен игровой countdown. */
@@ -19,6 +20,7 @@ function hasCountdownRuntimeElements(root: Document | HTMLElement): boolean {
         "[data-games-countdown]",
         "[data-games-timer-deadline]",
         "[data-games-final-results-until]",
+        "[data-games-round-result-until]",
         "[data-games-score-shell]",
         "[data-games-round-points-badge]",
         "[data-games-score-animate]",
@@ -35,10 +37,16 @@ export function createGamesCountdownRuntime(
   let timerId: number | null = null;
 
   const update = (root: Document | HTMLElement) => {
-    updateGamesCountdown(root, {
+    const countdownOptions = {
       formatScore: options.formatScore,
       onFinalResultsExpired: options.onFinalResultsExpired,
-    });
+    };
+    updateGamesCountdown(
+      root,
+      options.onRoundResultExpired
+        ? { ...countdownOptions, onRoundResultExpired: options.onRoundResultExpired }
+        : countdownOptions,
+    );
   };
 
   const stop = () => {

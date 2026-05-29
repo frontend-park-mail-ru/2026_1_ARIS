@@ -13,6 +13,8 @@ describe("games i18n", () => {
     expect(gameT("catalog.title")).toBe("Игры");
     expect(gameT("catalog.players", { count: "2-8" })).toBe("Игроков: 2-8");
     expect(gameT("gameplay.answerSubmit")).toBe("Ответить");
+    expect(gameT("results.nextQuestionIn")).toBe("Следующий вопрос через");
+    expect(gameT("results.totalTime")).toBe("Суммарное время");
     expect(gameT("results.questionPosition", { current: 1, total: 3 })).toBe("Вопрос 1 из 3");
   });
 
@@ -22,6 +24,8 @@ describe("games i18n", () => {
     expect(gameT("catalog.title")).toBe("Games");
     expect(gameT("catalog.players", { count: "2-8" })).toBe("Players: 2-8");
     expect(gameT("gameplay.answerSubmit")).toBe("Submit answer");
+    expect(gameT("results.nextQuestionIn")).toBe("Next question in");
+    expect(gameT("results.totalTime")).toBe("Total answer time");
     expect(gameT("results.questionPosition", { current: 1, total: 3 })).toBe("Question 1 of 3");
   });
 });

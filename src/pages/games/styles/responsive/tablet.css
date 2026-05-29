@@ -148,6 +148,7 @@
     }
 
     .games-final-place em,
+    .games-final-place__time,
     .games-final-place small {
       grid-column: 3;
       justify-self: start;

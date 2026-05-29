@@ -16,6 +16,7 @@ export function renderRoundAnswerShowcase(options: RenderRoundResultStageOptions
   const { room, question, renderPlayerCell } = options;
   const entries = getRoundResultPresentationRows(room, question);
   const showcaseItems = getRoundAnswerShowcaseItems(entries, question);
+  const maxRevealIndex = Math.max(0, ...showcaseItems.map((item) => item.revealIndex));
   const scorePlaceByProfile = new Map(
     getRoundScoreRows(entries).map((row) => [row.player.profileId, row.scorePlace]),
   );
@@ -31,6 +32,7 @@ export function renderRoundAnswerShowcase(options: RenderRoundResultStageOptions
                 item,
                 index,
                 scorePlaceByProfile,
+                maxRevealIndex,
                 timeRevealDelayMs,
                 renderPlayerCell,
               ),

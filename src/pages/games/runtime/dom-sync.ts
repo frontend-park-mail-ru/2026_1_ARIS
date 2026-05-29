@@ -34,10 +34,16 @@ export function focusCurrentAnswerInput(root: Document | HTMLElement | null): vo
   if (!root) return;
   const input = root.querySelector<HTMLInputElement>("[data-games-answer-input]");
   if (!input || input.disabled) return;
-  window.setTimeout(() => {
+
+  const focusInput = () => {
     if (!input.isConnected || input.disabled) return;
+    if (input.ownerDocument.activeElement === input) return;
     input.focus({ preventScroll: true });
-  }, 0);
+  };
+
+  focusInput();
+  window.requestAnimationFrame?.(focusInput);
+  window.setTimeout(focusInput, 0);
 }
 
 /** Синхронизирует DOM формы ответа после локального принятия ответа. */

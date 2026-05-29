@@ -76,6 +76,7 @@ export function createGamesPageRuntimes(
     getRoot: options.getRoot,
     formatScore: options.formatScore,
     onFinalResultsExpired: options.onFinalResultsExpired,
+    onRoundResultExpired: options.onFinalResultsExpired,
   });
 
   const roomChat = createGamesRoomChatRuntime({

@@ -76,7 +76,7 @@
   .games-final-place {
     display: grid;
     min-width: 0;
-    grid-template-columns: 34px 36px minmax(0, 1fr) auto auto;
+    grid-template-columns: 34px 36px minmax(0, 1fr) auto auto auto;
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
@@ -165,6 +165,24 @@
     font-style: normal;
     font-weight: var(--font-weight-bold);
     text-align: left;
+  }
+
+  .games-final-place__time {
+    display: inline-flex;
+    min-width: 88px;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 6px;
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+  }
+
+  .games-final-place__time time {
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-variant-numeric: tabular-nums;
   }
 
   .games-final-place small {

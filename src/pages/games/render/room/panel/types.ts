@@ -7,6 +7,8 @@ export type RenderRoomPanelOptions = {
   room: GameRoom;
   game: GameCatalogItem;
   headingTitle: string;
+  showRoomHeader: boolean;
+  showRulesHint: boolean;
   loading: boolean;
   roomTitle: string;
   roomPasswordDisplay: string;

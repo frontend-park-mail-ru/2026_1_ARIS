@@ -102,7 +102,7 @@ describe("games scoreboard render", () => {
     expect(html).toContain("disabled");
   });
 
-  it("оставляет анимацию начисления очков, если следующий вопрос уже активен", () => {
+  it("не держит анимацию начисления очков после старта следующего вопроса", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-25T10:00:04.000Z"));
     const players = [
@@ -155,9 +155,8 @@ describe("games scoreboard render", () => {
       renderProfileLink,
     });
 
-    expect(html).toContain('data-games-score-from="0"');
-    expect(html).toContain('data-games-score-to="1"');
-    expect(html).toContain("data-games-round-points-badge");
+    expect(html).not.toContain("data-games-score-from");
+    expect(html).not.toContain("data-games-round-points-badge");
     vi.useRealTimers();
   });
 });

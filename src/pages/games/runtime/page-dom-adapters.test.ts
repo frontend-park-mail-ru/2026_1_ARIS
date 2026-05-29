@@ -53,7 +53,48 @@ describe("games page dom adapters", () => {
 
     expect(refreshOptions.root).toBe(options.getRoot.mock.results[0]?.value);
     expect(refreshOptions.room).toBe(room);
-    expect(refreshOptions.focusAnswerInput).toBe(focusCurrentAnswerInput);
+    expect(refreshOptions.focusAnswerInput).toEqual(expect.any(Function));
+  });
+
+  it("фокусирует поле ответа один раз на каждый новый вопрос", () => {
+    const root = document.createElement("main");
+    root.innerHTML = `<input data-games-answer-input>`;
+    let room = {
+      id: "room-1",
+      currentQuestion: { id: "question-1", hasAnswered: false },
+    } as GameRoom;
+    const options = createOptions(room);
+    options.getRoot.mockReturnValue(root);
+    options.getRoom.mockImplementation(() => room);
+    const adapters = createGamesPageDomAdapters(options);
+    const refreshOptions = adapters.getDomRefreshOptions();
+
+    refreshOptions.focusAnswerInput(root);
+    refreshOptions.focusAnswerInput(root);
+
+    room = {
+      ...room,
+      currentQuestion: { id: "question-2", hasAnswered: false },
+    } as GameRoom;
+    refreshOptions.focusAnswerInput(root);
+
+    expect(focusCurrentAnswerInput).toHaveBeenCalledTimes(2);
+    expect(focusCurrentAnswerInput).toHaveBeenNthCalledWith(1, root);
+    expect(focusCurrentAnswerInput).toHaveBeenNthCalledWith(2, root);
+  });
+
+  it("не фокусирует поле ответа, когда игрок уже ответил", () => {
+    const root = document.createElement("main");
+    const room = {
+      id: "room-1",
+      currentQuestion: { id: "question-1", hasAnswered: true },
+    } as GameRoom;
+    const options = createOptions(room);
+    const adapters = createGamesPageDomAdapters(options);
+
+    adapters.getDomRefreshOptions().focusAnswerInput(root);
+
+    expect(focusCurrentAnswerInput).not.toHaveBeenCalled();
   });
 
   it("синхронизирует runtime-объекты через адаптеры", () => {

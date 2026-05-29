@@ -1,6 +1,12 @@
 import { escapeHtml, renderAvatarMarkup } from "../../../../utils/avatar";
+import {
+  getComputedScoresByProfile,
+  formatDurationMs,
+  getPlayerPlaceByScores,
+  getRankedPlayersByScores,
+  getTotalAnswerTimeByProfile,
+} from "../../round/model";
 import { formatRatingDelta, formatGamePoints } from "../../shared/formatters";
-import { getComputedScoresByProfile, getPlayerPlace, getRankedPlayers } from "../../round/model";
 import { getPlayerFullName } from "../../room/profile/players";
 import { gameT } from "../../shared/i18n";
 import { getRatingDeltaClass } from "./rating";
@@ -9,8 +15,9 @@ import type { RenderFinalGameStageOptions } from "./types";
 /** Рендерит таблицу мест игроков в финальных итогах. */
 export function renderFinalStandings(options: RenderFinalGameStageOptions): string {
   const { room, getPlayerAvatarUrl, renderProfileLink } = options;
-  const rankedPlayers = getRankedPlayers(room);
   const scoreMap = getComputedScoresByProfile(room);
+  const answerTimeMap = getTotalAnswerTimeByProfile(room);
+  const rankedPlayers = getRankedPlayersByScores(room, scoreMap, answerTimeMap);
   const ratingByProfile = new Map(room.ratingChanges.map((change) => [change.profileId, change]));
 
   return `
@@ -31,7 +38,7 @@ export function renderFinalStandings(options: RenderFinalGameStageOptions): stri
           const ratingDelta = ratingByProfile.get(player.profileId)?.ratingDelta ?? 0;
           return `
             <article class="games-final-place${player.isMe ? " games-final-place--me" : ""}${index === 0 ? " games-final-place--winner" : ""}" style="--games-result-index: ${index}">
-              <strong>${getPlayerPlace(room, player)}</strong>
+              <strong>${getPlayerPlaceByScores(room, player, scoreMap, answerTimeMap)}</strong>
               ${
                 player.profileId
                   ? renderProfileLink({
@@ -56,6 +63,10 @@ export function renderFinalStandings(options: RenderFinalGameStageOptions): stri
                   : `<span class="games-final-place__name">${escapeHtml(playerLabel)}</span>`
               }
               <em>${escapeHtml(formatGamePoints(scoreMap.get(player.profileId) ?? 0))}</em>
+              <span class="games-final-place__time" aria-label="${escapeHtml(gameT("results.totalTime"))}">
+                <span>${escapeHtml(gameT("results.totalTimeShort"))}</span>
+                <time>${escapeHtml(formatDurationMs(answerTimeMap.get(player.profileId) ?? 0))}</time>
+              </span>
               ${
                 room.isRanked && ratingByProfile.has(player.profileId)
                   ? `<small class="${getRatingDeltaClass(ratingDelta)}">

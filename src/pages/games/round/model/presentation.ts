@@ -24,13 +24,6 @@ export function getRoundResultPresentationRows(
       .map((row) => row.answer?.distance)
       .filter((distance): distance is number => Number.isFinite(distance ?? Number.NaN)),
   );
-  const distanceCounts = rows.reduce((counts, row) => {
-    const distance = row.answer?.distance;
-    if (distance === null || distance === undefined || !Number.isFinite(distance)) return counts;
-    counts.set(distance, (counts.get(distance) ?? 0) + 1);
-    return counts;
-  }, new Map<number, number>());
-
   return rows.map((row) => {
     const answer = row.answer;
     const isMissingAnswer = isMissingRoundAnswer(answer);
@@ -46,11 +39,7 @@ export function getRoundResultPresentationRows(
       isMissingAnswer,
       roundPoints: roundPoints.get(row.player.profileId) ?? 0,
       answerDelta: getAnswerDelta(answer, question.correctAnswer),
-      showTime:
-        !isMissingAnswer &&
-        answer?.distance !== null &&
-        answer?.distance !== undefined &&
-        (distanceCounts.get(answer.distance) ?? 0) > 1,
+      showTime: true,
     };
   });
 }
@@ -69,7 +58,6 @@ export function getRoundAnswerShowcaseItems(
   };
 
   const revealOrderByProfile = new Map<string, number>();
-  const revealOrderByAnswer = new Map<string, number>();
   [...rows]
     .sort((left, right) => {
       if (left.isMissingAnswer !== right.isMissingAnswer) {
@@ -86,12 +74,8 @@ export function getRoundAnswerShowcaseItems(
         "ru",
       );
     })
-    .forEach((row) => {
-      const answerKey = row.isMissingAnswer ? "missing" : `answer:${row.answer?.answer ?? ""}`;
-      if (!revealOrderByAnswer.has(answerKey)) {
-        revealOrderByAnswer.set(answerKey, revealOrderByAnswer.size + 1);
-      }
-      revealOrderByProfile.set(row.player.profileId, revealOrderByAnswer.get(answerKey) ?? 1);
+    .forEach((row, index) => {
+      revealOrderByProfile.set(row.player.profileId, index + 1);
     });
 
   const playerItems = rows.map((row, index) => ({

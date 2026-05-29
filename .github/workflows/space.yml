@@ -1,19 +1,19 @@
-name: Deploy Staging
+name: Deploy Space
 
 on:
   push:
     branches:
-      - dev
+      - ARIS-SPACE-FRONT
 
 concurrency:
-  group: staging-deploy
+  group: space-deploy
   cancel-in-progress: false
 
 jobs:
   quality-gate:
     uses: ./.github/workflows/frontend-quality-gate.yml
     with:
-      artifact_prefix: staging
+      artifact_prefix: space
 
   build:
     runs-on: ubuntu-latest
@@ -37,7 +37,7 @@ jobs:
           BUILD_VERSION=$(node -p "require('./package.json').version")
           BUILD_COMMIT="${{ github.sha }}" \
             BUILD_VERSION="$BUILD_VERSION" \
-            SENTRY_ENVIRONMENT=staging \
+            SENTRY_ENVIRONMENT=space \
             NODE_ENV=production \
             npm run build
 
@@ -62,24 +62,24 @@ jobs:
       - name: Copy dist to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.STAGING_DEPLOY_HOST }}
-          username: ${{ secrets.STAGING_DEPLOY_USER }}
-          key: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
+          host: ${{ secrets.SPACE_DEPLOY_HOST }}
+          username: ${{ secrets.SPACE_DEPLOY_USER }}
+          key: ${{ secrets.SPACE_DEPLOY_SSH_KEY }}
           source: "dist/"
-          target: "${{ secrets.STAGING_DEPLOY_PATH }}"
+          target: "${{ secrets.SPACE_DEPLOY_PATH }}"
           overwrite: true
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.STAGING_DEPLOY_HOST }}
-          username: ${{ secrets.STAGING_DEPLOY_USER }}
-          key: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
+          host: ${{ secrets.SPACE_DEPLOY_HOST }}
+          username: ${{ secrets.SPACE_DEPLOY_USER }}
+          key: ${{ secrets.SPACE_DEPLOY_SSH_KEY }}
           script: |
             set -euo pipefail
-            cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            cd ${{ secrets.SPACE_DEPLOY_PATH }}
             git fetch --all
-            git switch -f -C dev origin/dev
+            git switch -f -C ARIS-SPACE-FRONT origin/ARIS-SPACE-FRONT
             npm ci
             BUILD_VERSION=$(node -p "require('./package.json').version")
             printf 'BUILD_COMMIT=%s\nBUILD_VERSION=%s\n' "${{ github.sha }}" "$BUILD_VERSION" > .env.build
@@ -95,7 +95,7 @@ jobs:
     if: always()
 
     steps:
-      - name: Send staging deploy notification to Telegram
+      - name: Send space deploy notification to Telegram
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -118,7 +118,7 @@ jobs:
             STATUS_ICON="🚨"
           fi
 
-          MESSAGE="${STATUS_ICON} ARIS staging push%0AQuality gate: ${QUALITY_RESULT}%0ADeploy: ${DEPLOY_RESULT}%0ARepository: ${REPOSITORY}%0ABranch: ${BRANCH}%0AActor: ${ACTOR}%0ACommit: ${COMMIT_SHA}%0ARun: ${RUN_URL}"
+          MESSAGE="${STATUS_ICON} ARIS space push%0AQuality gate: ${QUALITY_RESULT}%0ADeploy: ${DEPLOY_RESULT}%0ARepository: ${REPOSITORY}%0ABranch: ${BRANCH}%0AActor: ${ACTOR}%0ACommit: ${COMMIT_SHA}%0ARun: ${RUN_URL}"
 
           curl --fail --silent --show-error \
             --request POST \

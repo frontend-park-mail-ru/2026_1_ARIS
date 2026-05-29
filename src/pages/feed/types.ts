@@ -21,9 +21,18 @@ export type FeedMode = "by-time" | "for-you";
 export type FeedAuthKey = "guest" | "authorised";
 
 /**
- * Кэш элементов ленты, разбитый по типу пользователя и режиму отображения.
+ * Страница ленты с метаданными пагинации.
  */
-export type FeedItemsCache = Record<FeedAuthKey, Record<FeedMode, PostcardModel[] | null>>;
+export type FeedCachedPage = {
+  items: PostcardModel[];
+  nextCursor: string;
+  hasMore: boolean;
+};
+
+/**
+ * Кэш страниц ленты, разбитый по типу пользователя и режиму отображения.
+ */
+export type FeedItemsCache = Record<FeedAuthKey, Record<FeedMode, FeedCachedPage | null>>;
 
 /**
  * Результат построения центральной колонки ленты.

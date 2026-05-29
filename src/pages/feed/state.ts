@@ -3,8 +3,7 @@
  *
  * Содержит runtime-состояние, кэши и вспомогательные функции управления состоянием.
  */
-import type { PostcardModel } from "../../api/feed";
-import type { ActiveFeedState } from "./types";
+import type { ActiveFeedState, FeedCachedPage } from "./types";
 import { StateManager } from "../../state/StateManager";
 import { TtlCache } from "../../utils/ttl-cache";
 
@@ -24,7 +23,7 @@ export const feedStore = new StateManager<FeedCoreState>({
 });
 
 /** Кэш ленты в памяти с TTL 5 минут. Ключ: "{authKey}:{modeKey}". */
-export const feedItemsCache = new TtlCache<string, PostcardModel[]>(5 * 60 * 1000);
+export const feedItemsCache = new TtlCache<string, FeedCachedPage>(5 * 60 * 1000);
 
 export let activeFeedState: ActiveFeedState | null = null;
 export let isFeedScrollBound = false;

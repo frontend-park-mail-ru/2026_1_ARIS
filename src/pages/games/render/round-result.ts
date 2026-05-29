@@ -1,9 +1,12 @@
 import { escapeHtml } from "../../../utils/avatar";
 import { getFinalRoundResultsUntil } from "../round/reveal";
-import { getRoundResultTimerStartMs, getRoundResultTransitionEndMs } from "../round/timeline";
-import { roundResultCountdownMs } from "../shared/constants";
-import { renderRoundResultCountdown } from "./round-result/countdown";
+import {
+  getRoundResultTimelineStartMs,
+  getRoundResultTransitionEndDelayMs,
+  getRoundResultTransitionEndMs,
+} from "../round/timeline";
 import { renderRoundAnswerShowcase } from "./round-result/showcase";
+import { renderRoundResultCountdown } from "./round-result/countdown";
 import type { RenderRoundResultStageOptions } from "./round-result/types";
 import { gameT } from "../shared/i18n";
 
@@ -15,26 +18,24 @@ export type { RenderRoundResultStageOptions } from "./round-result/types";
 export function renderRoundResultStage(options: RenderRoundResultStageOptions): string {
   const { room, question } = options;
   const finalResultsUntil = getFinalRoundResultsUntil(room, question);
-  const timerStartAtMs = getRoundResultTimerStartMs(room, question);
-  const timerDeadlineAt = new Date(getRoundResultTransitionEndMs(room, question)).toISOString();
-  const resultTimer = room.nextQuestionAt
-    ? renderRoundResultCountdown(room, question, {
-        deadlineAt: timerDeadlineAt,
-        label: gameT("results.nextQuestion"),
-        startAtMs: timerStartAtMs,
-        durationMs: roundResultCountdownMs,
-      })
-    : finalResultsUntil
+  const shouldShowNextQuestionTimer = room.status === "active";
+  const transitionEndAt = new Date(getRoundResultTransitionEndMs(room, question)).toISOString();
+  const resultTimer =
+    shouldShowNextQuestionTimer || finalResultsUntil
       ? renderRoundResultCountdown(room, question, {
-          deadlineAt: finalResultsUntil.toISOString(),
-          label: gameT("results.gameResults"),
-          startAtMs: timerStartAtMs,
-          durationMs: roundResultCountdownMs,
+          deadlineAt: shouldShowNextQuestionTimer
+            ? transitionEndAt
+            : finalResultsUntil!.toISOString(),
+          label: shouldShowNextQuestionTimer
+            ? gameT("results.nextQuestionIn")
+            : gameT("results.gameResultsIn"),
+          startAtMs: getRoundResultTimelineStartMs(question),
+          durationMs: getRoundResultTransitionEndDelayMs(room, question),
         })
       : "";
 
   return `
-    <section class="games-game-stage games-game-stage--result" aria-label="${escapeHtml(gameT("results.roundResultsAria"))}">
+    <section class="games-game-stage games-game-stage--result" data-key="stage-result-${escapeHtml(question.id)}" aria-label="${escapeHtml(gameT("results.roundResultsAria"))}">
       <div class="games-stage-card games-stage-card--result">
         ${finalResultsUntil ? `<span hidden data-games-final-results-until="${escapeHtml(finalResultsUntil.toISOString())}"></span>` : ""}
         ${resultTimer}

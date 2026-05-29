@@ -3,10 +3,12 @@ import { scoreValueAnimationMs } from "../../shared/constants";
 import {
   getComputedScoresByProfile,
   getLatestCompletedQuestion,
+  getPreviousRoundAnswerTimeByProfile,
   getPreviousRoundScoresByProfile,
   getRankedPlayers,
   getRankedPlayersByScores,
   getRoundPointsByProfile,
+  getTotalAnswerTimeByProfile,
 } from "../../round/model";
 import {
   getRoundPointSequence,
@@ -19,8 +21,6 @@ import { isRoundResultRevealVisible } from "../../round/reveal";
 
 const scoreboardSortSettleMs = 650;
 const scoreboardScheduleLeadMs = 300;
-const scoreboardMinStartDelayMs = 260;
-const scoreboardMinStepDelayMs = 420;
 
 function getTimestampMs(value: string): number {
   const timestamp = new Date(value).getTime();
@@ -65,61 +65,12 @@ function getScoreAnimationSchedule(
   timelineStartMs: number,
   pointSequenceCount: number,
 ): { scoreStartDelayMs: number; scoreStepDelayMs: number; sortAtMs: number } {
-  const defaultStartDelayMs = getRoundScoreAnimationStartDelayMs(room, question);
-  const defaultStepDelayMs = getRoundScoreStepDelayMs();
+  const scoreStartDelayMs = getRoundScoreAnimationStartDelayMs(room, question);
+  const scoreStepDelayMs = getRoundScoreStepDelayMs();
 
   if (pointSequenceCount <= 0) {
-    return { scoreStartDelayMs: 0, scoreStepDelayMs: defaultStepDelayMs, sortAtMs: 0 };
+    return { scoreStartDelayMs: 0, scoreStepDelayMs, sortAtMs: 0 };
   }
-
-  const nextQuestionAtMs = getTimestampMs(room.nextQuestionAt);
-  if (!nextQuestionAtMs || nextQuestionAtMs <= timelineStartMs) {
-    return {
-      scoreStartDelayMs: defaultStartDelayMs,
-      scoreStepDelayMs: defaultStepDelayMs,
-      sortAtMs:
-        timelineStartMs +
-        getScoreboardSortDelayMs(defaultStartDelayMs, defaultStepDelayMs, pointSequenceCount),
-    };
-  }
-
-  const availableMs = Math.max(0, nextQuestionAtMs - timelineStartMs - scoreboardScheduleLeadMs);
-  const defaultSortDelayMs = getScoreboardSortDelayMs(
-    defaultStartDelayMs,
-    defaultStepDelayMs,
-    pointSequenceCount,
-  );
-  if (availableMs >= defaultSortDelayMs) {
-    return {
-      scoreStartDelayMs: defaultStartDelayMs,
-      scoreStepDelayMs: defaultStepDelayMs,
-      sortAtMs: timelineStartMs + defaultSortDelayMs,
-    };
-  }
-
-  const stepBudgetMs =
-    pointSequenceCount <= 1
-      ? defaultStepDelayMs
-      : Math.floor(
-          (availableMs -
-            scoreboardMinStartDelayMs -
-            scoreValueAnimationMs -
-            scoreboardScheduleLeadMs) /
-            (pointSequenceCount - 1),
-        );
-  const scoreStepDelayMs =
-    pointSequenceCount <= 1
-      ? defaultStepDelayMs
-      : Math.max(scoreboardMinStepDelayMs, Math.min(defaultStepDelayMs, stepBudgetMs));
-  const latestStartDelayMs =
-    availableMs -
-    Math.max(0, pointSequenceCount - 1) * scoreStepDelayMs -
-    scoreValueAnimationMs -
-    scoreboardScheduleLeadMs;
-  const scoreStartDelayMs = Math.max(
-    scoreboardMinStartDelayMs,
-    Math.min(defaultStartDelayMs, latestStartDelayMs),
-  );
 
   return {
     scoreStartDelayMs,
@@ -139,10 +90,14 @@ export function getGameScoreboardModel(room: GameRoom) {
   const displayScoreMap = revealQuestion
     ? getPreviousRoundScoresByProfile(room, revealQuestion)
     : finalScoreMap;
+  const finalAnswerTimeMap = getTotalAnswerTimeByProfile(room);
+  const displayAnswerTimeMap = revealQuestion
+    ? getPreviousRoundAnswerTimeByProfile(room, revealQuestion)
+    : finalAnswerTimeMap;
   const rankedPlayers = revealQuestion
-    ? getRankedPlayersByScores(room, displayScoreMap)
+    ? getRankedPlayersByScores(room, displayScoreMap, displayAnswerTimeMap)
     : getRankedPlayers(room);
-  const finalRankedPlayers = getRankedPlayersByScores(room, finalScoreMap);
+  const finalRankedPlayers = getRankedPlayersByScores(room, finalScoreMap, finalAnswerTimeMap);
   const finalOrderByProfile = new Map(
     finalRankedPlayers.map((player, index) => [player.profileId, index]),
   );
@@ -163,7 +118,9 @@ export function getGameScoreboardModel(room: GameRoom) {
   return {
     revealQuestion,
     finalScoreMap,
+    finalAnswerTimeMap,
     displayScoreMap,
+    displayAnswerTimeMap,
     rankedPlayers,
     finalRankedPlayers,
     finalOrderByProfile,

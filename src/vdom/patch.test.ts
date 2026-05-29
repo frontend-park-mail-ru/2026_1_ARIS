@@ -53,4 +53,24 @@ describe("domPatch", () => {
 
     expect(host.innerHTML).toBe("<article><strong>new</strong></article>");
   });
+
+  it("заменяет несовпадающий дочерний элемент вместо вставки рядом", () => {
+    const live = elementFromHtml(`
+      <form>
+        <label class="answer"><input name="answer"></label>
+        <button type="submit">Submit</button>
+      </form>
+    `);
+    const next = elementFromHtml(`
+      <form>
+        <div class="accepted">Accepted</div>
+      </form>
+    `);
+
+    domPatch(live, next);
+
+    expect(live.querySelector(".answer")).toBeNull();
+    expect(live.querySelector("button")).toBeNull();
+    expect(live.querySelector(".accepted")?.textContent).toBe("Accepted");
+  });
 });

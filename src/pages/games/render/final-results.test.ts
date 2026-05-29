@@ -127,8 +127,57 @@ describe("games final results render", () => {
     expect(html).toContain("Победитель");
     expect(html).toContain("Ada Lovelace");
     expect(html).toContain("Таблица участников");
+    expect(html).toContain("Суммарное время");
+    expect(html).toContain("Время");
+    expect(html).toContain("0.90 сек");
     expect(html).toContain("How many moons does Mars have?");
     expect(html).not.toContain("data-games-replay-toggle");
+  });
+
+  it("сортирует финальную таблицу по времени при равных очках", () => {
+    const baseRoom = createRoom();
+    const room = createRoom({
+      questionCount: 2,
+      currentQuestionIndex: 2,
+      questions: [
+        baseRoom.questions[0]!,
+        {
+          ...baseRoom.questions[0]!,
+          id: "q2",
+          position: 2,
+          text: "Second question",
+          answers: [
+            {
+              profileId: "1",
+              answer: 10,
+              distance: 8,
+              answeredAt: "",
+              responseTimeMs: 900,
+              isWinner: false,
+            },
+            {
+              profileId: "2",
+              answer: 2,
+              distance: 0,
+              answeredAt: "",
+              responseTimeMs: 700,
+              isWinner: true,
+            },
+          ],
+          winnerProfileId: "2",
+        },
+      ],
+    });
+
+    const html = renderFinal(room);
+    const graceIndex = html.indexOf("Grace Hopper");
+    const adaIndex = html.indexOf("Ada Lovelace");
+
+    expect(graceIndex).toBeGreaterThanOrEqual(0);
+    expect(adaIndex).toBeGreaterThanOrEqual(0);
+    expect(graceIndex).toBeLessThan(adaIndex);
+    expect(html).toContain("1.50 сек");
+    expect(html).toContain("1.80 сек");
   });
 
   it("рендерит финальные итоги на английском языке интерфейса", () => {

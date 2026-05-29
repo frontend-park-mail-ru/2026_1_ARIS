@@ -814,9 +814,7 @@ describe("игровая комната", () => {
     cy.wait("@gameRoom53");
     cy.wait("@roomMessages53");
 
-    cy.contains(".games-room-heading", "Числовая викторина")
-      .should("be.visible")
-      .and("not.contain", "итоги");
+    cy.get(".games-room-heading").should("not.exist");
     cy.get(".games-stage-card--result").should("be.visible");
     cy.get("[data-games-final-results-until]").should("exist");
     cy.contains(".games-stage-card__question", "Сколько костей у взрослого человека?").should(
@@ -1092,6 +1090,8 @@ describe("игровая комната", () => {
     cy.contains(".games-stage-card__question", "Сколько клеток на шахматной доске?").should(
       "be.visible",
     );
+    cy.contains("[data-games-round-question-position]", "Вопрос 1 из 5").should("be.visible");
+    cy.contains("[data-games-round-next-timer]", "Следующий вопрос через").should("be.visible");
     cy.get(".games-game-stage").should("not.contain", "фильмов");
     cy.get("[data-games-correct-answer]")
       .should("have.class", "games-answer-axis-card--correct")
@@ -1100,18 +1100,13 @@ describe("игровая комната", () => {
       .and("not.contain", "клеток");
     cy.get("[data-games-round-next-timer].games-question-countdown")
       .should("be.visible")
-      .and("have.attr", "data-games-timer-total-ms", "5000");
+      .and("have.attr", "data-games-timer-total-ms", "16550");
     cy.get("[data-games-round-next-timer].games-question-countdown").should(($timer) => {
       const start = new Date($timer.attr("data-games-timer-start") ?? "").getTime();
       const deadline = new Date($timer.attr("data-games-timer-deadline") ?? "").getTime();
-      const delayUntil = Number($timer.attr("data-games-timer-delay-until") ?? "0");
-      expect(start).to.equal(delayUntil);
-      expect(deadline - start).to.equal(5000);
+      expect(deadline - start).to.equal(16550);
+      expect($timer.attr("data-games-timer-delay-until")).to.be.undefined;
     });
-    cy.contains(
-      "[data-games-round-next-timer] .games-question-countdown__line",
-      "Следующий вопрос",
-    ).should("be.visible");
     cy.get(".games-question-countdown__value").each(($value) => {
       expect($value.text()).not.to.match(/\d+\.\d{2}/);
     });

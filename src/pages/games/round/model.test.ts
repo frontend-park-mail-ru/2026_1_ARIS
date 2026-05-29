@@ -3,8 +3,12 @@ import type { GamePlayer, GameRoom } from "../../../api/games";
 import {
   getComputedScoresByProfile,
   getComputedWinnerProfileId,
+  getRoundAnswerShowcaseItems,
   getRoundPointsByProfile,
+  getRoundResultPresentationRows,
   getRoundResultRows,
+  getRankedPlayers,
+  getTotalAnswerTimeByProfile,
 } from "./model";
 
 /** Создаёт игрока комнаты для проверки scoring-модели. */
@@ -185,5 +189,83 @@ describe("games round model", () => {
       "3": 2,
     });
     expect(getComputedWinnerProfileId(room)).toBe("2");
+  });
+
+  it("сортирует финал по суммарному времени при равных очках", () => {
+    const room = createRoom();
+    room.questions[1] = {
+      ...room.questions[1]!,
+      answers: [
+        {
+          profileId: "1",
+          answer: 46,
+          distance: 4,
+          answeredAt: "",
+          responseTimeMs: 800,
+          isWinner: false,
+        },
+        {
+          profileId: "2",
+          answer: 54,
+          distance: 4,
+          answeredAt: "",
+          responseTimeMs: 800,
+          isWinner: false,
+        },
+        {
+          profileId: "3",
+          answer: 50,
+          distance: 0,
+          answeredAt: "",
+          responseTimeMs: 1200,
+          isWinner: true,
+        },
+      ],
+    };
+
+    expect(Object.fromEntries(getComputedScoresByProfile(room))).toEqual({
+      "1": 2,
+      "2": 2,
+      "3": 2,
+    });
+    expect(Object.fromEntries(getTotalAnswerTimeByProfile(room))).toEqual({
+      "1": 1800,
+      "2": 1804,
+      "3": 11200,
+    });
+    expect(getRankedPlayers(room).map((player) => player.profileId)).toEqual(["1", "2", "3"]);
+    expect(getComputedWinnerProfileId(room)).toBe("1");
+  });
+
+  it("назначает отдельный слот раскрытия каждой карточке ответа", () => {
+    const room = createRoom();
+    const question = {
+      ...room.questions[1]!,
+      answers: room.players.map((player, index) => ({
+        profileId: player.profileId,
+        answer: 50,
+        distance: 0,
+        answeredAt: "",
+        responseTimeMs: 800 + index * 100,
+        isWinner: true,
+      })),
+    };
+
+    const playerRevealIndexes = getRoundAnswerShowcaseItems(
+      getRoundResultPresentationRows(room, question),
+      question,
+    )
+      .filter((item) => item.type === "player")
+      .map((item) => item.revealIndex);
+
+    expect(new Set(playerRevealIndexes).size).toBe(room.players.length);
+    expect(Math.max(...playerRevealIndexes)).toBe(room.players.length);
+  });
+
+  it("показывает время на каждой карточке результата раунда", () => {
+    const room = createRoom();
+    const rows = getRoundResultPresentationRows(room, room.questions[1]!);
+
+    expect(rows.every((row) => row.showTime)).toBe(true);
   });
 });

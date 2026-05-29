@@ -8,6 +8,22 @@ import { gameT } from "../../shared/i18n";
 import { getPlayerFullName, getPlayerFullNameByProfile } from "../../room/profile/players";
 import type { RenderPauseActionOptions, RenderPauseStageOptions } from "./types";
 
+const DEFAULT_PAUSE_COUNTDOWN_MS = 120_000;
+const FORCE_RESUME_COUNTDOWN_WINDOW_MS = 5_500;
+
+/** Возвращает длительность паузного countdown с учётом короткого force-resume окна. */
+function getPauseCountdownTotalMs(deadlineAt: string): number {
+  const deadlineMs = new Date(deadlineAt).getTime();
+  if (Number.isNaN(deadlineMs)) return DEFAULT_PAUSE_COUNTDOWN_MS;
+
+  const remainingMs = deadlineMs - Date.now();
+  if (remainingMs <= 0 || remainingMs > FORCE_RESUME_COUNTDOWN_WINDOW_MS) {
+    return DEFAULT_PAUSE_COUNTDOWN_MS;
+  }
+
+  return Math.max(1_000, Math.ceil(remainingMs / 1_000) * 1_000);
+}
+
 /**
  * Рендерит действие паузы для компактного заголовка активной игры.
  */
@@ -44,6 +60,7 @@ export function renderPauseStage(options: RenderPauseStageOptions): string {
   const pausedQuestion = room.currentQuestion ?? getLatestCompletedQuestion(room);
   const votePercent = getPauseVotePercent(room);
   const votePlayers = room.players.filter((player) => player.profileId !== room.pausedByProfileId);
+  const pauseCountdownTotalMs = getPauseCountdownTotalMs(room.pauseUntilAt);
 
   return `
     <section class="games-game-stage games-game-stage--pause" aria-label="${escapeHtml(gameT("gameplay.pausedAria"))}">
@@ -57,7 +74,7 @@ export function renderPauseStage(options: RenderPauseStageOptions): string {
             class="games-question-timer-strip games-question-countdown games-pause-countdown"
             data-games-timer-deadline="${escapeHtml(room.pauseUntilAt)}"
             data-games-timer-start="${escapeHtml(room.pauseStartedAt)}"
-            data-games-timer-total-ms="120000"
+            data-games-timer-total-ms="${pauseCountdownTotalMs}"
           >
             <div class="games-question-countdown__line">
               <span>${escapeHtml(gameT("gameplay.pauseResumeIn"))}: <strong class="games-question-countdown__value" data-games-timer-value>--</strong> ${escapeHtml(gameT("gameplay.secondsShort"))}.</span>

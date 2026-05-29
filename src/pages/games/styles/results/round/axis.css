@@ -239,4 +239,33 @@
   .games-round-score-row__delta--missing {
     color: var(--color-text-meta);
   }
+
+  [data-theme="dark"] .games-answer-axis-card__delta,
+  [data-theme="dark"] .games-round-score-row__delta {
+    border-color: rgb(226 232 240 / 46%);
+    background: rgb(15 23 42 / 82%);
+    color: #f8fafc !important;
+    text-shadow: none;
+  }
+
+  [data-theme="dark"] .games-answer-axis-card__delta--exact,
+  [data-theme="dark"] .games-round-score-row__delta--exact {
+    border-color: rgb(126 226 173 / 44%);
+    background: rgb(20 83 45 / 62%);
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .games-answer-axis-card__delta--negative,
+  [data-theme="dark"] .games-round-score-row__delta--negative {
+    border-color: rgb(143 161 255 / 46%);
+    background: rgb(30 41 83 / 72%);
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .games-answer-axis-card__delta--positive,
+  [data-theme="dark"] .games-round-score-row__delta--positive {
+    border-color: rgb(255 210 122 / 48%);
+    background: rgb(120 74 18 / 70%);
+    color: #f8fafc !important;
+  }
 }

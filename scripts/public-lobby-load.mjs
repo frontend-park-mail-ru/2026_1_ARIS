@@ -5,6 +5,7 @@ const DEFAULT_USERS = 50;
 const DEFAULT_CONCURRENCY = 10;
 const DEFAULT_DURATION_SEC = 120;
 const DEFAULT_ANSWER_DELAY_MS = 1200;
+const DEFAULT_SKIP_ANSWER_BOT = 1;
 const GUEST_FIRST_NAMES = [
   "Александр",
   "Дмитрий",
@@ -86,6 +87,7 @@ Options:
   --duration <seconds>       Max runtime after sockets open. Default: ${DEFAULT_DURATION_SEC}
   --answer-delay <ms>        Max random answer delay per question. Default: ${DEFAULT_ANSWER_DELAY_MS}
   --answer <number>          Fixed answer sent by every guest. Default: random 1..100.
+  --skip-answer-bot <number> One-based guest number that never answers. Default: ${DEFAULT_SKIP_ANSWER_BOT}.
   --help                     Show this help.
 `);
 }
@@ -206,7 +208,7 @@ async function joinGuest(api, inviteCode, index) {
   };
 }
 
-function createSocketClient({ origin, guest, metrics, answerDelayMs, fixedAnswer }) {
+function createSocketClient({ origin, guest, metrics, answerDelayMs, fixedAnswer, skipAnswers }) {
   const answeredQuestions = new Set();
   const socket = new WebSocket(buildWsUrl(origin, guest.roomId, guest.token));
   let settled = false;
@@ -217,6 +219,10 @@ function createSocketClient({ origin, guest, metrics, answerDelayMs, fixedAnswer
     const questionId = getField(question, ["id", "ID"]);
     if (status !== "active" || !questionId || answeredQuestions.has(questionId)) return;
     answeredQuestions.add(questionId);
+    if (skipAnswers) {
+      metrics.answersSkipped += 1;
+      return;
+    }
     const answer =
       fixedAnswer === undefined ? Math.floor(Math.random() * 100) + 1 : Number(fixedAnswer);
     const delay = Math.floor(Math.random() * answerDelayMs);
@@ -282,11 +288,18 @@ async function main() {
 
   const origin = args.origin || process.env.ORIGIN || DEFAULT_ORIGIN;
   const users = asPositiveInt(args.users || process.env.USERS, DEFAULT_USERS);
-  const concurrency = asPositiveInt(args.concurrency || process.env.CONCURRENCY, DEFAULT_CONCURRENCY);
+  const concurrency = asPositiveInt(
+    args.concurrency || process.env.CONCURRENCY,
+    DEFAULT_CONCURRENCY,
+  );
   const durationSec = asPositiveInt(args.duration || process.env.DURATION, DEFAULT_DURATION_SEC);
   const answerDelayMs = asPositiveInt(
     args["answer-delay"] || process.env.ANSWER_DELAY_MS,
     DEFAULT_ANSWER_DELAY_MS,
+  );
+  const skipAnswerBot = asPositiveInt(
+    args["skip-answer-bot"] || process.env.SKIP_ANSWER_BOT,
+    DEFAULT_SKIP_ANSWER_BOT,
   );
   const cookie = args.cookie || process.env.ADMIN_COOKIE || "";
   const shouldCreate = args.create === "true" || process.env.CREATE_PUBLIC_LOBBY === "true";
@@ -298,7 +311,9 @@ async function main() {
   }
 
   const api = createApiClient(origin, cookie);
-  let inviteCode = String(args.invite || process.env.INVITE || "").trim().toUpperCase();
+  let inviteCode = String(args.invite || process.env.INVITE || "")
+    .trim()
+    .toUpperCase();
   let roomId = String(args.room || process.env.ROOM_ID || "").trim();
 
   if (shouldCreate) {
@@ -325,6 +340,7 @@ async function main() {
     wsParseErrors: 0,
     wsMessages: 0,
     answersSent: 0,
+    answersSkipped: 0,
     finishedSeen: 0,
     maxPlayersSeen: 0,
   };
@@ -353,9 +369,23 @@ async function main() {
     )}ms p95=${Math.round(percentile(joinLatencies, 95))}ms`,
   );
 
-  const clients = guests
-    .filter(Boolean)
-    .map((guest) => createSocketClient({ origin, guest, metrics, answerDelayMs, fixedAnswer }));
+  const joinedGuests = guests.filter(Boolean);
+  const skipAnswerGuestNumber = Math.min(skipAnswerBot, joinedGuests.length);
+  let joinedGuestIndex = 0;
+  const clients = joinedGuests.map((guest) => {
+    joinedGuestIndex += 1;
+    return createSocketClient({
+      origin,
+      guest,
+      metrics,
+      answerDelayMs,
+      fixedAnswer,
+      skipAnswers: joinedGuestIndex === skipAnswerGuestNumber,
+    });
+  });
+  if (clients.length > 0) {
+    console.log(`guest #${skipAnswerGuestNumber} will skip every answer`);
+  }
   await Promise.race([
     Promise.all(clients.map((client) => client.opened)),
     sleep(Math.max(5000, users * 250)),
@@ -373,7 +403,7 @@ async function main() {
   const interval = setInterval(() => {
     const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
     console.log(
-      `[${elapsedSec}s] ws=${metrics.wsOpened - metrics.wsClosed}/${clients.length} messages=${metrics.wsMessages} answers=${metrics.answersSent} maxPlayers=${metrics.maxPlayersSeen}`,
+      `[${elapsedSec}s] ws=${metrics.wsOpened - metrics.wsClosed}/${clients.length} messages=${metrics.wsMessages} answers=${metrics.answersSent} skipped=${metrics.answersSkipped} maxPlayers=${metrics.maxPlayersSeen}`,
     );
   }, 5000);
 
@@ -387,12 +417,15 @@ async function main() {
   console.log(`roomId: ${roomId}`);
   console.log(`joined: ${metrics.joined}/${users}`);
   console.log(`join failed: ${metrics.joinFailed}`);
-  console.log(`join latency p50/p95: ${Math.round(percentile(joinLatencies, 50))}ms / ${Math.round(percentile(joinLatencies, 95))}ms`);
+  console.log(
+    `join latency p50/p95: ${Math.round(percentile(joinLatencies, 50))}ms / ${Math.round(percentile(joinLatencies, 95))}ms`,
+  );
   console.log(`websocket opened: ${metrics.wsOpened}/${clients.length}`);
   console.log(`websocket errors: ${metrics.wsErrors}`);
   console.log(`websocket parse errors: ${metrics.wsParseErrors}`);
   console.log(`messages received: ${metrics.wsMessages}`);
   console.log(`answers sent: ${metrics.answersSent}`);
+  console.log(`answers skipped: ${metrics.answersSkipped}`);
   console.log(`max players seen: ${metrics.maxPlayersSeen}`);
 }
 

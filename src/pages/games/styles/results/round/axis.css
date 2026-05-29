@@ -10,7 +10,7 @@
   .games-round-result-correct-answer {
     margin: -4px 0 6px;
     color: var(--color-text-main);
-    font-size: var(--text-size-main);
+    font-size: calc(var(--text-size-main) + 2px);
     font-weight: var(--font-weight-bold);
     line-height: var(--line-height-tight);
   }

@@ -140,7 +140,9 @@ describe("games round result render", () => {
     expect(html).toContain("Правильный ответ: 2");
     expect(html).not.toContain("games-answer-axis-card--correct");
     expect(html).toContain("Ada");
+    expect(html).toContain("Lovelace");
     expect(html).toContain("Alan");
+    expect(html).toContain("Turing");
     expect(html).toContain("0.90 сек");
     expect(html).toContain("0.70 сек");
     expect(html).toContain("0.80 сек");
@@ -149,11 +151,14 @@ describe("games round result render", () => {
     const cards = [...document.querySelectorAll("[data-games-round-result-card]")];
     const cardTexts = cards.map((card) => card.textContent?.replace(/\s+/g, " ").trim() ?? "");
     expect(cardTexts[0]).toContain("Ada");
+    expect(cardTexts[0]).toContain("Lovelace");
     expect(cardTexts[0]).toContain("0.90 сек");
     expect(cardTexts[1]).toContain("Alan");
+    expect(cardTexts[1]).toContain("Turing");
     expect(cardTexts[1]).toContain("-2");
     expect(cardTexts[1]).toContain("0.70 сек");
     expect(cardTexts[2]).toContain("Grace");
+    expect(cardTexts[2]).toContain("Hopper");
     expect(cardTexts[2]).toContain("+2");
     expect(cardTexts[2]).toContain("0.80 сек");
   });

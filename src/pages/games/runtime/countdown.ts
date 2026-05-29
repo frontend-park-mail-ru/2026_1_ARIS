@@ -11,6 +11,7 @@ export type CreateGamesCountdownRuntimeOptions = {
   getRoot: () => Document | HTMLElement | null;
   formatScore: (value: number) => string;
   onFinalResultsExpired: () => void;
+  onQuestionDeadlineExpired: () => void;
 };
 
 /** Проверяет, есть ли в root элементы, которым нужен игровой countdown. */
@@ -40,6 +41,7 @@ export function createGamesCountdownRuntime(
     updateGamesCountdown(root, {
       formatScore: options.formatScore,
       onFinalResultsExpired: options.onFinalResultsExpired,
+      onQuestionDeadlineExpired: options.onQuestionDeadlineExpired,
     });
   };
 

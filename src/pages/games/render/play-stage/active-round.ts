@@ -102,6 +102,7 @@ function renderQuestionCountdown(room: GameRoom, question: CurrentQuestion): str
   return `
     <div
       class="games-question-timer-strip games-question-countdown"
+      data-games-active-question-timer
       data-games-question-timer-strip
       data-games-timer-deadline="${escapeHtml(question.deadlineAt)}"
       data-games-timer-start="${escapeHtml(question.startedAt)}"

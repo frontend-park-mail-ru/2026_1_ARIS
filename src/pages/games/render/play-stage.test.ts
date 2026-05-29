@@ -103,6 +103,7 @@ describe("games play stage render", () => {
     expect(html).toContain("How many moons does Mars have?");
     expect(html).toContain("Введите число");
     expect(html).toContain('data-error="answer"');
+    expect(html).toContain("data-games-active-question-timer");
   });
 
   it("рендерит активный вопрос на английском языке интерфейса", () => {

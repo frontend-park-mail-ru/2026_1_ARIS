@@ -68,6 +68,7 @@
   :root[data-theme="dark"] .games-answer-axis-card--correct,
   :root[data-theme="dark"] .games-round-score-row,
   :root[data-theme="dark"] .games-round-score-row--leader,
+  :root[data-theme="dark"] .games-scoreboard-hidden,
   :root[data-theme="dark"] .games-final-place,
   :root[data-theme="dark"] .games-final-place--winner,
   :root[data-theme="dark"] .games-results-table__row,

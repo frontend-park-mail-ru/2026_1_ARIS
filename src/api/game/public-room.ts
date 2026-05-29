@@ -85,7 +85,7 @@ function publicTokenHeaders(token: string): Record<string, string> {
 }
 
 export async function createPublicGameRoom(
-  payload: CreatePublicGameRoomPayload = { answerTimeoutSec: 7, roundPauseSec: 5 },
+  payload: CreatePublicGameRoomPayload = { answerTimeoutSec: 10, roundPauseSec: 14 },
 ): Promise<GameRoom> {
   return extractRoomResponse(
     await apiRequest<unknown>("/api/games/public-rooms", { method: "POST", body: payload }, {}),

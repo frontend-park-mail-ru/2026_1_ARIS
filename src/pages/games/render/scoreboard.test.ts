@@ -119,6 +119,106 @@ describe("games scoreboard render", () => {
     expect(html).toContain("Выйти из игры");
   });
 
+  it("скрывает список игроков после появления последнего вопроса до финальных итогов", () => {
+    const html = renderGamePlayersRail({
+      room: createRoom(
+        [
+          createPlayer({ profileId: "1", firstName: "Ada", score: 7, isMe: true }),
+          createPlayer({ profileId: "2", firstName: "Grace", score: 3, isMe: false }),
+        ],
+        {
+          currentQuestionIndex: 5,
+          currentQuestion: {
+            id: "q5",
+            position: 5,
+            text: "Final question",
+            startedAt: "",
+            deadlineAt: "",
+            hasAnswered: false,
+          },
+        },
+      ),
+      loading: false,
+      getPlayerAvatarUrl: () => "",
+      renderProfileLink,
+    });
+
+    expect(html).toContain("games-room-players-panel");
+    expect(html).toContain("Таблица результатов скрыта");
+    expect(html).not.toContain("data-games-leave-open");
+    expect(html).not.toContain("games-game-scoreboard");
+    expect(html).not.toContain("Ada");
+    expect(html).not.toContain("Grace");
+  });
+
+  it("скрывает список игроков после последнего вопроса, пока финал ещё не пришёл", () => {
+    const html = renderGamePlayersRail({
+      room: createRoom([createPlayer({ firstName: "Ada" })], {
+        currentQuestion: null,
+        currentQuestionIndex: 5,
+      }),
+      loading: false,
+      getPlayerAvatarUrl: () => "",
+      renderProfileLink,
+    });
+
+    expect(html).toContain("Таблица результатов скрыта");
+    expect(html).not.toContain("data-games-leave-open");
+    expect(html).not.toContain("games-game-scoreboard");
+    expect(html).not.toContain("Ada");
+  });
+
+  it("скрывает список игроков на раскрытии результата последнего вопроса", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T10:00:02.000Z"));
+    const html = renderGamePlayersRail({
+      room: createRoom([createPlayer({ firstName: "Ada" })], {
+        status: "finished",
+        currentQuestion: null,
+        currentQuestionIndex: 5,
+        roundPauseSec: 5,
+        questions: [
+          {
+            id: "q5",
+            position: 5,
+            status: "completed",
+            text: "Final question",
+            correctAnswer: 10,
+            answers: [],
+            winnerProfileId: "",
+            startedAt: "2026-05-25T09:59:50.000Z",
+            deadlineAt: "2026-05-25T10:00:00.000Z",
+            completedAt: "2026-05-25T10:00:00.000Z",
+          },
+        ],
+      }),
+      loading: false,
+      getPlayerAvatarUrl: () => "",
+      renderProfileLink,
+    });
+
+    expect(html).toContain("Таблица результатов скрыта");
+    expect(html).not.toContain("data-games-leave-open");
+    expect(html).not.toContain("games-game-scoreboard");
+    expect(html).not.toContain("Ada");
+  });
+
+  it("снова показывает список игроков на финальных итогах", () => {
+    const html = renderGamePlayersRail({
+      room: createRoom([createPlayer({ firstName: "Ada" })], {
+        status: "finished",
+        currentQuestion: null,
+        currentQuestionIndex: 5,
+      }),
+      loading: false,
+      getPlayerAvatarUrl: () => "",
+      renderProfileLink,
+    });
+
+    expect(html).toContain("games-game-scoreboard");
+    expect(html).toContain("Ada");
+  });
+
   it("оставляет анимацию начисления очков, если следующий вопрос уже активен", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-25T10:00:04.000Z"));

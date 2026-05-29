@@ -13,6 +13,7 @@ describe("games countdown runtime", () => {
       getRoot: () => document,
       formatScore: String,
       onFinalResultsExpired: vi.fn(),
+      onQuestionDeadlineExpired: vi.fn(),
     });
 
     runtime.start(document);
@@ -36,6 +37,7 @@ describe("games countdown runtime", () => {
       getRoot: () => document,
       formatScore: String,
       onFinalResultsExpired: vi.fn(),
+      onQuestionDeadlineExpired: vi.fn(),
     });
 
     runtime.start(document);
@@ -57,6 +59,7 @@ describe("games countdown runtime", () => {
       getRoot: () => document,
       formatScore: String,
       onFinalResultsExpired: vi.fn(),
+      onQuestionDeadlineExpired: vi.fn(),
     });
 
     runtime.start(document);

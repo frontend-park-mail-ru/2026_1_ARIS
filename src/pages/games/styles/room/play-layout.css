@@ -141,6 +141,23 @@
     margin-top: 2px;
   }
 
+  .games-scoreboard-hidden {
+    display: flex;
+    min-height: 92px;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    border: 1px solid rgb(95 111 157 / 14%);
+    border-radius: var(--radius-small);
+    background: rgb(255 255 255 / 72%);
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    text-align: center;
+    box-shadow: 0 10px 22px rgb(33 45 88 / 6%);
+  }
+
   .games-game-scoreboard__header {
     display: flex;
     align-items: center;

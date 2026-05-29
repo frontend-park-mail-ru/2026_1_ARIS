@@ -37,8 +37,8 @@ type SidebarRoot = (Document | HTMLElement) & {
 };
 
 const BACK_TO_TOP_VISIBLE_OFFSET = 360;
-const PUBLIC_LOBBY_ANSWER_TIMEOUT_DEFAULT = 7;
-const PUBLIC_LOBBY_ROUND_PAUSE_DEFAULT = 5;
+const PUBLIC_LOBBY_ANSWER_TIMEOUT_DEFAULT = 10;
+const PUBLIC_LOBBY_ROUND_PAUSE_DEFAULT = 14;
 let isBackToTopVisibilityBound = false;
 let publicLobbyBackdropPointerDown = false;
 

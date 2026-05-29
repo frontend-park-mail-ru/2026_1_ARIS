@@ -7,7 +7,7 @@ import {
   type RoundAnswerShowcaseItem,
   type RoundResultPresentationRow,
 } from "../../../round/model";
-import { getGamePlayerLabel } from "../../../room/profile/players";
+import { getPlayerFullName } from "../../../room/profile/players";
 import { gameT } from "../../../shared/i18n";
 import type { RenderPlayerCell } from "../types";
 import { renderRoundResultStyle } from "./style";
@@ -70,7 +70,7 @@ function renderRoundResultPlayerCard(
   timeRevealDelayMs: number,
   renderPlayerCell: RenderPlayerCell,
 ): string {
-  const playerLabel = getGamePlayerLabel(row.player);
+  const playerLabel = getPlayerFullName(row.player);
   const timeLabel = formatDurationMs(row.answer?.responseTimeMs);
   const cardStyle = `${renderRoundResultStyle({ ...row, revealIndex }, index)}; --games-time-reveal-delay: ${timeRevealDelayMs}ms`;
 

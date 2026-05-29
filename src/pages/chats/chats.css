@@ -1427,7 +1427,7 @@
   }
 
   .video-note--expanded .video-note__ring-bg,
-  .video-note--expanded.video-note--playing .video-note__ring-progress {
+  .video-note--expanded .video-note__ring-progress {
     opacity: 1;
   }
 

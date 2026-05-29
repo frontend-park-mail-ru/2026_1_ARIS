@@ -2,6 +2,7 @@
  * Бесконечная прокрутка ленты.
  */
 import { initPostcardExpand } from "../../components/postcard/postcard";
+import { t } from "../../state/i18n";
 import { activeFeedState, setActiveFeedState } from "./state";
 import { renderFeedCards } from "./render";
 
@@ -14,10 +15,12 @@ export function updateFeedStatusElement(): void {
 
   const hasMore =
     activeFeedState.renderedCount < activeFeedState.items.length || activeFeedState.hasMore;
-  status.classList.toggle("feed-infinite-status--hidden", !hasMore);
-  status.textContent = activeFeedState.isLoadingMore
-    ? "Загружаем ещё публикации..."
-    : "Прокрутите ниже, чтобы увидеть ещё публикации.";
+  status.classList.remove("feed-infinite-status--hidden");
+  status.textContent = !hasMore
+    ? t("feed.end")
+    : activeFeedState.isLoadingMore
+      ? t("feed.loadingMore")
+      : t("feed.loadMore");
 }
 
 /** Добавляет следующую порцию карточек в список ленты. */
@@ -81,10 +84,26 @@ export function bindFeedInfiniteScroll(onServerFetch?: () => Promise<void>): voi
       } else if (activeFeedState.hasMore && onServerFetch) {
         setActiveFeedState({ ...activeFeedState, isLoadingMore: true });
         updateFeedStatusElement();
-        void onServerFetch().finally(() => {
-          if (activeFeedState) setActiveFeedState({ ...activeFeedState, isLoadingMore: false });
-          updateFeedStatusElement();
-        });
+        let fetchFailed = false;
+        void onServerFetch()
+          .catch(() => {
+            fetchFailed = true;
+          })
+          .finally(() => {
+            if (activeFeedState) setActiveFeedState({ ...activeFeedState, isLoadingMore: false });
+            updateFeedStatusElement();
+
+            const currentSentinel = document.querySelector("[data-feed-sentinel]");
+            if (
+              !fetchFailed &&
+              currentSentinel instanceof Element &&
+              feedObserver &&
+              activeFeedState?.hasMore
+            ) {
+              feedObserver.unobserve(currentSentinel);
+              feedObserver.observe(currentSentinel);
+            }
+          });
       } else {
         disconnectFeedObserver();
       }

@@ -61,7 +61,13 @@ import { waitForMinimumLoadingTime } from "../../utils/loading-state";
 import { showAppToast } from "../../utils/toast";
 import { t } from "../../state/i18n";
 
-import type { FeedMode, FeedAuthKey, FeedCenterResult, ActiveFeedState } from "./types";
+import type {
+  FeedMode,
+  FeedAuthKey,
+  FeedCenterResult,
+  ActiveFeedState,
+  FeedCachedPage,
+} from "./types";
 import {
   activeFeedState,
   feedItemsCache,
@@ -122,6 +128,16 @@ function getCurrentFeedMode(): FeedMode {
   return isFeedMode(mode) ? mode : "by-time";
 }
 
+function saveFeedPageCache(authKey: FeedAuthKey, modeKey: FeedMode, page: FeedCachedPage): void {
+  const cacheKey = `${authKey}:${modeKey}`;
+  feedItemsCache.set(cacheKey, page);
+  persistFeedItems(authKey, modeKey, page);
+}
+
+function pageFromActiveState(state: ActiveFeedState): FeedCachedPage {
+  return { items: state.items, nextCursor: state.nextCursor, hasMore: state.hasMore };
+}
+
 function formatStatCount(count: number): string {
   if (count >= 1000000) {
     return `${Math.floor(count / 1000000)}м`;
@@ -155,8 +171,7 @@ function updateActiveFeedPostLikeState(postId: string, likes: number, isLiked: b
   const authKey: FeedAuthKey = getSessionUser() ? "authorised" : "guest";
   const modeKey = getCurrentFeedMode();
 
-  feedItemsCache.set(`${authKey}:${modeKey}`, nextItems);
-  persistFeedItems(authKey, modeKey, nextItems);
+  saveFeedPageCache(authKey, modeKey, pageFromActiveState(nextState));
   setActiveFeedState(nextState);
 }
 
@@ -208,8 +223,7 @@ function updateActiveFeedPostCommentCount(postId: string, comments: number): voi
   const authKey: FeedAuthKey = getSessionUser() ? "authorised" : "guest";
   const modeKey = getCurrentFeedMode();
 
-  feedItemsCache.set(`${authKey}:${modeKey}`, nextItems);
-  persistFeedItems(authKey, modeKey, nextItems);
+  saveFeedPageCache(authKey, modeKey, pageFromActiveState(nextState));
   setActiveFeedState(nextState);
 }
 
@@ -869,25 +883,34 @@ async function getCachedFeedData(
   const cacheKey = `${authKey}:${modeKey}`;
 
   // Если в памяти есть свежие данные в пределах TTL, сразу возвращаем их без сетевого запроса.
-  const cachedItems = feedItemsCache.get(cacheKey);
-  if (cachedItems?.length) {
-    return { kind: "items", items: cachedItems, nextCursor: "", hasMore: false };
+  const cachedPage = feedItemsCache.get(cacheKey);
+  if (cachedPage?.items.length) {
+    return {
+      kind: "items",
+      items: cachedPage.items,
+      nextCursor: cachedPage.nextCursor,
+      hasMore: cachedPage.hasMore,
+    };
   }
 
-  const persistedItems = readPersistedFeedItems(authKey, modeKey);
+  const persistedPage = readPersistedFeedItems(authKey, modeKey);
 
   try {
     const page = isAuthorised
       ? await buildAuthorisedFeedPage(signal)
       : await buildGuestFeedPage(signal);
-    feedItemsCache.set(cacheKey, page.items);
-    persistFeedItems(authKey, modeKey, page.items);
+    saveFeedPageCache(authKey, modeKey, page);
     return { kind: "items", items: page.items, nextCursor: page.nextCursor, hasMore: page.hasMore };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
-    if (persistedItems?.length) {
-      feedItemsCache.set(cacheKey, persistedItems);
-      return { kind: "items", items: persistedItems, nextCursor: "", hasMore: false };
+    if (persistedPage?.items.length) {
+      feedItemsCache.set(cacheKey, persistedPage);
+      return {
+        kind: "items",
+        items: persistedPage.items,
+        nextCursor: persistedPage.nextCursor,
+        hasMore: persistedPage.hasMore,
+      };
     }
     if (!isOfflineNetworkError(error)) throw error;
     return { kind: "html", html: renderOfflineFeedFallback(isAuthorised) };
@@ -938,7 +961,7 @@ export async function prefetchFeed(): Promise<void> {
   const authKey: FeedAuthKey = isAuthorised ? "authorised" : "guest";
   const modeKey = getCurrentFeedMode();
   const cacheKey = `${authKey}:${modeKey}`;
-  if (feedItemsCache.get(cacheKey)?.length) return;
+  if (feedItemsCache.get(cacheKey)?.items.length) return;
   await getCachedFeedData(isAuthorised);
 }
 
@@ -957,14 +980,16 @@ async function fetchNextFeedPage(): Promise<void> {
     const mapped = mapFeedResponse(response);
     const allItems = [...activeFeedState.items, ...getOrderedFeedItems(mapped.items)];
 
-    feedItemsCache.set(`${authKey}:${mode}`, allItems);
-    persistFeedItems(authKey, mode, allItems);
-
-    setActiveFeedState({
-      ...activeFeedState,
+    const nextPage: FeedCachedPage = {
       items: allItems,
       nextCursor: mapped.nextCursor,
       hasMore: mapped.hasMore,
+    };
+    saveFeedPageCache(authKey, mode, nextPage);
+
+    setActiveFeedState({
+      ...activeFeedState,
+      ...nextPage,
     });
 
     appendMoreFeedCards();
@@ -972,6 +997,7 @@ async function fetchNextFeedPage(): Promise<void> {
     if (!(error instanceof Error && error.name === "AbortError")) {
       console.error("[feed] fetchNextFeedPage failed", error);
     }
+    throw error;
   }
 }
 

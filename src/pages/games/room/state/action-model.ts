@@ -27,7 +27,7 @@ export type JoinListedRoomValues = {
 export function buildCreateRoomCommand(values: CreateRoomFormValues): CreateRoomCommand {
   const questionCount = parseBoundedInt(values.questionCount, 5, 1, 20);
   const answerTimeoutSec = parseBoundedInt(values.answerTimeoutSec, 10, 0, 300);
-  const normalizedQuestionCount = values.isRanked ? 20 : questionCount;
+  const normalizedQuestionCount = values.isRanked ? 10 : questionCount;
   const normalizedAnswerTimeoutSec = values.isRanked ? 10 : answerTimeoutSec;
   const payload: CreateGameRoomPayload = {
     title: values.title,

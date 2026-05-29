@@ -8,6 +8,32 @@ import type {
   RenderInlineGameError,
 } from "./types";
 
+const PAUSE_RESUME_COUNTDOWN_WINDOW_MS = 5_500;
+
+/** Возвращает длительность полоски вопроса после короткого продолжения с паузы. */
+function getQuestionCountdownTotalMs(room: GameRoom, question: CurrentQuestion): number {
+  const defaultTotalMs = Math.max(1, room.answerTimeoutSec * 1_000);
+  const deadlineMs = new Date(question.deadlineAt).getTime();
+  const startedMs = new Date(question.startedAt).getTime();
+  const pauseStartedMs = new Date(room.pauseStartedAt).getTime();
+
+  if (
+    Number.isNaN(deadlineMs) ||
+    Number.isNaN(startedMs) ||
+    Number.isNaN(pauseStartedMs) ||
+    pauseStartedMs < startedMs
+  ) {
+    return defaultTotalMs;
+  }
+
+  const remainingMs = deadlineMs - Date.now();
+  if (remainingMs <= 0 || remainingMs > PAUSE_RESUME_COUNTDOWN_WINDOW_MS) {
+    return defaultTotalMs;
+  }
+
+  return Math.max(1_000, Math.ceil(remainingMs / 1_000) * 1_000);
+}
+
 /**
  * Формирует текст принятого ответа для текущего вопроса.
  */
@@ -66,12 +92,15 @@ function renderCurrentAnswerForm(
  * Рендерит таймер текущего вопроса с полосой прогресса.
  */
 function renderQuestionCountdown(room: GameRoom, question: CurrentQuestion): string {
+  const totalMs = getQuestionCountdownTotalMs(room, question);
+
   return `
     <div
       class="games-question-timer-strip games-question-countdown"
       data-games-question-timer-strip
       data-games-timer-deadline="${escapeHtml(question.deadlineAt)}"
       data-games-timer-start="${escapeHtml(question.startedAt)}"
+      data-games-timer-total-ms="${totalMs}"
     >
       <div class="games-question-countdown__line">
         <span>${escapeHtml(getQuestionPositionLabel(room, question.position))}.</span>

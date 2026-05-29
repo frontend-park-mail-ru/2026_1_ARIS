@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GamePlayer, GameRoom } from "../../../api/games";
 import { languageStore } from "../../../state/language";
 import {
@@ -86,6 +86,7 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
 
 describe("games play stage render", () => {
   afterEach(() => {
+    vi.useRealTimers();
     languageStore.reset({ language: "RU" });
   });
 
@@ -173,6 +174,26 @@ describe("games play stage render", () => {
     expect(html).toContain("1 из 2");
     expect(html).toContain("Продолжить игру принудительно");
     expect(html).toContain("How many moons does Mars have?");
+  });
+
+  it("рендерит короткий countdown продолжения паузы полной полоской", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T00:02:05.100Z"));
+    const room = createRoom({
+      pausedByProfileId: "1",
+      pauseStartedAt: "2026-05-25T00:00:10.000Z",
+      pauseUntilAt: "2026-05-25T00:02:10.000Z",
+    });
+
+    const html = renderPauseStage({
+      room,
+      loading: false,
+      pausedByPlayer: room.players[0]!,
+      canForceResume: false,
+      currentPlayer: room.players[0]!,
+    });
+
+    expect(html).toContain('data-games-timer-total-ms="5000"');
   });
 
   it("скрывает кнопку паузы на стартовом countdown и показывает использованную паузу", () => {

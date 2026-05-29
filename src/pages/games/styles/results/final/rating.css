@@ -82,4 +82,25 @@
   .games-rating-delta--down {
     color: var(--color-text-danger);
   }
+
+  [data-theme="dark"] .games-rating-delta {
+    padding: 2px 6px;
+    border: 1px solid rgb(226 232 240 / 46%);
+    border-radius: 7px;
+    background: rgb(15 23 42 / 82%);
+    color: #f8fafc !important;
+    text-shadow: none;
+  }
+
+  [data-theme="dark"] .games-rating-delta--up {
+    border-color: rgb(126 226 173 / 44%);
+    background: rgb(20 83 45 / 62%);
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .games-rating-delta--down {
+    border-color: rgb(255 139 166 / 46%);
+    background: rgb(127 29 29 / 62%);
+    color: #f8fafc !important;
+  }
 }

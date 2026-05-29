@@ -3,7 +3,7 @@
  *
  * Содержит функции генерации HTML и обновления DOM для страницы.
  */
-import { friendsState, getVisibleFriends } from "./state";
+import { friendsState, getVisibleFriends, getVisibleSiteUsers } from "./state";
 import type { DisplayFriend, FriendsTab } from "./types";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
 import { renderAvatarMarkup } from "../../utils/avatar";
@@ -60,12 +60,22 @@ function getFriendsTabTitle(tab: FriendsTab): string {
   return titles[tab];
 }
 
-function renderFriendActions(friend: DisplayFriend): string {
-  if (friendsState.viewedProfileId) return "";
+type FriendCardVariant = "friend" | "site-user";
+
+function renderFriendActions(friend: DisplayFriend, variant: FriendCardVariant = "friend"): string {
   const friendId = escapeHtml(friend.profileId);
   let items = "";
 
-  if (friendsState.activeTab === "incoming") {
+  if (variant === "site-user") {
+    items = `
+        <a href="/id${encodeURIComponent(friend.profileId)}" data-link class="friends-card__menu-item">
+          ${t("friends.viewProfile")}
+        </a>
+        <button type="button" class="friends-card__menu-item" data-friend-open-chat="${friendId}">
+          ${t("friends.sendMessage")}
+        </button>
+    `;
+  } else if (friendsState.activeTab === "incoming") {
     items = `
         <a href="/id${encodeURIComponent(friend.profileId)}" data-link class="friends-card__menu-item">
           ${t("friends.viewProfile")}
@@ -124,14 +134,10 @@ function renderFriendActions(friend: DisplayFriend): string {
   `;
 }
 
-/** Рендерит список друзей, видимых для текущей вкладки и поискового запроса. */
-export function renderFriendsList(): string {
-  const visibleFriends = getVisibleFriends();
-
-  if (friendsState.loading || friendsState.searchLoading) {
-    return Array.from(
-      { length: 4 },
-      () => `
+function renderFriendsSkeleton(count = 4): string {
+  return Array.from(
+    { length: count },
+    () => `
       <article class="friends-card" aria-hidden="true">
         <div class="friends-card__avatar-link">
           <div class="friends-card__avatar skeleton"></div>
@@ -142,16 +148,14 @@ export function renderFriendsList(): string {
         </div>
       </article>
     `,
-    ).join("");
-  }
+  ).join("");
+}
 
-  if (!visibleFriends.length) {
-    return friendsState.query.trim()
-      ? `<p class="friends-page__empty">${t("friends.noneFound")}</p>`
-      : `<p class="friends-page__empty">${t("common.emptyList")}</p>`;
-  }
-
-  return visibleFriends
+function renderFriendCards(
+  friends: DisplayFriend[],
+  variant: FriendCardVariant = "friend",
+): string {
+  return friends
     .map((friend) => {
       const friendName = getFriendName(friend);
       const profilePath = `/id${encodeURIComponent(friend.profileId)}`;
@@ -165,11 +169,61 @@ export function renderFriendsList(): string {
             <a href="${profilePath}" data-link class="friends-card__name">${escapeHtml(friendName)}</a>
             ${friend.educationLabel ? `<p class="friends-card__meta">${escapeHtml(friend.educationLabel)}</p>` : ""}
           </div>
-          ${renderFriendActions(friend)}
+          ${renderFriendActions(friend, variant)}
         </article>
       `;
     })
     .join("");
+}
+
+function renderSearchSection(title: string, content: string, modifier = ""): string {
+  return `
+    <section class="friends-results-section${modifier ? ` friends-results-section--${modifier}` : ""}">
+      <h2 class="friends-results-section__heading">${escapeHtml(title)}</h2>
+      ${content}
+    </section>
+  `;
+}
+
+/** Рендерит список друзей, видимых для текущей вкладки и поискового запроса. */
+export function renderFriendsList(): string {
+  const visibleFriends = getVisibleFriends();
+  const visibleSiteUsers = getVisibleSiteUsers();
+  const query = friendsState.query.trim();
+
+  if (friendsState.loading) {
+    return renderFriendsSkeleton();
+  }
+
+  if (query) {
+    const sections = [
+      visibleFriends.length
+        ? renderSearchSection(
+            getFriendsTabTitle(friendsState.activeTab),
+            renderFriendCards(visibleFriends),
+          )
+        : "",
+      friendsState.searchLoading
+        ? renderSearchSection(t("friends.siteUsers"), renderFriendsSkeleton(2), "loading")
+        : "",
+      visibleSiteUsers.length
+        ? renderSearchSection(
+            t("friends.siteUsers"),
+            renderFriendCards(visibleSiteUsers, "site-user"),
+          )
+        : "",
+    ].filter(Boolean);
+
+    return sections.length
+      ? sections.join("")
+      : `<p class="friends-page__empty">${t("friends.noneFound")}</p>`;
+  }
+
+  if (!visibleFriends.length) {
+    return `<p class="friends-page__empty">${t("common.emptyList")}</p>`;
+  }
+
+  return renderFriendCards(visibleFriends);
 }
 
 /** Рендерит модальное окно подтверждения удаления или пустую строку, если друг не выбран. */
@@ -197,51 +251,35 @@ export function renderDeleteModal(): string {
         <p class="friends-modal__text">${t("friends.confirmDeleteText")}</p>
         ${friendshipSince ? `<p class="friends-modal__hint">${t("friends.modalHint")} ${escapeHtml(friendshipSince)}</p>` : ""}
         <div class="friends-modal__actions">
-          <button type="button" class="friends-modal__button friends-modal__button--primary" data-friend-confirm-delete="${escapeHtml(friend.profileId)}">
+          <button type="button" class="button button--primary friends-modal__button friends-modal__button--primary" data-friend-confirm-delete="${escapeHtml(friend.profileId)}">
             ${t("friends.delete")}
           </button>
-          <button type="button" class="friends-modal__button" data-friends-modal-close>${t("friends.cancel")}</button>
+          <button type="button" class="button button--neutral friends-modal__button" data-friends-modal-close>${t("friends.cancel")}</button>
         </div>
       </section>
     </div>
   `;
 }
 
-function renderFriendsSummary(totalCount: number, isReadOnlyProfileFriends: boolean): string {
-  const count = getFriendsCountLabel(totalCount);
-  if (isReadOnlyProfileFriends) {
-    const name = friendsState.viewedProfileName || t("widgetbar.userFallback");
-    const message =
-      totalCount === 0
-        ? t("friends.profileEmptySummary").replace("{name}", name)
-        : t("friends.profileSummary").replace("{name}", name).replace("{count}", count);
-    return escapeHtml(message);
-  }
-
-  const message =
-    totalCount === 0 ? t("friends.emptySummary") : t("friends.summary").replace("{count}", count);
-  return escapeHtml(message);
-}
-
 /** Рендерит полное содержимое страницы друзей. */
 export function renderFriendsContent(): string {
   const totalCount = friendsState.friends.length;
-  const isReadOnlyProfileFriends = Boolean(friendsState.viewedProfileId);
 
   return `
     <section class="friends-page" data-friends-page>
       <section class="friends-panel content-card">
         <header class="friends-panel__header">
           <p class="friends-panel__summary">
-            ${renderFriendsSummary(totalCount, isReadOnlyProfileFriends)}
+            ${
+              totalCount === 0
+                ? t("friends.emptySummary")
+                : t("friends.summary").replace("{count}", getFriendsCountLabel(totalCount))
+            }
           </p>
           <button type="button" class="friends-panel__discover" disabled hidden>${t("friends.find")}</button>
         </header>
 
-        ${
-          isReadOnlyProfileFriends
-            ? ""
-            : `<nav class="friends-tabs" aria-label="${t("friends.filterAria")}">
+        <nav class="friends-tabs" aria-label="${t("friends.filterAria")}">
           ${(["accepted", "incoming", "outgoing"] as FriendsTab[])
             .map((tab) => {
               const count =
@@ -261,8 +299,7 @@ export function renderFriendsContent(): string {
               `;
             })
             .join("")}
-        </nav>`
-        }
+        </nav>
 
         <label class="friends-search search-field" aria-label="${t("friends.search")}">
           <img class="friends-search__icon search-field__icon" src="/assets/img/icons/search.svg" alt="">
@@ -282,7 +319,7 @@ export function renderFriendsContent(): string {
         </div>
       </section>
 
-      ${isReadOnlyProfileFriends ? "" : renderDeleteModal()}
+      ${renderDeleteModal()}
     </section>
   `;
 }

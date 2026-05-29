@@ -12,6 +12,18 @@
     animation: games-answer-reveal 420ms ease both;
   }
 
+  .games-stage-card--final {
+    font-family: var(--font-main);
+    font-size: var(--text-size-main);
+  }
+
+  .games-stage-card--final .games-stage-card__title {
+    color: var(--color-text-main);
+    font-size: var(--text-size-title);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+  }
+
   .games-final-hero p {
     margin: 0;
     color: var(--color-text-meta);
@@ -76,12 +88,23 @@
   }
 
   .games-final-place--me {
-    border-color: var(--color-border-accent-soft);
+    border-color: rgb(95 111 157 / 24%);
+    background:
+      linear-gradient(135deg, rgb(95 111 157 / 14%), rgb(95 111 157 / 7%)), rgb(244 246 249);
+    box-shadow:
+      0 14px 28px rgb(33 45 88 / 10%),
+      0 0 0 1px rgb(95 111 157 / 10%) inset;
   }
 
   .games-final-place--winner {
-    border-color: rgb(53 137 96 / 42%);
-    background: rgb(53 137 96 / 10%);
+    border-color: var(--color-border-glass-soft);
+    background: var(--color-surface-muted);
+  }
+
+  .games-final-place--me.games-final-place--winner {
+    border-color: rgb(95 111 157 / 24%);
+    background:
+      linear-gradient(135deg, rgb(95 111 157 / 14%), rgb(95 111 157 / 7%)), rgb(244 246 249);
   }
 
   .games-final-place strong {
@@ -136,9 +159,12 @@
   }
 
   .games-final-place em {
+    min-width: 72px;
+    justify-self: end;
     color: var(--color-text-main);
     font-style: normal;
     font-weight: var(--font-weight-bold);
+    text-align: left;
   }
 
   .games-final-place small {

@@ -62,6 +62,22 @@
       }
     }
 
+    &--neutral {
+      gap: 10px;
+      border: var(--border-width) solid var(--color-border-default);
+      background: var(--color-surface-base);
+      color: var(--color-text-main);
+      font-weight: var(--font-weight-medium);
+
+      &:hover {
+        background: var(--color-interactive-secondary-hover);
+      }
+
+      &:active {
+        background: var(--color-interactive-secondary-active);
+      }
+    }
+
     &--large {
       width: var(--button-width-large);
     }

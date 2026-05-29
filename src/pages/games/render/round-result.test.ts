@@ -112,6 +112,9 @@ describe("games round result render", () => {
     expect(html).toContain("How many moons does Mars have?");
     expect(html).toContain("data-games-round-next-timer");
     expect(html).toContain("Следующий вопрос");
+    expect(html).toContain('data-games-timer-delay-until="1779667219000"');
+    expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:24.000Z"');
+    expect(html).toContain('data-games-timer-total-ms="5000"');
     expect(html).toContain("games-answer-axis-card--correct");
     expect(html).toContain("Ada");
   });

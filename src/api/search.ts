@@ -43,16 +43,39 @@ export type SearchResponse = {
   posts: SearchPost[];
 };
 
+type RawSearchResponse = {
+  users?: SearchUser[] | null;
+  communities?: SearchCommunity[] | null;
+  posts?: SearchPost[] | null;
+};
+
 const SEARCH_LIMIT = 20;
+
+function normalizeSearchList<T>(items: T[] | null | undefined): T[] {
+  return Array.isArray(items) ? items : [];
+}
+
+function normalizeSearchResponse(response: RawSearchResponse | null | undefined): SearchResponse {
+  return {
+    users: normalizeSearchList(response?.users),
+    communities: normalizeSearchList(response?.communities),
+    posts: normalizeSearchList(response?.posts),
+  };
+}
 
 export async function searchUsersAndCommunities(
   q: string,
   signal?: AbortSignal,
 ): Promise<SearchResponse> {
   const params = new URLSearchParams({ q, limit: String(SEARCH_LIMIT) });
-  return apiRequest<SearchResponse>(`/api/search?${params.toString()}`, signal ? { signal } : {}, {
-    users: [],
-    communities: [],
-    posts: [],
-  });
+  const response = await apiRequest<RawSearchResponse>(
+    `/api/search?${params.toString()}`,
+    signal ? { signal } : {},
+    {
+      users: [],
+      communities: [],
+      posts: [],
+    },
+  );
+  return normalizeSearchResponse(response);
 }

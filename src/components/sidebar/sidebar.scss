@@ -172,7 +172,7 @@
       left: max(10px, env(safe-area-inset-left));
       z-index: 900;
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       align-items: stretch;
       gap: 4px;
       min-height: 64px;

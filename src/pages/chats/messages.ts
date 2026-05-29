@@ -32,6 +32,8 @@ import { chatsRoot } from "./state";
 import type { ChatViewMessage, ChatViewThread } from "./types";
 
 const chatAuthorAvatarLinkByProfileId = new Map<string, string | undefined>();
+const AUDIO_ATTACHMENT_RE = /\.(aac|aif|aiff|flac|m4a|mp3|oga|ogg|opus|wav|weba|webm)(?:[?#].*)?$/i;
+const WEBM_ATTACHMENT_RE = /\.webm(?:[?#].*)?$/i;
 
 function getMessageVideoNoteAttachment(
   message: ChatMessage,
@@ -52,12 +54,31 @@ function isAudioAttachment(attachment: MessageAttachment): boolean {
   const mimeType = attachment.mimeType.trim().toLowerCase();
   if (mimeType.startsWith("video/")) return false;
   if (mimeType.startsWith("audio/")) return true;
-  return /\.(aac|aif|aiff|flac|m4a|mp3|oga|ogg|opus|wav|weba|webm)$/i.test(attachment.url);
+  return (
+    AUDIO_ATTACHMENT_RE.test(attachment.url) || AUDIO_ATTACHMENT_RE.test(attachment.name ?? "")
+  );
+}
+
+function isLegacyAudioOnlyWebmAttachment(
+  message: ChatMessage,
+  attachment: MessageAttachment,
+  attachmentCount: number,
+): boolean {
+  if (message.type === "video_note") return false;
+  if (message.text.trim() || attachmentCount !== 1) return false;
+
+  const mimeType = attachment.mimeType.trim().toLowerCase();
+  if (mimeType !== "video/webm" && !mimeType.startsWith("video/webm;")) return false;
+
+  return WEBM_ATTACHMENT_RE.test(attachment.url) || WEBM_ATTACHMENT_RE.test(attachment.name ?? "");
 }
 
 function getMessageVoiceAttachment(message: ChatMessage): ChatViewMessage["voice"] {
   if (message.type === "video_note") return undefined;
-  const attachment = [...message.media, ...message.files].find(isAudioAttachment);
+  const attachments = [...message.media, ...message.files];
+  const attachment =
+    attachments.find(isAudioAttachment) ??
+    attachments.find((item) => isLegacyAudioOnlyWebmAttachment(message, item, attachments.length));
   if (!attachment) return undefined;
 
   const url = resolveMediaUrl(attachment.url);
@@ -66,7 +87,9 @@ function getMessageVoiceAttachment(message: ChatMessage): ChatViewMessage["voice
   return {
     mediaID: Number.isFinite(Number(attachment.id)) ? Number(attachment.id) : undefined,
     url,
-    mimeType: attachment.mimeType || "audio/mpeg",
+    mimeType: attachment.mimeType.startsWith("video/")
+      ? "audio/webm"
+      : attachment.mimeType || "audio/mpeg",
   };
 }
 

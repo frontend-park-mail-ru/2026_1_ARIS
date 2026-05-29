@@ -1,7 +1,7 @@
 import { communityMembers, communityPosts, publicCommunityBundle } from "../support/data";
 
-describe("сообщества", () => {
-  it("отображает сообщества пользователя и ищет через backend", () => {
+describe("группы", () => {
+  it("отображает группы пользователя и ищет через backend", () => {
     cy.mockAuthApi();
     cy.mockCommunitiesApi();
     cy.intercept("GET", "**/api/search?*", (req) => {
@@ -26,7 +26,7 @@ describe("сообщества", () => {
       req.reply({ body: { users: [], communities } });
     }).as("communitiesSearch");
 
-    cy.visitApp({ path: "/communities", authenticated: true });
+    cy.visitApp({ path: "/groups", authenticated: true });
     cy.wait("@communities");
 
     cy.contains("[data-community-card='10']", "Клуб настольных игр").should("be.visible");
@@ -39,11 +39,11 @@ describe("сообщества", () => {
     cy.contains("[data-community-card='11']", "Музыкальный клуб").should("be.visible");
   });
 
-  it("валидирует и создаёт сообщество через мастер", () => {
+  it("валидирует и создаёт группу через мастер", () => {
     cy.mockAuthApi();
     cy.mockCommunitiesApi();
 
-    cy.visitApp({ path: "/communities", authenticated: true });
+    cy.visitApp({ path: "/groups", authenticated: true });
     cy.get("[data-community-create-open]").click();
     cy.get("[data-community-form-modal]").should("be.visible");
     cy.get("[data-community-form-hint]").first().as("titleHint").trigger("mouseover");
@@ -60,7 +60,7 @@ describe("сообщества", () => {
     });
 
     cy.get("[data-community-form-next]").click();
-    cy.contains(".community-modal__error", "Введите название сообщества.").should("be.visible");
+    cy.contains(".community-modal__error", "Введите название группы.").should("be.visible");
 
     cy.get("[data-community-title]").type("Cypress клуб");
     cy.get("[data-community-username]").type("cypress-club");
@@ -69,7 +69,7 @@ describe("сообщества", () => {
       title: "Cypress клуб",
       username: "cypress-club",
     });
-    cy.get("[data-community-bio]").type("Сообщество создано из e2e.");
+    cy.get("[data-community-bio]").type("Группа создана из e2e.");
     cy.get("[data-community-form-next]").click();
     cy.get('[data-community-media-rotate-left="avatar"]').should("not.be.visible");
     cy.get('[data-community-media-rotate-right="avatar"]').should("not.be.visible");
@@ -81,10 +81,10 @@ describe("сообщества", () => {
     cy.wait("@createCommunity").its("request.body").should("deep.include", {
       title: "Cypress клуб",
       username: "cypress-club",
-      bio: "Сообщество создано из e2e.",
+      bio: "Группа создана из e2e.",
       type: "public",
     });
-    cy.location("pathname").should("eq", "/communities/77");
+    cy.location("pathname").should("eq", "/groups/77");
     cy.contains("h1", "Cypress клуб").should("be.visible");
   });
 
@@ -92,7 +92,7 @@ describe("сообщества", () => {
     cy.mockAuthApi();
     cy.mockCommunitiesApi();
 
-    cy.visitApp({ path: "/communities", authenticated: true });
+    cy.visitApp({ path: "/groups", authenticated: true });
     cy.get("[data-community-create-open]").click();
     cy.get("[data-community-title]").type("Enter клуб");
     cy.get("[data-community-username]").type("enter-club{enter}");
@@ -109,7 +109,7 @@ describe("сообщества", () => {
     cy.mockAuthApi();
     cy.mockCommunitiesApi();
 
-    cy.visitApp({ path: "/communities", authenticated: true });
+    cy.visitApp({ path: "/groups", authenticated: true });
     cy.get("[data-community-create-open]").click();
     cy.get("[data-community-title]").type("Layout клуб");
     cy.get("[data-community-username]").type("layout-club");
@@ -146,11 +146,11 @@ describe("сообщества", () => {
     });
   });
 
-  it("отображает детали сообщества и фильтрует посты", () => {
+  it("отображает детали группы и фильтрует посты", () => {
     cy.mockAuthApi();
     cy.mockCommunitiesApi();
 
-    cy.visitApp({ path: "/communities/10", authenticated: true });
+    cy.visitApp({ path: "/groups/10", authenticated: true });
     cy.wait("@communityDetail");
 
     cy.contains("h1", "Клуб настольных игр").should("be.visible");
@@ -159,7 +159,7 @@ describe("сообщества", () => {
     cy.get('[data-community-post-delete="401"]')
       .should("be.visible")
       .and("contain", "Удалить пост")
-      .and("not.contain", "Удалить сообщество");
+      .and("not.contain", "Удалить группу");
     cy.get("[data-community-post-search-open]").click();
     cy.get("[data-community-post-search]").type("zzz");
     cy.contains(".profile-empty-copy", "Ничего не найдено").should("be.visible");
@@ -220,7 +220,7 @@ describe("сообщества", () => {
       body: { items: members },
     }).as("communityMembersMany");
 
-    cy.visitApp({ path: "/communities/10", authenticated: true });
+    cy.visitApp({ path: "/groups/10", authenticated: true });
     cy.wait("@communityMembersMany");
 
     cy.contains(".community-right-rail .community-side-card__header h2", "Участники").should(
@@ -234,7 +234,7 @@ describe("сообщества", () => {
       .and("contain", "показать всех");
   });
 
-  it("создаёт пост сообщества", () => {
+  it("создаёт пост группы", () => {
     let posts = communityPosts;
     cy.mockAuthApi();
     cy.mockCommunitiesApi();
@@ -250,7 +250,7 @@ describe("сообщества", () => {
             communityId: 10,
             firstName: "Клуб",
             lastName: "Настольных игр",
-            text: "Пост сообщества из Cypress.",
+            text: "Пост группы из Cypress.",
             createdAt: "2026-05-04T10:10:00.000Z",
             likes: 0,
             isLiked: false,
@@ -261,20 +261,20 @@ describe("сообщества", () => {
       req.reply({ body: posts.posts[0] });
     }).as("createCommunityPostMutable");
 
-    cy.visitApp({ path: "/communities/10", authenticated: true });
+    cy.visitApp({ path: "/groups/10", authenticated: true });
     cy.get("[data-community-post-open]").click();
-    cy.get("[data-community-post-text]").type("Пост сообщества из Cypress.");
+    cy.get("[data-community-post-text]").type("Пост группы из Cypress.");
     cy.get("[data-community-post-save]").click();
 
     cy.wait("@createCommunityPostMutable").its("request.body").should("deep.include", {
-      text: "Пост сообщества из Cypress.",
+      text: "Пост группы из Cypress.",
       communityId: 10,
       authorProfileId: 100,
     });
-    cy.contains("[data-community-post='402']", "Пост сообщества из Cypress.").should("be.visible");
+    cy.contains("[data-community-post='402']", "Пост группы из Cypress.").should("be.visible");
   });
 
-  it("редактирует официальный пост от имени сообщества", () => {
+  it("редактирует официальный пост от имени группы", () => {
     const updatedText = "Официальный анонс обновлён.";
     let posts = {
       posts: [{ ...communityPosts.posts[0], createdAt: new Date().toISOString() }],
@@ -296,7 +296,7 @@ describe("сообщества", () => {
       req.reply({ body: posts.posts[0] });
     }).as("updateCommunityPost");
 
-    cy.visitApp({ path: "/communities/10", authenticated: true });
+    cy.visitApp({ path: "/groups/10", authenticated: true });
     cy.contains("[data-community-post='401']", "Официальный анонс встречи.").should("be.visible");
     cy.get('[data-community-post-menu-toggle="401"]').click();
     cy.get('[data-community-post-edit="401"]').click();
@@ -319,7 +319,7 @@ describe("сообщества", () => {
       body: { posts: [] },
     }).as("publicCommunityPosts");
 
-    cy.visitApp({ path: "/communities/11", authenticated: true });
+    cy.visitApp({ path: "/groups/11", authenticated: true });
     cy.contains(".community-right-rail .community-side-card h2", "Описание").should("be.visible");
     cy.get(".community-right-rail .community-members-card").should("be.visible");
     cy.contains(".community-right-rail .community-members-card", "Мария Соколова").should(
@@ -340,7 +340,7 @@ describe("сообщества", () => {
       });
     }).as("changeMemberRole");
 
-    cy.visitApp({ path: "/communities/10", authenticated: true });
+    cy.visitApp({ path: "/groups/10", authenticated: true });
     cy.get("[data-community-menu-toggle='10']").click();
     cy.get("[data-community-menu='10']").should("be.visible");
     cy.get("[data-community-menu='10'] [data-community-members-open='10']").click();
@@ -361,11 +361,11 @@ describe("сообщества", () => {
     );
   });
 
-  it("ставит лайк посту сообщества", () => {
+  it("ставит лайк посту группы", () => {
     cy.mockAuthApi();
     cy.mockCommunitiesApi();
 
-    cy.visitApp({ path: "/communities/10", authenticated: true });
+    cy.visitApp({ path: "/groups/10", authenticated: true });
     cy.get('[data-community-post-like="401"]').click();
 
     cy.wait("@likeCommunityPost");

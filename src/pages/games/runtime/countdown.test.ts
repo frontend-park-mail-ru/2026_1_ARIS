@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createGamesCountdownRuntime } from "./countdown";
 
 describe("games countdown runtime", () => {
-  it("запускает interval только при наличии countdown-элементов", () => {
+  it("не запускает interval без countdown/runtime-элементов", () => {
     vi.useFakeTimers();
     document.body.innerHTML = `<div></div>`;
     const setIntervalSpy = vi.spyOn(window, "setInterval");
@@ -18,6 +18,30 @@ describe("games countdown runtime", () => {
     runtime.start(document);
 
     expect(setIntervalSpy).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("запускает interval для отложенной анимации scoreboard без отдельного таймера", () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = `
+      <strong
+        data-games-score-animate
+        data-games-score-from="0"
+        data-games-score-to="2"
+        data-games-score-start-at="${Date.now() + 1000}"
+      >0</strong>
+    `;
+    const setIntervalSpy = vi.spyOn(window, "setInterval");
+    const runtime = createGamesCountdownRuntime({
+      getRoot: () => document,
+      formatScore: String,
+      onFinalResultsExpired: vi.fn(),
+    });
+
+    runtime.start(document);
+
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    runtime.stop();
     vi.useRealTimers();
   });
 

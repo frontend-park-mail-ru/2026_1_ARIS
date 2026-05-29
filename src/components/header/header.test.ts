@@ -99,15 +99,15 @@ describe("header voice search", () => {
 
     root.querySelector<HTMLButtonElement>("[data-header-voice-search]")?.click();
     const recognition = MockSpeechRecognition.instances[0];
-    recognition?.onresult?.(createSpeechResultEvent("сообщества дизайн", true));
+    recognition?.onresult?.(createSpeechResultEvent("группы дизайн", true));
 
     expect(root.querySelector<HTMLInputElement>("[data-header-search]")?.value).toBe(
-      "сообщества дизайн",
+      "группы дизайн",
     );
     expect(recognition?.stop).toHaveBeenCalledTimes(1);
     expect(window.location.pathname).toBe("/search");
     expect(window.location.search).toBe(
-      "?q=%D1%81%D0%BE%D0%BE%D0%B1%D1%89%D0%B5%D1%81%D1%82%D0%B2%D0%B0%20%D0%B4%D0%B8%D0%B7%D0%B0%D0%B9%D0%BD",
+      "?q=%D0%B3%D1%80%D1%83%D0%BF%D0%BF%D1%8B%20%D0%B4%D0%B8%D0%B7%D0%B0%D0%B9%D0%BD",
     );
     expect(popstateListener).toHaveBeenCalledTimes(1);
 

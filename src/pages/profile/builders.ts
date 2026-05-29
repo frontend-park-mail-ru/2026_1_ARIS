@@ -238,10 +238,10 @@ export function createFallbackProfile(
     email: useSessionIdentity ? "Не указано" : `${username}@arisnet.dev`,
     birthday: useSessionIdentity ? "Не указано" : "12 марта 2001",
     gender: "Не указано",
-    interests: "Технологии, дизайн продуктов, цифровые сообщества",
+    interests: "Технологии, дизайн продуктов, цифровые группы",
     favoriteMusic: "The xx, ODESZA, Kedr Livanskiy",
-    workCompany: useSessionIdentity ? "ARISNET" : "ARISNET Community",
-    workRole: "Участник сообщества",
+    workCompany: useSessionIdentity ? "ARISNET" : "ARISNET Group",
+    workRole: "Участник группы",
     education: [
       {
         place: useSessionIdentity ? "Информация появится позже" : "МГТУ им. Н.Э. Баумана '24",
@@ -268,12 +268,12 @@ export function createFallbackProfile(
       town: "",
       phone: "",
       email: "",
-      interests: "Технологии, дизайн продуктов, цифровые сообщества",
+      interests: "Технологии, дизайн продуктов, цифровые группы",
       favMusic: "The xx, ODESZA, Kedr Livanskiy",
       institution: "",
       group: "",
-      company: useSessionIdentity ? "ARISNET" : "ARISNET Community",
-      jobTitle: "Участник сообщества",
+      company: useSessionIdentity ? "ARISNET" : "ARISNET Group",
+      jobTitle: "Участник группы",
     },
   };
 }

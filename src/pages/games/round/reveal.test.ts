@@ -84,7 +84,7 @@ describe("games round reveal", () => {
     const room = createRoom("2026-05-25T00:00:00.000Z");
 
     expect(getFinalRoundResultsUntil(room, room.questions[0]!)).toEqual(
-      new Date("2026-05-25T00:00:20.000Z"),
+      new Date("2026-05-25T00:00:11.450Z"),
     );
     expect(shouldShowFinalRoundResultBeforeSummary(room)).toBe(true);
     expect(isRoundResultRevealVisible(room)).toBe(true);

@@ -4,18 +4,15 @@
  * Содержит пользовательские сценарии и реакцию интерфейса на действия пользователя.
  */
 import {
-  addStickerToPack,
-  createStickerPack,
   getStickerPacks,
   getStickersByPack,
   sendChatMessage,
   uploadChatVoice,
   uploadVideoNote,
   uploadMessageAttachments,
-  uploadStickerImage,
 } from "../../api/chat";
-import type { AttachmentPayload, MessageAttachment, Sticker, StickerPack } from "../../api/chat";
-import { ApiError, apiRequest } from "../../api/core/client";
+import type { AttachmentPayload, MessageAttachment, Sticker } from "../../api/chat";
+import { apiRequest } from "../../api/core/client";
 import { getSessionUser } from "../../state/session";
 import { t } from "../../state/i18n";
 import { chatsState } from "./state";
@@ -974,7 +971,7 @@ async function loadStickersForPack(packId: string, root: Document | HTMLElement)
   refreshChatsPage(root);
 
   try {
-    const stickers = await getStickersByPack(packId, { limit: 100 });
+    const stickers = await getStickersByPack(packId, { limit: 5 });
     chatsState.stickerPicker.stickersByPackId.set(packId, stickers);
   } catch (error) {
     chatsState.stickerPicker.errorMessage =
@@ -985,47 +982,27 @@ async function loadStickersForPack(packId: string, root: Document | HTMLElement)
   }
 }
 
-function isOwnStickerPack(pack?: StickerPack): boolean {
-  const currentUserId = getSessionUser()?.id;
-  return Boolean(pack?.authorId && currentUserId && pack.authorId === currentUserId);
-}
-
-function getActiveStickerPack(): StickerPack | undefined {
-  return (
-    chatsState.stickerPicker.packs.find(
-      (pack) => pack.id === chatsState.stickerPicker.activePackId,
-    ) ?? chatsState.stickerPicker.packs[0]
-  );
-}
-
-async function loadStickerPacks(root: Document | HTMLElement): Promise<void> {
+async function loadDefaultStickerSet(root: Document | HTMLElement): Promise<void> {
   chatsState.stickerPicker.loading = true;
   chatsState.stickerPicker.errorMessage = "";
   refreshChatsPage(root);
 
   try {
     const packs = await getStickerPacks({
-      search: chatsState.stickerPicker.search,
-      limit: 50,
+      limit: 1,
       offset: 0,
     });
     chatsState.stickerPicker.packs = packs;
-    const activePackId =
-      packs.find((pack) => pack.id === chatsState.stickerPicker.activePackId)?.id ??
-      packs[0]?.id ??
-      "";
+    const activePackId = packs[0]?.id ?? "";
     chatsState.stickerPicker.activePackId = activePackId;
     if (activePackId) await loadStickersForPack(activePackId, root);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
-      chatsState.stickerPicker.packs = [];
-    } else {
-      const rawMessage = error instanceof Error ? error.message : "";
-      chatsState.stickerPicker.errorMessage =
-        rawMessage && !rawMessage.trimStart().startsWith("<")
-          ? rawMessage
-          : "Не удалось загрузить стикерпаки.";
-    }
+    chatsState.stickerPicker.packs = [];
+    const rawMessage = error instanceof Error ? error.message : "";
+    chatsState.stickerPicker.errorMessage =
+      rawMessage && !rawMessage.trimStart().startsWith("<")
+        ? rawMessage
+        : "Не удалось загрузить стикеры.";
   } finally {
     chatsState.stickerPicker.loading = false;
     refreshChatsPage(root);
@@ -1513,16 +1490,6 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
       chatsState.composeDraftByChatId.set(chatsState.selectedChatId, target.value);
       return;
     }
-
-    if (target.matches("[data-chat-sticker-search]")) {
-      chatsState.stickerPicker.search = target.value;
-      void loadStickerPacks(root);
-      return;
-    }
-
-    if (target.matches("[data-chat-sticker-title]")) {
-      chatsState.stickerPicker.newPackTitle = target.value;
-    }
   });
 
   root.addEventListener("change", (event: Event) => {
@@ -1823,25 +1790,18 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
       chatsState.stickerPicker.open = !chatsState.stickerPicker.open;
       if (chatsState.stickerPicker.open) chatsState.emojiPickerOpen = false;
       refreshChatsPage(root);
-      if (chatsState.stickerPicker.open && !chatsState.stickerPicker.packs.length) {
-        void loadStickerPacks(root);
+      const activePackId =
+        chatsState.stickerPicker.activePackId || chatsState.stickerPicker.packs[0]?.id || "";
+      const hasLoadedActiveStickers = Boolean(
+        activePackId && chatsState.stickerPicker.stickersByPackId.has(activePackId),
+      );
+      if (
+        chatsState.stickerPicker.open &&
+        !chatsState.stickerPicker.loading &&
+        !hasLoadedActiveStickers
+      ) {
+        void loadDefaultStickerSet(root);
       }
-      return;
-    }
-
-    const closeStickersButton = target.closest("[data-chat-stickers-close]");
-    if (closeStickersButton instanceof HTMLButtonElement) {
-      chatsState.stickerPicker.open = false;
-      refreshChatsPage(root);
-      return;
-    }
-
-    const stickerPackButton = target.closest("[data-chat-sticker-pack]");
-    if (stickerPackButton instanceof HTMLButtonElement) {
-      const packId = stickerPackButton.getAttribute("data-chat-sticker-pack") ?? "";
-      chatsState.stickerPicker.activePackId = packId;
-      refreshChatsPage(root);
-      void loadStickersForPack(packId, root);
       return;
     }
 
@@ -1852,17 +1812,6 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
       const selectedThread = getSelectedThread();
       if (!sticker || !selectedThread) return;
       void sendStickerMessage(selectedThread, sticker, root);
-      return;
-    }
-
-    const addStickerButton = target.closest("[data-chat-add-sticker]");
-    if (addStickerButton instanceof HTMLButtonElement) {
-      if (!isOwnStickerPack(getActiveStickerPack())) {
-        chatsState.stickerPicker.errorMessage = "Добавлять стикеры можно только в свой стикерпак.";
-        refreshChatsPage(root);
-        return;
-      }
-      root.querySelector<HTMLInputElement>("[data-chat-sticker-file]")?.click();
       return;
     }
   });
@@ -1880,43 +1829,6 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
       target.value = "";
       refreshChatsPage(root);
       return;
-    }
-
-    if (target.matches("[data-chat-sticker-file]")) {
-      const file = target.files?.[0] ?? null;
-      const packId = chatsState.stickerPicker.activePackId;
-      const activePack = getActiveStickerPack();
-      target.value = "";
-      if (!file || !packId) return;
-      if (!isOwnStickerPack(activePack)) {
-        chatsState.stickerPicker.errorMessage = "Добавлять стикеры можно только в свой стикерпак.";
-        refreshChatsPage(root);
-        return;
-      }
-      if (!file.type.startsWith("image/")) {
-        chatsState.stickerPicker.errorMessage = "Стикером может быть только изображение.";
-        refreshChatsPage(root);
-        return;
-      }
-
-      chatsState.stickerPicker.saving = true;
-      chatsState.stickerPicker.errorMessage = "";
-      refreshChatsPage(root);
-
-      void uploadStickerImage(file)
-        .then((uploaded) => addStickerToPack(packId, { mediaID: uploaded.mediaID }))
-        .then((sticker) => {
-          const current = chatsState.stickerPicker.stickersByPackId.get(packId) ?? [];
-          chatsState.stickerPicker.stickersByPackId.set(packId, current.concat(sticker));
-        })
-        .catch((error: unknown) => {
-          chatsState.stickerPicker.errorMessage =
-            error instanceof Error ? error.message : "Не удалось добавить стикер.";
-        })
-        .finally(() => {
-          chatsState.stickerPicker.saving = false;
-          refreshChatsPage(root);
-        });
     }
   });
 
@@ -2039,33 +1951,6 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
   root.addEventListener("submit", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLFormElement)) return;
-
-    if (target.matches("[data-chat-create-sticker-pack]")) {
-      event.preventDefault();
-      const title = String(new FormData(target).get("title") ?? "").trim();
-      if (!title) return;
-
-      chatsState.stickerPicker.saving = true;
-      chatsState.stickerPicker.errorMessage = "";
-      refreshChatsPage(root);
-
-      void createStickerPack({ title })
-        .then((pack) => {
-          chatsState.stickerPicker.packs = [pack, ...chatsState.stickerPicker.packs];
-          chatsState.stickerPicker.activePackId = pack.id;
-          chatsState.stickerPicker.newPackTitle = "";
-          chatsState.stickerPicker.stickersByPackId.set(pack.id, []);
-        })
-        .catch((error: unknown) => {
-          chatsState.stickerPicker.errorMessage =
-            error instanceof Error ? error.message : "Не удалось создать стикерпак.";
-        })
-        .finally(() => {
-          chatsState.stickerPicker.saving = false;
-          refreshChatsPage(root);
-        });
-      return;
-    }
 
     if (!target.matches("[data-chat-compose-form]")) return;
 

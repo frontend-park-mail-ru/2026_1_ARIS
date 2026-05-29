@@ -219,7 +219,7 @@ Cypress.Commands.add("mockCommunitiesApi", () => {
         profileId: 177,
         username: "cypress-club",
         title: "Cypress клуб",
-        bio: "Сообщество создано из e2e.",
+        bio: "Группа создана из e2e.",
       },
     },
   }).as("createdCommunityDetail");
@@ -252,7 +252,7 @@ Cypress.Commands.add("mockCommunitiesApi", () => {
         profileId: 177,
         username: "cypress-club",
         title: "Cypress клуб",
-        bio: "Сообщество создано из e2e.",
+        bio: "Группа создана из e2e.",
       },
     },
   }).as("createCommunity");
@@ -266,7 +266,7 @@ Cypress.Commands.add("mockCommunitiesApi", () => {
       communityId: 10,
       firstName: "Клуб",
       lastName: "Настольных игр",
-      text: "Пост сообщества из Cypress.",
+      text: "Пост группы из Cypress.",
       createdAt: "2026-05-04T10:10:00.000Z",
       likes: 0,
       isLiked: false,

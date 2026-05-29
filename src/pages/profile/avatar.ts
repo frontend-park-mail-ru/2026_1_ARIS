@@ -99,14 +99,14 @@ export function renderAvatarModal(profile: DisplayProfile): string {
           <div class="profile-avatar-modal__tools">
             <button
               type="button"
-              class="profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__tool-button"
+              class="button button--neutral profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__tool-button"
               data-profile-avatar-rotate-left
             >
               Повернуть влево
             </button>
             <button
               type="button"
-              class="profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__tool-button"
+              class="button button--neutral profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__tool-button"
               data-profile-avatar-rotate-right
             >
               Повернуть вправо
@@ -115,7 +115,7 @@ export function renderAvatarModal(profile: DisplayProfile): string {
 
           <button
             type="button"
-            class="profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__button--full"
+            class="button button--neutral profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__button--full"
             data-profile-avatar-pick
           >
             Выбрать фото
@@ -126,7 +126,7 @@ export function renderAvatarModal(profile: DisplayProfile): string {
               ? `
                 <button
                   type="button"
-                  class="profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__button--full profile-avatar-modal__button--danger"
+                  class="button button--neutral profile-avatar-modal__button profile-avatar-modal__button--secondary profile-avatar-modal__button--full profile-avatar-modal__button--danger"
                   data-profile-avatar-delete-open
                 >
                   Удалить фото
@@ -152,14 +152,14 @@ export function renderAvatarModal(profile: DisplayProfile): string {
         <div class="profile-avatar-modal__actions">
           <button
             type="button"
-            class="profile-avatar-modal__button profile-avatar-modal__button--primary"
+            class="button button--primary profile-avatar-modal__button profile-avatar-modal__button--primary"
             data-profile-avatar-save
           >
             Сохранить
           </button>
           <button
             type="button"
-            class="profile-avatar-modal__button profile-avatar-modal__button--ghost"
+            class="button button--neutral profile-avatar-modal__button profile-avatar-modal__button--ghost"
             data-profile-avatar-close
           >
             Выйти
@@ -194,14 +194,14 @@ export function renderAvatarDeleteModal(): string {
         <div class="profile-avatar-delete-modal__actions">
           <button
             type="button"
-            class="profile-avatar-delete-modal__button profile-avatar-delete-modal__button--primary"
+            class="button button--primary profile-avatar-delete-modal__button profile-avatar-delete-modal__button--primary"
             data-profile-avatar-delete-confirm
           >
             Удалить фото
           </button>
           <button
             type="button"
-            class="profile-avatar-delete-modal__button"
+            class="button button--neutral profile-avatar-delete-modal__button"
             data-profile-avatar-delete-close
           >
             Отмена

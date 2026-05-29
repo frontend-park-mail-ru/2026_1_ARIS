@@ -19,6 +19,17 @@ export type DisplayFriend = Friend & {
 };
 
 /**
+ * Результаты поиска на странице друзей: сначала совпадения из текущего списка,
+ * затем пользователи сайта без существующей связи.
+ */
+export type FriendsSearchResults = {
+  /** Совпадения в текущей вкладке друзей или заявок. */
+  friends: DisplayFriend[];
+  /** Пользователи сайта, которых нет в списках друзей и заявок. */
+  users: DisplayFriend[];
+};
+
+/**
  * Вкладка страницы друзей.
  */
 export type FriendsTab = "accepted" | "incoming" | "outgoing";
@@ -39,8 +50,8 @@ export type FriendsState = {
   query: string;
   /** Показывает, что сейчас выполняется backend-поиск. */
   searchLoading: boolean;
-  /** Результаты последнего backend-поиска для активной вкладки. */
-  searchResults: DisplayFriend[] | null;
+  /** Результаты последнего поиска для активной вкладки и пользователей сайта. */
+  searchResults: FriendsSearchResults | null;
   /** Активная вкладка интерфейса. */
   activeTab: FriendsTab;
   /** Список подтверждённых друзей. */

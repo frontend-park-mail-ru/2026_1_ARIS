@@ -1,6 +1,6 @@
 import type { GameRoom } from "../../../api/games";
-import { finalRoundResultHoldMs } from "../shared/constants";
 import { getLatestCompletedQuestion } from "./model";
+import { getRoundResultTransitionEndMs } from "./timeline";
 
 /** Возвращает момент, до которого финальный раунд остается на экране перед итогами. */
 export function getFinalRoundResultsUntil(
@@ -10,7 +10,7 @@ export function getFinalRoundResultsUntil(
   if (room.status !== "finished" || !question?.completedAt) return null;
   const completedAtMs = new Date(question.completedAt).getTime();
   if (Number.isNaN(completedAtMs)) return null;
-  return new Date(completedAtMs + finalRoundResultHoldMs);
+  return new Date(getRoundResultTransitionEndMs(room, question));
 }
 
 /** Проверяет, нужно ли перед итогами игры еще показать результат последнего раунда. */

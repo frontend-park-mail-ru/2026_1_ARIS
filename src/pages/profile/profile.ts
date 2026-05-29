@@ -411,6 +411,21 @@ export async function renderProfile(
         </button>
       `
     : "";
+  const profileInfoContent = profile.isOwnProfile
+    ? `
+        <div data-profile-info-view>
+          ${renderInfoRows(profile)}
+        </div>
+        <div class="profile-editor" data-profile-editor hidden>
+          ${renderProfileEditor(profile)}
+        </div>
+      `
+    : renderInfoRows(profile);
+  const profileInfoTitleAttributes = profile.isOwnProfile
+    ? `data-profile-info-title data-profile-info-default-title="${escapeHtml(
+        t("profile.info"),
+      )}" data-profile-info-edit-title="${escapeHtml(t("profile.editProfileTitle"))}"`
+    : "";
 
   return `
     <div class="app-page">
@@ -470,7 +485,12 @@ export async function renderProfile(
               </header>
 
               <div class="profile-card__details">
-                ${renderSection(t("profile.info"), renderInfoRows(profile), profileInfoAction)}
+                ${renderSection(
+                  t("profile.info"),
+                  profileInfoContent,
+                  profileInfoAction,
+                  profileInfoTitleAttributes,
+                )}
 
                 ${
                   hasMoreSections
@@ -481,7 +501,7 @@ export async function renderProfile(
                         ${personalSection}
                       </div>
 
-                      <button type="button" class="profile-card__toggle" data-profile-toggle aria-expanded="false">
+                      <button type="button" class="profile-card__toggle" data-profile-toggle data-profile-more-toggle aria-expanded="false">
                         ${t("profile.more")}
                       </button>
                     `
@@ -489,8 +509,6 @@ export async function renderProfile(
                 }
               </div>
             </article>
-
-            ${renderProfileEditor(profile)}
 
             ${renderProfilePosts(profile, posts, allPosts)}
           </section>

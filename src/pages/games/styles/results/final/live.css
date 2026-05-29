@@ -43,8 +43,8 @@
   }
 
   .games-result-answer {
-    border-color: rgb(53 137 96 / 38%);
-    background: rgb(53 137 96 / 10%);
+    border-color: rgb(95 111 157 / 18%);
+    background: rgb(255 255 255 / 70%);
   }
 
   .games-result-winner {
@@ -116,9 +116,9 @@
   }
 
   .games-round-result--winner {
-    border-color: rgb(53 137 96 / 42%);
-    background: rgb(53 137 96 / 11%);
-    box-shadow: 0 10px 28px rgb(53 137 96 / 12%);
+    border-color: var(--color-border-glass-soft);
+    background: var(--color-surface-muted);
+    box-shadow: none;
   }
 
   .games-round-result__rank {

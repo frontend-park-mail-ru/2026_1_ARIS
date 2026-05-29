@@ -34,6 +34,7 @@ import {
   hydrateDisplayFriendAvatarLinks,
   findFriendById,
   getFriendsErrorMessage,
+  getLocalFriendSearchResults,
   searchFriendsFromBackend,
 } from "./state";
 import { renderFriendsContent, refreshFriendsPage, refreshFriendsSearchResults } from "./render";
@@ -102,7 +103,10 @@ function scheduleFriendsBackendSearch(root: ParentNode): void {
   }
 
   friendsState.searchLoading = true;
-  friendsState.searchResults = null;
+  friendsState.searchResults = {
+    friends: getLocalFriendSearchResults(query),
+    users: [],
+  };
   refreshFriendsSearchResults(root);
 
   friendsSearchTimerId = window.setTimeout(() => {
@@ -119,7 +123,10 @@ function scheduleFriendsBackendSearch(root: ParentNode): void {
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === "AbortError") return;
         if (requestId !== friendsSearchRequestId) return;
-        friendsState.searchResults = [];
+        friendsState.searchResults = {
+          friends: getLocalFriendSearchResults(query),
+          users: [],
+        };
         friendsState.errorMessage = getFriendsErrorMessage(error, t("friends.loadError"));
       })
       .finally(() => {

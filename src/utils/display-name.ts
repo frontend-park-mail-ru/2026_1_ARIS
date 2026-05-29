@@ -1,8 +1,6 @@
 /**
- * Форматирование отображаемых имён с учётом выбранного языка.
+ * Форматирование отображаемых имён.
  */
-import { getLanguageMode } from "../state/language";
-
 const CYRILLIC_TO_LATIN: Record<string, string> = {
   а: "a",
   б: "b",
@@ -58,11 +56,10 @@ export function transliterateCyrillic(value: string): string {
 }
 
 /**
- * Возвращает строку имени, транслитерированную только в English-режиме.
+ * Возвращает строку имени без языковых преобразований.
  */
 export function formatDisplayName(value: string): string {
-  const trimmed = value.trim();
-  return getLanguageMode() === "EN" ? transliterateCyrillic(trimmed) : trimmed;
+  return value.trim();
 }
 
 /**

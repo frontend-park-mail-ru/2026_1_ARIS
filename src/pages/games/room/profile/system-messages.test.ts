@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { GameRoom, GameRoomStatus } from "../../../../api/games";
+import { languageStore } from "../../../../state/language";
 import {
   formatRoomModeLabel,
   getRemovedVerb,
@@ -65,6 +66,10 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
 }
 
 describe("games room system messages", () => {
+  afterEach(() => {
+    languageStore.reset({ language: "RU" });
+  });
+
   it("нормализует старые названия рейтингового режима", () => {
     expect(normalizeRenderedSystemMessageText('Тип игры изменен: "На рейтинг".')).toBe(
       'Тип игры изменен: "Рейтинговая".',
@@ -97,6 +102,21 @@ describe("games room system messages", () => {
     expect(messages).toContain('Тип игры изменен: "Рейтинговая".');
     expect(messages).toContain("Мария Соколова присоединилась к комнате.");
     expect(messages).not.toContain('Игрок 1 поставил статус "Готов" (2/3).');
+  });
+
+  it("переводит сохранённые русские системные сообщения для EN-интерфейса", () => {
+    languageStore.reset({ language: "EN" });
+
+    expect(normalizeRenderedSystemMessageText("Софья Ситниченко присоединилась к комнате.")).toBe(
+      "Софья Ситниченко joined the room.",
+    );
+    expect(
+      normalizeRenderedSystemMessageText('Сергей Шульгиненко поставил статус "Готов" (1/2).'),
+    ).toBe('Сергей Шульгиненко is now "Ready" (1/2).');
+    expect(normalizeRenderedSystemMessageText("Игра начинается.")).toBe("Game starting.");
+    expect(normalizeRenderedSystemMessageText('Тип игры изменен: "На рейтинг".')).toBe(
+      'Game type changed: "Ranked".',
+    );
   });
 
   it("подавляет сообщение выхода после обработанного disconnect/remove", () => {

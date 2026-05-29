@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { applyLanguage, languageStore } from "../state/language";
+import { languageStore } from "../state/language";
 import { formatPersonName, transliterateCyrillic } from "./display-name";
 
 describe("display-name", () => {
@@ -20,9 +20,9 @@ describe("display-name", () => {
     expect(formatPersonName("Софья", "Ситниченко")).toBe("Софья Ситниченко");
   });
 
-  it("транслитерирует имя в английском режиме", () => {
-    applyLanguage("EN", { persist: false, emit: false });
+  it("не транслитерирует имя в английском режиме", () => {
+    languageStore.reset({ language: "EN" });
 
-    expect(formatPersonName("Константин", "Галанин")).toBe("Konstantin Galanin");
+    expect(formatPersonName("Константин", "Галанин")).toBe("Константин Галанин");
   });
 });

@@ -120,8 +120,7 @@ describe("games room panel presenter", () => {
 
     expect(html).toContain("Публичная ссылка");
     expect(html).toContain("Участников в комнате: 2/80");
-    expect(html).toContain("Название комнаты:");
-    expect(html).toContain("Room");
+    expect(html).not.toContain("Название комнаты:");
     expect(html).toContain("Ada Lovelace");
     expect(html).toContain("Grace Hopper");
     expect(html).not.toContain("Тип игры");

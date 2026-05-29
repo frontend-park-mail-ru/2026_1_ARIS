@@ -30,6 +30,8 @@ export type PostcardPost = {
   author?: string;
   /** Идентификатор профиля автора. */
   authorId?: string;
+  /** Идентификатор сообщества, если пост опубликован от сообщества. */
+  communityId?: string;
   /** Имя автора. */
   firstName?: string;
   /** Фамилия автора. */
@@ -345,6 +347,17 @@ function renderPostcardMedia(
   `;
 }
 
+function renderPostcardFileIcon(): string {
+  return `
+    <svg class="postcard__file-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+      <path d="M14 2v5h5"></path>
+      <path d="M9 13h6"></path>
+      <path d="M9 17h4"></path>
+    </svg>
+  `;
+}
+
 function renderPostcardFiles(files: Array<{ url: string; name?: string }> = []): string {
   const cleanFiles = files.filter((f) => f.url.trim());
   if (!cleanFiles.length) return "";
@@ -355,7 +368,7 @@ function renderPostcardFiles(files: Array<{ url: string; name?: string }> = []):
         .map(
           (file) => `
             <a class="postcard__file" href="${escapeHtml(resolveMediaUrl(file.url))}" target="_blank" rel="noopener noreferrer">
-              <span class="postcard__file-icon" aria-hidden="true">□</span>
+              ${renderPostcardFileIcon()}
               <span class="postcard__file-name">${escapeHtml(file.name || getMediaFileName(file.url, t("chats.file")))}</span>
             </a>
           `,
@@ -408,19 +421,21 @@ export function renderPostcardInner(
     formatPersonName(post.firstName, post.lastName) || t("widgetbar.userFallback");
   const displayTime = formatPostRelativeTime(post.timeRaw, post.time);
   const exactTime = formatPostExactTime(post.timeRaw);
-  const profilePath = resolveProfilePath({
-    id: post.authorId,
-    username: post.author,
-    firstName: post.firstName,
-    lastName: post.lastName,
-  });
+  const authorPath = post.communityId
+    ? `/groups/${encodeURIComponent(post.communityId)}`
+    : resolveProfilePath({
+        id: post.authorId,
+        username: post.author,
+        firstName: post.firstName,
+        lastName: post.lastName,
+      });
 
   return `
     <article class="postcard content-card" data-post-id="${escapeHtml(String(post.id ?? ""))}">
       <header class="postcard__header">
         ${renderPostcardAvatar(post, displayName)}
         <a
-          href="${sessionUser ? profilePath : "/login"}"
+          href="${sessionUser ? authorPath : "/login"}"
           ${sessionUser ? "data-link" : 'data-open-auth-modal="login"'}
           class="postcard__author"
         >

@@ -651,8 +651,11 @@ describe("игровая комната", () => {
 
     cy.get(".games-panel").then(($panel) => {
       const panelBeforeSend = $panel[0];
-      cy.get("[data-games-room-chat-input]").type("Готовы начинать");
-      cy.get("[data-games-room-chat-form]").submit();
+      cy.get("[data-games-external-chat] [data-games-room-chat-input]")
+        .should("be.visible")
+        .and("not.be.disabled")
+        .type("Готовы начинать");
+      cy.get("[data-games-external-chat] [data-games-room-chat-form]").submit();
       cy.wait("@sendRoomMessage42").its("request.body").should("deep.equal", {
         text: "Готовы начинать",
       });

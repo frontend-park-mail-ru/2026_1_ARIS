@@ -41,7 +41,6 @@ jobs:
               npm run build
 
             printf 'BUILD_COMMIT=%s\nBUILD_VERSION=%s\n' "$BUILD_COMMIT" "$BUILD_VERSION" > .env.build
-            sudo systemctl restart arisfront
 
             sleep 5
             curl --fail --silent --show-error --max-time 10 ${{ secrets.DEPLOY_BASE_URL }}/ >/dev/null

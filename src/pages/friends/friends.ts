@@ -30,6 +30,7 @@ import {
   restoreFriendsActiveTab,
   persistFriendsActiveTab,
   ensureFriendsLoaded,
+  loadUserFriendsFromBackend,
   hydrateDisplayFriendAvatarLinks,
   findFriendById,
   getFriendsErrorMessage,
@@ -43,6 +44,16 @@ type FriendsRoot = (Document | HTMLElement) & {
 };
 
 const FRIENDS_SEARCH_DEBOUNCE_MS = 250;
+
+function getViewedFriendsProfileId(currentProfileId: string): string {
+  const rawProfileId = new URLSearchParams(window.location.search).get("profileId")?.trim() ?? "";
+  if (!rawProfileId || rawProfileId === currentProfileId) return "";
+  return rawProfileId;
+}
+
+function getViewedFriendsProfileName(): string {
+  return new URLSearchParams(window.location.search).get("name")?.trim() ?? "";
+}
 
 let friendsSearchTimerId: number | null = null;
 let friendsSearchAbortController: AbortController | null = null;
@@ -212,13 +223,44 @@ export async function renderFriends(
 
   if (!currentUser) return (await import("../feed/feed")).renderFeed(undefined, signal);
 
-  if (friendsState.loadedForUserId !== currentUserId) {
+  const viewedProfileId = getViewedFriendsProfileId(currentUserId);
+  const viewedProfileName = viewedProfileId ? getViewedFriendsProfileName() : "";
+  const stateKey = viewedProfileId ? `${currentUserId}:profile:${viewedProfileId}` : currentUserId;
+
+  if (friendsState.loadedForUserId !== stateKey) {
     resetFriendsState();
-    friendsState.loadedForUserId = currentUserId;
-    restoreFriendsActiveTab(currentUserId);
+    friendsState.loadedForUserId = stateKey;
+    friendsState.viewedProfileId = viewedProfileId;
+    friendsState.viewedProfileName = viewedProfileName;
+    if (!viewedProfileId) restoreFriendsActiveTab(currentUserId);
+  } else {
+    friendsState.viewedProfileId = viewedProfileId;
+    friendsState.viewedProfileName = viewedProfileName;
   }
 
-  await ensureFriendsLoaded(false, signal);
+  if (viewedProfileId) {
+    if (!friendsState.loaded && !friendsState.loading) {
+      friendsState.loading = true;
+      friendsState.errorMessage = "";
+      friendsState.activeTab = "accepted";
+      try {
+        const data = await loadUserFriendsFromBackend(viewedProfileId, signal);
+        friendsState.friends = data.friends;
+        friendsState.incoming = [];
+        friendsState.outgoing = [];
+        friendsState.loaded = true;
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") throw error;
+        friendsState.errorMessage = getFriendsErrorMessage(error, t("friends.loadError"));
+        friendsState.friends = [];
+        friendsState.loaded = false;
+      } finally {
+        friendsState.loading = false;
+      }
+    }
+  } else {
+    await ensureFriendsLoaded(false, signal);
+  }
   const hydratedLists = await hydrateDisplayFriendAvatarLinks(
     {
       friends: friendsState.friends,

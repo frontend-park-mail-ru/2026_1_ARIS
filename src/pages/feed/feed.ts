@@ -969,6 +969,10 @@ async function fetchNextFeedPage(): Promise<void> {
   if (!activeFeedState?.hasMore) return;
 
   const cursor = activeFeedState.nextCursor;
+  if (!cursor) {
+    setActiveFeedState({ ...activeFeedState, hasMore: false });
+    return;
+  }
   const mode = getCurrentFeedMode();
   const isAuthorised = getSessionUser() !== null;
   const authKey: FeedAuthKey = isAuthorised ? "authorised" : "guest";

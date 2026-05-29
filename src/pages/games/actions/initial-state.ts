@@ -1,5 +1,6 @@
 import { ApiError } from "../../../api/core/client";
 import type { GameRoom } from "../../../api/games";
+import type { PublicGameGuestSession } from "../../../api/games";
 import { restoreRoomAccess } from "../room/access-recovery";
 import type { StoredGameRoomAccess } from "../room/access";
 import {
@@ -28,6 +29,16 @@ export type LoadInitialGamesStateOptions = {
   canRecoverRoomAccess: (roomId: string) => boolean;
   recoverRoomAccess: (roomId: string, signal?: AbortSignal) => Promise<GameRoom | null>;
   replaceWithGamesMenuRoute: () => void;
+};
+
+export type LoadInitialPublicGamesStateOptions = {
+  hasSessionUser: () => boolean;
+  joinRoom: (payload: { inviteCode?: string }) => Promise<GameRoom>;
+  getStoredPublicGuestSession: (inviteCode: string) => PublicGameGuestSession | null;
+  forgetPublicGuestSession: (session: PublicGameGuestSession) => void;
+  getPublicRoom: (roomId: string, token: string, signal?: AbortSignal) => Promise<GameRoom>;
+  hydrateRoom: (room: GameRoom, signal?: AbortSignal) => Promise<GameRoom>;
+  rememberRoomAccess: (room: GameRoom) => void;
 };
 
 /**
@@ -84,6 +95,61 @@ export async function loadInitialGamesState(
     if (error instanceof ApiError && error.status === 403) {
       return loadInitialStateThroughJoin(roomId, signal, state, options);
     }
+    state.error = getErrorMessage(error, gameT("room.loadError"));
+  }
+
+  return state;
+}
+
+/**
+ * Загружает начальное состояние публичной презентационной комнаты.
+ */
+export async function loadInitialPublicGamesState(
+  inviteCode: string,
+  signal: AbortSignal | undefined,
+  options: LoadInitialPublicGamesStateOptions,
+): Promise<GamesPageState> {
+  const state = createInitialGamesState();
+  state.publicInviteCode = inviteCode;
+
+  if (!inviteCode) {
+    return state;
+  }
+
+  if (options.hasSessionUser()) {
+    try {
+      const session = options.getStoredPublicGuestSession(inviteCode);
+      state.room = await options.hydrateRoom(await options.joinRoom({ inviteCode }), signal);
+      state.roomId = state.room.id;
+      options.rememberRoomAccess(state.room);
+      if (session) {
+        options.forgetPublicGuestSession(session);
+      }
+    } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
+      state.error = getErrorMessage(error, gameT("room.loadError"));
+    }
+    return state;
+  }
+
+  const session = options.getStoredPublicGuestSession(inviteCode);
+  if (!session) {
+    return state;
+  }
+
+  try {
+    state.room = await options.hydrateRoom(
+      await options.getPublicRoom(session.roomId, session.token, signal),
+      signal,
+    );
+    state.roomId = state.room.id;
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw error;
+    }
+    options.forgetPublicGuestSession(session);
     state.error = getErrorMessage(error, gameT("room.loadError"));
   }
 

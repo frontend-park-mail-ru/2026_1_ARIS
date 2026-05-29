@@ -75,6 +75,7 @@ export function createGamesPageRenderer(options: GamesPageRendererOptions) {
     const state = options.getState();
     return renderGamesAppShell({
       state,
+      isAuthorised: options.isAuthorised?.() ?? true,
       shell: renderGamesShellContent(),
       renderPlayersRail: gameStageRenderer.renderGamePlayersRail,
       renderRoomChat: roomRenderer.renderRoomChat,

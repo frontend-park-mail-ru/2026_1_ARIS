@@ -209,6 +209,10 @@ function matchesRoutePath(pathname: string, routePath: string): boolean {
     return /^\/games\/quiz\/[^/]+$/i.test(normalisedPathname);
   }
 
+  if (normalisedRoutePath === "/games/public/:inviteCode") {
+    return /^\/games\/public\/[^/]+$/i.test(normalisedPathname);
+  }
+
   return false;
 }
 
@@ -322,6 +326,11 @@ const routes: Route[] = [
   {
     path: "/games/quiz/:roomId",
     title: "ARISNET — Quiz Room",
+    render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
+    path: "/games/public/:inviteCode",
+    title: "ARISNET — Public Quiz",
     render: async (p, s) => (await loadGames()).renderGames(p, s),
   },
   {

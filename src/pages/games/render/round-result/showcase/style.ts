@@ -9,7 +9,7 @@ export function renderRoundResultStyle(
   index: number,
 ): string {
   const delayMs = getRoundResultCardDelayMs(item.revealIndex);
-  const pulseDelayMs = delayMs + 2400;
+  const pulseDelayMs = delayMs + 920;
   return [
     `--games-result-index: ${index}`,
     `--games-result-delay: ${delayMs}ms`,

@@ -26,7 +26,7 @@
     flex-direction: column;
     justify-content: flex-start;
     gap: 16px;
-    overflow-y: auto;
+    overflow: hidden auto;
     overscroll-behavior: contain;
     animation: games-stage-in 320ms ease both;
   }

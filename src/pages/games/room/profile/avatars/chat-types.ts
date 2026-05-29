@@ -2,7 +2,11 @@ import type { GameRoomAvatarCaches, GameRoomAvatarServiceOptions, GamePlayer } f
 
 export type RoomChatAvatarServiceOptions = Pick<
   GameRoomAvatarServiceOptions,
-  "getCurrentProfileId" | "getCurrentPlayer" | "getSessionUser" | "loadProfile"
+  | "getCurrentProfileId"
+  | "getCurrentPlayer"
+  | "getSessionUser"
+  | "loadAvatarUrlById"
+  | "loadProfile"
 > & {
   caches: GameRoomAvatarCaches;
   getPlayerAvatarUrl: (player: GamePlayer) => string;

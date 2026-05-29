@@ -108,6 +108,28 @@ describe("games room panel presenter", () => {
     expect(html).toContain("data-games-start-open");
   });
 
+  it("рендерит публичное лобби обычной комнатой без готовности", () => {
+    const html = renderRoomPanelPresenter(
+      createOptions(
+        createRoom({
+          isPublicLobby: true,
+          maxPlayers: 80,
+        }),
+      ),
+    );
+
+    expect(html).toContain("Публичная ссылка");
+    expect(html).toContain("Участников в комнате: 2/80");
+    expect(html).toContain("Название комнаты:");
+    expect(html).toContain("Room");
+    expect(html).toContain("Ada Lovelace");
+    expect(html).toContain("Grace Hopper");
+    expect(html).not.toContain("Тип игры");
+    expect(html).not.toContain("Готовы:");
+    expect(html).not.toContain("games-player--ready");
+    expect(html).not.toContain("games-player--not-ready");
+  });
+
   it("показывает подсказку старта для неадминистратора", () => {
     const options = createOptions();
     options.room.players = options.room.players.map((player) => ({

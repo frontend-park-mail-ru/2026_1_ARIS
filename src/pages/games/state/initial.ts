@@ -58,5 +58,10 @@ export function createInitialGamesState(): GamesPageState {
     loading: false,
     roomsLoading: false,
     roomsAutoRefreshEnabled: true,
+    publicInviteCode: "",
+    publicGuestFirstName: "",
+    publicGuestLastName: "",
+    publicGuestFirstNameError: "",
+    publicGuestLastNameError: "",
   };
 }

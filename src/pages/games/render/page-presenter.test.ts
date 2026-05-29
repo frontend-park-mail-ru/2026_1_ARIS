@@ -89,6 +89,23 @@ describe("games page presenter", () => {
     expect(html).toContain("data-games-external-chat");
   });
 
+  it("собирает внешний чат для публичной комнаты ожидания", () => {
+    const state = createInitialGamesState();
+    state.room = createRoom({ isPublicLobby: true });
+
+    const html = renderGamesPageContent({
+      state,
+      isCatalogRoute: false,
+      renderLobbyContent: () => "<div>Lobby</div>",
+      renderRoomPanel: () => "<section>Public room panel</section>",
+      renderRoomChat: () => "<aside>Public room chat</aside>",
+    });
+
+    expect(html).toContain("<section>Public room panel</section>");
+    expect(html).toContain("<aside>Public room chat</aside>");
+    expect(html).toContain("data-games-external-chat");
+  });
+
   it("собирает shell с overlay поверх page content", () => {
     const state = createInitialGamesState();
     state.roomId = "room-1";
@@ -122,5 +139,22 @@ describe("games page presenter", () => {
     expect(html).toContain("<section>Shell</section>");
     expect(html).toContain("<nav>Players</nav>");
     expect(html).toContain("<aside>Chat</aside>");
+  });
+
+  it("собирает публичную комнату ожидания в обычном app-shell", () => {
+    const state = createInitialGamesState();
+    state.room = createRoom({ isPublicLobby: true });
+
+    const html = renderGamesAppShell({
+      state,
+      shell: "<section>Shell</section>",
+      renderPlayersRail: () => "<nav>Players</nav>",
+      renderRoomChat: () => "<aside>Chat</aside>",
+    });
+
+    expect(html).toContain("app-layout--content-wide");
+    expect(html).toContain("<section>Shell</section>");
+    expect(html).not.toContain("app-layout--game-room");
+    expect(html).not.toContain("<nav>Players</nav>");
   });
 });

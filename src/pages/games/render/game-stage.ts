@@ -44,7 +44,7 @@ export function renderGameStagePresenter(options: RenderGamePlayPresenterOptions
       loading: state.loading,
       pausedByPlayer: options.getPausedByPlayer(room) ?? null,
       canForceResume: options.canCurrentPlayerForceResume(room),
-      currentPlayer: options.getCurrentRoomPlayer(room) ?? null,
+      currentPlayer: options.getCurrentPlayer(room) ?? null,
     });
   }
 
@@ -59,6 +59,7 @@ export function renderGameStagePresenter(options: RenderGamePlayPresenterOptions
   if (room.currentQuestion) {
     return renderActiveRoundStage({
       room,
+      currentPlayer: options.getCurrentPlayer(room) ?? null,
       submittedQuestionId: state.submittedQuestionId,
       submittedAnswerValue: state.submittedAnswerValue,
       renderInlineError: options.renderInlineError,
@@ -72,6 +73,7 @@ export function renderGameStagePresenter(options: RenderGamePlayPresenterOptions
 
   return renderActiveRoundStage({
     room,
+    currentPlayer: options.getCurrentPlayer(room) ?? null,
     submittedQuestionId: state.submittedQuestionId,
     submittedAnswerValue: state.submittedAnswerValue,
     renderInlineError: options.renderInlineError,

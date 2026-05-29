@@ -19,20 +19,12 @@ export type RoundResultPresentationRow = RoundResultRow & {
   showTime: boolean;
 };
 export type RoundScoreRow = RoundResultPresentationRow & { scorePlace: number };
-export type RoundAnswerShowcaseItem =
-  | {
-      type: "correct";
-      answerValue: number | null;
-      answerSide: 0;
-      answerOffset: 0;
-      revealIndex: 0;
-    }
-  | {
-      type: "player";
-      row: RoundResultPresentationRow;
-      answerValue: number | null;
-      answerSide: -1 | 0 | 1;
-      answerOffset: number;
-      revealIndex: number;
-      orderIndex: number;
-    };
+export type RoundAnswerShowcaseItem = {
+  type: "player";
+  row: RoundResultPresentationRow;
+  answerValue: number | null;
+  answerSide: -1 | 0 | 1;
+  answerOffset: number;
+  revealIndex: number;
+  orderIndex: number;
+};

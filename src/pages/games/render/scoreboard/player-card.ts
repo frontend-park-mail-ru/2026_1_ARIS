@@ -10,6 +10,54 @@ import type { getGameScoreboardModel } from "./model";
 type GameScoreboardModel = ReturnType<typeof getGameScoreboardModel>;
 
 /**
+ * Делит имя игрока на две строки для компактной боковой таблицы.
+ */
+function getScoreboardPlayerNameLines(player: GameRoom["players"][number]): {
+  firstLine: string;
+  secondLine: string;
+} {
+  const firstName = player.firstName?.trim();
+  const lastName = player.lastName?.trim();
+  if (firstName || lastName) {
+    return {
+      firstLine: firstName || lastName || gameT("common.playerFallback"),
+      secondLine: firstName && lastName ? lastName : "",
+    };
+  }
+
+  const fullName = player.name.trim();
+  if (fullName) {
+    const [firstLine = fullName, ...rest] = fullName.split(/\s+/);
+    return {
+      firstLine,
+      secondLine: rest.join(" "),
+    };
+  }
+
+  return {
+    firstLine: player.username || gameT("common.playerFallback"),
+    secondLine: "",
+  };
+}
+
+/**
+ * Рендерит имя игрока в две строки: имя сверху, фамилия снизу.
+ */
+function renderScoreboardPlayerNameContent(player: GameRoom["players"][number]): string {
+  const { firstLine, secondLine } = getScoreboardPlayerNameLines(player);
+  return `
+    <span class="games-game-player__name-lines">
+      <span class="games-game-player__first-name">${escapeHtml(firstLine)}</span>
+      ${
+        secondLine
+          ? `<span class="games-game-player__last-name">${escapeHtml(secondLine)}</span>`
+          : ""
+      }
+    </span>
+  `;
+}
+
+/**
  * Рендерит карточку игрока внутри игровой таблицы очков.
  */
 export function renderGameScoreboardPlayerCard(
@@ -18,7 +66,10 @@ export function renderGameScoreboardPlayerCard(
   model: GameScoreboardModel,
   options: Pick<RenderGameScoreboardOptions, "getPlayerAvatarUrl" | "renderProfileLink">,
 ): string {
-  const place = getPlayerPlaceByScores(room, player, model.displayScoreMap);
+  const displayRankOptions = model.revealQuestion
+    ? { excludeQuestionId: model.revealQuestion.id }
+    : undefined;
+  const place = getPlayerPlaceByScores(room, player, model.displayScoreMap, displayRankOptions);
   const playerLabel = getGamePlayerLabel(player);
   const playerFullName = getPlayerFullName(player);
   const avatarUrl = options.getPlayerAvatarUrl(player);
@@ -41,10 +92,10 @@ export function renderGameScoreboardPlayerCard(
         profileId: player.profileId,
         className: "games-game-player__name",
         label: playerFullName,
-        content: escapeHtml(playerLabel),
+        content: renderScoreboardPlayerNameContent(player),
         avatarUrl,
       })
-    : `<strong class="games-game-player__name">${escapeHtml(playerLabel)}</strong>`;
+    : `<strong class="games-game-player__name">${renderScoreboardPlayerNameContent(player)}</strong>`;
   const roundPointValue = model.roundPoints.get(player.profileId);
   const displayScore = model.displayScoreMap.get(player.profileId) ?? 0;
   const finalScore = model.finalScoreMap.get(player.profileId) ?? displayScore;

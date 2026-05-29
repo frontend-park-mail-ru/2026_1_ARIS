@@ -1,5 +1,7 @@
 import { updateGamesCountdown } from "../shared/timers";
 
+const COUNTDOWN_UPDATE_INTERVAL_MS = 100;
+
 export type GamesCountdownRuntime = {
   start: (root: Document | HTMLElement) => void;
   stop: () => void;
@@ -57,7 +59,7 @@ export function createGamesCountdownRuntime(
         const currentRoot = options.getRoot();
         if (!currentRoot) return;
         update(currentRoot);
-      }, 10);
+      }, COUNTDOWN_UPDATE_INTERVAL_MS);
     },
     stop,
   };

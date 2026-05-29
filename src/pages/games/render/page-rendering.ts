@@ -14,6 +14,7 @@ export type GamesPageRenderingOptions = {
   getRoot: () => Document | HTMLElement | null;
   getState: () => GamesPageState;
   isCatalogRoute: () => boolean;
+  isAuthorised?: (() => boolean) | undefined;
   reportedQuestionKeys: Set<string>;
   reportingQuestionKeys: Set<string>;
   getCurrentProfileId: () => string;
@@ -43,6 +44,7 @@ export function createGamesPageRendering(options: GamesPageRenderingOptions) {
   return createGamesPageRenderer({
     getState: options.getState,
     isCatalogRoute: options.isCatalogRoute,
+    isAuthorised: options.isAuthorised,
     reportedQuestionKeys: options.reportedQuestionKeys,
     reportingQuestionKeys: options.reportingQuestionKeys,
     questionReportUi,

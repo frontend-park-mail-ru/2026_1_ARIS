@@ -10,6 +10,7 @@ import { renderSidebar } from "../../../components/sidebar/sidebar";
 
 export type RenderGamesPageShellOptions = {
   room: GameRoom | null;
+  isAuthorised?: boolean | undefined;
   shell: string;
   playersRail: string;
   roomChat: string;
@@ -19,7 +20,9 @@ export type RenderGamesPageShellOptions = {
  * Рендерит полный shell страницы игр с учетом режима комнаты.
  */
 export function renderGamesPageShell(options: RenderGamesPageShellOptions): string {
-  if (options.room && options.room.status !== "waiting") {
+  const useGameRoomLayout = options.room && options.room.status !== "waiting";
+
+  if (useGameRoomLayout) {
     return `
       <div class="app-page app-page--content-wide app-page--game-room">
         ${renderHeader()}
@@ -43,7 +46,7 @@ export function renderGamesPageShell(options: RenderGamesPageShellOptions): stri
       ${renderHeader()}
       <main class="app-layout app-layout--content-wide">
         <aside class="app-layout__left">
-          ${renderSidebar({ isAuthorised: true })}
+          ${renderSidebar({ isAuthorised: options.isAuthorised ?? true })}
         </aside>
         <section class="app-layout__center">
           ${options.shell}

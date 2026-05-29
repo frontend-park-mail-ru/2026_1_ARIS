@@ -13,25 +13,6 @@ import type { RenderPlayerCell } from "../types";
 import { renderRoundResultStyle } from "./style";
 
 /**
- * Рендерит карточку правильного ответа на шкале результата.
- */
-function renderRoundCorrectAnswerCard(
-  item: Extract<RoundAnswerShowcaseItem, { type: "correct" }>,
-  index: number,
-): string {
-  return `
-    <article
-      class="games-answer-axis-card games-answer-axis-card--correct"
-      style="${renderRoundResultStyle(item, index)}"
-      data-games-correct-answer
-      data-games-round-answer-card
-    >
-      <strong class="games-answer-axis-card__correct-value">${escapeHtml(formatStoredAnswer(item.answerValue))}</strong>
-    </article>
-  `;
-}
-
-/**
  * Рендерит значение ответа игрока в карточке результата.
  */
 function renderRoundCardAnswer(row: RoundResultPresentationRow): string {
@@ -115,17 +96,13 @@ function renderRoundResultPlayerCard(
 export function renderRoundAnswerShowcaseItem(
   item: RoundAnswerShowcaseItem,
   index: number,
-  scorePlaceByProfile: Map<string, number>,
   timeRevealDelayMs: number,
   renderPlayerCell: RenderPlayerCell,
 ): string {
-  if (item.type === "correct") {
-    return renderRoundCorrectAnswerCard(item, index);
-  }
   return renderRoundResultPlayerCard(
     item.row,
     index,
-    scorePlaceByProfile.get(item.row.player.profileId) ?? item.row.place,
+    item.orderIndex,
     item.revealIndex,
     timeRevealDelayMs,
     renderPlayerCell,

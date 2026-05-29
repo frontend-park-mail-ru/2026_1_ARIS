@@ -13,6 +13,7 @@ import { createGameRoomAvatarService } from "./profile/avatars";
 
 export type GamesRoomServicesOptions = {
   getSessionUser: GameRoomAvatarServiceOptions["getSessionUser"];
+  loadAvatarUrlById?: GameRoomAvatarServiceOptions["loadAvatarUrlById"];
   loadProfile: GameRoomAvatarServiceOptions["loadProfile"];
 };
 
@@ -34,6 +35,7 @@ export function createGamesRoomServices(options: GamesRoomServicesOptions) {
     getSessionUser: options.getSessionUser,
     loadProfile: options.loadProfile,
     rememberRoomTitle: display.rememberRoomTitle,
+    ...(options.loadAvatarUrlById ? { loadAvatarUrlById: options.loadAvatarUrlById } : {}),
   });
 
   return {

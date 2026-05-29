@@ -9,6 +9,7 @@ describe("game api mappers", () => {
       Status: "active",
       CreatedByProfileID: 7,
       IsRanked: true,
+      RoundPauseSec: 9,
       Players: [
         { ProfileID: 7, FirstName: "Мария", LastName: "Соколова", IsMe: true },
         { ProfileID: 8, login: "anya" },
@@ -21,6 +22,7 @@ describe("game api mappers", () => {
       status: "active",
       createdByProfileId: "7",
       isRanked: true,
+      roundPauseSec: 9,
     });
     expect(room.players).toHaveLength(2);
     expect(room.players[0]).toMatchObject({

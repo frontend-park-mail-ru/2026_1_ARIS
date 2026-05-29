@@ -1,5 +1,5 @@
 import type { GameRoom } from "../../../../api/games";
-import { scoreValueAnimationMs } from "../../shared/constants";
+import { scoreboardSortAnimationMs, scoreValueAnimationMs } from "../../shared/constants";
 import {
   getComputedScoresByProfile,
   getLatestCompletedQuestion,
@@ -17,10 +17,10 @@ import {
 } from "../../round/timeline";
 import { isRoundResultRevealVisible } from "../../round/reveal";
 
-const scoreboardSortSettleMs = 650;
-const scoreboardScheduleLeadMs = 300;
-const scoreboardMinStartDelayMs = 260;
-const scoreboardMinStepDelayMs = 420;
+const scoreboardSortSettleMs = 160;
+const scoreboardScheduleLeadMs = 80;
+const scoreboardMinStartDelayMs = 80;
+const scoreboardMinStepDelayMs = 0;
 
 function getTimestampMs(value: string): number {
   const timestamp = new Date(value).getTime();
@@ -83,7 +83,10 @@ function getScoreAnimationSchedule(
     };
   }
 
-  const availableMs = Math.max(0, nextQuestionAtMs - timelineStartMs - scoreboardScheduleLeadMs);
+  const availableMs = Math.max(
+    0,
+    nextQuestionAtMs - timelineStartMs - scoreboardScheduleLeadMs - scoreboardSortAnimationMs,
+  );
   const defaultSortDelayMs = getScoreboardSortDelayMs(
     defaultStartDelayMs,
     defaultStepDelayMs,
@@ -140,7 +143,7 @@ export function getGameScoreboardModel(room: GameRoom) {
     ? getPreviousRoundScoresByProfile(room, revealQuestion)
     : finalScoreMap;
   const rankedPlayers = revealQuestion
-    ? getRankedPlayersByScores(room, displayScoreMap)
+    ? getRankedPlayersByScores(room, displayScoreMap, { excludeQuestionId: revealQuestion.id })
     : getRankedPlayers(room);
   const finalRankedPlayers = getRankedPlayersByScores(room, finalScoreMap);
   const finalOrderByProfile = new Map(

@@ -71,6 +71,7 @@ describe("games room action model", () => {
       maxPlayers: "4",
       questionCount: "7",
       answerTimeoutSec: "15",
+      roundPauseSec: "8",
       password: "secret",
       isRanked: false,
     });
@@ -80,6 +81,7 @@ describe("games room action model", () => {
       maxPlayers: 4,
       questionCount: 7,
       answerTimeoutSec: 15,
+      roundPauseSec: 8,
       password: "secret",
       gameType: "number_duel",
       isRanked: false,
@@ -93,12 +95,14 @@ describe("games room action model", () => {
       maxPlayers: "8",
       questionCount: "3",
       answerTimeoutSec: "60",
+      roundPauseSec: "12",
       password: "",
       isRanked: true,
     });
 
     expect(command.payload.questionCount).toBe(10);
     expect(command.payload.answerTimeoutSec).toBe(10);
+    expect(command.payload.roundPauseSec).toBe(5);
     expect(command.payload).not.toHaveProperty("password");
   });
 

@@ -1,11 +1,16 @@
 import type { GameRoom } from "../../../api/games";
-import { roundResultCountdownMs } from "../shared/constants";
 import { gameT } from "../shared/i18n";
 import {
   getRoundAnswerShowcaseItems,
   getRoundPointsByProfile,
   getRoundResultPresentationRows,
 } from "./model";
+
+/** Возвращает настроенную паузу между вопросами в миллисекундах. */
+function getRoomRoundPauseMs(room: GameRoom): number {
+  const value = Number.isFinite(room.roundPauseSec) ? room.roundPauseSec : 5;
+  return Math.max(1, Math.min(60, value || 5)) * 1000;
+}
 
 /** Возвращает короткое имя игрока для стабильной сортировки анимаций. */
 function getRoundTimelinePlayerLabel(player: GameRoom["players"][number]): string {
@@ -18,7 +23,7 @@ function getRoundTimelinePlayerLabel(player: GameRoom["players"][number]): strin
 
 /** Возвращает задержку раскрытия карточки ответа. */
 export function getRoundResultCardDelayMs(revealIndex: number): number {
-  return revealIndex === 0 ? 260 : 1600 + (revealIndex - 1) * 1300;
+  return revealIndex === 0 ? 120 : Math.min(1500, 240 + (revealIndex - 1) * 90);
 }
 
 /** Возвращает максимальный индекс раскрытия ответов раунда. */
@@ -27,7 +32,7 @@ export function getRoundResultMaxRevealIndex(
   question: GameRoom["questions"][number],
 ): number {
   const rows = getRoundResultPresentationRows(room, question);
-  const items = getRoundAnswerShowcaseItems(rows, question);
+  const items = getRoundAnswerShowcaseItems(rows);
   const maxRevealIndex = Math.max(0, ...items.map((item) => item.revealIndex));
   return maxRevealIndex;
 }
@@ -37,7 +42,7 @@ export function getRoundAnswersRevealEndDelayMs(
   room: GameRoom,
   question: GameRoom["questions"][number],
 ): number {
-  return getRoundResultCardDelayMs(getRoundResultMaxRevealIndex(room, question)) + 2100;
+  return getRoundResultCardDelayMs(getRoundResultMaxRevealIndex(room, question)) + 900;
 }
 
 /** Возвращает задержку раскрытия времени ответов. */
@@ -45,7 +50,7 @@ export function getRoundTimesRevealDelayMs(
   room: GameRoom,
   question: GameRoom["questions"][number],
 ): number {
-  return getRoundAnswersRevealEndDelayMs(room, question) + 600;
+  return getRoundAnswersRevealEndDelayMs(room, question) + 180;
 }
 
 /** Возвращает последовательность начисления очков игрокам. */
@@ -71,12 +76,12 @@ export function getRoundScoreAnimationStartDelayMs(
   room: GameRoom,
   question: GameRoom["questions"][number],
 ): number {
-  return getRoundTimesRevealDelayMs(room, question) + 650;
+  return getRoundTimesRevealDelayMs(room, question) + 180;
 }
 
 /** Возвращает шаг задержки между начислениями очков. */
 export function getRoundScoreStepDelayMs(): number {
-  return 1250;
+  return 0;
 }
 
 /** Возвращает задержку финальной сортировки scoreboard. */
@@ -88,24 +93,24 @@ export function getRoundScoreboardSortDelayMs(
   return (
     getRoundScoreAnimationStartDelayMs(room, question) +
     sequence.length * getRoundScoreStepDelayMs() +
-    650
+    220
   );
 }
 
 /** Возвращает задержку запуска таймера перехода к следующему этапу. */
 export function getRoundResultTimerDelayMs(
-  room: GameRoom,
-  question: GameRoom["questions"][number],
+  _room: GameRoom,
+  _question: GameRoom["questions"][number],
 ): number {
-  return getRoundScoreboardSortDelayMs(room, question) + 850;
+  return 0;
 }
 
 /** Возвращает задержку полного перехода к следующему этапу после результата раунда. */
 export function getRoundResultTransitionEndDelayMs(
   room: GameRoom,
-  question: GameRoom["questions"][number],
+  _question: GameRoom["questions"][number],
 ): number {
-  return getRoundResultTimerDelayMs(room, question) + roundResultCountdownMs;
+  return getRoomRoundPauseMs(room);
 }
 
 /** Возвращает timestamp начала таймлайна результата раунда. */

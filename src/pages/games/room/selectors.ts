@@ -1,6 +1,9 @@
 import type { GameRoom } from "../../../api/games";
 import { getCompletedQuestions } from "../round/model";
 
+const roomMaxPlayers = 8;
+const publicLobbyMaxPlayers = 80;
+
 /** Возвращает оппонента текущего профиля в комнате. */
 export function getOpponent(room: GameRoom | null, currentProfileId: string) {
   return room?.players.find((player) => player.profileId !== currentProfileId) ?? null;
@@ -9,21 +12,27 @@ export function getOpponent(room: GameRoom | null, currentProfileId: string) {
 /** Возвращает текущего игрока комнаты по флагу isMe или profileId. */
 export function getCurrentPlayer(room: GameRoom | null, currentProfileId: string) {
   return (
+    (currentProfileId
+      ? room?.players.find((player) => player.profileId === currentProfileId)
+      : null) ??
     room?.players.find((player) => player.isMe) ??
-    room?.players.find((player) => player.profileId === currentProfileId) ??
     null
   );
 }
 
 /** Проверяет, является ли текущий игрок создателем комнаты. */
 export function isCurrentRoomCreator(room: GameRoom, currentProfileId: string): boolean {
+  if (currentProfileId && room.createdByProfileId === currentProfileId) {
+    return true;
+  }
   const currentPlayer = getCurrentPlayer(room, currentProfileId);
   return Boolean(currentPlayer?.profileId && currentPlayer.profileId === room.createdByProfileId);
 }
 
 /** Возвращает нормализованный лимит игроков комнаты. */
 export function getRoomMaxPlayers(room: GameRoom): number {
-  return Math.min(8, Math.max(2, room.maxPlayers || 2));
+  const maxPlayers = room.isPublicLobby ? publicLobbyMaxPlayers : roomMaxPlayers;
+  return Math.min(maxPlayers, Math.max(2, room.maxPlayers || 2));
 }
 
 /** Проверяет, заполнена ли комната по лимиту игроков. */
@@ -76,7 +85,12 @@ export function getPausedByPlayer(room: GameRoom): GameRoom["players"][number] |
 /** Проверяет, может ли текущий игрок поставить комнату на паузу. */
 export function canCurrentPlayerPause(room: GameRoom): boolean {
   const player = getCurrentRoomPlayer(room);
-  return room.status === "active" && !isRoomPaused(room) && Boolean(player && !player.pauseUsed);
+  return (
+    room.status === "active" &&
+    !room.isPublicLobby &&
+    !isRoomPaused(room) &&
+    Boolean(player && !player.pauseUsed)
+  );
 }
 
 /** Проверяет, может ли текущий игрок проголосовать за продолжение. */

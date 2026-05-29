@@ -1,6 +1,12 @@
 import { escapeHtml, renderAvatarMarkup } from "../../../../utils/avatar";
+import { formatDurationMs } from "../../round/model";
 import { formatRatingDelta, formatGamePoints } from "../../shared/formatters";
-import { getComputedScoresByProfile, getPlayerPlace, getRankedPlayers } from "../../round/model";
+import {
+  getComputedScoresByProfile,
+  getPlayerPlace,
+  getPlayerTotalResponseTimeMs,
+  getRankedPlayers,
+} from "../../round/model";
 import { getPlayerFullName } from "../../room/profile/players";
 import { gameT } from "../../shared/i18n";
 import { getRatingDeltaClass } from "./rating";
@@ -29,6 +35,7 @@ export function renderFinalStandings(options: RenderFinalGameStageOptions): stri
             },
           );
           const ratingDelta = ratingByProfile.get(player.profileId)?.ratingDelta ?? 0;
+          const totalTime = getPlayerTotalResponseTimeMs(room, player.profileId);
           return `
             <article class="games-final-place${player.isMe ? " games-final-place--me" : ""}${index === 0 ? " games-final-place--winner" : ""}" style="--games-result-index: ${index}">
               <strong>${getPlayerPlace(room, player)}</strong>
@@ -55,7 +62,10 @@ export function renderFinalStandings(options: RenderFinalGameStageOptions): stri
                     })
                   : `<span class="games-final-place__name">${escapeHtml(playerLabel)}</span>`
               }
-              <em>${escapeHtml(formatGamePoints(scoreMap.get(player.profileId) ?? 0))}</em>
+              <span class="games-final-place__stats">
+                <em><span>${escapeHtml(gameT("results.standingsPoints"))}</span>${escapeHtml(formatGamePoints(scoreMap.get(player.profileId) ?? 0))}</em>
+                <time><span>${escapeHtml(gameT("results.standingsTime"))}</span>${escapeHtml(formatDurationMs(totalTime))}</time>
+              </span>
               ${
                 room.isRanked && ratingByProfile.has(player.profileId)
                   ? `<small class="${getRatingDeltaClass(ratingDelta)}">

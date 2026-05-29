@@ -35,7 +35,7 @@ export function renderGameScoreboard(options: RenderGameScoreboardOptions): stri
 /** Рендерит боковую панель игроков для полноэкранной игровой сцены. */
 export function renderGamePlayersRail(options: RenderGamePlayersRailOptions): string {
   return `
-    <section class="games-room-players-panel content-card" aria-label="${escapeHtml(gameT("gameplay.playersTitle"))}">
+    <section class="games-room-players-panel${options.room.isPublicLobby ? " games-room-players-panel--public" : ""} content-card" aria-label="${escapeHtml(gameT("gameplay.playersTitle"))}">
       ${renderGameScoreboard(options)}
       <button type="button" class="games-button games-button--danger games-room-exit-button" data-games-leave-open ${options.loading ? "disabled" : ""}>
         ${escapeHtml(gameT("gameplay.leaveGame"))}

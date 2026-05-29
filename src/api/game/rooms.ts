@@ -6,6 +6,11 @@
 import { apiRequest } from "../core/client";
 import type { CreateGameRoomPayload, GameRoom, JoinGameRoomPayload } from "./types";
 import { asArray, asRecord, extractRoomResponse, mapRoom } from "./mappers";
+import {
+  getPublicGameGuestSessionByRoom,
+  getPublicGameRoom,
+  submitPublicGameAnswer,
+} from "./public-room";
 
 export async function createGameRoom(payload: CreateGameRoomPayload): Promise<GameRoom> {
   return extractRoomResponse(
@@ -40,6 +45,11 @@ export async function getGameRooms(signal?: AbortSignal): Promise<GameRoom[]> {
 }
 
 export async function getGameRoom(roomId: string, signal?: AbortSignal): Promise<GameRoom> {
+  const publicSession = getPublicGameGuestSessionByRoom(roomId);
+  if (publicSession) {
+    return getPublicGameRoom(roomId, publicSession.token, signal);
+  }
+
   return extractRoomResponse(
     await apiRequest<unknown>(
       `/api/games/rooms/${encodeURIComponent(roomId)}`,
@@ -134,6 +144,11 @@ export async function startGameRoom(roomId: string): Promise<GameRoom> {
 }
 
 export async function submitGameAnswer(roomId: string, answer: number): Promise<GameRoom | null> {
+  const publicSession = getPublicGameGuestSessionByRoom(roomId);
+  if (publicSession) {
+    return submitPublicGameAnswer(roomId, publicSession.token, answer);
+  }
+
   const data = await apiRequest<unknown>(
     `/api/games/rooms/${encodeURIComponent(roomId)}/answers`,
     { method: "POST", body: { answer } },

@@ -3,6 +3,8 @@ import type { GamePlayer, GameRoom } from "../../../api/games";
 import {
   getComputedScoresByProfile,
   getComputedWinnerProfileId,
+  getPlayerPlace,
+  getPlayerTotalResponseTimeMs,
   getRoundPointsByProfile,
   getRoundResultRows,
 } from "./model";
@@ -185,5 +187,69 @@ describe("games round model", () => {
       "3": 2,
     });
     expect(getComputedWinnerProfileId(room)).toBe("2");
+  });
+
+  it("сортирует равные итоговые очки по суммарному времени ответов", () => {
+    const room = createRoom();
+    const ada = room.players[0]!;
+    const grace = room.players[1]!;
+
+    room.players = [ada, grace];
+    room.questions = [
+      {
+        ...room.questions[0]!,
+        answers: [
+          {
+            profileId: ada.profileId,
+            answer: 100,
+            distance: 0,
+            answeredAt: "",
+            responseTimeMs: 1000,
+            isWinner: true,
+          },
+          {
+            profileId: grace.profileId,
+            answer: 101,
+            distance: 1,
+            answeredAt: "",
+            responseTimeMs: 500,
+            isWinner: false,
+          },
+        ],
+        winnerProfileId: ada.profileId,
+      },
+      {
+        ...room.questions[1]!,
+        answers: [
+          {
+            profileId: ada.profileId,
+            answer: 49,
+            distance: 1,
+            answeredAt: "",
+            responseTimeMs: 1000,
+            isWinner: false,
+          },
+          {
+            profileId: grace.profileId,
+            answer: 50,
+            distance: 0,
+            answeredAt: "",
+            responseTimeMs: 200,
+            isWinner: true,
+          },
+        ],
+        winnerProfileId: grace.profileId,
+      },
+    ];
+
+    expect(Object.fromEntries(getComputedScoresByProfile(room))).toEqual({
+      "1": 1,
+      "2": 1,
+    });
+    expect(getPlayerTotalResponseTimeMs(room, ada.profileId)).toBe(2000);
+    expect(getPlayerTotalResponseTimeMs(room, grace.profileId)).toBe(700);
+    expect(getPlayerPlace(room, grace)).toBe(1);
+    expect(getPlayerPlace(room, ada)).toBe(2);
+    expect(getComputedWinnerProfileId(room)).toBe(grace.profileId);
   });
 });

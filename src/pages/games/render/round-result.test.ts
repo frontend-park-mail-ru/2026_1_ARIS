@@ -38,6 +38,15 @@ function createRoom(status: GameRoom["status"] = "active"): GameRoom {
     username: "grace",
     isMe: false,
   });
+  const alan = createPlayer({
+    profileId: "3",
+    userAccountId: "30",
+    name: "Alan Turing",
+    firstName: "Alan",
+    lastName: "Turing",
+    username: "alan",
+    isMe: false,
+  });
   return {
     id: "room-1",
     title: "",
@@ -60,7 +69,7 @@ function createRoom(status: GameRoom["status"] = "active"): GameRoom {
     pauseForceVotes: 0,
     pauseForceVotesRequired: 0,
     creator: ada,
-    players: [ada, grace],
+    players: [ada, grace, alan],
     currentQuestion: null,
     questions: [
       {
@@ -84,6 +93,14 @@ function createRoom(status: GameRoom["status"] = "active"): GameRoom {
             distance: 2,
             answeredAt: "",
             responseTimeMs: 800,
+            isWinner: false,
+          },
+          {
+            profileId: alan.profileId,
+            answer: 0,
+            distance: 2,
+            answeredAt: "",
+            responseTimeMs: 700,
             isWinner: false,
           },
         ],
@@ -117,11 +134,28 @@ describe("games round result render", () => {
     expect(html).toContain("How many moons does Mars have?");
     expect(html).toContain("data-games-round-next-timer");
     expect(html).toContain("Следующий вопрос");
-    expect(html).toContain('data-games-timer-delay-until="1779667219000"');
-    expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:24.000Z"');
+    expect(html).toContain('data-games-timer-delay-until="1779667210000"');
+    expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:15.000Z"');
     expect(html).toContain('data-games-timer-total-ms="5000"');
-    expect(html).toContain("games-answer-axis-card--correct");
+    expect(html).toContain("Правильный ответ: 2");
+    expect(html).not.toContain("games-answer-axis-card--correct");
     expect(html).toContain("Ada");
+    expect(html).toContain("Alan");
+    expect(html).toContain("0.90 сек");
+    expect(html).toContain("0.70 сек");
+    expect(html).toContain("0.80 сек");
+
+    document.body.innerHTML = html;
+    const cards = [...document.querySelectorAll("[data-games-round-result-card]")];
+    const cardTexts = cards.map((card) => card.textContent?.replace(/\s+/g, " ").trim() ?? "");
+    expect(cardTexts[0]).toContain("Ada");
+    expect(cardTexts[0]).toContain("0.90 сек");
+    expect(cardTexts[1]).toContain("Alan");
+    expect(cardTexts[1]).toContain("-2");
+    expect(cardTexts[1]).toContain("0.70 сек");
+    expect(cardTexts[2]).toContain("Grace");
+    expect(cardTexts[2]).toContain("+2");
+    expect(cardTexts[2]).toContain("0.80 сек");
   });
 
   it("рендерит итоги раунда на английском языке интерфейса", () => {

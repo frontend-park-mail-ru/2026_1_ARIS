@@ -13,6 +13,30 @@ export function getLatestCompletedQuestion(room: GameRoom): GameQuestion | null 
   return completed.length ? completed[completed.length - 1]! : null;
 }
 
+/** Возвращает стабильную сигнатуру данных результата вопроса. */
+export function getQuestionResultSignature(question: GameQuestion): string {
+  const answersSignature = [...question.answers]
+    .sort((left, right) => left.profileId.localeCompare(right.profileId, "ru"))
+    .map((answer) =>
+      [
+        answer.profileId,
+        answer.answer ?? "",
+        answer.distance ?? "",
+        answer.responseTimeMs ?? "",
+        answer.isWinner ? "1" : "0",
+      ].join(":"),
+    )
+    .join("|");
+  return [
+    question.id,
+    question.status,
+    question.correctAnswer ?? "",
+    question.winnerProfileId,
+    question.completedAt,
+    answersSignature,
+  ].join(";");
+}
+
 /** Формирует подпись текущей позиции вопроса в раунде. */
 export function getQuestionPositionLabel(room: GameRoom, position?: number): string {
   const currentPosition =

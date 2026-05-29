@@ -136,6 +136,7 @@ function pushRoomReadyMessages(
   roomRosterChanged: boolean,
 ): void {
   if (previousRoom.status !== "waiting" || nextRoom.status !== "waiting") return;
+  if (previousRoom.isPublicLobby || nextRoom.isPublicLobby) return;
 
   const suppressForcedNotReady = previousRoom.isRanked !== nextRoom.isRanked || roomRosterChanged;
   const readyCount = nextRoom.players.filter((player) => player.isReady).length;

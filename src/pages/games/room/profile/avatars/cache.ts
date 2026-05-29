@@ -9,6 +9,7 @@ import type { GamePlayer, GameRoomAvatarCaches } from "./types";
 export function createGameRoomAvatarCaches(): GameRoomAvatarCaches {
   return {
     gameAvatarLinkCache: new Map<string, string>(),
+    gameAvatarMediaUrlCache: new Map<string, string>(),
     gameRoomChatAuthorAvatarCache: new Map<string, string>(),
     gameRoomChatAuthorAvatarRequestCache: new Map<string, Promise<string>>(),
     gamePlayerGenderCache: new Map<string, GamePlayer["gender"]>(),

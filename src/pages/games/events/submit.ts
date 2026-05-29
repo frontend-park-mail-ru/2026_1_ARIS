@@ -17,6 +17,7 @@ export type BindGamesSubmitEventsOptions = {
   handleSubmitRoomChat: (form: HTMLFormElement) => Promise<void>;
   handleCreateRoom: (form: HTMLFormElement) => Promise<void>;
   handleJoinRoom: (form: HTMLFormElement) => Promise<void>;
+  handleJoinPublicRoom?: ((form: HTMLFormElement) => Promise<void>) | undefined;
   handleJoinListedRoom: (form: HTMLFormElement) => Promise<void>;
   handleRenameRoomTitle: (form: HTMLFormElement) => Promise<void>;
   handlePasswordForm: (form: HTMLFormElement) => Promise<void>;
@@ -37,6 +38,9 @@ function getSubmitFormAction(
   options: BindGamesSubmitEventsOptions,
 ): (() => Promise<void>) | null {
   if (form.matches("[data-games-create-room]")) return () => options.handleCreateRoom(form);
+  if (form.matches("[data-games-public-join]") && options.handleJoinPublicRoom) {
+    return () => options.handleJoinPublicRoom!(form);
+  }
   if (form.matches("[data-games-join-room]")) return () => options.handleJoinRoom(form);
   if (form.matches("[data-games-join-listed-room]")) {
     return () => options.handleJoinListedRoom(form);

@@ -29,6 +29,10 @@ function getPauseCountdownTotalMs(deadlineAt: string): number {
  */
 export function renderPauseAction(options: RenderPauseActionOptions): string {
   const { room, loading, canPause, currentPlayer, isStartCountdown } = options;
+  if (room.isPublicLobby) {
+    return "";
+  }
+
   if (isStartCountdown) {
     return "";
   }

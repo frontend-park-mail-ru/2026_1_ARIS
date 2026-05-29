@@ -2,7 +2,7 @@ import { escapeHtml } from "../../../utils/avatar";
 import { getFinalRoundResultsUntil } from "../round/reveal";
 import {
   getRoundResultTimelineStartMs,
-  getRoundResultTransitionEndDelayMs,
+  getRoundResultTransitionDurationMs,
   getRoundResultTransitionEndMs,
 } from "../round/timeline";
 import { renderRoundAnswerShowcase } from "./round-result/showcase";
@@ -20,6 +20,7 @@ export function renderRoundResultStage(options: RenderRoundResultStageOptions): 
   const finalResultsUntil = getFinalRoundResultsUntil(room, question);
   const shouldShowNextQuestionTimer = room.status === "active";
   const transitionEndAt = new Date(getRoundResultTransitionEndMs(room, question)).toISOString();
+  const shouldRefreshAtTransitionEnd = shouldShowNextQuestionTimer && Boolean(room.currentQuestion);
   const resultTimer =
     shouldShowNextQuestionTimer || finalResultsUntil
       ? renderRoundResultCountdown(room, question, {
@@ -30,7 +31,7 @@ export function renderRoundResultStage(options: RenderRoundResultStageOptions): 
             ? gameT("results.nextQuestionIn")
             : gameT("results.gameResultsIn"),
           startAtMs: getRoundResultTimelineStartMs(question),
-          durationMs: getRoundResultTransitionEndDelayMs(room, question),
+          durationMs: getRoundResultTransitionDurationMs(room, question),
         })
       : "";
 
@@ -38,6 +39,7 @@ export function renderRoundResultStage(options: RenderRoundResultStageOptions): 
     <section class="games-game-stage games-game-stage--result" data-key="stage-result-${escapeHtml(question.id)}" aria-label="${escapeHtml(gameT("results.roundResultsAria"))}">
       <div class="games-stage-card games-stage-card--result">
         ${finalResultsUntil ? `<span hidden data-games-final-results-until="${escapeHtml(finalResultsUntil.toISOString())}"></span>` : ""}
+        ${shouldRefreshAtTransitionEnd ? `<span hidden data-games-round-result-until="${escapeHtml(transitionEndAt)}"></span>` : ""}
         ${resultTimer}
         ${renderRoundAnswerShowcase(options)}
       </div>

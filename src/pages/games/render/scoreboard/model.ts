@@ -1,5 +1,4 @@
 import type { GameRoom } from "../../../../api/games";
-import { scoreValueAnimationMs } from "../../shared/constants";
 import {
   getComputedScoresByProfile,
   getLatestCompletedQuestion,
@@ -15,12 +14,10 @@ import {
   getRoundResultTimelineStartMs,
   getRoundResultTransitionEndMs,
   getRoundScoreAnimationStartDelayMs,
+  getRoundScoreboardSortDelayMs,
   getRoundScoreStepDelayMs,
 } from "../../round/timeline";
 import { isRoundResultRevealVisible } from "../../round/reveal";
-
-const scoreboardSortSettleMs = 650;
-const scoreboardScheduleLeadMs = 300;
 
 function getTimestampMs(value: string): number {
   const timestamp = new Date(value).getTime();
@@ -47,18 +44,6 @@ function getDisplayedRoundQuestion(room: GameRoom): GameRoom["questions"][number
   return shouldKeepRecentScoreboardAnimation(room, latestCompleted) ? latestCompleted : null;
 }
 
-function getScoreboardSortDelayMs(
-  scoreStartDelayMs: number,
-  scoreStepDelayMs: number,
-  count: number,
-) {
-  if (count <= 0) return 0;
-  const lastScoreStartMs = scoreStartDelayMs + Math.max(0, count - 1) * scoreStepDelayMs;
-  const delayedSortMs = lastScoreStartMs + scoreboardSortSettleMs;
-  const lastScoreEndMs = lastScoreStartMs + scoreValueAnimationMs;
-  return Math.max(delayedSortMs, lastScoreEndMs + scoreboardScheduleLeadMs);
-}
-
 function getScoreAnimationSchedule(
   room: GameRoom,
   question: GameRoom["questions"][number],
@@ -66,7 +51,7 @@ function getScoreAnimationSchedule(
   pointSequenceCount: number,
 ): { scoreStartDelayMs: number; scoreStepDelayMs: number; sortAtMs: number } {
   const scoreStartDelayMs = getRoundScoreAnimationStartDelayMs(room, question);
-  const scoreStepDelayMs = getRoundScoreStepDelayMs();
+  const scoreStepDelayMs = getRoundScoreStepDelayMs(pointSequenceCount);
 
   if (pointSequenceCount <= 0) {
     return { scoreStartDelayMs: 0, scoreStepDelayMs, sortAtMs: 0 };
@@ -75,9 +60,7 @@ function getScoreAnimationSchedule(
   return {
     scoreStartDelayMs,
     scoreStepDelayMs,
-    sortAtMs:
-      timelineStartMs +
-      getScoreboardSortDelayMs(scoreStartDelayMs, scoreStepDelayMs, pointSequenceCount),
+    sortAtMs: timelineStartMs + getRoundScoreboardSortDelayMs(room, question),
   };
 }
 

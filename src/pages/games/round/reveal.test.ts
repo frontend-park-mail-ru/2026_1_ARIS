@@ -26,7 +26,7 @@ function createPlayer(): GamePlayer {
   };
 }
 
-function createRoom(completedAt: string): GameRoom {
+function createRoom(completedAt: string, overrides: Partial<GameRoom> = {}): GameRoom {
   const player = createPlayer();
   return {
     id: "room-1",
@@ -69,6 +69,7 @@ function createRoom(completedAt: string): GameRoom {
     ratingChanges: [],
     winnerProfileId: "",
     profileStats: null,
+    ...overrides,
   };
 }
 
@@ -79,11 +80,11 @@ describe("games round reveal", () => {
 
   it("держит финальный раунд на экране до окна итогов", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-05-25T00:00:10.000Z"));
+    vi.setSystemTime(new Date("2026-05-25T00:00:04.000Z"));
     const room = createRoom("2026-05-25T00:00:00.000Z");
 
     expect(getFinalRoundResultsUntil(room, room.questions[0]!)).toEqual(
-      new Date("2026-05-25T00:00:11.450Z"),
+      new Date("2026-05-25T00:00:05.000Z"),
     );
     expect(shouldShowFinalRoundResultBeforeSummary(room)).toBe(true);
     expect(isRoundResultRevealVisible(room)).toBe(true);
@@ -95,5 +96,41 @@ describe("games round reveal", () => {
     const room = createRoom("2026-05-25T00:00:00.000Z");
 
     expect(shouldShowFinalRoundResultBeforeSummary(room)).toBe(false);
+  });
+
+  it("держит активный результат до серверного nextQuestionAt", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T00:00:10.000Z"));
+    const room = createRoom("2026-05-25T00:00:00.000Z", {
+      status: "active",
+      questionCount: 2,
+      nextQuestionAt: "2026-05-25T00:00:12.000Z",
+    });
+
+    expect(isRoundResultRevealVisible(room)).toBe(true);
+
+    vi.setSystemTime(new Date("2026-05-25T00:00:12.100Z"));
+
+    expect(isRoundResultRevealVisible(room)).toBe(false);
+  });
+
+  it("не держит результат после серверного старта следующего вопроса", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T00:00:10.100Z"));
+    const room = createRoom("2026-05-25T00:00:00.000Z", {
+      status: "active",
+      questionCount: 2,
+      currentQuestionIndex: 2,
+      currentQuestion: {
+        id: "q2",
+        position: 2,
+        text: "Next question",
+        startedAt: "2026-05-25T00:00:10.000Z",
+        deadlineAt: "2026-05-25T00:00:20.000Z",
+        hasAnswered: false,
+      },
+    });
+
+    expect(isRoundResultRevealVisible(room)).toBe(false);
   });
 });

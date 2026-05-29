@@ -56,6 +56,11 @@ export function renderGameStagePresenter(options: RenderGamePlayPresenterOptions
     return renderGameStartingStage(room);
   }
 
+  const latestRoundResult = renderLatestRoundResultStage(room, options);
+  if (latestRoundResult) {
+    return latestRoundResult;
+  }
+
   if (room.currentQuestion) {
     return renderActiveRoundStage({
       room,
@@ -63,11 +68,6 @@ export function renderGameStagePresenter(options: RenderGamePlayPresenterOptions
       submittedAnswerValue: state.submittedAnswerValue,
       renderInlineError: options.renderInlineError,
     });
-  }
-
-  const latestRoundResult = renderLatestRoundResultStage(room, options);
-  if (latestRoundResult) {
-    return latestRoundResult;
   }
 
   return renderActiveRoundStage({

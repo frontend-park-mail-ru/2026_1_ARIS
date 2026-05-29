@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GamePlayer, GameRoom } from "../../../api/games";
 import { createInitialGamesState } from "../state/store";
 import {
@@ -92,6 +92,10 @@ function createOptions(room = createRoom()) {
 }
 
 describe("games game-stage presenter", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("рендерит активный вопрос через presenter", () => {
     const html = renderGamePlayPresenter(createOptions());
 
@@ -110,6 +114,36 @@ describe("games game-stage presenter", () => {
 
     expect(html).toContain("Игра начинается");
     expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:10.000Z"');
+  });
+
+  it("показывает результат раунда до серверного nextQuestionAt", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T00:00:10.000Z"));
+    const room = createRoom({
+      currentQuestionIndex: 2,
+      currentQuestion: null,
+      nextQuestionAt: "2026-05-25T00:00:12.000Z",
+      questions: [
+        {
+          id: "q1",
+          position: 1,
+          status: "completed",
+          text: "Completed question",
+          correctAnswer: 42,
+          answers: [],
+          winnerProfileId: "",
+          startedAt: "2026-05-25T00:00:00.000Z",
+          deadlineAt: "2026-05-25T00:00:10.000Z",
+          completedAt: "2026-05-25T00:00:00.000Z",
+        },
+      ],
+    });
+
+    const html = renderGameStagePresenter(createOptions(room));
+
+    expect(html).toContain("Completed question");
+    expect(html).toContain("Следующий вопрос через");
+    expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:12.000Z"');
   });
 
   it("рендерит pause-action с текущим игроком", () => {

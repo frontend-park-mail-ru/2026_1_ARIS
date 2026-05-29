@@ -52,15 +52,15 @@ export function getGamesPopoverBounds(anchor: HTMLElement): DOMRect {
  * Обновляет CSS-переменные позиции одной подсказки.
  */
 export function updateGamesPopoverViewportOffset(popover: HTMLElement): void {
-  popover.style.removeProperty("--games-popover-top");
-  popover.style.removeProperty("--games-popover-left");
-  popover.style.removeProperty("--games-popover-max-width");
-  popover.dataset.gamesPopoverPlacement = "";
-
   if (popover.hidden) return;
 
   const anchor = getGamesPopoverAnchor(popover);
   if (!anchor) return;
+
+  popover.style.removeProperty("--games-popover-top");
+  popover.style.removeProperty("--games-popover-left");
+  popover.style.removeProperty("--games-popover-max-width");
+  popover.dataset.gamesPopoverPlacement = "";
 
   const safeViewportPadding = 12;
   const safeBoundsPadding = 12;

@@ -23,8 +23,15 @@ export function shouldShowFinalRoundResultBeforeSummary(room: GameRoom): boolean
 
 /** Проверяет, видим ли сейчас экран раскрытия результата раунда. */
 export function isRoundResultRevealVisible(room: GameRoom): boolean {
-  return (
-    (room.status === "active" && !room.currentQuestion) ||
-    (room.status === "finished" && shouldShowFinalRoundResultBeforeSummary(room))
-  );
+  if (room.status === "finished") {
+    return shouldShowFinalRoundResultBeforeSummary(room);
+  }
+
+  if (room.status !== "active") return false;
+
+  const latestCompleted = getLatestCompletedQuestion(room);
+  if (!latestCompleted) return false;
+
+  const transitionEndMs = getRoundResultTransitionEndMs(room, latestCompleted);
+  return Number.isFinite(transitionEndMs) && Date.now() < transitionEndMs;
 }

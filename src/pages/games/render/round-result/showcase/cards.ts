@@ -18,11 +18,12 @@ import { renderRoundResultStyle } from "./style";
 function renderRoundCorrectAnswerCard(
   item: Extract<RoundAnswerShowcaseItem, { type: "correct" }>,
   index: number,
+  maxRevealIndex: number,
 ): string {
   return `
     <article
       class="games-answer-axis-card games-answer-axis-card--correct"
-      style="${renderRoundResultStyle(item, index)}"
+      style="${renderRoundResultStyle(item, index, maxRevealIndex)}"
       data-games-correct-answer
       data-games-round-answer-card
     >
@@ -86,12 +87,13 @@ function renderRoundResultPlayerCard(
   index: number,
   roundPlace: number,
   revealIndex: number,
+  maxRevealIndex: number,
   timeRevealDelayMs: number,
   renderPlayerCell: RenderPlayerCell,
 ): string {
   const playerLabel = getGamePlayerLabel(row.player);
   const timeLabel = formatDurationMs(row.answer?.responseTimeMs);
-  const cardStyle = `${renderRoundResultStyle({ ...row, revealIndex }, index)}; --games-time-reveal-delay: ${timeRevealDelayMs}ms`;
+  const cardStyle = `${renderRoundResultStyle({ ...row, revealIndex }, index, maxRevealIndex)}; --games-time-reveal-delay: ${timeRevealDelayMs}ms`;
 
   return `
     <article
@@ -116,17 +118,19 @@ export function renderRoundAnswerShowcaseItem(
   item: RoundAnswerShowcaseItem,
   index: number,
   scorePlaceByProfile: Map<string, number>,
+  maxRevealIndex: number,
   timeRevealDelayMs: number,
   renderPlayerCell: RenderPlayerCell,
 ): string {
   if (item.type === "correct") {
-    return renderRoundCorrectAnswerCard(item, index);
+    return renderRoundCorrectAnswerCard(item, index, maxRevealIndex);
   }
   return renderRoundResultPlayerCard(
     item.row,
     index,
     scorePlaceByProfile.get(item.row.player.profileId) ?? item.row.place,
     item.revealIndex,
+    maxRevealIndex,
     timeRevealDelayMs,
     renderPlayerCell,
   );

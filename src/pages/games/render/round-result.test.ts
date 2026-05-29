@@ -53,7 +53,7 @@ function createRoom(status: GameRoom["status"] = "active"): GameRoom {
     questionCount: 1,
     answerTimeoutSec: 10,
     currentQuestionIndex: 1,
-    nextQuestionAt: status === "active" ? "2026-05-25T00:00:30.000Z" : "",
+    nextQuestionAt: status === "active" ? "2026-05-25T00:00:15.000Z" : "",
     pausedByProfileId: "",
     pauseStartedAt: "",
     pauseUntilAt: "",
@@ -118,9 +118,9 @@ describe("games round result render", () => {
     expect(html).toContain("How many moons does Mars have?");
     expect(html).toContain("data-games-round-next-timer");
     expect(html).toContain("Следующий вопрос через");
-    expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:24.000Z"');
+    expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:15.000Z"');
     expect(html).toContain('data-games-timer-start="2026-05-25T00:00:10.000Z"');
-    expect(html).toContain('data-games-timer-total-ms="14000"');
+    expect(html).toContain('data-games-timer-total-ms="5000"');
     expect(html).toContain("games-answer-axis-card--correct");
     expect(html).toContain("Ada");
     expect(html).toContain("0.90 сек");
@@ -152,7 +152,7 @@ describe("games round result render", () => {
 
     expect(html).toContain("data-games-round-next-timer");
     expect(html).toContain("Следующий вопрос через");
-    expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:24.000Z"');
+    expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:15.000Z"');
   });
 
   it("рендерит hidden-маркер окна финальных итогов", () => {

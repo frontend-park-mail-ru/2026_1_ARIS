@@ -29,7 +29,7 @@ export function buildCreateRoomCommand(values: CreateRoomFormValues): CreateRoom
   const questionCount = parseBoundedInt(values.questionCount, 5, 1, 20);
   const answerTimeoutSec = parseBoundedInt(values.answerTimeoutSec, 10, 0, 300);
   const roundPauseSec = parseBoundedInt(values.roundPauseSec, 5, 1, 60);
-  const normalizedQuestionCount = values.isRanked ? 10 : questionCount;
+  const normalizedQuestionCount = values.isRanked ? 20 : questionCount;
   const normalizedAnswerTimeoutSec = values.isRanked ? 10 : answerTimeoutSec;
   const normalizedRoundPauseSec = values.isRanked ? 5 : roundPauseSec;
   const payload: CreateGameRoomPayload = {

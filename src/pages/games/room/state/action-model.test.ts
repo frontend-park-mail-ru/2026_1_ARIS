@@ -100,7 +100,7 @@ describe("games room action model", () => {
       isRanked: true,
     });
 
-    expect(command.payload.questionCount).toBe(10);
+    expect(command.payload.questionCount).toBe(20);
     expect(command.payload.answerTimeoutSec).toBe(10);
     expect(command.payload.roundPauseSec).toBe(5);
     expect(command.payload).not.toHaveProperty("password");

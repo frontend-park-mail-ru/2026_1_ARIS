@@ -651,7 +651,7 @@ describe("игровая комната", () => {
 
     cy.get(".games-panel").then(($panel) => {
       const panelBeforeSend = $panel[0];
-      cy.get("[data-games-room-chat-input]").type("Готовы начинать");
+      cy.get("[data-games-room-chat-input]").should("not.be.disabled").type("Готовы начинать");
       cy.get("[data-games-room-chat-form]").submit();
       cy.wait("@sendRoomMessage42").its("request.body").should("deep.equal", {
         text: "Готовы начинать",
@@ -1094,9 +1094,8 @@ describe("игровая комната", () => {
     );
     cy.get(".games-game-stage").should("not.contain", "фильмов");
     cy.get("[data-games-correct-answer]")
-      .should("have.class", "games-answer-axis-card--correct")
-      .and("contain", "64")
-      .and("not.contain", "Правильный ответ")
+      .should("have.class", "games-round-result-correct-answer")
+      .and("contain", "Правильный ответ: 64")
       .and("not.contain", "клеток");
     cy.get("[data-games-round-next-timer].games-question-countdown")
       .should("be.visible")
@@ -1116,7 +1115,7 @@ describe("игровая комната", () => {
       expect($value.text()).not.to.match(/\d+\.\d{2}/);
     });
     cy.get("[data-games-answer-axis]").should("be.visible");
-    cy.get("[data-games-round-answer-card]").should("have.length", 4);
+    cy.get("[data-games-round-answer-card]").should("have.length", 3);
     cy.get("[data-games-correct-answer]").should(($card) => {
       expect($card.text()).to.contain("64");
       expect($card.text()).not.to.contain("Мария");
@@ -1127,8 +1126,8 @@ describe("игровая комната", () => {
       .and("contain", "#1")
       .and("contain", "64")
       .and("contain", "✓")
+      .and("contain", "3.10 сек")
       .and("not.contain", "+2 балла")
-      .and("not.contain", "3.10 сек")
       .and("not.contain", "Ответ")
       .and("not.contain", "Ошибка")
       .and("not.contain", "клеток");
@@ -1137,8 +1136,8 @@ describe("игровая комната", () => {
       .and("contain", "#2")
       .and("contain", "60")
       .and("contain", "-4")
+      .and("contain", "4.20 сек")
       .and("not.contain", "+1 балл")
-      .and("not.contain", "4.20 сек")
       .and("not.contain", "Ответ")
       .and("not.contain", "Ошибка")
       .and("not.contain", "клеток");
@@ -1155,33 +1154,33 @@ describe("игровая комната", () => {
       .eq(0)
       .find(".games-results-table__avatar-link")
       .should("have.attr", "href")
-      .and("include", "/id1");
+      .and("include", "/id2");
     cy.get("[data-games-round-result-card]")
       .eq(0)
       .find(".games-results-table__player-link")
-      .should("have.text", "Мария")
+      .should("have.text", "Аня Орлова")
       .and("have.attr", "href")
-      .and("include", "/id1");
+      .and("include", "/id2");
     cy.get("[data-games-round-result-card]")
       .eq(0)
-      .should("contain", "Мария")
-      .and("contain", "60")
-      .and("contain", "-4")
-      .and("not.contain", "+1 балл")
-      .and("not.contain", "4.20 сек")
-      .should("have.attr", "style")
-      .and("include", "--games-answer-side: -1")
-      .and("include", "--games-result-delay: 2900ms");
-    cy.get("[data-games-round-result-card]")
-      .eq(1)
       .should("contain", "Аня")
       .and("contain", "64")
       .and("contain", "✓")
+      .and("contain", "3.10 сек")
       .and("not.contain", "+2 балла")
-      .and("not.contain", "3.10 сек")
       .should("have.attr", "style")
       .and("include", "--games-answer-side: 0")
-      .and("include", "--games-result-delay: 4200ms");
+      .and("include", "--games-result-delay: 240ms");
+    cy.get("[data-games-round-result-card]")
+      .eq(1)
+      .should("contain", "Мария")
+      .and("contain", "60")
+      .and("contain", "-4")
+      .and("contain", "4.20 сек")
+      .and("not.contain", "+1 балл")
+      .should("have.attr", "style")
+      .and("include", "--games-answer-side: -1")
+      .and("include", "--games-result-delay: 330ms");
     cy.get("[data-games-round-result-card]")
       .eq(2)
       .should("contain", "Игорь")
@@ -1191,7 +1190,7 @@ describe("игровая комната", () => {
       .and("not.contain", "нет времени")
       .should("have.class", "games-answer-axis-card--missing")
       .should("have.attr", "style")
-      .and("include", "--games-result-delay: 1600ms");
+      .and("include", "--games-result-delay: 420ms");
     cy.get("[data-games-round-result-card]").eq(0).should("not.contain", "Вы");
     cy.contains("[data-games-room-players-rail] .games-game-player", "Аня")
       .find("[data-games-round-points-badge]")

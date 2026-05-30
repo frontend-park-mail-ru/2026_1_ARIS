@@ -20,7 +20,7 @@ export function renderRoundAnswerShowcase(options: RenderRoundResultStageOptions
   return `
     <div class="games-round-result-cinema" data-games-round-result-cinema>
       <h2 class="games-stage-card__question">${escapeHtml(question.text)}</h2>
-      <p class="games-round-result-correct-answer">${escapeHtml(
+      <p class="games-round-result-correct-answer" data-games-correct-answer>${escapeHtml(
         gameT("results.correctAnswerInline", {
           answer: formatStoredAnswer(question.correctAnswer),
         }),

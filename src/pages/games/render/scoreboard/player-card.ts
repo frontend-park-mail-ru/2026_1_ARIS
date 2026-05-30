@@ -10,49 +10,13 @@ import type { getGameScoreboardModel } from "./model";
 type GameScoreboardModel = ReturnType<typeof getGameScoreboardModel>;
 
 /**
- * Делит имя игрока на две строки для компактной боковой таблицы.
- */
-function getScoreboardPlayerNameLines(player: GameRoom["players"][number]): {
-  firstLine: string;
-  secondLine: string;
-} {
-  const firstName = player.firstName?.trim();
-  const lastName = player.lastName?.trim();
-  if (firstName || lastName) {
-    return {
-      firstLine: firstName || lastName || gameT("common.playerFallback"),
-      secondLine: firstName && lastName ? lastName : "",
-    };
-  }
-
-  const fullName = player.name.trim();
-  if (fullName) {
-    const [firstLine = fullName, ...rest] = fullName.split(/\s+/);
-    return {
-      firstLine,
-      secondLine: rest.join(" "),
-    };
-  }
-
-  return {
-    firstLine: player.username || gameT("common.playerFallback"),
-    secondLine: "",
-  };
-}
-
-/**
- * Рендерит имя игрока в две строки: имя сверху, фамилия снизу.
+ * Рендерит компактное имя игрока в боковой таблице без фамилии.
  */
 function renderScoreboardPlayerNameContent(player: GameRoom["players"][number]): string {
-  const { firstLine, secondLine } = getScoreboardPlayerNameLines(player);
+  const playerLabel = getGamePlayerLabel(player);
   return `
     <span class="games-game-player__name-lines">
-      <span class="games-game-player__first-name">${escapeHtml(firstLine)}</span>
-      ${
-        secondLine
-          ? `<span class="games-game-player__last-name">${escapeHtml(secondLine)}</span>`
-          : ""
-      }
+      <span class="games-game-player__first-name">${escapeHtml(playerLabel)}</span>
     </span>
   `;
 }

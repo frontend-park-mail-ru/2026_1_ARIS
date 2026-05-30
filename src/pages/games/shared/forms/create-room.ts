@@ -46,7 +46,7 @@ export function isRankedLockedCreateInput(input: HTMLInputElement): boolean {
 
 /** Возвращает фиксированное значение поля для рейтинговой комнаты. */
 export function getRankedLockedCreateValue(input: HTMLInputElement): string {
-  if (input.name === "questionCount") return "10";
+  if (input.name === "questionCount") return "20";
   if (input.name === "answerTimeoutSec") return "10";
   if (input.name === "roundPauseSec") return "5";
   return input.value;

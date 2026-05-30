@@ -266,7 +266,7 @@ describe("игровая комната", () => {
     cy.get('.games-rating-segmented input[value="true"]').should("not.be.checked");
     cy.contains(".games-rating-segmented .games-ready-segmented__text", "Рейтинговая").click();
     cy.get('.games-rating-segmented input[value="true"]').should("be.checked");
-    cy.get('input[name="questionCount"]').should("have.value", "10").and("have.attr", "readonly");
+    cy.get('input[name="questionCount"]').should("have.value", "20").and("have.attr", "readonly");
     cy.get('input[name="answerTimeoutSec"]')
       .should("have.value", "10")
       .and("have.attr", "readonly");
@@ -275,7 +275,7 @@ describe("игровая комната", () => {
       "be.visible",
     );
     cy.get('input[name="questionCount"]').type("1", { force: true });
-    cy.get('input[name="questionCount"]').should("have.value", "10");
+    cy.get('input[name="questionCount"]').should("have.value", "20");
     cy.contains(".games-rating-segmented .games-ready-segmented__text", "Обычная").click();
     cy.get('input[name="questionCount"]').should("not.have.attr", "readonly");
     cy.get('input[name="answerTimeoutSec"]').should("not.have.attr", "readonly");

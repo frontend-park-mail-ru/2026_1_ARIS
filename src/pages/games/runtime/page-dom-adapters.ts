@@ -57,12 +57,13 @@ export function createGamesPageDomAdapters(options: GamesPageDomAdaptersOptions)
    */
   function focusCurrentQuestionAnswerInput(root: Document | HTMLElement): void {
     const question = options.getRoom()?.currentQuestion;
-    if (!question || question.hasAnswered) {
+    if (!question) {
       lastFocusedQuestionId = "";
       return;
     }
     if (question.id === lastFocusedQuestionId) return;
-    if (!root.querySelector("[data-games-answer-input]")) return;
+    const input = root.querySelector("[data-games-answer-input]");
+    if (!input) return;
 
     focusCurrentAnswerInput(root);
     lastFocusedQuestionId = question.id;

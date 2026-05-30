@@ -52,9 +52,24 @@
     }
 
     .games-room-players-panel .games-game-player {
-      grid-template-columns: 22px 32px minmax(0, 1fr) max-content;
+      grid-template-columns: 22px minmax(0, 1fr) max-content;
       gap: 5px;
       padding: 6px;
+    }
+
+    .games-room-players-panel .games-game-player__avatar,
+    .games-room-players-panel .games-game-player__avatar-link,
+    .games-player-profile__avatar,
+    .games-leaderboard-row__avatar,
+    .games-leaderboard-row__avatar-link,
+    .games-round-result__avatar,
+    .games-results-table__avatar,
+    .games-results-table__avatar-link,
+    .games-final-winner-card__avatar,
+    .games-final-place__avatar,
+    .games-final-place__avatar-link,
+    .games-replay-player__avatar {
+      display: none;
     }
 
     .games-room-players-panel .games-game-player__place {
@@ -117,6 +132,100 @@
       font-size: 34px;
     }
 
+    .games-answer-axis__list {
+      gap: 8px;
+    }
+
+    .games-answer-axis-card {
+      grid-template-columns: 28px minmax(24px, 34px) minmax(62px, 1fr) minmax(42px, 60px) minmax(
+          54px,
+          62px
+        );
+      gap: 5px;
+      min-height: 58px;
+      padding: 8px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .games-answer-axis-card .games-results-table__player {
+      grid-column: 2;
+      width: 100%;
+      max-width: none;
+      overflow: hidden;
+    }
+
+    .games-answer-axis-card .games-results-table__avatar,
+    .games-answer-axis-card .games-results-table__avatar-link {
+      display: none;
+    }
+
+    .games-answer-axis-card .games-results-table__player-link,
+    .games-answer-axis-card .games-results-table__player-text {
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      font-size: 12px;
+      line-height: 1.1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .games-answer-axis-card__answer-pack {
+      position: static;
+      grid-column: 3 / 5;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(38px, 60px);
+      align-items: center;
+      gap: 5px;
+      pointer-events: auto;
+    }
+
+    .games-answer-axis-card__answer-pack--missing {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .games-answer-axis-card__answer,
+    .games-answer-axis-card__answer-pack .games-answer-axis-card__answer {
+      grid-column: 1;
+      justify-self: center;
+      max-width: 100%;
+      font-size: 28px;
+    }
+
+    .games-answer-axis-card__answer--missing {
+      font-size: 28px;
+    }
+
+    .games-answer-axis-card__delta,
+    .games-answer-axis-card__answer-pack .games-answer-axis-card__delta {
+      grid-column: 2;
+      width: 100%;
+      min-width: 0;
+      min-height: 28px;
+      justify-self: stretch;
+      margin-left: 0;
+      padding: 0 4px;
+      overflow: hidden;
+      box-sizing: border-box;
+      font-size: 14px;
+      text-overflow: ellipsis;
+    }
+
+    .games-answer-axis-card__no-answer {
+      grid-column: 1;
+      margin-left: 0;
+      font-size: 12px;
+    }
+
+    .games-answer-axis-card__time {
+      grid-column: 5;
+      justify-self: end;
+      max-width: 100%;
+      font-size: 14px;
+      text-align: right;
+    }
+
     .games-final-hero {
       padding: 12px;
       gap: 10px;
@@ -126,11 +235,6 @@
       min-height: 76px;
       gap: 10px;
       padding: 10px;
-    }
-
-    .games-final-winner-card__avatar {
-      width: 48px;
-      height: 48px;
     }
 
     .games-final-winner-card strong,
@@ -143,16 +247,9 @@
     }
 
     .games-final-place {
-      grid-template-columns: 28px 32px minmax(0, 1fr);
+      grid-template-columns: 28px minmax(0, 1fr);
       gap: 6px;
       padding: 8px;
-    }
-
-    .games-final-place__avatar-link,
-    .games-final-place__avatar {
-      width: 32px;
-      height: 32px;
-      flex-basis: 32px;
     }
 
     .games-final-place__name {
@@ -165,7 +262,7 @@
     .games-final-place__stats,
     .games-final-place small,
     .games-final-place > em {
-      grid-column: 3;
+      grid-column: 2;
       justify-self: start;
       text-align: left;
     }
@@ -173,6 +270,27 @@
     .games-final-place__stats {
       min-width: 0;
       align-items: flex-start;
+    }
+
+    .games-leaderboard-row {
+      grid-template-columns: 32px minmax(0, 1fr) auto;
+    }
+
+    .games-leaderboard-row__rating {
+      grid-column: 3;
+    }
+
+    .games-round-result {
+      grid-template-columns: 30px minmax(0, 1fr);
+    }
+
+    .games-round-result__body,
+    .games-round-result__meta {
+      grid-column: 2;
+    }
+
+    .games-replay-player {
+      grid-template-columns: minmax(0, 1fr) auto;
     }
 
     .games-room-layout__chat > .games-room-chat {

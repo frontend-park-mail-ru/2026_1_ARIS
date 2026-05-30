@@ -33,6 +33,17 @@ function withSourceHeader(response, source) {
   });
 }
 
+function createOfflineResponse() {
+  return new Response("Offline", {
+    status: 503,
+    statusText: "Service Unavailable",
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "x-aris-response-source": "offline",
+    },
+  });
+}
+
 function isCacheableResponse(request, response) {
   return response.status === 200 && response.ok && !request.headers.has("range");
 }
@@ -117,14 +128,7 @@ async function staleWhileRevalidate(request, cacheName) {
         return withSourceHeader(cached, "cache");
       }
 
-      return new Response("Offline", {
-        status: 503,
-        statusText: "Service Unavailable",
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "x-aris-response-source": "offline",
-        },
-      });
+      return createOfflineResponse();
     });
 
   return cached ? withSourceHeader(cached, "cache") : networkPromise;
@@ -307,7 +311,7 @@ async function networkFirst(request, cacheName, fallbackUrls) {
       }
     }
 
-    throw new Error("offline");
+    return createOfflineResponse();
   }
 }
 
@@ -319,7 +323,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (IS_LOCAL_OR_TEST_ORIGIN) {
-    event.respondWith(fetch(request));
+    event.respondWith(fetch(request).catch(() => createOfflineResponse()));
     return;
   }
 

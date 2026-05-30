@@ -97,6 +97,21 @@ describe("games page dom adapters", () => {
     expect(focusCurrentAnswerInput).not.toHaveBeenCalled();
   });
 
+  it("фокусирует доступное поле ответа, даже если вопрос уже получил чужой ответ", () => {
+    const root = document.createElement("main");
+    root.innerHTML = `<input data-games-answer-input>`;
+    const room = {
+      id: "room-1",
+      currentQuestion: { id: "question-1", hasAnswered: true },
+    } as GameRoom;
+    const options = createOptions(room);
+    const adapters = createGamesPageDomAdapters(options);
+
+    adapters.getDomRefreshOptions().focusAnswerInput(root);
+
+    expect(focusCurrentAnswerInput).toHaveBeenCalledWith(root);
+  });
+
   it("синхронизирует runtime-объекты через адаптеры", () => {
     const options = createOptions({ id: "room-1" } as GameRoom);
     const adapters = createGamesPageDomAdapters(options);

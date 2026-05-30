@@ -44,6 +44,8 @@ export function focusCurrentAnswerInput(root: Document | HTMLElement | null): vo
   focusInput();
   window.requestAnimationFrame?.(focusInput);
   window.setTimeout(focusInput, 0);
+  window.setTimeout(focusInput, 80);
+  window.setTimeout(focusInput, 220);
 }
 
 /** Синхронизирует DOM формы ответа после локального принятия ответа. */

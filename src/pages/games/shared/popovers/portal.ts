@@ -45,10 +45,28 @@ export function ensureGameHintAnchorId(anchor: HTMLElement): string {
 }
 
 /**
+ * Ставит безопасную позицию рядом с якорем до точного viewport-перерасчёта.
+ */
+function setGameHintFallbackPosition(hint: HTMLElement, anchor: HTMLElement): void {
+  const anchorRect = anchor.getBoundingClientRect();
+  hint.style.setProperty("--games-popover-left", `${Math.round(anchorRect.left)}px`);
+  hint.style.setProperty("--games-popover-top", `${Math.round(anchorRect.bottom + 8)}px`);
+  hint.style.setProperty("--games-popover-max-width", `${Math.max(160, window.innerWidth - 24)}px`);
+}
+
+/**
  * Переносит подсказку в body, сохраняя место возврата.
  */
 export function mountGameHintPortal(hint: HTMLElement, anchor: HTMLElement): void {
-  if (!hint.classList.contains("games-field-popover") || hint.parentElement === document.body) {
+  if (!hint.classList.contains("games-field-popover")) {
+    return;
+  }
+
+  hint.dataset.gamesPopoverAnchorId = ensureGameHintAnchorId(anchor);
+  hint.classList.add("games-field-popover--portal");
+  setGameHintFallbackPosition(hint, anchor);
+
+  if (hint.parentElement === document.body) {
     return;
   }
 
@@ -56,8 +74,6 @@ export function mountGameHintPortal(hint: HTMLElement, anchor: HTMLElement): voi
     parent: hint.parentNode ?? document.body,
     nextSibling: hint.nextSibling,
   });
-  hint.dataset.gamesPopoverAnchorId = ensureGameHintAnchorId(anchor);
-  hint.classList.add("games-field-popover--portal");
   document.body.appendChild(hint);
 }
 
@@ -72,7 +88,9 @@ export function unmountGameHintPortal(hint: HTMLElement): void {
   hint.removeAttribute("data-games-popover-anchor-id");
 
   if (portalState.parent.isConnected) {
-    portalState.parent.insertBefore(hint, portalState.nextSibling);
+    const nextSibling =
+      portalState.nextSibling?.parentNode === portalState.parent ? portalState.nextSibling : null;
+    portalState.parent.insertBefore(hint, nextSibling);
   } else {
     hint.remove();
   }

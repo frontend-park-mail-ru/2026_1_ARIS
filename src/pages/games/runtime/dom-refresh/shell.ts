@@ -1,15 +1,98 @@
 import type { GameRoom } from "../../../../api/games";
+import { domPatch } from "../../../../vdom/patch";
 import { getLatestCompletedQuestion, getQuestionResultSignature } from "../../round/model";
 import { getFinalRoundResultsUntil, isRoundResultRevealVisible } from "../../round/reveal";
 import {
-  getRoundResultTimerStartMs,
-  getRoundResultTransitionEndDelayMs,
+  getRoundResultTimelineStartMs,
+  getRoundResultTransitionDurationMs,
   getRoundResultTransitionEndMs,
 } from "../../round/timeline";
 import { refreshGamesOverlayDom } from "./overlay";
 import { syncGamesDomAfterRender } from "./sync";
 import type { GamesDomRefreshOptions, GamesDomRefreshRoot } from "./types";
 import { debugGamesEvent, debugGamesVerboseEvent } from "../debug";
+
+function escapeSelectorValue(value: string): string {
+  return typeof CSS !== "undefined" && CSS.escape ? CSS.escape(value) : value.replace(/"/g, '\\"');
+}
+
+function findScoreboardCard(root: Element, profileId: string): HTMLElement | null {
+  return root.querySelector<HTMLElement>(
+    `[data-games-scoreboard-card="${escapeSelectorValue(profileId)}"]`,
+  );
+}
+
+function preserveClass(live: Element | null, next: Element | null, className: string): void {
+  if (!live?.classList.contains(className) || !next) return;
+  next.classList.add(className);
+}
+
+function shouldPreserveScoreAnimation(live: HTMLElement, next: HTMLElement): boolean {
+  return (
+    live.dataset.gamesScoreAnimated === "true" &&
+    live.dataset.gamesScoreFrom === next.dataset.gamesScoreFrom &&
+    live.dataset.gamesScoreTo === next.dataset.gamesScoreTo &&
+    live.dataset.gamesScoreStartAt === next.dataset.gamesScoreStartAt
+  );
+}
+
+/**
+ * Переносит runtime-состояние scoreboard-анимаций в следующий HTML-снимок.
+ */
+function preserveScoreboardRuntimeState(live: HTMLElement, next: HTMLElement): void {
+  const liveList = live.querySelector<HTMLElement>("[data-games-scoreboard-list]");
+  const nextList = next.querySelector<HTMLElement>("[data-games-scoreboard-list]");
+  const sameSortSchedule =
+    liveList &&
+    nextList &&
+    liveList.dataset.gamesScoreboardSortAt === nextList.dataset.gamesScoreboardSortAt &&
+    liveList.dataset.gamesScoreboardFinalOrder === nextList.dataset.gamesScoreboardFinalOrder;
+
+  if (sameSortSchedule && liveList.dataset.gamesScoreboardSorted === "true") {
+    Array.from(liveList.querySelectorAll<HTMLElement>("[data-games-scoreboard-card]")).forEach(
+      (liveCard) => {
+        const profileId = liveCard.dataset.gamesScoreboardCard ?? "";
+        const nextCard = profileId ? findScoreboardCard(nextList, profileId) : null;
+        if (nextCard) nextList.append(nextCard);
+      },
+    );
+    nextList.dataset.gamesScoreboardSorted = "true";
+  }
+
+  live.querySelectorAll<HTMLElement>("[data-games-scoreboard-card]").forEach((liveCard) => {
+    const profileId = liveCard.dataset.gamesScoreboardCard ?? "";
+    const nextCard = profileId ? findScoreboardCard(next, profileId) : null;
+    if (!nextCard) return;
+
+    preserveClass(liveCard, nextCard, "games-game-player--sorting");
+
+    const liveScoreShell = liveCard.querySelector<HTMLElement>("[data-games-score-shell]");
+    const nextScoreShell = nextCard.querySelector<HTMLElement>("[data-games-score-shell]");
+    preserveClass(liveScoreShell, nextScoreShell, "games-game-player__score--showing-round-points");
+
+    const liveScore = liveCard.querySelector<HTMLElement>("[data-games-score-animate]");
+    const nextScore = nextCard.querySelector<HTMLElement>("[data-games-score-animate]");
+    if (liveScore && nextScore && shouldPreserveScoreAnimation(liveScore, nextScore)) {
+      nextScore.dataset.gamesScoreAnimated = "true";
+      nextScore.textContent = liveScore.textContent;
+      preserveClass(liveScore, nextScore, "games-game-player__score-value--bump");
+    }
+
+    const liveBadge = liveCard.querySelector<HTMLElement>("[data-games-round-points-badge]");
+    const nextBadge = nextCard.querySelector<HTMLElement>("[data-games-round-points-badge]");
+    preserveClass(liveBadge, nextBadge, "games-game-player__round-points--visible");
+  });
+}
+
+/**
+ * Обновляет содержимое смонтированного контейнера без замены живых DOM-узлов.
+ */
+function patchMountedHtml(container: HTMLElement, html: string): void {
+  const next = container.cloneNode(false) as HTMLElement;
+  next.innerHTML = html;
+  preserveScoreboardRuntimeState(container, next);
+  domPatch(container, next);
+}
 
 /**
  * Проверяет, нужно ли пересобрать app shell из-за смены layout комнаты.
@@ -37,9 +120,9 @@ function shouldPreserveMountedActiveQuestion(content: HTMLElement, room: GameRoo
 
 function getVisibleRoundResultQuestionId(room: GameRoom | null): string {
   if (!room) return "";
+  if (!Array.isArray(room.questions)) return "";
   if (!isRoundResultRevealVisible(room)) return "";
   if (room.status === "active" && room.currentQuestion) return "";
-  if (!Array.isArray(room.questions)) return "";
   const latestCompleted = getLatestCompletedQuestion(room);
   return latestCompleted?.id ?? "";
 }
@@ -63,12 +146,14 @@ function shouldPreserveMountedRoundResult(content: HTMLElement, room: GameRoom |
 function getRoundResultDynamicSignature(element: HTMLElement): string {
   const timer = element.querySelector<HTMLElement>("[data-games-timer-deadline]");
   const finalResultsUntil = element.querySelector<HTMLElement>("[data-games-final-results-until]");
+  const roundResultUntil = element.querySelector<HTMLElement>("[data-games-round-result-until]");
   return [
     timer?.dataset.gamesTimerDeadline ?? "",
     timer?.dataset.gamesTimerDelayUntil ?? "",
     timer?.dataset.gamesTimerStart ?? "",
     timer?.dataset.gamesTimerTotalMs ?? "",
     finalResultsUntil?.dataset.gamesFinalResultsUntil ?? "",
+    roundResultUntil?.dataset.gamesRoundResultUntil ?? "",
   ].join("|");
 }
 
@@ -83,18 +168,20 @@ function getVisibleRoundResultDynamicSignature(room: GameRoom | null): string {
   if (!latestCompleted) return "";
 
   const finalResultsUntil = getFinalRoundResultsUntil(room, latestCompleted);
-  if (!room.nextQuestionAt && !finalResultsUntil) return "";
+  if (room.status !== "active" && !finalResultsUntil) return "";
 
-  const timerStartMs = getRoundResultTimerStartMs(room, latestCompleted);
+  const timerStartMs = getRoundResultTimelineStartMs(latestCompleted);
   const timerDeadlineAt = new Date(
     finalResultsUntil?.getTime() ?? getRoundResultTransitionEndMs(room, latestCompleted),
   ).toISOString();
+  const roundResultUntil = room.status === "active" && room.currentQuestion ? timerDeadlineAt : "";
   return [
     timerDeadlineAt,
-    String(timerStartMs),
+    "",
     new Date(timerStartMs).toISOString(),
-    String(getRoundResultTransitionEndDelayMs(room, latestCompleted)),
+    String(getRoundResultTransitionDurationMs(room, latestCompleted)),
     finalResultsUntil?.toISOString() ?? "",
+    roundResultUntil,
   ].join("|");
 }
 
@@ -170,21 +257,21 @@ function refreshMountedGamesContent(options: GamesDomRefreshOptions): {
       options.startCountdown(root);
     }
     return { preservedActiveQuestion: false, preservedRoundResult: true };
-  } else {
-    content.innerHTML = options.renderContent();
   }
+
+  patchMountedHtml(content, options.renderContent());
   refreshGamesOverlayDom(options);
 
   const playersRail = root.querySelector<HTMLElement>("[data-games-room-players-rail]");
   if (playersRail) {
-    playersRail.innerHTML = options.room ? options.renderPlayersRail(options.room) : "";
+    patchMountedHtml(playersRail, options.room ? options.renderPlayersRail(options.room) : "");
   }
 
   const externalChat = root.querySelector<HTMLElement>("[data-games-external-chat]");
   if (externalChat) {
-    externalChat.innerHTML = options.room ? options.renderRoomChat(options.room) : "";
+    patchMountedHtml(externalChat, options.room ? options.renderRoomChat(options.room) : "");
   }
-  return { preservedActiveQuestion: false, preservedRoundResult: preserveRoundResult };
+  return { preservedActiveQuestion: false, preservedRoundResult: false };
 }
 
 /**

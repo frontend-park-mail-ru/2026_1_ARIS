@@ -302,7 +302,7 @@ function renderVideoNote(message: ChatViewMessage): string {
       <video
         class="video-note__video"
         src="${escapeHtml(url)}"
-        preload="auto"
+        preload="metadata"
         muted
         playsinline
         data-video-note-video

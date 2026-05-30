@@ -33,6 +33,7 @@ export function updateGamesCountdown(
     formatScore: (value: number) => string;
     onFinalResultsExpired: () => void;
     onQuestionDeadlineExpired: () => void;
+    onRoundResultExpired?: () => void;
   },
 ): void {
   syncScoreboardAnimations(root, options.formatScore);
@@ -92,6 +93,17 @@ export function updateGamesCountdown(
     if (!Number.isNaN(finalResultsUntilMs) && Date.now() >= finalResultsUntilMs) {
       finalResultsUntilEl.removeAttribute("data-games-final-results-until");
       window.setTimeout(() => options.onFinalResultsExpired(), 0);
+    }
+  }
+
+  const roundResultUntilEl = root.querySelector<HTMLElement>("[data-games-round-result-until]");
+  if (roundResultUntilEl) {
+    const roundResultUntilMs = new Date(
+      roundResultUntilEl.dataset.gamesRoundResultUntil ?? "",
+    ).getTime();
+    if (!Number.isNaN(roundResultUntilMs) && Date.now() >= roundResultUntilMs) {
+      roundResultUntilEl.removeAttribute("data-games-round-result-until");
+      window.setTimeout(() => options.onRoundResultExpired?.(), 0);
     }
   }
 

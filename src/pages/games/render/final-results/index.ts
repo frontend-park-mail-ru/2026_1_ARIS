@@ -1,3 +1,4 @@
+import { escapeHtml } from "../../../../utils/avatar";
 import { getCompletedQuestions } from "../../round/model";
 import { renderFinalQuestionsArchive } from "./archive";
 import { renderRatingChanges } from "./rating";
@@ -13,7 +14,7 @@ export function renderFinalGameStage(options: RenderFinalGameStageOptions): stri
   const completed = getCompletedQuestions(options.room);
 
   return `
-    <section class="games-game-stage games-game-stage--final" aria-label="${gameT("results.finalAria")}">
+    <section class="games-game-stage games-game-stage--final" data-key="stage-final-${escapeHtml(options.room.id)}" aria-label="${gameT("results.finalAria")}">
       <div class="games-stage-card games-stage-card--final">
         ${renderFinalWinnerHero(options, completed.length)}
         <h3 class="games-final-section-title">${gameT("results.standingsTitle")}</h3>

@@ -89,17 +89,18 @@ export function renderRoomPanelPresenter(options: RenderRoomPanelPresenterOption
     hasEnoughPlayers &&
     (isPublicLobby || allPlayersReady) &&
     canManageStart;
+  const showFinalRoundResult = shouldShowFinalRoundResultBeforeSummary(room);
   const headingTitle =
     room.status === "finished"
-      ? shouldShowFinalRoundResultBeforeSummary(room)
-        ? options.game.title
-        : gameT("room.resultsTitle", { game: options.game.title })
+      ? gameT("room.resultsTitle", { game: options.game.title })
       : gameT("room.lobbyTitle", { game: options.game.title });
 
   return renderRoomPanel({
     room,
     game: options.game,
     headingTitle,
+    showRoomHeader: !showFinalRoundResult,
+    showRulesHint: !showFinalRoundResult,
     loading: state.loading,
     roomTitle: options.getRoomTitleValue(room),
     roomPasswordDisplay: options.getRoomPasswordDisplayValue(room),

@@ -102,6 +102,8 @@ describe("games dom refresh runtime", () => {
   });
 
   it("не перезапускает карточки результата того же раунда при обновлении таймера", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T00:00:12.000Z"));
     const completedQuestion = {
       id: "q1",
       status: "completed",
@@ -119,7 +121,7 @@ describe("games dom refresh runtime", () => {
       () => `
         <section data-games-round-result-stage data-games-round-result-question-id="q1" data-games-round-result-signature="${signature}">
           <div data-games-round-result-dynamic>
-            <div data-games-timer-deadline="2026-05-25T00:00:15.000Z" data-games-timer-delay-until="1779667210000" data-games-timer-start="2026-05-25T00:00:10.000Z" data-games-timer-total-ms="5000">New timer</div>
+            <div data-games-timer-deadline="2026-05-25T00:00:15.000Z" data-games-timer-start="2026-05-25T00:00:10.000Z" data-games-timer-total-ms="5000">New timer</div>
           </div>
           <div data-games-round-result-cinema>New cards</div>
         </section>
@@ -141,7 +143,7 @@ describe("games dom refresh runtime", () => {
     content.innerHTML = `
       <section data-games-round-result-stage data-games-round-result-question-id="q1" data-games-round-result-signature="${signature}">
         <div data-games-round-result-dynamic>
-          <div data-games-timer-deadline="2026-05-25T00:00:15.000Z" data-games-timer-delay-until="1779667210000" data-games-timer-start="2026-05-25T00:00:10.000Z" data-games-timer-total-ms="5000">Old timer</div>
+          <div data-games-timer-deadline="2026-05-25T00:00:15.000Z" data-games-timer-start="2026-05-25T00:00:10.000Z" data-games-timer-total-ms="5000">Old timer</div>
         </div>
         <div data-games-round-result-cinema>Old cards</div>
       </section>
@@ -159,6 +161,8 @@ describe("games dom refresh runtime", () => {
   });
 
   it("обновляет только динамику результата раунда при смене дедлайна", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T00:00:12.000Z"));
     const completedQuestion = {
       id: "q1",
       status: "completed",
@@ -176,7 +180,7 @@ describe("games dom refresh runtime", () => {
       () => `
         <section data-games-round-result-stage data-games-round-result-question-id="q1" data-games-round-result-signature="${signature}">
           <div data-games-round-result-dynamic>
-            <div data-games-timer-deadline="2026-05-25T00:00:20.000Z" data-games-timer-delay-until="1779667210000" data-games-timer-start="2026-05-25T00:00:10.000Z" data-games-timer-total-ms="10000">New timer</div>
+            <div data-games-timer-deadline="2026-05-25T00:00:20.000Z" data-games-timer-start="2026-05-25T00:00:10.000Z" data-games-timer-total-ms="10000">New timer</div>
           </div>
           <div data-games-round-result-cinema>New cards</div>
         </section>
@@ -198,7 +202,7 @@ describe("games dom refresh runtime", () => {
     content.innerHTML = `
       <section data-games-round-result-stage data-games-round-result-question-id="q1" data-games-round-result-signature="${signature}">
         <div data-games-round-result-dynamic>
-          <div data-games-timer-deadline="2026-05-25T00:00:15.000Z" data-games-timer-delay-until="1779667210000" data-games-timer-start="2026-05-25T00:00:10.000Z" data-games-timer-total-ms="5000">Old timer</div>
+          <div data-games-timer-deadline="2026-05-25T00:00:15.000Z" data-games-timer-start="2026-05-25T00:00:10.000Z" data-games-timer-total-ms="5000">Old timer</div>
         </div>
         <div data-games-round-result-cinema>Old cards</div>
       </section>
@@ -253,6 +257,119 @@ describe("games dom refresh runtime", () => {
     expect(content.innerHTML).toContain("Final results");
     expect(content.innerHTML).not.toContain("Old cards");
     expect(options.syncRoomChatRuntime).toHaveBeenCalledOnce();
+  });
+
+  it("патчит игровую карточку и rail игроков без замены живых узлов", () => {
+    const options = createOptions({
+      renderContent: () => `
+        <div class="games-game-shell">
+          <section class="games-game-stage games-game-stage--question" data-key="stage-question-q1">
+            <div class="games-stage-card">
+              <form data-games-answer-form>
+                <div class="games-answer-accepted">Ваш ответ принят: 64</div>
+              </form>
+            </div>
+          </section>
+        </div>
+      `,
+      renderPlayersRail: () => `
+        <section class="games-room-players-panel">
+          <article data-key="player-1" data-games-player-card="1">
+            <strong>1</strong>
+          </article>
+        </section>
+      `,
+    });
+    const content = options.root!.querySelector<HTMLElement>("[data-games-content]")!;
+    const playersRail = options.root!.querySelector<HTMLElement>("[data-games-room-players-rail]")!;
+    options.root!.querySelector(".app-page")!.classList.add("app-layout--game-room");
+    content.innerHTML = `
+      <div class="games-game-shell">
+        <section class="games-game-stage games-game-stage--question" data-key="stage-question-q1">
+          <div class="games-stage-card">
+            <form data-games-answer-form>
+              <label class="games-field--answer"><input name="answer"></label>
+              <button type="submit">Ответить</button>
+            </form>
+          </div>
+        </section>
+      </div>
+    `;
+    playersRail.innerHTML = `
+      <section class="games-room-players-panel">
+        <article data-key="player-1" data-games-player-card="1">
+          <strong>0</strong>
+        </article>
+      </section>
+    `;
+    const stageCard = content.querySelector(".games-stage-card");
+    const playerCard = playersRail.querySelector("[data-games-player-card]");
+
+    refreshGamesDom(options);
+
+    expect(content.querySelector(".games-stage-card")).toBe(stageCard);
+    expect(playersRail.querySelector("[data-games-player-card]")).toBe(playerCard);
+    expect(content.querySelector(".games-field--answer")).toBeNull();
+    expect(content.querySelector(".games-answer-accepted")?.textContent).toContain("64");
+    expect(playersRail.querySelector("[data-games-player-card]")?.textContent).toContain("1");
+  });
+
+  it("сохраняет runtime-состояние анимации очков в rail игроков", () => {
+    const options = createOptions({
+      renderPlayersRail: () => `
+        <section class="games-room-players-panel">
+          <div
+            data-games-scoreboard-list
+            data-games-scoreboard-sort-at="1000"
+            data-games-scoreboard-final-order="1"
+          >
+            <article data-key="player-1" data-games-scoreboard-card="1">
+              <span class="games-game-player__score" data-games-score-shell data-games-score-show-at="500">
+                <strong data-games-score-animate data-games-score-from="0" data-games-score-to="2" data-games-score-start-at="500">0</strong>
+                <em data-games-round-points-badge data-games-round-points-start-at="500">+2</em>
+              </span>
+            </article>
+          </div>
+        </section>
+      `,
+    });
+    const playersRail = options.root!.querySelector<HTMLElement>("[data-games-room-players-rail]")!;
+    options.root!.querySelector(".app-page")!.classList.add("app-layout--game-room");
+    playersRail.innerHTML = `
+      <section class="games-room-players-panel">
+        <div
+          data-games-scoreboard-list
+          data-games-scoreboard-sort-at="1000"
+          data-games-scoreboard-final-order="1"
+        >
+          <article data-key="player-1" data-games-scoreboard-card="1">
+            <span class="games-game-player__score games-game-player__score--showing-round-points" data-games-score-shell data-games-score-show-at="500">
+              <strong class="games-game-player__score-value--bump" data-games-score-animate data-games-score-from="0" data-games-score-to="2" data-games-score-start-at="500" data-games-score-animated="true">2</strong>
+              <em class="games-game-player__round-points--visible" data-games-round-points-badge data-games-round-points-start-at="500">+2</em>
+            </span>
+          </article>
+        </div>
+      </section>
+    `;
+
+    refreshGamesDom(options);
+
+    expect(
+      playersRail
+        .querySelector("[data-games-score-animate]")
+        ?.getAttribute("data-games-score-animated"),
+    ).toBe("true");
+    expect(playersRail.querySelector("[data-games-score-animate]")?.textContent).toBe("2");
+    expect(
+      playersRail
+        .querySelector("[data-games-score-shell]")
+        ?.classList.contains("games-game-player__score--showing-round-points"),
+    ).toBe(true);
+    expect(
+      playersRail
+        .querySelector("[data-games-round-points-badge]")
+        ?.classList.contains("games-game-player__round-points--visible"),
+    ).toBe(true);
   });
 
   it("понимает, когда нужно пересобрать game-room layout", () => {

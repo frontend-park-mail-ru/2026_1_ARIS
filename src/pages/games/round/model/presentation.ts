@@ -39,11 +39,7 @@ export function getRoundResultPresentationRows(
       isMissingAnswer,
       roundPoints: roundPoints.get(row.player.profileId) ?? 0,
       answerDelta: getAnswerDelta(answer, question.correctAnswer),
-      showTime:
-        !isMissingAnswer &&
-        answer?.responseTimeMs !== null &&
-        answer?.responseTimeMs !== undefined &&
-        Number.isFinite(answer.responseTimeMs),
+      showTime: true,
     };
   });
 }

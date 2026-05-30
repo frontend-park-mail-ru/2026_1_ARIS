@@ -127,7 +127,7 @@ export function renderActiveRoundStage(options: RenderActiveRoundStageOptions): 
   const question = room.currentQuestion;
   if (!question) {
     return `
-      <section class="games-game-stage games-game-stage--waiting">
+      <section class="games-game-stage games-game-stage--waiting" data-key="stage-active-waiting">
         <div class="games-stage-card">
           <span class="games-stage-card__eyebrow">${escapeHtml(gameT("gameplay.round"))}</span>
           <h2 class="games-stage-card__title">${escapeHtml(gameT("gameplay.nextQuestionLoading"))}</h2>
@@ -137,7 +137,7 @@ export function renderActiveRoundStage(options: RenderActiveRoundStageOptions): 
   }
 
   return `
-    <section class="games-game-stage games-game-stage--question" aria-label="${escapeHtml(gameT("gameplay.currentQuestionAria"))}" data-games-active-question-id="${escapeHtml(question.id)}">
+    <section class="games-game-stage games-game-stage--question" data-key="stage-question-${escapeHtml(question.id)}" aria-label="${escapeHtml(gameT("gameplay.currentQuestionAria"))}" data-games-active-question-id="${escapeHtml(question.id)}">
       <div class="games-stage-card games-stage-card--question">
         ${renderQuestionCountdown(room, question)}
         <div class="games-question-hero" data-games-question-hero>

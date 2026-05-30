@@ -228,17 +228,26 @@
   }
 
   .games-game-player--me {
-    border-color: rgb(74 81 208 / 26%);
-    background: linear-gradient(180deg, rgb(244 246 255 / 86%), rgb(255 255 255 / 72%));
+    border-color: rgb(74 81 208 / 62%);
+    background: rgb(255 255 255 / 68%);
+    box-shadow:
+      0 8px 20px rgb(33 45 88 / 6%),
+      0 0 0 2px rgb(74 81 208 / 58%) inset;
   }
 
   .games-game-player--answered {
-    border-color: rgb(95 111 157 / 24%);
+    border-color: rgb(82 101 145 / 46%);
     background:
-      linear-gradient(135deg, rgb(95 111 157 / 14%), rgb(95 111 157 / 7%)), rgb(244 246 249);
+      linear-gradient(135deg, rgb(82 101 145 / 24%), rgb(82 101 145 / 14%)), rgb(224 230 240);
     box-shadow:
-      0 14px 28px rgb(33 45 88 / 10%),
-      0 0 0 1px rgb(95 111 157 / 10%) inset;
+      0 14px 28px rgb(33 45 88 / 13%),
+      0 0 0 1px rgb(82 101 145 / 18%) inset;
+  }
+
+  .games-game-player--me.games-game-player--answered {
+    box-shadow:
+      0 14px 28px rgb(33 45 88 / 13%),
+      0 0 0 2px rgb(74 81 208 / 62%) inset;
   }
 
   .games-game-player__place {

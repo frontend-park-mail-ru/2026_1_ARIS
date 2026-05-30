@@ -70,4 +70,26 @@ describe("games countdown runtime", () => {
     expect(clearIntervalSpy).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
   });
+
+  it("просит перерисовать DOM после удержанного результата раунда", () => {
+    vi.useFakeTimers();
+    const onRoundResultExpired = vi.fn();
+    document.body.innerHTML = `
+      <span data-games-round-result-until="2026-05-25T00:00:10.000Z"></span>
+    `;
+    vi.setSystemTime(new Date("2026-05-25T00:00:10.100Z"));
+    const runtime = createGamesCountdownRuntime({
+      getRoot: () => document,
+      formatScore: String,
+      onFinalResultsExpired: vi.fn(),
+      onQuestionDeadlineExpired: vi.fn(),
+      onRoundResultExpired,
+    });
+
+    runtime.start(document);
+    vi.runOnlyPendingTimers();
+
+    expect(onRoundResultExpired).toHaveBeenCalledOnce();
+    vi.useRealTimers();
+  });
 });

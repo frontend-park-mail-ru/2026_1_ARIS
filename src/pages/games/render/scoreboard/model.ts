@@ -3,25 +3,26 @@ import { scoreboardSortAnimationMs, scoreValueAnimationMs } from "../../shared/c
 import {
   getComputedScoresByProfile,
   getLatestCompletedQuestion,
+  getPreviousRoundAnswerTimeByProfile,
   getPreviousRoundScoresByProfile,
   getRankedPlayers,
   getRankedPlayersByScores,
   getRoundPointsByProfile,
+  getTotalAnswerTimeByProfile,
 } from "../../round/model";
 import {
   getRoundPointSequence,
   getRoundResultTimelineStartMs,
   getRoundResultTransitionEndMs,
   getRoundScoreAnimationStartDelayMs,
+  getRoundScoreboardSortDelayMs,
   getRoundScoreStepDelayMs,
 } from "../../round/timeline";
 import { isRoundResultRevealVisible } from "../../round/reveal";
 
-const scoreboardSortSettleMs = 160;
 const scoreboardScheduleLeadMs = 80;
 const scoreboardMinStartDelayMs = 80;
 const scoreboardMinStepDelayMs = 0;
-
 function getTimestampMs(value: string): number {
   const timestamp = new Date(value).getTime();
   return Number.isNaN(timestamp) ? 0 : timestamp;
@@ -47,18 +48,6 @@ function getDisplayedRoundQuestion(room: GameRoom): GameRoom["questions"][number
   return shouldKeepRecentScoreboardAnimation(room, latestCompleted) ? latestCompleted : null;
 }
 
-function getScoreboardSortDelayMs(
-  scoreStartDelayMs: number,
-  scoreStepDelayMs: number,
-  count: number,
-) {
-  if (count <= 0) return 0;
-  const lastScoreStartMs = scoreStartDelayMs + Math.max(0, count - 1) * scoreStepDelayMs;
-  const delayedSortMs = lastScoreStartMs + scoreboardSortSettleMs;
-  const lastScoreEndMs = lastScoreStartMs + scoreValueAnimationMs;
-  return Math.max(delayedSortMs, lastScoreEndMs + scoreboardScheduleLeadMs);
-}
-
 function getScoreAnimationSchedule(
   room: GameRoom,
   question: GameRoom["questions"][number],
@@ -66,33 +55,21 @@ function getScoreAnimationSchedule(
   pointSequenceCount: number,
 ): { scoreStartDelayMs: number; scoreStepDelayMs: number; sortAtMs: number } {
   const defaultStartDelayMs = getRoundScoreAnimationStartDelayMs(room, question);
-  const defaultStepDelayMs = getRoundScoreStepDelayMs();
+  const defaultStepDelayMs = getRoundScoreStepDelayMs(pointSequenceCount);
+  const defaultSortDelayMs = getRoundScoreboardSortDelayMs(room, question);
 
   if (pointSequenceCount <= 0) {
     return { scoreStartDelayMs: 0, scoreStepDelayMs: defaultStepDelayMs, sortAtMs: 0 };
   }
 
   const nextQuestionAtMs = getTimestampMs(room.nextQuestionAt);
-  if (!nextQuestionAtMs || nextQuestionAtMs <= timelineStartMs) {
-    return {
-      scoreStartDelayMs: defaultStartDelayMs,
-      scoreStepDelayMs: defaultStepDelayMs,
-      sortAtMs:
-        timelineStartMs +
-        getScoreboardSortDelayMs(defaultStartDelayMs, defaultStepDelayMs, pointSequenceCount),
-    };
-  }
-
-  const availableMs = Math.max(
-    0,
-    nextQuestionAtMs - timelineStartMs - scoreboardScheduleLeadMs - scoreboardSortAnimationMs,
-  );
-  const defaultSortDelayMs = getScoreboardSortDelayMs(
-    defaultStartDelayMs,
-    defaultStepDelayMs,
-    pointSequenceCount,
-  );
-  if (availableMs >= defaultSortDelayMs) {
+  const availableSortDelayMs =
+    nextQuestionAtMs - timelineStartMs - scoreboardScheduleLeadMs - scoreboardSortAnimationMs;
+  if (
+    !nextQuestionAtMs ||
+    nextQuestionAtMs <= timelineStartMs ||
+    availableSortDelayMs >= defaultSortDelayMs
+  ) {
     return {
       scoreStartDelayMs: defaultStartDelayMs,
       scoreStepDelayMs: defaultStepDelayMs,
@@ -100,6 +77,7 @@ function getScoreAnimationSchedule(
     };
   }
 
+  const availableMs = Math.max(0, availableSortDelayMs);
   const stepBudgetMs =
     pointSequenceCount <= 1
       ? defaultStepDelayMs
@@ -127,9 +105,7 @@ function getScoreAnimationSchedule(
   return {
     scoreStartDelayMs,
     scoreStepDelayMs,
-    sortAtMs:
-      timelineStartMs +
-      getScoreboardSortDelayMs(scoreStartDelayMs, scoreStepDelayMs, pointSequenceCount),
+    sortAtMs: timelineStartMs + Math.min(defaultSortDelayMs, availableMs),
   };
 }
 
@@ -142,10 +118,14 @@ export function getGameScoreboardModel(room: GameRoom) {
   const displayScoreMap = revealQuestion
     ? getPreviousRoundScoresByProfile(room, revealQuestion)
     : finalScoreMap;
+  const finalAnswerTimeMap = getTotalAnswerTimeByProfile(room);
+  const displayAnswerTimeMap = revealQuestion
+    ? getPreviousRoundAnswerTimeByProfile(room, revealQuestion)
+    : finalAnswerTimeMap;
   const rankedPlayers = revealQuestion
-    ? getRankedPlayersByScores(room, displayScoreMap, { excludeQuestionId: revealQuestion.id })
+    ? getRankedPlayersByScores(room, displayScoreMap, displayAnswerTimeMap)
     : getRankedPlayers(room);
-  const finalRankedPlayers = getRankedPlayersByScores(room, finalScoreMap);
+  const finalRankedPlayers = getRankedPlayersByScores(room, finalScoreMap, finalAnswerTimeMap);
   const finalOrderByProfile = new Map(
     finalRankedPlayers.map((player, index) => [player.profileId, index]),
   );
@@ -166,7 +146,9 @@ export function getGameScoreboardModel(room: GameRoom) {
   return {
     revealQuestion,
     finalScoreMap,
+    finalAnswerTimeMap,
     displayScoreMap,
+    displayAnswerTimeMap,
     rankedPlayers,
     finalRankedPlayers,
     finalOrderByProfile,

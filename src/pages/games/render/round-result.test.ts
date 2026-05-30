@@ -62,7 +62,7 @@ function createRoom(status: GameRoom["status"] = "active"): GameRoom {
     questionCount: 1,
     answerTimeoutSec: 10,
     currentQuestionIndex: 1,
-    nextQuestionAt: status === "active" ? "2026-05-25T00:00:30.000Z" : "",
+    nextQuestionAt: status === "active" ? "2026-05-25T00:00:15.000Z" : "",
     pausedByProfileId: "",
     pauseStartedAt: "",
     pauseUntilAt: "",
@@ -122,7 +122,7 @@ describe("games round result render", () => {
     languageStore.reset({ language: "RU" });
   });
 
-  it("рендерит раскрытие ответов и таймер следующего вопроса", () => {
+  it("рендерит раскрытие ответов с таймером полного сценария до следующего вопроса", () => {
     const room = createRoom("active");
     const html = renderRoundResultStage({
       room,
@@ -131,11 +131,12 @@ describe("games round result render", () => {
     });
 
     expect(html).toContain("Итоги раунда");
+    expect(html).toContain("Вопрос 1 из 1");
     expect(html).toContain("How many moons does Mars have?");
     expect(html).toContain("data-games-round-next-timer");
-    expect(html).toContain("Следующий вопрос");
-    expect(html).toContain('data-games-timer-delay-until="1779667210000"');
+    expect(html).toContain("Следующий вопрос через");
     expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:15.000Z"');
+    expect(html).toContain('data-games-timer-start="2026-05-25T00:00:10.000Z"');
     expect(html).toContain('data-games-timer-total-ms="5000"');
     expect(html).toContain("Правильный ответ: 2");
     expect(html).not.toContain("games-answer-axis-card--correct");
@@ -173,8 +174,22 @@ describe("games round result render", () => {
     });
 
     expect(html).toContain("Round results");
-    expect(html).toContain("Next question");
     expect(html).toContain("Question 1 of 1");
+    expect(html).toContain("Next question in");
+  });
+
+  it("показывает таймер активного результата без серверного nextQuestionAt", () => {
+    const room = createRoom("active");
+    room.nextQuestionAt = "";
+    const html = renderRoundResultStage({
+      room,
+      question: room.questions[0]!,
+      renderPlayerCell: (_player, label) => `<span>${label}</span>`,
+    });
+
+    expect(html).toContain("data-games-round-next-timer");
+    expect(html).toContain("Следующий вопрос через");
+    expect(html).toContain('data-games-timer-deadline="2026-05-25T00:00:15.000Z"');
   });
 
   it("рендерит hidden-маркер окна финальных итогов", () => {
@@ -188,6 +203,7 @@ describe("games round result render", () => {
     });
 
     expect(html).toContain("data-games-final-results-until");
-    expect(html).toContain("Итоги игры");
+    expect(html).toContain("data-games-round-next-timer");
+    expect(html).toContain("Итоги игры через");
   });
 });

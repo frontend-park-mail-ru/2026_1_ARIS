@@ -219,7 +219,7 @@ describe("games scoreboard render", () => {
     expect(html).toContain("Ada");
   });
 
-  it("оставляет анимацию начисления очков, если следующий вопрос уже активен", () => {
+  it("не держит анимацию начисления очков после старта следующего вопроса", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-25T10:00:04.000Z"));
     const players = [
@@ -272,78 +272,8 @@ describe("games scoreboard render", () => {
       renderProfileLink,
     });
 
-    expect(html).toContain('data-games-score-from="0"');
-    expect(html).toContain('data-games-score-to="1"');
-    expect(html).toContain("data-games-round-points-badge");
-  });
-
-  it("запускает начисление очков за раунд одновременно у всех игроков", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-05-25T10:00:04.000Z"));
-    const players = [
-      createPlayer({ profileId: "1", firstName: "Ada", isMe: true }),
-      createPlayer({ profileId: "2", firstName: "Grace", isMe: false }),
-      createPlayer({ profileId: "3", firstName: "Linus", isMe: false }),
-    ];
-    const html = renderGameScoreboard({
-      room: createRoom(players, {
-        currentQuestion: {
-          id: "q2",
-          position: 2,
-          text: "Next question",
-          startedAt: "2026-05-25T10:00:03.000Z",
-          deadlineAt: "2026-05-25T10:00:13.000Z",
-          hasAnswered: false,
-        },
-        questions: [
-          {
-            id: "q1",
-            position: 1,
-            status: "completed",
-            text: "Previous question",
-            correctAnswer: 10,
-            answers: [
-              {
-                profileId: "1",
-                answer: 10,
-                distance: 0,
-                answeredAt: "2026-05-25T10:00:01.000Z",
-                responseTimeMs: 1000,
-                isWinner: true,
-              },
-              {
-                profileId: "2",
-                answer: 9,
-                distance: 1,
-                answeredAt: "2026-05-25T10:00:01.500Z",
-                responseTimeMs: 1500,
-                isWinner: false,
-              },
-              {
-                profileId: "3",
-                answer: 1,
-                distance: 9,
-                answeredAt: "2026-05-25T10:00:02.000Z",
-                responseTimeMs: 2000,
-                isWinner: false,
-              },
-            ],
-            winnerProfileId: "1",
-            startedAt: "2026-05-25T09:59:50.000Z",
-            deadlineAt: "2026-05-25T10:00:00.000Z",
-            completedAt: "2026-05-25T10:00:00.000Z",
-          },
-        ],
-      }),
-      getPlayerAvatarUrl: () => "",
-      renderProfileLink,
-    });
-
-    const starts = [...html.matchAll(/data-games-score-start-at="(\d+)"/g)].map(
-      (match) => match[1],
-    );
-
-    expect(starts).toHaveLength(2);
-    expect(new Set(starts).size).toBe(1);
+    expect(html).not.toContain("data-games-score-from");
+    expect(html).not.toContain("data-games-round-points-badge");
+    vi.useRealTimers();
   });
 });

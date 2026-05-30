@@ -16,6 +16,7 @@ export function renderRoundAnswerShowcase(options: RenderRoundResultStageOptions
   const { room, question, renderPlayerCell } = options;
   const entries = getRoundResultPresentationRows(room, question);
   const showcaseItems = getRoundAnswerShowcaseItems(entries);
+  const maxRevealIndex = Math.max(0, ...showcaseItems.map((item) => item.revealIndex));
   const timeRevealDelayMs = getRoundTimesRevealDelayMs(room, question);
   return `
     <div class="games-round-result-cinema" data-games-round-result-cinema>
@@ -29,7 +30,13 @@ export function renderRoundAnswerShowcase(options: RenderRoundResultStageOptions
         <div class="games-answer-axis__list">
           ${showcaseItems
             .map((item, index) =>
-              renderRoundAnswerShowcaseItem(item, index, timeRevealDelayMs, renderPlayerCell),
+              renderRoundAnswerShowcaseItem(
+                item,
+                index,
+                maxRevealIndex,
+                timeRevealDelayMs,
+                renderPlayerCell,
+              ),
             )
             .join("")}
         </div>

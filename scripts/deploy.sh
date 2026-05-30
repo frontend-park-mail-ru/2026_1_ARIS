@@ -10,7 +10,7 @@
 #   APP_ROOT        целевая директория (по умолчанию: /var/www/aris)
 #   INSTALL_STATIC  установить в "true" для деплоя после сборки
 #   PM2_NAME        имя PM2-процесса для перезапуска после деплоя
-#   SYSTEMD_SERVICE systemd-юнит для перезапуска после деплоя (через sudo)
+#   SYSTEMD_SERVICE user systemd-юнит для перезапуска после деплоя
 #   RESTART_CMD     произвольная команда перезапуска сервера
 #   BASE_URL        если задан, запускает smoke-проверку после перезапуска
 #   BUILD_COMMIT    SHA коммита, встраивается в ответ /health
@@ -30,7 +30,9 @@ restart_server() {
     pm2 restart "$PM2_NAME"
   elif [ -n "${SYSTEMD_SERVICE:-}" ]; then
     log "перезапуск systemd-сервиса: $SYSTEMD_SERVICE"
-    sudo systemctl restart "$SYSTEMD_SERVICE"
+    export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+    export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}"
+    systemctl --user restart "$SYSTEMD_SERVICE"
   elif [ -n "${RESTART_CMD:-}" ]; then
     log "выполнение команды перезапуска: $RESTART_CMD"
     eval "$RESTART_CMD"
@@ -63,8 +65,8 @@ if [ "${1:-}" = "--rollback" ]; then
     exit 1
   fi
   log "откат $APP_ROOT из $PREV"
-  sudo find "$APP_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-  sudo cp -R "$PREV"/. "$APP_ROOT"/
+  find "$APP_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  cp -R "$PREV"/. "$APP_ROOT"/
   restart_server
   if [ -n "${BASE_URL:-}" ]; then
     wait_for_health "$BASE_URL"
@@ -97,14 +99,14 @@ if [ "$INSTALL_STATIC" = "true" ]; then
   # Резервная копия текущего релиза перед заменой
   if [ -d "$APP_ROOT" ] && [ -n "$(ls -A "$APP_ROOT" 2>/dev/null)" ]; then
     log "резервная копия текущего релиза → $PREV"
-    sudo rm -rf "$PREV"
-    sudo cp -R "$APP_ROOT" "$PREV"
+    rm -rf "$PREV"
+    cp -R "$APP_ROOT" "$PREV"
   fi
 
   log "обновление $APP_ROOT"
-  sudo mkdir -p "$APP_ROOT"
-  sudo find "$APP_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-  sudo cp -R "$TMP_DIR"/. "$APP_ROOT"/
+  mkdir -p "$APP_ROOT"
+  find "$APP_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  cp -R "$TMP_DIR"/. "$APP_ROOT"/
   log "файлы установлены (sw.js: $(ls -lh "$APP_ROOT/sw.js" | awk '{print $5}'))"
 
   restart_server
@@ -114,8 +116,8 @@ if [ "$INSTALL_STATIC" = "true" ]; then
       BASE_URL="$BASE_URL" bash "$(dirname "$0")/smoke.sh"
     else
       log "сервер не поднялся — выполняется откат"
-      sudo find "$APP_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-      sudo cp -R "$PREV"/. "$APP_ROOT"/
+      find "$APP_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+      cp -R "$PREV"/. "$APP_ROOT"/
       restart_server
       log "откат завершён — разберитесь в причине и повторите деплой"
       exit 1

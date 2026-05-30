@@ -78,6 +78,7 @@ export function createGamesPageRuntimes(
     formatScore: options.formatScore,
     onFinalResultsExpired: options.onFinalResultsExpired,
     onQuestionDeadlineExpired: options.onQuestionDeadlineExpired,
+    onRoundResultExpired: options.onFinalResultsExpired,
   });
 
   const roomChat = createGamesRoomChatRuntime({

@@ -15,7 +15,7 @@ export function renderRoomPanel(options: RenderRoomPanelOptions): string {
 
   return `
     <section class="games-panel content-card" data-games-room-id="${escapeHtml(room.id)}">
-      ${renderRoomHeader(options)}
+      ${options.showRoomHeader ? renderRoomHeader(options) : ""}
       ${room.status === "finished" ? gamePlay : ""}
       ${room.status === "waiting" ? playerList : ""}
       ${room.status === "waiting" ? passwordError : ""}

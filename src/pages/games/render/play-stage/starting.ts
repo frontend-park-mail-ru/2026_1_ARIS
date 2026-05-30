@@ -27,7 +27,7 @@ export function renderGameStartingStage(room: GameRoom): string {
   const totalSeconds = Math.ceil(totalMs / 1_000);
 
   return `
-    <section class="games-game-stage games-game-stage--starting" aria-label="${escapeHtml(gameT("gameplay.startingAria"))}">
+    <section class="games-game-stage games-game-stage--starting" data-key="stage-starting" aria-label="${escapeHtml(gameT("gameplay.startingAria"))}">
       <div class="games-stage-card games-stage-card--starting">
         <span class="games-stage-card__eyebrow">${escapeHtml(gameT("gameplay.startingEyebrow"))}</span>
         <h2 class="games-stage-card__title">${escapeHtml(gameT("gameplay.firstQuestionIn"))}</h2>

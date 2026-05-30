@@ -218,6 +218,24 @@
     text-align: left;
   }
 
+  .games-final-place__time {
+    display: inline-flex;
+    min-width: 88px;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 6px;
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+  }
+
+  .games-final-place__time time {
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-variant-numeric: tabular-nums;
+  }
+
   .games-final-place small {
     justify-self: end;
   }

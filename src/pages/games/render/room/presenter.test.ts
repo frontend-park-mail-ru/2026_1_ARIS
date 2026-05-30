@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GamePlayer, GameRoom } from "../../../../api/games";
 import { createInitialGamesState } from "../../state/store";
 import { renderRoomPanelPresenter } from "./presenter";
@@ -100,6 +100,10 @@ function createOptions(room = createRoom()) {
 }
 
 describe("games room panel presenter", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("рендерит панель комнаты ожидания", () => {
     const html = renderRoomPanelPresenter(createOptions());
 
@@ -140,5 +144,36 @@ describe("games room panel presenter", () => {
     const html = renderRoomPanelPresenter(options);
 
     expect(html).toContain("Только администратор комнаты может начать игру");
+  });
+
+  it("скрывает заголовок комнаты перед финальными итогами", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T00:00:12.000Z"));
+    const room = createRoom({
+      status: "finished",
+      questionCount: 1,
+      currentQuestionIndex: 1,
+      questions: [
+        {
+          id: "q1",
+          position: 1,
+          status: "completed",
+          text: "Question?",
+          correctAnswer: 42,
+          answers: [],
+          winnerProfileId: "",
+          startedAt: "2026-05-25T00:00:00.000Z",
+          deadlineAt: "2026-05-25T00:00:10.000Z",
+          completedAt: "2026-05-25T00:00:10.000Z",
+        },
+      ],
+    });
+
+    const html = renderRoomPanelPresenter(createOptions(room));
+
+    expect(html).not.toContain("games-room-heading");
+    expect(html).not.toContain("Вопрос 1 из 1");
+    expect(html).not.toContain("Викторина");
+    expect(html).not.toContain("games-room-rules-button");
   });
 });

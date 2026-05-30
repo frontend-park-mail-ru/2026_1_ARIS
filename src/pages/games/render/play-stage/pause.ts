@@ -67,7 +67,7 @@ export function renderPauseStage(options: RenderPauseStageOptions): string {
   const pauseCountdownTotalMs = getPauseCountdownTotalMs(room.pauseUntilAt);
 
   return `
-    <section class="games-game-stage games-game-stage--pause" aria-label="${escapeHtml(gameT("gameplay.pausedAria"))}">
+    <section class="games-game-stage games-game-stage--pause" data-key="stage-pause-${escapeHtml(room.pauseStartedAt || room.pausedByProfileId || "active")}" aria-label="${escapeHtml(gameT("gameplay.pausedAria"))}">
       <div class="games-stage-card games-stage-card--pause">
         <div class="games-pause-hero">
           <h2 class="games-stage-card__title">${escapeHtml(gameT("gameplay.pauseTitle"))}</h2>

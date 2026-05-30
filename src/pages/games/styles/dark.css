@@ -41,11 +41,24 @@
       var(--games-dark-card), linear-gradient(135deg, rgb(143 161 255 / 10%), transparent 42%),
       var(--games-dark-panel);
     box-shadow: var(--games-dark-shadow);
-    scrollbar-color: var(--games-dark-scrollbar) var(--games-dark-scrollbar-track);
+    scrollbar-color: var(--games-dark-scrollbar) transparent;
   }
 
   :root[data-theme="dark"] .games-room-chat__messages {
     scrollbar-color: var(--games-dark-scrollbar) var(--games-dark-scrollbar-track);
+  }
+
+  :root[data-theme="dark"] .games-stage-card::-webkit-scrollbar-track,
+  :root[data-theme="dark"] .games-stage-card::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  :root[data-theme="dark"] .games-stage-card::-webkit-scrollbar-thumb {
+    background: var(--games-dark-scrollbar);
+  }
+
+  :root[data-theme="dark"] .games-stage-card::-webkit-scrollbar-thumb:hover {
+    background: rgb(143 161 255 / 58%);
   }
 
   :root[data-theme="dark"] .games-stage-card--starting::before {
@@ -79,8 +92,6 @@
     box-shadow: 0 10px 24px rgb(0 0 0 / 18%);
   }
 
-  :root[data-theme="dark"] .games-game-player--me,
-  :root[data-theme="dark"] .games-game-player--answered,
   :root[data-theme="dark"] .games-answer-axis-card--me,
   :root[data-theme="dark"] .games-final-place--me,
   :root[data-theme="dark"] .games-final-place--me.games-final-place--winner,
@@ -90,6 +101,31 @@
     box-shadow:
       0 14px 30px rgb(0 0 0 / 24%),
       0 0 0 1px rgb(143 161 255 / 14%) inset;
+  }
+
+  :root[data-theme="dark"] .games-game-player--answered {
+    border-color: rgb(185 198 230 / 42%);
+    background:
+      linear-gradient(135deg, rgb(185 198 230 / 20%), rgb(143 161 255 / 14%)), rgb(50 60 82 / 86%);
+    box-shadow:
+      0 16px 32px rgb(0 0 0 / 28%),
+      0 0 0 1px rgb(226 232 240 / 14%) inset;
+  }
+
+  :root[data-theme="dark"] .games-game-player--me {
+    border-color: rgb(180 192 255 / 78%);
+    background: var(--games-dark-row);
+    box-shadow:
+      0 10px 24px rgb(0 0 0 / 18%),
+      0 0 0 2px rgb(180 192 255 / 82%) inset;
+  }
+
+  :root[data-theme="dark"] .games-game-player--me.games-game-player--answered {
+    background:
+      linear-gradient(135deg, rgb(185 198 230 / 20%), rgb(143 161 255 / 14%)), rgb(50 60 82 / 86%);
+    box-shadow:
+      0 16px 32px rgb(0 0 0 / 28%),
+      0 0 0 2px rgb(180 192 255 / 82%) inset;
   }
 
   :root[data-theme="dark"] .games-results-table__row:hover {

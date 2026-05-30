@@ -81,6 +81,8 @@ function createOptions(overrides: Partial<RenderRoomPanelOptions> = {}): RenderR
     room,
     game: createGame(),
     headingTitle: "Комната Числовая дуэль",
+    showRoomHeader: true,
+    showRulesHint: true,
     loading: false,
     roomTitle: "Room",
     roomPasswordDisplay: "********",

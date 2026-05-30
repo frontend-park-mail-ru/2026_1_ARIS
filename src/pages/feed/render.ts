@@ -106,10 +106,9 @@ export function renderOfflineFeedFallback(isAuthorised: boolean): string {
  * @returns {string} HTML индикатора.
  */
 export function renderFeedStatus(hasMore: boolean, isLoading: boolean): string {
-  const hiddenClass = hasMore ? "" : " feed-infinite-status--hidden";
-  const text = isLoading ? t("feed.loadingMore") : t("feed.loadMore");
+  const text = !hasMore ? t("feed.end") : isLoading ? t("feed.loadingMore") : t("feed.loadMore");
 
-  return `<div class="feed-infinite-status${hiddenClass}" data-feed-status>${text}</div>`;
+  return `<div class="feed-infinite-status" data-feed-status>${text}</div>`;
 }
 
 /**

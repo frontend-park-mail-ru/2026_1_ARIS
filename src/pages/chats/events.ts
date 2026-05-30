@@ -473,6 +473,29 @@ function updateVideoNoteUi(video: HTMLVideoElement): void {
   }
 }
 
+function seekVideoNoteToStart(video: HTMLVideoElement): void {
+  try {
+    video.currentTime = 0;
+  } catch {
+    // Some browsers can reject seeking before metadata is ready. Playback will start from 0 anyway.
+  }
+}
+
+function hasKnownVideoNoteDuration(video: HTMLVideoElement): boolean {
+  return Number.isFinite(video.duration) && video.duration > 0;
+}
+
+function requestVideoNoteMetadata(video: HTMLVideoElement): void {
+  video.preload = "metadata";
+  if (hasKnownVideoNoteDuration(video) || video.readyState > HTMLMediaElement.HAVE_NOTHING) return;
+
+  try {
+    video.load();
+  } catch {
+    // Metadata preloading is best-effort; playback will still resolve duration on click.
+  }
+}
+
 function stopVideoNotePlaybackAnimation(video: HTMLVideoElement): void {
   const animationId = videoNotePlaybackAnimationByVideo.get(video);
   if (animationId !== undefined) {
@@ -496,14 +519,31 @@ function startVideoNotePlaybackAnimation(video: HTMLVideoElement): void {
   videoNotePlaybackAnimationByVideo.set(video, requestAnimationFrame(tick));
 }
 
+function collapseVideoNote(note: HTMLElement, resetProgress: boolean): void {
+  const video = getVideoNoteVideo(note);
+  note.classList.remove("video-note--expanded", "video-note--playing");
+
+  if (!video) return;
+
+  if (!video.paused) video.pause();
+  video.muted = true;
+  if (resetProgress) seekVideoNoteToStart(video);
+  stopVideoNotePlaybackAnimation(video);
+  updateVideoNoteUi(video);
+}
+
 function pauseOtherVideoNotes(root: ParentNode, currentVideo: HTMLVideoElement): void {
   root.querySelectorAll<HTMLVideoElement>("[data-video-note-video]").forEach((video) => {
     if (video === currentVideo) return;
-    video.pause();
-    video.muted = true;
-    stopVideoNotePlaybackAnimation(video);
-    getVideoNote(video)?.classList.remove("video-note--expanded");
-    updateVideoNoteUi(video);
+    const note = getVideoNote(video);
+    if (note) {
+      collapseVideoNote(note, false);
+    } else {
+      if (!video.paused) video.pause();
+      video.muted = true;
+      stopVideoNotePlaybackAnimation(video);
+      updateVideoNoteUi(video);
+    }
   });
 }
 
@@ -512,18 +552,14 @@ function collapseExpandedVideoNotes(root: ParentNode, except?: HTMLElement): voi
     .querySelectorAll<HTMLElement>("[data-chat-video-note].video-note--expanded")
     .forEach((note) => {
       if (note === except) return;
-      const video = getVideoNoteVideo(note);
-      note.classList.remove("video-note--expanded");
-      if (video) {
-        video.pause();
-        video.muted = true;
-        stopVideoNotePlaybackAnimation(video);
-        updateVideoNoteUi(video);
-      }
+      collapseVideoNote(note, false);
     });
 }
 
 function playVideoNote(video: HTMLVideoElement): void {
+  const note = getVideoNote(video);
+  if (note) note.classList.add("video-note--playing");
+
   void video
     .play()
     .then(() => {
@@ -531,6 +567,7 @@ function playVideoNote(video: HTMLVideoElement): void {
       startVideoNotePlaybackAnimation(video);
     })
     .catch(() => {
+      if (note) note.classList.remove("video-note--playing");
       updateVideoNoteUi(video);
     });
 }
@@ -568,7 +605,7 @@ function toggleVideoNote(root: ParentNode, note: HTMLElement): void {
     note.classList.add("video-note--expanded");
     note.dataset.videoNoteState = "played";
     video.muted = false;
-    video.currentTime = 0;
+    seekVideoNoteToStart(video);
     pauseAllVoicePlayers(root);
     playVideoNote(video);
     keepVideoNoteInView(note);
@@ -577,12 +614,10 @@ function toggleVideoNote(root: ParentNode, note: HTMLElement): void {
 
   video.muted = false;
   if (video.paused || video.ended) {
-    if (video.ended) video.currentTime = 0;
+    if (video.ended) seekVideoNoteToStart(video);
     playVideoNote(video);
   } else {
-    video.pause();
-    stopVideoNotePlaybackAnimation(video);
-    updateVideoNoteUi(video);
+    collapseVideoNote(note, true);
   }
 }
 
@@ -592,6 +627,7 @@ function hydrateVideoNotes(root: ParentNode): void {
     const note = getVideoNote(video);
     video.muted = !note || !isVideoNoteExpanded(note);
     video.playsInline = true;
+    requestVideoNoteMetadata(video);
     updateVideoNoteUi(video);
   });
 }
@@ -1890,6 +1926,17 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
   );
 
   root.addEventListener(
+    "durationchange",
+    (event: Event) => {
+      const target = event.target;
+      if (target instanceof HTMLVideoElement && target.matches("[data-video-note-video]")) {
+        updateVideoNoteUi(target);
+      }
+    },
+    true,
+  );
+
+  root.addEventListener(
     "play",
     (event: Event) => {
       const target = event.target;
@@ -1921,11 +1968,9 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
         stopVideoNotePlaybackAnimation(target);
         const note = getVideoNote(target);
         if (note) {
-          note.classList.remove("video-note--expanded");
+          note.classList.remove("video-note--playing");
           note.dataset.videoNoteState = "played";
         }
-        target.muted = true;
-        target.currentTime = 0;
         updateVideoNoteUi(target);
       }
     },
@@ -1942,7 +1987,15 @@ export function bindChatsEvents(root: Document | HTMLElement): void {
         updateVoicePlayerUi(target);
       } else if (target instanceof HTMLVideoElement && target.matches("[data-video-note-video]")) {
         stopVideoNotePlaybackAnimation(target);
-        updateVideoNoteUi(target);
+        const note = getVideoNote(target);
+        if (note) {
+          note.dataset.videoNoteState = "played";
+          collapseVideoNote(note, true);
+        } else {
+          target.muted = true;
+          seekVideoNoteToStart(target);
+          updateVideoNoteUi(target);
+        }
       }
     },
     true,

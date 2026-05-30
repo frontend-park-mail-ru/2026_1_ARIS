@@ -67,12 +67,13 @@ function renderRoundResultPlayerCard(
   index: number,
   roundPlace: number,
   revealIndex: number,
+  maxRevealIndex: number,
   timeRevealDelayMs: number,
   renderPlayerCell: RenderPlayerCell,
 ): string {
   const playerLabel = getPlayerFullName(row.player);
   const timeLabel = formatDurationMs(row.answer?.responseTimeMs);
-  const cardStyle = `${renderRoundResultStyle({ ...row, revealIndex }, index)}; --games-time-reveal-delay: ${timeRevealDelayMs}ms`;
+  const cardStyle = `${renderRoundResultStyle({ ...row, revealIndex }, index, maxRevealIndex)}; --games-time-reveal-delay: ${timeRevealDelayMs}ms`;
 
   return `
     <article
@@ -96,6 +97,7 @@ function renderRoundResultPlayerCard(
 export function renderRoundAnswerShowcaseItem(
   item: RoundAnswerShowcaseItem,
   index: number,
+  maxRevealIndex: number,
   timeRevealDelayMs: number,
   renderPlayerCell: RenderPlayerCell,
 ): string {
@@ -104,6 +106,7 @@ export function renderRoundAnswerShowcaseItem(
     index,
     item.orderIndex,
     item.revealIndex,
+    maxRevealIndex,
     timeRevealDelayMs,
     renderPlayerCell,
   );

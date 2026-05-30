@@ -6,26 +6,32 @@ import type { RenderRoomPanelOptions } from "./types";
 
 /** Рендерит верхнюю строку заголовка комнаты. */
 function renderRoomHeaderTop(options: RenderRoomPanelOptions): string {
-  const { room, game, headingTitle, rankedBadge } = options;
+  const { room, game, headingTitle, rankedBadge, showRulesHint } = options;
   return `
     <div class="games-room-header__top">
       <div class="games-room-heading-group">
         <h1 class="games-room-heading">${headingTitle}</h1>
-        <span class="games-room-heading-hint">
-          <button
-            type="button"
-            class="games-catalog-card__hint-button games-room-rules-button"
-            data-games-catalog-hint
-            aria-controls="games-room-rules-hint"
-            aria-label="${escapeHtml(gameT("room.rulesAria"))}"
-            aria-expanded="false"
-          >
-            ?
-          </button>
-          <span id="games-room-rules-hint" class="games-field-popover" popover="manual" hidden>
-            ${escapeHtml(game.description)}
+        ${
+          showRulesHint
+            ? `
+          <span class="games-room-heading-hint">
+            <button
+              type="button"
+              class="games-catalog-card__hint-button games-room-rules-button"
+              data-games-catalog-hint
+              aria-controls="games-room-rules-hint"
+              aria-label="${escapeHtml(gameT("room.rulesAria"))}"
+              aria-expanded="false"
+            >
+              ?
+            </button>
+            <span id="games-room-rules-hint" class="games-field-popover" popover="manual" hidden>
+              ${escapeHtml(game.description)}
+            </span>
           </span>
-        </span>
+        `
+            : ""
+        }
         ${room.status === "waiting" ? rankedBadge : ""}
       </div>
       ${

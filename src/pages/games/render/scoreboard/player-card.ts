@@ -10,13 +10,20 @@ import type { getGameScoreboardModel } from "./model";
 type GameScoreboardModel = ReturnType<typeof getGameScoreboardModel>;
 
 /**
- * Рендерит компактное имя игрока в боковой таблице без фамилии.
+ * Рендерит компактное имя игрока в боковой таблице в две строки.
  */
 function renderScoreboardPlayerNameContent(player: GameRoom["players"][number]): string {
-  const playerLabel = getGamePlayerLabel(player);
+  const explicitFirstName = player.firstName?.trim();
+  const explicitLastName = player.lastName?.trim();
+  const fullNameParts =
+    explicitFirstName || explicitLastName ? [] : getPlayerFullName(player).split(/\s+/);
+  const firstName = explicitFirstName || fullNameParts[0] || getGamePlayerLabel(player);
+  const lastName = explicitLastName || fullNameParts.slice(1).join(" ");
+
   return `
     <span class="games-game-player__name-lines">
-      <span class="games-game-player__first-name">${escapeHtml(playerLabel)}</span>
+      <span class="games-game-player__first-name">${escapeHtml(firstName)}</span>
+      ${lastName ? `<span class="games-game-player__last-name">${escapeHtml(lastName)}</span>` : ""}
     </span>
   `;
 }

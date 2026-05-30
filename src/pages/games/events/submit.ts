@@ -77,6 +77,30 @@ function handleRoomChatSubmit(form: HTMLFormElement, options: BindGamesSubmitEve
   });
 }
 
+function submitRoomChatForm(form: HTMLFormElement): void {
+  if (typeof form.requestSubmit === "function") {
+    form.requestSubmit();
+    return;
+  }
+  form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+}
+
+/**
+ * Отправляет сообщение чата по Enter без вставки перевода строки.
+ */
+function handleRoomChatInputKeydown(event: KeyboardEvent): void {
+  if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+  const target = event.target;
+  if (!(target instanceof HTMLTextAreaElement)) return;
+  if (!target.matches("[data-games-room-chat-input]")) return;
+
+  const form = target.closest<HTMLFormElement>("[data-games-room-chat-form]");
+  if (!form) return;
+
+  event.preventDefault();
+  submitRoomChatForm(form);
+}
+
 /**
  * Обрабатывает отправку обычной формы страницы игр.
  */
@@ -102,6 +126,10 @@ export function bindGamesSubmitEvents(
   root: GamesSubmitEventsRoot,
   options: BindGamesSubmitEventsOptions,
 ): void {
+  root.addEventListener("keydown", (event: Event) => {
+    handleRoomChatInputKeydown(event as KeyboardEvent);
+  });
+
   root.addEventListener("submit", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLFormElement)) return;

@@ -81,7 +81,13 @@ describe("games scoreboard render", () => {
     const html = renderGameScoreboard({
       room: createRoom([
         createPlayer({ profileId: "1", firstName: "Ada", score: 7, isMe: true }),
-        createPlayer({ profileId: "2", firstName: "Grace", score: 3, isMe: false }),
+        createPlayer({
+          profileId: "2",
+          firstName: "Grace",
+          lastName: "Hopper",
+          score: 3,
+          isMe: false,
+        }),
       ]),
       getPlayerAvatarUrl: () => "",
       renderProfileLink,
@@ -89,7 +95,9 @@ describe("games scoreboard render", () => {
 
     expect(html).toContain("games-game-scoreboard");
     expect(html).toContain("Ada");
+    expect(html).toContain("Lovelace");
     expect(html).toContain("Grace");
+    expect(html).toContain("Hopper");
     expect(html).toContain('data-games-scoreboard-card="1"');
   });
 

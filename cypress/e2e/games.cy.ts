@@ -435,11 +435,12 @@ describe("игровая комната", () => {
         {
           ...roomResponse("waiting", "room-full"),
           title: "Полная комната",
+          createdByProfileId: "2",
+          creator: { ...roomPlayers[1], profileId: "2", isMe: false },
           maxPlayers: 2,
           hasPassword: false,
           isRanked: false,
           players: [
-            { ...roomPlayers[1], profileId: "2", isMe: false },
             {
               ...roomPlayers[1],
               profileId: "3",
@@ -461,11 +462,11 @@ describe("игровая комната", () => {
     cy.wait("@roomsList");
 
     cy.contains(".games-room-card", "Рейтинговая комната")
-      .should("contain", "Участников: 1/4")
+      .should("contain", "Участников: 2/4")
       .and("contain", "Есть пароль")
       .and("contain", "Рейтинговая");
     cy.contains(".games-room-card", "Обычная комната")
-      .should("contain", "Участников: 1/3")
+      .should("contain", "Участников: 2/3")
       .and("contain", "Без пароля")
       .and("contain", "Обычная");
     cy.contains(".games-room-card", "Полная комната")
@@ -740,7 +741,7 @@ describe("игровая комната", () => {
     );
     cy.get("[data-games-room-players-rail]")
       .should("contain", "Аня")
-      .and("not.contain", "Орлова")
+      .and("contain", "Орлова")
       .find("[data-games-profile-link]")
       .should("have.length", 4);
     cy.get(".games-game-stage").should("not.contain", "Орлова").find("a").should("not.exist");
@@ -893,8 +894,8 @@ describe("игровая комната", () => {
     cy.get("[data-games-room-players-rail]")
       .should("contain", "Аня")
       .and("contain", "Мария")
-      .and("not.contain", "Орлова")
-      .and("not.contain", "Соколова")
+      .and("contain", "Орлова")
+      .and("contain", "Соколова")
       .and("not.contain", "место");
     cy.contains("[data-games-room-players-rail] .games-game-player", "Мария").should(
       "contain",

@@ -62,6 +62,54 @@ describe("games submit events", () => {
     expect(options.handleCreateRoom).toHaveBeenCalledWith(form);
   });
 
+  it("отправляет сообщение чата по Enter в поле ввода", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <form data-games-room-chat-form>
+        <textarea name="text" data-games-room-chat-input>Привет</textarea>
+      </form>
+    `;
+    const form = root.querySelector<HTMLFormElement>("[data-games-room-chat-form]")!;
+    const input = root.querySelector<HTMLTextAreaElement>("[data-games-room-chat-input]")!;
+    const options = createOptions();
+
+    bindGamesSubmitEvents(root, options);
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(event);
+    await Promise.resolve();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(options.handleSubmitRoomChat).toHaveBeenCalledWith(form);
+  });
+
+  it("оставляет Shift+Enter для переноса строки в чате", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <form data-games-room-chat-form>
+        <textarea name="text" data-games-room-chat-input>Привет</textarea>
+      </form>
+    `;
+    const input = root.querySelector<HTMLTextAreaElement>("[data-games-room-chat-input]")!;
+    const options = createOptions();
+
+    bindGamesSubmitEvents(root, options);
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(event);
+    await Promise.resolve();
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(options.handleSubmitRoomChat).not.toHaveBeenCalled();
+  });
+
   it("пишет ошибку answer-формы в общий state", async () => {
     const root = document.createElement("div");
     const form = document.createElement("form");

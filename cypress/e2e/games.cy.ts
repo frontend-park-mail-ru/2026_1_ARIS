@@ -1146,7 +1146,8 @@ describe("игровая комната", () => {
       .and("contain", "×")
       .and("contain", "Нет ответа")
       .and("not.contain", "0 очков")
-      .and("contain", "Нет времени")
+      .and("not.contain", "Нет времени")
+      .and("not.have.class", "games-answer-axis-card--has-time")
       .should("have.class", "games-answer-axis-card--missing");
     cy.get("[data-games-round-result-card]").should("have.length", 3);
     cy.get("[data-games-round-result-card]")
@@ -1186,7 +1187,8 @@ describe("игровая комната", () => {
       .and("contain", "×")
       .and("contain", "Нет ответа")
       .and("not.contain", "0 очков")
-      .and("contain", "Нет времени")
+      .and("not.contain", "Нет времени")
+      .and("not.have.class", "games-answer-axis-card--has-time")
       .should("have.class", "games-answer-axis-card--missing")
       .should("have.attr", "style")
       .and("include", "--games-result-delay: 1700ms");

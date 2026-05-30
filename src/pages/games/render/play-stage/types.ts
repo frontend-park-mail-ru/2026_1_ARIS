@@ -24,6 +24,7 @@ export type RenderPauseStageOptions = {
 
 export type RenderActiveRoundStageOptions = {
   room: GameRoom;
+  currentPlayer: GamePlayer | null;
   submittedQuestionId: string;
   submittedAnswerValue: string;
   renderInlineError: RenderInlineGameError;

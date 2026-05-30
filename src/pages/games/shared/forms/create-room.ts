@@ -37,13 +37,18 @@ export function isCreateRoomRanked(form: HTMLFormElement): boolean {
 /** Проверяет, заблокировано ли поле настройками рейтинговой комнаты. */
 export function isRankedLockedCreateInput(input: HTMLInputElement): boolean {
   if (!input.closest("[data-games-create-room]")) return false;
-  return input.name === "questionCount" || input.name === "answerTimeoutSec";
+  return (
+    input.name === "questionCount" ||
+    input.name === "answerTimeoutSec" ||
+    input.name === "roundPauseSec"
+  );
 }
 
 /** Возвращает фиксированное значение поля для рейтинговой комнаты. */
 export function getRankedLockedCreateValue(input: HTMLInputElement): string {
-  if (input.name === "questionCount") return "10";
+  if (input.name === "questionCount") return "20";
   if (input.name === "answerTimeoutSec") return "10";
+  if (input.name === "roundPauseSec") return "5";
   return input.value;
 }
 
@@ -55,7 +60,7 @@ export function applyCreateRoomRankedRules(
   const isRanked = isCreateRoomRanked(form);
   const lockedInputs = Array.from(
     form.querySelectorAll<HTMLInputElement>(
-      'input[name="questionCount"], input[name="answerTimeoutSec"]',
+      'input[name="questionCount"], input[name="answerTimeoutSec"], input[name="roundPauseSec"]',
     ),
   );
 

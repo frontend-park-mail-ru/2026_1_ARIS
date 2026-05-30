@@ -1,4 +1,10 @@
-import { disbandGameRoom, leaveGameRoom, type GameRoom } from "../../../api/games";
+import {
+  disbandGameRoom,
+  forgetPublicGameGuestSession,
+  getPublicGameGuestSessionByRoom,
+  leaveGameRoom,
+  type GameRoom,
+} from "../../../api/games";
 import { getDisbandRoomSuccessPatch } from "../state/action-patches";
 import type { GamesPageState } from "../state/store";
 import { isCurrentRoomCreator } from "../room/selectors";
@@ -66,6 +72,13 @@ export async function exitRoomToMenu(options: ExitRoomToMenuOptions): Promise<vo
     } catch (error) {
       setGamesState({ loading: false, message: "", error: "", errorTarget: "" });
       throw error;
+    }
+  }
+
+  if (room.isPublicLobby) {
+    const publicGuestSession = getPublicGameGuestSessionByRoom(room.id);
+    if (publicGuestSession) {
+      forgetPublicGameGuestSession(publicGuestSession);
     }
   }
 

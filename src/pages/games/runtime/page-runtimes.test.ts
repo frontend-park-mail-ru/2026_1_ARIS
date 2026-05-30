@@ -77,6 +77,7 @@ function createOptions() {
     refreshCurrentRoomSilently: vi.fn(),
     formatScore: vi.fn((value: number) => String(value)),
     onFinalResultsExpired: vi.fn(),
+    onQuestionDeadlineExpired: vi.fn(),
   };
 }
 
@@ -96,7 +97,10 @@ describe("games page runtimes", () => {
     expect(runtimes.roomsAutoRefresh).toBeDefined();
     expect(runtimes.roomStateRefresh).toBeDefined();
     expect(createGamesCountdownRuntime).toHaveBeenCalledWith(
-      expect.objectContaining({ formatScore: options.formatScore }),
+      expect.objectContaining({
+        formatScore: options.formatScore,
+        onQuestionDeadlineExpired: options.onQuestionDeadlineExpired,
+      }),
     );
     expect(createGamesRoomChatRuntime).toHaveBeenCalledWith(
       expect.objectContaining({ fetchMessages: options.fetchMessages }),

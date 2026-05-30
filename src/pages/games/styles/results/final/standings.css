@@ -3,12 +3,18 @@
   .games-final-hero {
     display: flex;
     min-width: 0;
-    padding: var(--space-4);
-    border: 1px solid var(--color-border-glass-soft);
+    padding: 22px;
+    border: 1px solid rgb(74 81 208 / 24%);
     border-radius: var(--radius-small);
-    background: rgb(255 255 255 / 68%);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 86%), rgb(244 247 255 / 76%)),
+      linear-gradient(135deg, rgb(74 81 208 / 16%), transparent 46%),
+      linear-gradient(300deg, rgb(53 137 96 / 12%), transparent 38%);
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-3);
+    box-shadow:
+      0 18px 42px rgb(33 45 88 / 12%),
+      0 1px 0 rgb(255 255 255 / 78%) inset;
     animation: games-answer-reveal 420ms ease both;
   }
 
@@ -32,11 +38,18 @@
 
   .games-final-winner-card {
     display: inline-flex;
-    width: fit-content;
+    width: 100%;
     max-width: 100%;
     min-width: 0;
+    min-height: 112px;
     align-items: center;
-    gap: var(--space-3);
+    gap: 18px;
+    padding: 18px;
+    border: 1px solid rgb(74 81 208 / 22%);
+    border-radius: var(--radius-small);
+    background: rgb(255 255 255 / 72%);
+    box-shadow: 0 16px 34px rgb(33 45 88 / 12%);
+    box-sizing: border-box;
     color: var(--color-text-main);
     text-decoration: none;
   }
@@ -45,14 +58,14 @@
     min-width: 0;
     overflow: hidden;
     color: var(--color-interactive-primary);
-    font-size: var(--text-size-heading-sm);
+    font-size: clamp(24px, 3.2vw, 38.4px);
     line-height: var(--line-height-tight);
     text-overflow: ellipsis;
   }
 
   .games-final-winner-card__avatar {
-    width: 52px;
-    height: 52px;
+    width: 76px;
+    height: 76px;
     flex: 0 0 auto;
     border-radius: var(--radius-round);
     object-fit: cover;
@@ -61,7 +74,7 @@
 
   .games-final-winner-card--draw {
     color: var(--color-text-main);
-    font-size: var(--text-size-heading-sm);
+    font-size: clamp(24px, 3.2vw, 38.4px);
     font-weight: var(--font-weight-bold);
   }
 
@@ -76,7 +89,7 @@
   .games-final-place {
     display: grid;
     min-width: 0;
-    grid-template-columns: 34px 36px minmax(0, 1fr) auto auto auto;
+    grid-template-columns: 34px 36px minmax(0, 1fr) minmax(128px, auto) auto;
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
@@ -136,7 +149,15 @@
     display: inline-flex;
     width: 36px;
     height: 36px;
+    flex: 0 0 36px;
     border-radius: var(--radius-round);
+    overflow: hidden;
+  }
+
+  .games-final-place__avatar {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
   }
 
   .games-final-place__name {
@@ -158,8 +179,38 @@
     color: var(--color-interactive-primary);
   }
 
-  .games-final-place em {
-    min-width: 72px;
+  .games-final-place__stats {
+    display: flex;
+    min-width: 128px;
+    align-items: flex-end;
+    justify-self: end;
+    flex-direction: column;
+    gap: 3px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .games-final-place__stats em,
+  .games-final-place__stats time {
+    display: inline-flex;
+    min-width: 0;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 6px;
+    color: var(--color-text-main);
+    font-style: normal;
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    white-space: nowrap;
+  }
+
+  .games-final-place__stats span {
+    color: var(--color-text-meta);
+    font-size: var(--text-size-meta);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .games-final-place > em {
     justify-self: end;
     color: var(--color-text-main);
     font-style: normal;

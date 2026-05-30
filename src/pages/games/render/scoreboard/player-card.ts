@@ -10,6 +10,18 @@ import type { getGameScoreboardModel } from "./model";
 type GameScoreboardModel = ReturnType<typeof getGameScoreboardModel>;
 
 /**
+ * Рендерит компактное имя игрока в боковой таблице без фамилии.
+ */
+function renderScoreboardPlayerNameContent(player: GameRoom["players"][number]): string {
+  const playerLabel = getGamePlayerLabel(player);
+  return `
+    <span class="games-game-player__name-lines">
+      <span class="games-game-player__first-name">${escapeHtml(playerLabel)}</span>
+    </span>
+  `;
+}
+
+/**
  * Рендерит карточку игрока внутри игровой таблицы очков.
  */
 export function renderGameScoreboardPlayerCard(
@@ -46,10 +58,10 @@ export function renderGameScoreboardPlayerCard(
         profileId: player.profileId,
         className: "games-game-player__name",
         label: playerFullName,
-        content: escapeHtml(playerLabel),
+        content: renderScoreboardPlayerNameContent(player),
         avatarUrl,
       })
-    : `<strong class="games-game-player__name">${escapeHtml(playerLabel)}</strong>`;
+    : `<strong class="games-game-player__name">${renderScoreboardPlayerNameContent(player)}</strong>`;
   const roundPointValue = model.roundPoints.get(player.profileId);
   const displayScore = model.displayScoreMap.get(player.profileId) ?? 0;
   const finalScore = model.finalScoreMap.get(player.profileId) ?? displayScore;

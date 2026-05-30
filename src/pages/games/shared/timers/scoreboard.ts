@@ -1,4 +1,4 @@
-import { scoreValueAnimationMs } from "../constants";
+import { scoreboardSortAnimationMs, scoreValueAnimationMs } from "../constants";
 
 /**
  * Считает easing для плавного добора счёта.
@@ -80,12 +80,15 @@ export function syncScoreboardAnimations(
     if (!order.length) return;
 
     const cards = Array.from(list.querySelectorAll<HTMLElement>("[data-games-scoreboard-card]"));
+    const scrollTop = list.scrollTop;
     const rects = new Map(cards.map((card) => [card, card.getBoundingClientRect()]));
     const byProfile = new Map(cards.map((card) => [card.dataset.gamesScoreboardCard ?? "", card]));
     order.forEach((profileId) => {
       const card = byProfile.get(profileId);
       if (card) list.append(card);
     });
+    list.scrollTop = scrollTop;
+    list.classList.add("games-game-scoreboard__list--sorting");
     cards.forEach((card) => {
       const place = card.dataset.gamesPlayerFinalPlace;
       const placeEl = card.querySelector<HTMLElement>(".games-game-player__place");
@@ -106,6 +109,14 @@ export function syncScoreboardAnimations(
         card.style.transform = "";
       });
     });
+    window.setTimeout(() => {
+      list.classList.remove("games-game-scoreboard__list--sorting");
+      cards.forEach((card) => {
+        card.classList.remove("games-game-player--sorting");
+        card.style.transition = "";
+        card.style.transform = "";
+      });
+    }, scoreboardSortAnimationMs + 80);
     list.dataset.gamesScoreboardSorted = "true";
   });
 }

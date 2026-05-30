@@ -93,6 +93,7 @@ describe("games play stage render", () => {
   it("рендерит активный вопрос и ошибку формы ответа", () => {
     const html = renderActiveRoundStage({
       room: createRoom(),
+      currentPlayer: createRoom().players[0] ?? null,
       submittedQuestionId: "",
       submittedAnswerValue: "",
       renderInlineError: (target) => `<span data-error="${target}">Ошибка ответа</span>`,
@@ -102,6 +103,7 @@ describe("games play stage render", () => {
     expect(html).toContain("How many moons does Mars have?");
     expect(html).toContain("Введите число");
     expect(html).toContain('data-error="answer"');
+    expect(html).toContain("data-games-active-question-timer");
   });
 
   it("рендерит активный вопрос на английском языке интерфейса", () => {
@@ -109,6 +111,7 @@ describe("games play stage render", () => {
 
     const html = renderActiveRoundStage({
       room: createRoom(),
+      currentPlayer: createRoom().players[0] ?? null,
       submittedQuestionId: "",
       submittedAnswerValue: "",
       renderInlineError: () => "",
@@ -133,6 +136,7 @@ describe("games play stage render", () => {
     });
     const html = renderActiveRoundStage({
       room,
+      currentPlayer: { ...room.players[0]!, hasAnswered: true },
       submittedQuestionId: "q1",
       submittedAnswerValue: "2",
       renderInlineError: () => "",
@@ -140,6 +144,42 @@ describe("games play stage render", () => {
 
     expect(html).toContain("Ваш ответ принят: 2");
     expect(html).toContain("games-answer-form--accepted");
+  });
+
+  it("оставляет форму ответа, если сервер пометил вопрос отвеченным чужим ответом", () => {
+    const room = createRoom({
+      currentQuestion: {
+        id: "q1",
+        position: 1,
+        text: "How many moons does Mars have?",
+        startedAt: "2026-05-25T00:00:00.000Z",
+        deadlineAt: "2026-05-25T00:00:30.000Z",
+        hasAnswered: true,
+      },
+    });
+    const html = renderActiveRoundStage({
+      room,
+      currentPlayer: room.players[0] ?? null,
+      submittedQuestionId: "",
+      submittedAnswerValue: "",
+      renderInlineError: () => "",
+    });
+
+    expect(html).toContain("data-games-answer-input");
+    expect(html).not.toContain("games-answer-form--accepted");
+  });
+
+  it("показывает вопрос наблюдателю без формы ответа", () => {
+    const html = renderActiveRoundStage({
+      room: createRoom({ isPublicLobby: true }),
+      currentPlayer: null,
+      submittedQuestionId: "",
+      submittedAnswerValue: "",
+      renderInlineError: () => "",
+    });
+
+    expect(html).toContain("How many moons does Mars have?");
+    expect(html).not.toContain("data-games-answer-form");
   });
 
   it("рендерит паузу с голосованием за продолжение", () => {
@@ -221,6 +261,16 @@ describe("games play stage render", () => {
         isStartCountdown: false,
       }),
     ).toContain("Пауза уже использована");
+
+    expect(
+      renderPauseAction({
+        room: createRoom({ isPublicLobby: true }),
+        loading: false,
+        canPause: true,
+        currentPlayer: createPlayer({ pauseUsed: true }),
+        isStartCountdown: false,
+      }),
+    ).toBe("");
   });
 
   it("рендерит countdown старта игры", () => {

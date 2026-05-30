@@ -7,30 +7,10 @@ import {
   type RoundAnswerShowcaseItem,
   type RoundResultPresentationRow,
 } from "../../../round/model";
-import { getGamePlayerLabel } from "../../../room/profile/players";
+import { getPlayerFullName } from "../../../room/profile/players";
 import { gameT } from "../../../shared/i18n";
 import type { RenderPlayerCell } from "../types";
 import { renderRoundResultStyle } from "./style";
-
-/**
- * Рендерит карточку правильного ответа на шкале результата.
- */
-function renderRoundCorrectAnswerCard(
-  item: Extract<RoundAnswerShowcaseItem, { type: "correct" }>,
-  index: number,
-  maxRevealIndex: number,
-): string {
-  return `
-    <article
-      class="games-answer-axis-card games-answer-axis-card--correct"
-      style="${renderRoundResultStyle(item, index, maxRevealIndex)}"
-      data-games-correct-answer
-      data-games-round-answer-card
-    >
-      <strong class="games-answer-axis-card__correct-value">${escapeHtml(formatStoredAnswer(item.answerValue))}</strong>
-    </article>
-  `;
-}
 
 /**
  * Рендерит значение ответа игрока в карточке результата.
@@ -91,7 +71,7 @@ function renderRoundResultPlayerCard(
   timeRevealDelayMs: number,
   renderPlayerCell: RenderPlayerCell,
 ): string {
-  const playerLabel = getGamePlayerLabel(row.player);
+  const playerLabel = getPlayerFullName(row.player);
   const timeLabel = formatDurationMs(row.answer?.responseTimeMs);
   const cardStyle = `${renderRoundResultStyle({ ...row, revealIndex }, index, maxRevealIndex)}; --games-time-reveal-delay: ${timeRevealDelayMs}ms`;
 
@@ -117,18 +97,14 @@ function renderRoundResultPlayerCard(
 export function renderRoundAnswerShowcaseItem(
   item: RoundAnswerShowcaseItem,
   index: number,
-  scorePlaceByProfile: Map<string, number>,
   maxRevealIndex: number,
   timeRevealDelayMs: number,
   renderPlayerCell: RenderPlayerCell,
 ): string {
-  if (item.type === "correct") {
-    return renderRoundCorrectAnswerCard(item, index, maxRevealIndex);
-  }
   return renderRoundResultPlayerCard(
     item.row,
     index,
-    scorePlaceByProfile.get(item.row.player.profileId) ?? item.row.place,
+    item.orderIndex,
     item.revealIndex,
     maxRevealIndex,
     timeRevealDelayMs,

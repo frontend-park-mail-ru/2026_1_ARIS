@@ -16,10 +16,17 @@ import {
 } from "./timeline";
 
 describe("games round timeline", () => {
-  it("держит результат раунда ровно 5 секунд", () => {
+  it("по умолчанию держит результат раунда ровно 5 секунд", () => {
     expect(
       getRoundResultTransitionEndDelayMs({} as GameRoom, {} as GameRoom["questions"][number]),
     ).toBe(roundResultTransitionMs);
+  });
+
+  it("использует паузу комнаты для перехода между вопросами", () => {
+    const room = { roundPauseSec: 8 } as GameRoom;
+    const question = {} as GameRoom["questions"][number];
+
+    expect(getRoundResultTransitionEndDelayMs(room, question)).toBe(8000);
   });
 
   it("сжимает раскрытие карточек под фиксированное окно", () => {

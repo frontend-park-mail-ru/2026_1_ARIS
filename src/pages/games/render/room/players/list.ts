@@ -11,13 +11,14 @@ export function renderPlayerList(options: RenderPlayerListOptions): string {
   const { room, playerMenuProfileId, isCurrentRoomCreator, getPlayerAvatarUrl } = options;
   const emptySlots = Math.max(0, getRoomMaxPlayers(room) - room.players.length);
   const isCreator = isCurrentRoomCreator(room);
+  const showReadyState = room.status === "waiting" && !room.isPublicLobby;
 
   return `
     <div class="games-scoreboard" aria-label="${escapeHtml(gameT("room.playersInRoomAria"))}">
       ${room.players
         .map(
           (player) => `
-            <article class="games-player${player.isMe ? " games-player--me" : ""}${player.hasAnswered ? " games-player--answered" : ""}${room.status === "waiting" ? (player.isReady ? " games-player--ready" : " games-player--not-ready") : ""}">
+            <article class="games-player${player.isMe ? " games-player--me" : ""}${player.hasAnswered ? " games-player--answered" : ""}${showReadyState ? (player.isReady ? " games-player--ready" : " games-player--not-ready") : ""}">
               <div class="games-player__body">
                 ${renderPlayerProfileLink(player, getPlayerAvatarUrl)}
               </div>

@@ -114,6 +114,13 @@
       0 1px 0 rgb(255 255 255 / 72%) inset;
   }
 
+  .games-room-players-panel--public {
+    height: auto;
+    max-height: min(640px, calc(100dvh - 96px));
+    align-self: flex-start;
+    overflow: hidden;
+  }
+
   .games-room-players-panel.content-card::before {
     content: none;
   }
@@ -123,10 +130,32 @@
     min-height: 0;
   }
 
+  .games-room-players-panel--public .games-game-scoreboard {
+    flex: 0 1 auto;
+    overflow: hidden;
+  }
+
   .games-room-exit-button {
     width: 100%;
     flex: 0 0 auto;
     margin-top: 2px;
+  }
+
+  .games-scoreboard-hidden {
+    display: flex;
+    min-height: 92px;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    border: 1px solid rgb(95 111 157 / 14%);
+    border-radius: var(--radius-small);
+    background: rgb(255 255 255 / 72%);
+    color: var(--color-text-main);
+    font-size: var(--text-size-main);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    text-align: center;
+    box-shadow: 0 10px 22px rgb(33 45 88 / 6%);
   }
 
   .games-game-scoreboard__header {
@@ -153,6 +182,22 @@
     padding-right: 0;
   }
 
+  .games-room-players-panel--public .games-game-scoreboard__list {
+    min-height: 0;
+    max-height: min(560px, calc(100dvh - 160px));
+    overflow: hidden auto;
+    padding-right: 3px;
+  }
+
+  .games-room-players-panel--public .games-game-scoreboard__list--sorting {
+    overflow: hidden;
+    scrollbar-width: none;
+  }
+
+  .games-room-players-panel--public .games-game-scoreboard__list--sorting::-webkit-scrollbar {
+    display: none;
+  }
+
   .games-game-player {
     display: grid;
     min-width: 0;
@@ -173,9 +218,12 @@
   }
 
   .games-room-players-panel .games-game-player {
-    grid-template-columns: 26px 36px minmax(0, 1fr) auto;
-    gap: 7px;
-    padding: 8px;
+    grid-template-columns: 22px 34px minmax(0, 1fr) max-content;
+    gap: 5px;
+    padding: 7px 6px;
+  }
+
+  .games-room-players-panel--public .games-game-player {
     animation: none;
   }
 
@@ -208,5 +256,9 @@
     font-weight: var(--font-weight-bold);
     line-height: var(--line-height-tight);
     text-align: center;
+  }
+
+  .games-room-players-panel .games-game-player__place {
+    font-size: 12px;
   }
 }

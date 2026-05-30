@@ -10,7 +10,8 @@ export function getFinalRoundResultsUntil(
   if (room.status !== "finished" || !question?.completedAt) return null;
   const completedAtMs = new Date(question.completedAt).getTime();
   if (Number.isNaN(completedAtMs)) return null;
-  return new Date(getRoundResultTransitionEndMs(room, question));
+  const transitionEndMs = getRoundResultTransitionEndMs(room, question);
+  return Date.now() < transitionEndMs ? new Date(transitionEndMs) : null;
 }
 
 /** Проверяет, нужно ли перед итогами игры еще показать результат последнего раунда. */

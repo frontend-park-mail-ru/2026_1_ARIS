@@ -1,8 +1,8 @@
 import { escapeHtml } from "../../../../utils/avatar";
 import {
+  formatStoredAnswer,
   getRoundAnswerShowcaseItems,
   getRoundResultPresentationRows,
-  getRoundScoreRows,
 } from "../../round/model";
 import { getRoundTimesRevealDelayMs } from "../../round/timeline";
 import { gameT } from "../../shared/i18n";
@@ -15,15 +15,17 @@ import { renderRoundAnswerShowcaseItem } from "./showcase/cards";
 export function renderRoundAnswerShowcase(options: RenderRoundResultStageOptions): string {
   const { room, question, renderPlayerCell } = options;
   const entries = getRoundResultPresentationRows(room, question);
-  const showcaseItems = getRoundAnswerShowcaseItems(entries, question);
+  const showcaseItems = getRoundAnswerShowcaseItems(entries);
   const maxRevealIndex = Math.max(0, ...showcaseItems.map((item) => item.revealIndex));
-  const scorePlaceByProfile = new Map(
-    getRoundScoreRows(entries).map((row) => [row.player.profileId, row.scorePlace]),
-  );
   const timeRevealDelayMs = getRoundTimesRevealDelayMs(room, question);
   return `
     <div class="games-round-result-cinema" data-games-round-result-cinema>
       <h2 class="games-stage-card__question">${escapeHtml(question.text)}</h2>
+      <p class="games-round-result-correct-answer" data-games-correct-answer>${escapeHtml(
+        gameT("results.correctAnswerInline", {
+          answer: formatStoredAnswer(question.correctAnswer),
+        }),
+      )}</p>
       <section class="games-answer-axis" aria-label="${escapeHtml(gameT("results.answerAxisAria"))}" data-games-answer-axis>
         <div class="games-answer-axis__list">
           ${showcaseItems
@@ -31,7 +33,6 @@ export function renderRoundAnswerShowcase(options: RenderRoundResultStageOptions
               renderRoundAnswerShowcaseItem(
                 item,
                 index,
-                scorePlaceByProfile,
                 maxRevealIndex,
                 timeRevealDelayMs,
                 renderPlayerCell,

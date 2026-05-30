@@ -2,6 +2,7 @@ import type { GameRoom } from "../../../api/games";
 import type { GamesPageState } from "../state/store";
 import { renderGamesPageShell as renderGamesAppShellView } from "./app-shell";
 import { renderCreateRoomPanel, renderGamesCatalog } from "./lobby";
+import { renderPublicLobbyEntry } from "./public-lobby";
 import {
   renderGamesContent as renderGamesContentView,
   renderGamesShell as renderGamesShellView,
@@ -21,6 +22,7 @@ export type RenderGamesPageShellOptions = RenderGamesPageContentOptions & {
 
 export type RenderGamesAppShellOptions = {
   state: GamesPageState;
+  isAuthorised?: boolean | undefined;
   shell: string;
   renderPlayersRail: (room: GameRoom) => string;
   renderRoomChat: (room: GameRoom) => string;
@@ -43,10 +45,12 @@ export function renderGamesPageContent(options: RenderGamesPageContentOptions): 
 
   const mainPanel = state.room
     ? options.renderRoomPanel(state.room)
-    : renderCreateRoomPanel({
-        lobbyMode: state.lobbyMode,
-        content: options.renderLobbyContent(),
-      });
+    : state.publicInviteCode
+      ? renderPublicLobbyEntry(state)
+      : renderCreateRoomPanel({
+          lobbyMode: state.lobbyMode,
+          content: options.renderLobbyContent(),
+        });
 
   return renderGamesContentView({
     state,
@@ -75,6 +79,7 @@ export function renderGamesAppShell(options: RenderGamesAppShellOptions): string
   const { state } = options;
   return renderGamesAppShellView({
     room: state.room,
+    isAuthorised: options.isAuthorised,
     shell: options.shell,
     playersRail: state.room ? options.renderPlayersRail(state.room) : "",
     roomChat: state.room ? options.renderRoomChat(state.room) : "",

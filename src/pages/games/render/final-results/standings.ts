@@ -62,10 +62,9 @@ export function renderFinalStandings(options: RenderFinalGameStageOptions): stri
                     })
                   : `<span class="games-final-place__name">${escapeHtml(playerLabel)}</span>`
               }
-              <em>${escapeHtml(formatGamePoints(scoreMap.get(player.profileId) ?? 0))}</em>
-              <span class="games-final-place__time" aria-label="${escapeHtml(gameT("results.totalTime"))}">
-                <span>${escapeHtml(gameT("results.totalTimeShort"))}</span>
-                <time>${escapeHtml(formatDurationMs(answerTimeMap.get(player.profileId) ?? 0))}</time>
+              <span class="games-final-place__stats" aria-label="${escapeHtml(gameT("results.totalTime"))}">
+                <em><span>${escapeHtml(gameT("results.standingsPoints"))}</span>${escapeHtml(formatGamePoints(scoreMap.get(player.profileId) ?? 0))}</em>
+                <time><span>${escapeHtml(gameT("results.standingsTime"))}</span>${escapeHtml(formatDurationMs(answerTimeMap.get(player.profileId) ?? 0))}</time>
               </span>
               ${
                 room.isRanked && ratingByProfile.has(player.profileId)

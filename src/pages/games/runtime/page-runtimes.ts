@@ -64,6 +64,7 @@ export type CreateGamesPageRuntimesOptions = {
   refreshCurrentRoomSilently: () => void;
   formatScore: (value: number) => string;
   onFinalResultsExpired: () => void;
+  onQuestionDeadlineExpired: () => void;
 };
 
 /**
@@ -76,6 +77,7 @@ export function createGamesPageRuntimes(
     getRoot: options.getRoot,
     formatScore: options.formatScore,
     onFinalResultsExpired: options.onFinalResultsExpired,
+    onQuestionDeadlineExpired: options.onQuestionDeadlineExpired,
     onRoundResultExpired: options.onFinalResultsExpired,
   });
 

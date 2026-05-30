@@ -86,9 +86,11 @@ export type GameRoom = {
   hasPassword: boolean;
   password: string;
   isRanked: boolean;
+  isPublicLobby?: boolean;
   inviteCodeEnabled: boolean;
   questionCount: number;
   answerTimeoutSec: number;
+  roundPauseSec?: number;
   currentQuestionIndex: number;
   nextQuestionAt: string;
   pausedByProfileId: string;
@@ -147,6 +149,7 @@ export type CreateGameRoomPayload = {
   title: string;
   questionCount: number;
   answerTimeoutSec: number;
+  roundPauseSec: number;
   gameType: GameType;
   maxPlayers?: number;
   password?: string;

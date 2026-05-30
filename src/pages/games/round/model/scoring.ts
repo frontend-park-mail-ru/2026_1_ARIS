@@ -5,6 +5,12 @@ import { getRoundResultEntries } from "./results";
 import { getCompletedQuestions } from "./questions";
 import type { GamePlayer, GameQuestion } from "./types";
 
+type PlayerRankOptions = {
+  excludeQuestionId?: string;
+};
+
+type PlayerRankSource = Map<string, number> | PlayerRankOptions;
+
 /** Считает очки игроков за конкретный вопрос. */
 export function getRoundPointsByProfile(
   room: GameRoom,
@@ -140,6 +146,28 @@ export function getComputedPlayerScore(room: GameRoom, profileId: string): numbe
   return getComputedScoresByProfile(room).get(profileId) ?? 0;
 }
 
+/** Возвращает карту времени ответов для сортировки игроков. */
+function getAnswerTimeMapByRankSource(
+  room: GameRoom,
+  source: PlayerRankSource = getTotalAnswerTimeByProfile(room),
+): Map<string, number> {
+  if (source instanceof Map) return source;
+  if (!source.excludeQuestionId) return getTotalAnswerTimeByProfile(room);
+  return getTotalAnswerTimeByQuestions(
+    room,
+    getCompletedQuestions(room).filter((question) => question.id !== source.excludeQuestionId),
+  );
+}
+
+/** Возвращает суммарное время ответов игрока по завершённым вопросам. */
+export function getPlayerTotalResponseTimeMs(
+  room: GameRoom,
+  profileId: string,
+  options: PlayerRankOptions = {},
+): number {
+  return getAnswerTimeMapByRankSource(room, options).get(profileId) ?? 0;
+}
+
 /** Возвращает profileId победителя, если в финале нет ничьей. */
 export function getComputedWinnerProfileId(room: GameRoom): string {
   if (room.status !== "finished" || room.players.length === 0) return "";
@@ -168,15 +196,20 @@ export function getRankedPlayers(room: GameRoom): GameRoom["players"] {
 export function getRankedPlayersByScores(
   room: GameRoom,
   scores: Map<string, number>,
-  answerTimes: Map<string, number> = getTotalAnswerTimeByProfile(room),
+  rankSource: PlayerRankSource = getTotalAnswerTimeByProfile(room),
 ): GameRoom["players"] {
+  const answerTimes = getAnswerTimeMapByRankSource(room, rankSource);
   return [...room.players].sort((left, right) => {
     const scoreDiff = (scores.get(right.profileId) ?? 0) - (scores.get(left.profileId) ?? 0);
     if (scoreDiff !== 0) return scoreDiff;
     const timeDiff =
       (answerTimes.get(left.profileId) ?? 0) - (answerTimes.get(right.profileId) ?? 0);
     if (timeDiff !== 0) return timeDiff;
-    return getRoundPlayerLabel(left).localeCompare(getRoundPlayerLabel(right), "ru");
+
+    const nameCompare = getRoundPlayerLabel(left).localeCompare(getRoundPlayerLabel(right), "ru");
+    if (nameCompare !== 0) return nameCompare;
+
+    return left.profileId.localeCompare(right.profileId, "ru");
   });
 }
 
@@ -191,8 +224,9 @@ export function getPlayerPlaceByScores(
   room: GameRoom,
   player: GamePlayer,
   scoreMap: Map<string, number>,
-  answerTimeMap: Map<string, number> = getTotalAnswerTimeByProfile(room),
+  rankSource: PlayerRankSource = getTotalAnswerTimeByProfile(room),
 ): number {
+  const answerTimeMap = getAnswerTimeMapByRankSource(room, rankSource);
   const rankedPlayers = getRankedPlayersByScores(room, scoreMap, answerTimeMap);
   let place = 1;
   for (let index = 0; index < rankedPlayers.length; index++) {

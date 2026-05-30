@@ -4,7 +4,15 @@
     display: flex;
     min-width: 0;
     flex-direction: column;
-    gap: 18px;
+    gap: 12px;
+  }
+
+  .games-round-result-correct-answer {
+    margin: -4px 0 6px;
+    color: var(--color-text-main);
+    font-size: calc(var(--text-size-main) + 2px);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
   }
 
   .games-final-round-reveal {
@@ -54,7 +62,7 @@
     background: rgb(255 255 255 / 72%);
     box-shadow: 0 10px 22px rgb(33 45 88 / 6%);
     color: var(--color-text-meta);
-    animation: games-axis-card-settle 2300ms cubic-bezier(0.18, 0.88, 0.22, 1) both;
+    animation: games-axis-card-settle 900ms cubic-bezier(0.18, 0.88, 0.22, 1) both;
     animation-delay: var(--games-result-delay, calc(620ms + var(--games-result-index, 0) * 240ms));
   }
 

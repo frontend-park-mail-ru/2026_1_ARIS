@@ -57,6 +57,7 @@ export async function createRoomFromFormAction(
     maxPlayers: getInputValue(form, "maxPlayers"),
     questionCount: getInputValue(form, "questionCount"),
     answerTimeoutSec: getInputValue(form, "answerTimeoutSec"),
+    roundPauseSec: getInputValue(form, "roundPauseSec"),
     password: getInputValue(form, "password"),
     isRanked: isCreateRoomRanked(form),
   });

@@ -44,9 +44,11 @@
     width: 100%;
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, rgb(76 86 214), rgb(53 137 96));
+    background-color: var(--games-timer-bar-color, rgb(53 137 96));
     transform-origin: left center;
-    transition: transform 80ms linear;
+    transition:
+      transform 80ms linear,
+      background-color 160ms linear;
   }
 
   .games-start-countdown--danger .games-start-countdown__value {

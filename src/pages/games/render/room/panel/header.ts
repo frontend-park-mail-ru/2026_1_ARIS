@@ -35,7 +35,7 @@ function renderRoomHeaderTop(options: RenderRoomPanelOptions): string {
         ${room.status === "waiting" ? rankedBadge : ""}
       </div>
       ${
-        room.status === "waiting"
+        room.status === "waiting" && !room.isPublicLobby
           ? `
             <button type="button" class="games-button games-button--secondary games-room-back-button" data-games-back-to-rooms>
               ${escapeHtml(gameT("lobby.back"))}
@@ -55,7 +55,11 @@ function renderRoomHeaderBottom(options: RenderRoomPanelOptions): string {
       <div class="games-room-header__summary">
         ${room.status === "waiting" ? lobbyCreator : ""}
         ${room.status === "finished" ? "" : `<p class="games-panel__subtitle">${participantsStatus}</p>`}
-        ${room.status === "waiting" ? `<p class="games-panel__subtitle games-panel__subtitle--compact">${readyStatus}</p>` : ""}
+        ${
+          room.status === "waiting" && readyStatus
+            ? `<p class="games-panel__subtitle games-panel__subtitle--compact">${readyStatus}</p>`
+            : ""
+        }
       </div>
       ${renderReadyControls(options)}
     </div>

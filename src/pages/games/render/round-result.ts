@@ -1,5 +1,6 @@
 import { escapeHtml } from "../../../utils/avatar";
 import { getFinalRoundResultsUntil } from "../round/reveal";
+import { getQuestionResultSignature } from "../round/model";
 import {
   getRoundResultTimelineStartMs,
   getRoundResultTransitionDurationMs,
@@ -36,11 +37,13 @@ export function renderRoundResultStage(options: RenderRoundResultStageOptions): 
       : "";
 
   return `
-    <section class="games-game-stage games-game-stage--result" data-key="stage-result-${escapeHtml(question.id)}" aria-label="${escapeHtml(gameT("results.roundResultsAria"))}">
+    <section class="games-game-stage games-game-stage--result" data-key="stage-result-${escapeHtml(question.id)}" aria-label="${escapeHtml(gameT("results.roundResultsAria"))}" data-games-round-result-stage data-games-round-result-question-id="${escapeHtml(question.id)}" data-games-round-result-signature="${escapeHtml(getQuestionResultSignature(question))}">
       <div class="games-stage-card games-stage-card--result">
-        ${finalResultsUntil ? `<span hidden data-games-final-results-until="${escapeHtml(finalResultsUntil.toISOString())}"></span>` : ""}
-        ${shouldRefreshAtTransitionEnd ? `<span hidden data-games-round-result-until="${escapeHtml(transitionEndAt)}"></span>` : ""}
-        ${resultTimer}
+        <div data-games-round-result-dynamic>
+          ${finalResultsUntil ? `<span hidden data-games-final-results-until="${escapeHtml(finalResultsUntil.toISOString())}"></span>` : ""}
+          ${shouldRefreshAtTransitionEnd ? `<span hidden data-games-round-result-until="${escapeHtml(transitionEndAt)}"></span>` : ""}
+          ${resultTimer}
+        </div>
         ${renderRoundAnswerShowcase(options)}
       </div>
     </section>

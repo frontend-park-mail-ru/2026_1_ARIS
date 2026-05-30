@@ -1,5 +1,7 @@
 import { updateGamesCountdown } from "../shared/timers";
 
+const COUNTDOWN_UPDATE_INTERVAL_MS = 100;
+
 export type GamesCountdownRuntime = {
   start: (root: Document | HTMLElement) => void;
   stop: () => void;
@@ -9,6 +11,7 @@ export type CreateGamesCountdownRuntimeOptions = {
   getRoot: () => Document | HTMLElement | null;
   formatScore: (value: number) => string;
   onFinalResultsExpired: () => void;
+  onQuestionDeadlineExpired: () => void;
   onRoundResultExpired?: () => void;
 };
 
@@ -40,6 +43,7 @@ export function createGamesCountdownRuntime(
     const countdownOptions = {
       formatScore: options.formatScore,
       onFinalResultsExpired: options.onFinalResultsExpired,
+      onQuestionDeadlineExpired: options.onQuestionDeadlineExpired,
     };
     updateGamesCountdown(
       root,
@@ -65,7 +69,7 @@ export function createGamesCountdownRuntime(
         const currentRoot = options.getRoot();
         if (!currentRoot) return;
         update(currentRoot);
-      }, 10);
+      }, COUNTDOWN_UPDATE_INTERVAL_MS);
     },
     stop,
   };

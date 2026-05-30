@@ -53,11 +53,16 @@ export function getSubmittedAnswerLabel(
  */
 function renderCurrentAnswerForm(
   question: CurrentQuestion,
-  options: Pick<RenderActiveRoundStageOptions, "submittedQuestionId" | "submittedAnswerValue"> & {
+  options: Pick<
+    RenderActiveRoundStageOptions,
+    "currentPlayer" | "submittedQuestionId" | "submittedAnswerValue"
+  > & {
     renderInlineError: RenderInlineGameError;
   },
 ): string {
-  if (question.hasAnswered) {
+  if (!options.currentPlayer) return "";
+
+  if (options.currentPlayer.hasAnswered) {
     return `
       <form class="games-answer-form games-answer-form--play games-answer-form--accepted" data-games-answer-form>
         <div class="games-answer-accepted">${escapeHtml(getSubmittedAnswerLabel(question, options.submittedQuestionId, options.submittedAnswerValue))}</div>
@@ -97,6 +102,7 @@ function renderQuestionCountdown(room: GameRoom, question: CurrentQuestion): str
   return `
     <div
       class="games-question-timer-strip games-question-countdown"
+      data-games-active-question-timer
       data-games-question-timer-strip
       data-games-timer-deadline="${escapeHtml(question.deadlineAt)}"
       data-games-timer-start="${escapeHtml(question.startedAt)}"
@@ -131,7 +137,7 @@ export function renderActiveRoundStage(options: RenderActiveRoundStageOptions): 
   }
 
   return `
-    <section class="games-game-stage games-game-stage--question" data-key="stage-question-${escapeHtml(question.id)}" aria-label="${escapeHtml(gameT("gameplay.currentQuestionAria"))}">
+    <section class="games-game-stage games-game-stage--question" data-key="stage-question-${escapeHtml(question.id)}" aria-label="${escapeHtml(gameT("gameplay.currentQuestionAria"))}" data-games-active-question-id="${escapeHtml(question.id)}">
       <div class="games-stage-card games-stage-card--question">
         ${renderQuestionCountdown(room, question)}
         <div class="games-question-hero" data-games-question-hero>

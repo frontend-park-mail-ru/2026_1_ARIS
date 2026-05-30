@@ -75,13 +75,17 @@ describe("games room selectors", () => {
       players: [createPlayer("1"), createPlayer("2", { isMe: true })],
     });
 
-    expect(getCurrentPlayer(room, "1")?.profileId).toBe("2");
+    expect(getCurrentPlayer(room, "1")?.profileId).toBe("1");
+    expect(getCurrentPlayer(room, "")?.profileId).toBe("2");
     expect(getCurrentPlayer(createRoom(), "1")?.profileId).toBe("1");
   });
 
   it("нормализует лимит игроков и блокирует вход в полную чужую комнату", () => {
     const room = createRoom({ maxPlayers: 99 });
     expect(getRoomMaxPlayers(room)).toBe(8);
+
+    const publicLobby = createRoom({ isPublicLobby: true, maxPlayers: 99 });
+    expect(getRoomMaxPlayers(publicLobby)).toBe(80);
 
     const fullRoom = createRoom({
       maxPlayers: 2,
@@ -111,6 +115,8 @@ describe("games room selectors", () => {
     });
 
     expect(canCurrentPlayerPause(activeRoom)).toBe(true);
+
+    expect(canCurrentPlayerPause({ ...activeRoom, isPublicLobby: true })).toBe(false);
 
     const pausedRoom = createRoom({
       status: "active",

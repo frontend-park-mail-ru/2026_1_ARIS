@@ -62,31 +62,38 @@ export type RoomLiveActionsOptions = {
  * Создаёт фасад live-действий комнаты для socket и polling обновлений.
  */
 export function createRoomLiveActions(options: RoomLiveActionsOptions) {
+  let socketStateQueue = Promise.resolve();
+
   /**
    * Применяет snapshot комнаты, пришедший по WebSocket.
    */
   async function handleRoomSocketState(room: GameRoom): Promise<void> {
-    await applyRoomSocketState(room, {
-      getCurrentRoom: options.getRoom,
-      getCurrentProfileId: options.getCurrentProfileId,
-      getSubmittedQuestionId: options.getSubmittedQuestionId,
-      getSubmittedAnswerValue: options.getSubmittedAnswerValue,
-      getCurrentMessages: options.getCurrentMessages,
-      hydrateRoom: options.hydrateRoom,
-      getSocketOpen: options.getSocketOpenRuntime,
-      getSystemMessages: options.getSystemMessages,
-      mergeMessages: options.mergeMessages,
-      rememberRoomAccess: options.rememberRoomAccess,
-      clearPendingVoluntaryLeave: options.clearPendingVoluntaryLeave,
-      patchGamesState: options.patchGamesState,
-      refreshGamesDom: options.refreshGamesDom,
-      syncCurrentAnswerFormDom: options.syncCurrentAnswerFormDom,
-      syncPlayersRailAnswerDom: options.syncPlayersRailAnswerDom,
-      getPendingRankedToast: options.getPendingRankedToast,
-      setPendingRankedToast: options.setPendingRankedToast,
-      showToast: options.showToast,
-      getRankedToastMessage: options.getRankedToastMessage,
-    });
+    socketStateQueue = socketStateQueue
+      .catch(() => undefined)
+      .then(() =>
+        applyRoomSocketState(room, {
+          getCurrentRoom: options.getRoom,
+          getCurrentProfileId: options.getCurrentProfileId,
+          getSubmittedQuestionId: options.getSubmittedQuestionId,
+          getSubmittedAnswerValue: options.getSubmittedAnswerValue,
+          getCurrentMessages: options.getCurrentMessages,
+          hydrateRoom: options.hydrateRoom,
+          getSocketOpen: options.getSocketOpenRuntime,
+          getSystemMessages: options.getSystemMessages,
+          mergeMessages: options.mergeMessages,
+          rememberRoomAccess: options.rememberRoomAccess,
+          clearPendingVoluntaryLeave: options.clearPendingVoluntaryLeave,
+          patchGamesState: options.patchGamesState,
+          refreshGamesDom: options.refreshGamesDom,
+          syncCurrentAnswerFormDom: options.syncCurrentAnswerFormDom,
+          syncPlayersRailAnswerDom: options.syncPlayersRailAnswerDom,
+          getPendingRankedToast: options.getPendingRankedToast,
+          setPendingRankedToast: options.setPendingRankedToast,
+          showToast: options.showToast,
+          getRankedToastMessage: options.getRankedToastMessage,
+        }),
+      );
+    await socketStateQueue;
   }
 
   /**

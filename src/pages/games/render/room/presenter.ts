@@ -67,7 +67,7 @@ function getStartTooltipLines(options: RenderRoomPanelPresenterOptions): string[
 
   return [
     !hasEnoughPlayers ? gameT("room.needTwoPlayers") : "",
-    !allPlayersReady ? gameT("room.allPlayersReadyRequired") : "",
+    !room.isPublicLobby && !allPlayersReady ? gameT("room.allPlayersReadyRequired") : "",
   ].filter(Boolean);
 }
 
@@ -76,15 +76,19 @@ function getStartTooltipLines(options: RenderRoomPanelPresenterOptions): string[
  */
 export function renderRoomPanelPresenter(options: RenderRoomPanelPresenterOptions): string {
   const { room, state } = options;
+  const isPublicLobby = Boolean(room.isPublicLobby);
   const currentUserIsCreator = getCurrentUserCreatorPredicate(options);
   const canDisbandRoom = room.status === "waiting" && currentUserIsCreator(room);
-  const canLeaveRoom = room.status === "waiting" && !currentUserIsCreator(room);
+  const canLeaveRoom = room.status === "waiting" && !currentUserIsCreator(room) && !isPublicLobby;
   const allPlayersReady = areRoomPlayersReady(room);
   const canManageStart = room.status === "waiting" && currentUserIsCreator(room);
-  const canManageRanked = room.status === "waiting" && currentUserIsCreator(room);
+  const canManageRanked = room.status === "waiting" && currentUserIsCreator(room) && !isPublicLobby;
   const hasEnoughPlayers = room.players.length >= 2;
   const canStartRoom =
-    room.status === "waiting" && hasEnoughPlayers && allPlayersReady && canManageStart;
+    room.status === "waiting" &&
+    hasEnoughPlayers &&
+    (isPublicLobby || allPlayersReady) &&
+    canManageStart;
   const showFinalRoundResult = shouldShowFinalRoundResultBeforeSummary(room);
   const headingTitle =
     room.status === "finished"
@@ -109,16 +113,20 @@ export function renderRoomPanelPresenter(options: RenderRoomPanelPresenterOption
     startTooltipLines: getStartTooltipLines(options),
     currentPlayer: getCurrentRoomPlayer(room),
     rankedBadge: renderRankedBadge(room),
-    rankedToggle: renderRoomRankedToggle(room, canManageRanked && !state.loading),
+    rankedToggle: isPublicLobby
+      ? ""
+      : renderRoomRankedToggle(room, canManageRanked && !state.loading),
     lobbyCreator: renderLobbyCreator(room, options.getPlayerAvatarUrl),
     participantsStatus: renderParticipantsStatus({
       room,
       hintOpen: state.participantsStatusHintOpen,
     }),
-    readyStatus: renderReadyPlayersStatus({
-      room,
-      hintOpen: state.readyStatusHintOpen,
-    }),
+    readyStatus: isPublicLobby
+      ? ""
+      : renderReadyPlayersStatus({
+          room,
+          hintOpen: state.readyStatusHintOpen,
+        }),
     pauseAction: options.renderPauseAction(room),
     gamePlay: options.renderGamePlay(room),
     playerList: renderPlayerList({

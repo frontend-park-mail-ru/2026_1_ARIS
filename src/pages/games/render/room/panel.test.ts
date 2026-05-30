@@ -134,4 +134,17 @@ describe("games room panel render", () => {
     expect(html).toContain("Пауза");
     expect(html).not.toContain("Код приглашения:");
   });
+
+  it("рендерит публичное лобби без названия комнаты", () => {
+    const room = createRoom("waiting");
+    const html = renderRoomPanel(
+      createOptions({
+        room: { ...room, isPublicLobby: true },
+        rankedToggle: "",
+      }),
+    );
+
+    expect(html).toContain("Публичная ссылка:");
+    expect(html).not.toContain("Название комнаты:");
+  });
 });

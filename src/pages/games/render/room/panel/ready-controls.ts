@@ -6,6 +6,7 @@ import type { RenderRoomPanelOptions } from "./types";
 export function renderReadyControls(options: RenderRoomPanelOptions): string {
   const { room, currentPlayer, loading } = options;
   if (room.status !== "waiting") return "";
+  if (room.isPublicLobby) return "";
   return `
     <div class="games-room-header__controls">
       <div class="games-room-header__controls-stack">

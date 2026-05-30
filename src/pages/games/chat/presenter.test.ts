@@ -88,4 +88,21 @@ describe("games room chat presenter", () => {
     expect(html).toContain("Системные сообщения скрыты.");
     expect(html).not.toContain("Игрок вошел.");
   });
+
+  it("не отключает чат публичного лобби для администратора без игроков", () => {
+    const state = createInitialGamesState();
+
+    const html = renderRoomChatPresenter({
+      state,
+      room: createRoom({ isPublicLobby: true, players: [] }),
+      ...createAdapter(),
+    });
+
+    expect(html).toContain("Сообщений пока нет.");
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    expect(container.querySelector("[data-games-room-chat-input]")?.hasAttribute("disabled")).toBe(
+      false,
+    );
+  });
 });

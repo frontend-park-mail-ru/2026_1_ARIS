@@ -2,6 +2,7 @@ import type { GameRoom } from "../../../api/games";
 import { formatStoredAnswer } from "../round/model";
 import { mergeAnswerProgressRoom } from "../room/state/answer-progress";
 import type { GamesPageState } from "../state/store";
+import { debugGamesEvent } from "../runtime/debug";
 
 export type AcceptCurrentAnswerLocallyOptions = {
   answer: number;
@@ -63,6 +64,12 @@ export function acceptCurrentAnswerLocally(options: AcceptCurrentAnswerLocallyOp
     error: "",
     errorTarget: "",
     message: "",
+  });
+  debugGamesEvent("answer accepted locally", {
+    roomId: acceptedAnswerRoom.id,
+    questionId,
+    answer: formatStoredAnswer(answer),
+    currentPlayer: acceptedAnswerRoom.players.find((player) => player.isMe)?.profileId ?? "",
   });
   options.syncCurrentAnswerFormDom();
   options.syncPlayersRailAnswerDom(acceptedAnswerRoom);

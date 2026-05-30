@@ -48,11 +48,13 @@ export function renderGamesContent(options: RenderGamesContentOptions): string {
   }
 
   const hasWaitingRoom = state.room?.status === "waiting";
+  const useRoomLayout = Boolean(state.room && !hasWaitingRoom);
+  const showWaitingRoomChat = Boolean(hasWaitingRoom && state.room);
   return `
-    <div class="games-layout${state.room && !hasWaitingRoom ? " games-layout--room" : ""}${hasWaitingRoom ? " games-layout--with-chat" : ""}">
+    <div class="games-layout${useRoomLayout ? " games-layout--room" : ""}${showWaitingRoomChat ? " games-layout--with-chat" : ""}">
       ${renderGamesMessage(state)}
       <div class="games-main">${options.mainPanel}</div>
-      ${hasWaitingRoom && state.room ? `<aside data-games-external-chat>${options.roomChat}</aside>` : ""}
+      ${showWaitingRoomChat && state.room ? `<aside data-games-external-chat>${options.roomChat}</aside>` : ""}
     </div>
   `;
 }

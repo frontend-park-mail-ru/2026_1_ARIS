@@ -127,6 +127,7 @@ describe("games final results render", () => {
     expect(html).toContain("Победитель");
     expect(html).toContain("Ada Lovelace");
     expect(html).toContain("Таблица участников");
+    expect(html).toContain("Баллы");
     expect(html).toContain("Суммарное время");
     expect(html).toContain("Время");
     expect(html).toContain("0.90 сек");

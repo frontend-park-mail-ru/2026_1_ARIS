@@ -81,7 +81,8 @@ export function renderRoomChatPresenter(options: RenderRoomChatPresenterOptions)
   const hasHiddenSystemMessages =
     !options.state.roomChatShowSystemMessages &&
     options.state.roomChatMessages.some((message) => isRoomSystemMessage(message));
-  const inputDisabled = options.state.roomChatSending || !options.room.players.length;
+  const inputDisabled =
+    options.state.roomChatSending || (!options.room.isPublicLobby && !options.room.players.length);
 
   return renderRoomChat({
     messages: messages.map((message) => getRoomChatRenderMessage(message, options.room, options)),

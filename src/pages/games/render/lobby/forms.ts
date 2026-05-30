@@ -55,6 +55,19 @@ export function renderCreateRoomForm(options: RenderCreateRoomFormOptions): stri
             })}
           </label>
           <label class="games-field">
+            <span class="games-field__label-row">
+              <span>${escapeHtml(gameT("create.roundPause"))}</span>
+            </span>
+            ${renderNumericCreateInput({
+              name: "roundPauseSec",
+              value: "5",
+              min: 1,
+              max: 60,
+              minMessage: gameT("create.minRoundPauseError"),
+              maxMessage: gameT("create.maxRoundPauseError"),
+            })}
+          </label>
+          <label class="games-field">
             <span>${escapeHtml(gameT("create.passwordOptional"))}</span>
             <input type="password" name="password" maxlength="64">
           </label>

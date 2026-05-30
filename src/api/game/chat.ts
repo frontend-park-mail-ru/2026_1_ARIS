@@ -6,6 +6,7 @@
 import { apiRequest } from "../core/client";
 import type { GameRoomMessage } from "./types";
 import { asArray, asRecord, extractRoomMessageResponse, mapRoomMessage } from "./mappers";
+import { getPublicGameGuestSessionByRoom } from "./public-room";
 
 function buildRoomMessagesQuery(
   options: {
@@ -27,9 +28,17 @@ export async function getGameRoomMessages(
   roomId: string,
   options: { limit?: number; offset?: number; after?: number | string; signal?: AbortSignal } = {},
 ): Promise<GameRoomMessage[]> {
+  const publicSession = getPublicGameGuestSessionByRoom(roomId);
+  const path = publicSession
+    ? `/api/games/public-rooms/${encodeURIComponent(roomId)}/messages`
+    : `/api/games/rooms/${encodeURIComponent(roomId)}/messages`;
   const data = await apiRequest<unknown>(
-    `/api/games/rooms/${encodeURIComponent(roomId)}/messages${buildRoomMessagesQuery(options)}`,
-    { cache: "no-store", ...(options.signal ? { signal: options.signal } : {}) },
+    `${path}${buildRoomMessagesQuery(options)}`,
+    {
+      cache: "no-store",
+      ...(publicSession ? { headers: { "X-Game-Guest-Token": publicSession.token } } : {}),
+      ...(options.signal ? { signal: options.signal } : {}),
+    },
     [],
   );
   const raw = asRecord(data);
@@ -38,10 +47,18 @@ export async function getGameRoomMessages(
 }
 
 export async function sendGameRoomMessage(roomId: string, text: string): Promise<GameRoomMessage> {
+  const publicSession = getPublicGameGuestSessionByRoom(roomId);
+  const path = publicSession
+    ? `/api/games/public-rooms/${encodeURIComponent(roomId)}/messages`
+    : `/api/games/rooms/${encodeURIComponent(roomId)}/messages`;
   return extractRoomMessageResponse(
     await apiRequest<unknown>(
-      `/api/games/rooms/${encodeURIComponent(roomId)}/messages`,
-      { method: "POST", body: { text } },
+      path,
+      {
+        method: "POST",
+        body: { text },
+        ...(publicSession ? { headers: { "X-Game-Guest-Token": publicSession.token } } : {}),
+      },
       {},
     ),
   );

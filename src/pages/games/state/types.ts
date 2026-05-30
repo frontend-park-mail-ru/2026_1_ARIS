@@ -74,4 +74,9 @@ export type GamesPageState = {
   loading: boolean;
   roomsLoading: boolean;
   roomsAutoRefreshEnabled: boolean;
+  publicInviteCode: string;
+  publicGuestFirstName: string;
+  publicGuestLastName: string;
+  publicGuestFirstNameError: string;
+  publicGuestLastNameError: string;
 };

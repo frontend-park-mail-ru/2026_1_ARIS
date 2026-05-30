@@ -40,6 +40,7 @@ export function bindGamesFormEvents(
     handleSubmitRoomChat: options.handleSubmitRoomChat,
     handleCreateRoom: options.handleCreateRoom,
     handleJoinRoom: options.handleJoinRoom,
+    handleJoinPublicRoom: options.handleJoinPublicRoom,
     handleJoinListedRoom: options.handleJoinListedRoom,
     handleRenameRoomTitle: options.handleRenameRoomTitle,
     handlePasswordForm: options.handlePasswordForm,

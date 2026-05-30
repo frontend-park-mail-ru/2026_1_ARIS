@@ -94,6 +94,34 @@ describe("room live actions facade", () => {
     );
   });
 
+  it("обрабатывает socket-state snapshots последовательно", async () => {
+    const options = createOptions();
+    const actions = createRoomLiveActions(options);
+    const applied: string[] = [];
+    let releaseFirst: () => void = () => undefined;
+    vi.mocked(applyRoomSocketState).mockImplementation(async (room) => {
+      applied.push(`start:${room.title}`);
+      if (room.title === "first") {
+        await new Promise<void>((resolve) => {
+          releaseFirst = resolve;
+        });
+      }
+      applied.push(`end:${room.title}`);
+    });
+
+    const first = actions.handleRoomSocketState(createRoom({ title: "first" }));
+    const second = actions.handleRoomSocketState(createRoom({ title: "second" }));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(applied).toEqual(["start:first"]);
+
+    releaseFirst();
+    await Promise.all([first, second]);
+
+    expect(applied).toEqual(["start:first", "end:first", "start:second", "end:second"]);
+  });
+
   it("собирает socket-message dependencies", () => {
     const options = createOptions();
     const actions = createRoomLiveActions(options);

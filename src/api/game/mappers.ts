@@ -250,12 +250,14 @@ export function mapRoom(value: unknown): GameRoom {
     hasPassword: toBoolean(raw.hasPassword ?? raw.HasPassword ?? raw.passwordRequired),
     password: getFirstString(raw, ["password", "Password"]),
     isRanked: toBoolean(raw.isRanked ?? raw.IsRanked),
+    isPublicLobby: toBoolean(raw.isPublicLobby ?? raw.IsPublicLobby ?? raw.publicLobby),
     inviteCodeEnabled: toBoolean(
       raw.inviteCodeEnabled ?? raw.InviteCodeEnabled ?? raw.hasInviteCode ?? raw.HasInviteCode,
       Boolean(getFirstString(raw, ["inviteCode", "InviteCode"])),
     ),
     questionCount: toNumber(raw.questionCount ?? raw.QuestionCount, 5),
     answerTimeoutSec: toNumber(raw.answerTimeoutSec ?? raw.AnswerTimeoutSec, 10),
+    roundPauseSec: toNumber(raw.roundPauseSec ?? raw.RoundPauseSec, 5),
     currentQuestionIndex: toNumber(raw.currentQuestionIndex ?? raw.CurrentQuestionIndex),
     nextQuestionAt: getFirstString(raw, ["nextQuestionAt", "NextQuestionAt"]),
     pausedByProfileId: getFirstString(raw, [

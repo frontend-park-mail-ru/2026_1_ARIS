@@ -16,3 +16,4 @@ export const roundResultScoreAnimationStartMs = 2500;
 export const roundResultScoreboardSortMs = 4200;
 export const roundResultScoreboardLeadMs = 180;
 export const scoreValueAnimationMs = 1180;
+export const scoreboardSortAnimationMs = 880;

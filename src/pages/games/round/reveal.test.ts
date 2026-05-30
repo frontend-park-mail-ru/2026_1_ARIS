@@ -95,7 +95,9 @@ describe("games round reveal", () => {
     vi.setSystemTime(new Date("2026-05-25T00:00:25.000Z"));
     const room = createRoom("2026-05-25T00:00:00.000Z");
 
+    expect(getFinalRoundResultsUntil(room, room.questions[0]!)).toBeNull();
     expect(shouldShowFinalRoundResultBeforeSummary(room)).toBe(false);
+    expect(isRoundResultRevealVisible(room)).toBe(false);
   });
 
   it("держит активный результат до серверного nextQuestionAt", () => {

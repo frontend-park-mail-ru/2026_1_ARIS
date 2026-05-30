@@ -10,6 +10,7 @@ export type QuestionReportUi = Pick<
 export type GamesPageRendererOptions = {
   getState: () => GamesPageState;
   isCatalogRoute: () => boolean;
+  isAuthorised?: (() => boolean) | undefined;
   reportedQuestionKeys: Set<string>;
   reportingQuestionKeys: Set<string>;
   questionReportUi: QuestionReportUi;

@@ -104,6 +104,29 @@ describe("games room system messages", () => {
     expect(messages).not.toContain('Игрок 1 поставил статус "Готов" (2/3).');
   });
 
+  it("пишет вход гостей публичного лобби в мужском роде", () => {
+    const previousRoom = createRoom({
+      isPublicLobby: true,
+      players: [],
+    });
+    const nextRoom = createRoom({
+      isPublicLobby: true,
+      players: [
+        createPlayer("3", {
+          userAccountId: "0",
+          username: "guest",
+          firstName: "Софья",
+          lastName: "Ситниченко",
+        }),
+      ],
+    });
+
+    const messages = getRoomSystemMessages(previousRoom, nextRoom).map((message) => message.text);
+
+    expect(messages).toContain("Софья Ситниченко присоединился к комнате.");
+    expect(messages).not.toContain("Софья Ситниченко присоединилась к комнате.");
+  });
+
   it("переводит сохранённые русские системные сообщения для EN-интерфейса", () => {
     languageStore.reset({ language: "EN" });
 
@@ -130,5 +153,20 @@ describe("games room system messages", () => {
     });
 
     expect(messages).toHaveLength(0);
+  });
+
+  it("не пишет изменения готовности в публичном лобби", () => {
+    const previousRoom = createRoom({
+      isPublicLobby: true,
+      players: [createPlayer("1", { isReady: false })],
+    });
+    const nextRoom = createRoom({
+      isPublicLobby: true,
+      players: [createPlayer("1", { isReady: true })],
+    });
+
+    const messages = getRoomSystemMessages(previousRoom, nextRoom).map((message) => message.text);
+
+    expect(messages).not.toContain('Игрок 1 поставил статус "Готов" (1/1).');
   });
 });

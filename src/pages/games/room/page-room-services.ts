@@ -5,6 +5,7 @@
  * доменный фасад, чтобы entrypoint не держал детали профиля, session и access.
  */
 import { joinGameRoom } from "../../../api/games";
+import { getMediaUrlById } from "../../../api/media";
 import { getProfileById } from "../../../api/profile";
 import { getSessionUser } from "../../../state/session";
 import { createRoomAccessRecoveryActions } from "../actions/room-access-recovery-actions";
@@ -35,6 +36,7 @@ export type GamesPageRoomServices = ReturnType<typeof createGamesPageRoomService
 export function createGamesPageRoomServices(options: GamesPageRoomServicesOptions) {
   const roomServices = createGamesRoomServices({
     getSessionUser,
+    loadAvatarUrlById: getMediaUrlById,
     loadProfile: getProfileById,
   });
   const { recoverRoomAccess } = createRoomAccessRecoveryActions({

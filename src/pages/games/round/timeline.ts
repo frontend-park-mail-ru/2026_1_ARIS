@@ -7,7 +7,6 @@ import {
   roundResultScoreboardLeadMs,
   roundResultScoreboardSortMs,
   roundResultTimesRevealDelayMs,
-  roundResultTransitionMs,
   scoreValueAnimationMs,
 } from "../shared/constants";
 import { gameT } from "../shared/i18n";
@@ -16,6 +15,12 @@ import {
   getRoundPointsByProfile,
   getRoundResultPresentationRows,
 } from "./model";
+
+/** Возвращает настроенную паузу между вопросами в миллисекундах. */
+function getRoomRoundPauseMs(room: GameRoom): number {
+  const value = Number.isFinite(room.roundPauseSec) ? room.roundPauseSec : 5;
+  return Math.max(1, Math.min(60, value || 5)) * 1000;
+}
 
 /** Возвращает короткое имя игрока для стабильной сортировки анимаций. */
 function getRoundTimelinePlayerLabel(player: GameRoom["players"][number]): string {
@@ -47,7 +52,7 @@ export function getRoundResultMaxRevealIndex(
   question: GameRoom["questions"][number],
 ): number {
   const rows = getRoundResultPresentationRows(room, question);
-  const items = getRoundAnswerShowcaseItems(rows, question);
+  const items = getRoundAnswerShowcaseItems(rows);
   const maxRevealIndex = Math.max(0, ...items.map((item) => item.revealIndex));
   return maxRevealIndex;
 }
@@ -135,9 +140,8 @@ export function getRoundResultTransitionEndDelayMs(
   room: GameRoom,
   question: GameRoom["questions"][number],
 ): number {
-  void room;
   void question;
-  return roundResultTransitionMs;
+  return getRoomRoundPauseMs(room);
 }
 
 /** Возвращает timestamp начала таймлайна результата раунда. */

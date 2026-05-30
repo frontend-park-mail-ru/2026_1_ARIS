@@ -1,4 +1,5 @@
 import type { GameRoom } from "../../../../../api/games";
+import { buildPublicGameRoomUrl } from "../../../../../api/games";
 import { escapeHtml } from "../../../../../utils/avatar";
 import { gameT } from "../../../shared/i18n";
 import type { RenderRoomPanelOptions } from "./types";
@@ -72,6 +73,27 @@ function renderInviteCodeDetails(room: GameRoom): string {
   `;
 }
 
+/** Рендерит карточку публичной ссылки на презентационную комнату. */
+function renderPublicInviteDetails(room: GameRoom): string {
+  const url = room.inviteCode ? buildPublicGameRoomUrl(room.inviteCode) : "";
+  return `
+    <section class="games-room-detail-card games-room-detail-card--stacked games-room-detail-card--public-link" aria-label="${escapeHtml(gameT("room.publicLinkAria"))}">
+      <div
+        class="games-room-detail-card__copy"
+        data-games-copy-invite="${escapeHtml(url)}"
+        role="button"
+        tabindex="0"
+        aria-label="${escapeHtml(gameT("room.publicLinkCopyAria"))}"
+      >
+        <span class="games-room-detail-card__content">
+          <span class="games-room-detail-card__label">${escapeHtml(gameT("room.publicLinkLabel"))}</span>
+          <strong class="games-room-detail-card__code">${escapeHtml(url || "—")}</strong>
+        </span>
+      </div>
+    </section>
+  `;
+}
+
 /** Рендерит карточку пароля комнаты. */
 function renderPasswordDetails(options: RenderRoomPanelOptions): string {
   const { roomPasswordDisplay, canDisbandRoom, passwordMenuOpen } = options;
@@ -127,6 +149,14 @@ function renderPasswordDetails(options: RenderRoomPanelOptions): string {
 /** Рендерит блок доступа к комнате: название, тип, invite-код и пароль. */
 export function renderRoomAccessDetails(options: RenderRoomPanelOptions): string {
   if (options.room.status !== "waiting") return "";
+  if (options.room.isPublicLobby) {
+    return `
+      <div class="games-room-actions games-room-actions--full">
+        ${renderPublicInviteDetails(options.room)}
+      </div>
+    `;
+  }
+
   return `
     ${renderRoomTitleDetails(options)}
     <div class="games-room-actions">

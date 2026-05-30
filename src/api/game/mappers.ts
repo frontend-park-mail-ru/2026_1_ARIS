@@ -185,6 +185,18 @@ export function mapGameAnswers(value: unknown): GameAnswer[] {
     .filter((answer) => answer.profileId);
 }
 
+function getRoomPlayersWithCreator(
+  players: GamePlayer[],
+  creator: GamePlayer | null,
+  createdByProfileId: string,
+  isPublicLobby: boolean,
+): GamePlayer[] {
+  if (isPublicLobby || !creator?.profileId) return players;
+  if (createdByProfileId && creator.profileId !== createdByProfileId) return players;
+  if (players.some((player) => player.profileId === creator.profileId)) return players;
+  return [creator, ...players];
+}
+
 export function mapRoundQuestion(value: unknown): GameRoundQuestion {
   const raw = asRecord(value);
   const question = asRecord(raw.question ?? raw.Question);
@@ -223,6 +235,18 @@ export function mapRoundQuestion(value: unknown): GameRoundQuestion {
 
 export function mapRoom(value: unknown): GameRoom {
   const raw = asRecord(value);
+  const isPublicLobby = toBoolean(raw.isPublicLobby ?? raw.IsPublicLobby ?? raw.publicLobby);
+  const createdByProfileId = getFirstString(raw, [
+    "createdByProfileId",
+    "createdByProfileID",
+    "CreatedByProfileID",
+    "creatorProfileId",
+    "creatorProfileID",
+  ]);
+  const creator = raw.creator || raw.Creator ? mapGamePlayer(raw.creator ?? raw.Creator) : null;
+  const players = asArray(raw.players ?? raw.Players)
+    .map(mapGamePlayer)
+    .filter((player) => player.profileId);
 
   return {
     id: getFirstString(raw, ["id", "ID", "roomId", "roomID"]),
@@ -239,18 +263,12 @@ export function mapRoom(value: unknown): GameRoom {
     inviteCode: getFirstString(raw, ["inviteCode", "InviteCode"]),
     gameType: "number_duel",
     status: normaliseStatus(raw.status ?? raw.Status),
-    createdByProfileId: getFirstString(raw, [
-      "createdByProfileId",
-      "createdByProfileID",
-      "CreatedByProfileID",
-      "creatorProfileId",
-      "creatorProfileID",
-    ]),
+    createdByProfileId,
     maxPlayers: toNumber(raw.maxPlayers ?? raw.MaxPlayers ?? raw.playerLimit ?? raw.PlayerLimit, 2),
     hasPassword: toBoolean(raw.hasPassword ?? raw.HasPassword ?? raw.passwordRequired),
     password: getFirstString(raw, ["password", "Password"]),
     isRanked: toBoolean(raw.isRanked ?? raw.IsRanked),
-    isPublicLobby: toBoolean(raw.isPublicLobby ?? raw.IsPublicLobby ?? raw.publicLobby),
+    isPublicLobby,
     inviteCodeEnabled: toBoolean(
       raw.inviteCodeEnabled ?? raw.InviteCodeEnabled ?? raw.hasInviteCode ?? raw.HasInviteCode,
       Boolean(getFirstString(raw, ["inviteCode", "InviteCode"])),
@@ -269,10 +287,8 @@ export function mapRoom(value: unknown): GameRoom {
     pauseUntilAt: getFirstString(raw, ["pauseUntilAt", "PauseUntilAt"]),
     pauseForceVotes: toNumber(raw.pauseForceVotes ?? raw.PauseForceVotes),
     pauseForceVotesRequired: toNumber(raw.pauseForceVotesRequired ?? raw.PauseForceVotesRequired),
-    creator: raw.creator || raw.Creator ? mapGamePlayer(raw.creator ?? raw.Creator) : null,
-    players: asArray(raw.players ?? raw.Players)
-      .map(mapGamePlayer)
-      .filter((player) => player.profileId),
+    creator,
+    players: getRoomPlayersWithCreator(players, creator, createdByProfileId, isPublicLobby),
     currentQuestion: mapCurrentQuestion(raw.currentQuestion ?? raw.CurrentQuestion),
     questions: asArray(raw.questions ?? raw.Questions).map(mapRoundQuestion),
     ratingChanges: asArray(raw.ratingChanges ?? raw.RatingChanges)

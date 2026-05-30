@@ -108,6 +108,19 @@ describe("games room selectors", () => {
     expect(getRoomAuthor(room)).toBe(creator);
   });
 
+  it("для сменившегося администратора берёт актуального игрока по createdByProfileId", () => {
+    const oldCreator = createPlayer("7", { name: "Старый админ" });
+    const nextAdmin = createPlayer("8", { name: "Новый админ" });
+    const room = createRoom({
+      createdByProfileId: "8",
+      creator: oldCreator,
+      players: [oldCreator, nextAdmin],
+    });
+
+    expect(getRoomAuthor(room)).toBe(nextAdmin);
+    expect(isCurrentRoomCreator(room, "8")).toBe(true);
+  });
+
   it("проверяет права на паузу и голосование за продолжение", () => {
     const activeRoom = createRoom({
       status: "active",

@@ -120,6 +120,21 @@
       overflow-wrap: anywhere;
     }
 
+    .games-answer-form--play {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: stretch;
+    }
+
+    .games-answer-form--play .games-field--answer {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: stretch;
+    }
+
+    .games-answer-form--play .games-button {
+      width: 100%;
+      min-height: 44px;
+    }
+
     .games-precision-timer__value {
       font-size: 30px;
     }
@@ -137,19 +152,24 @@
     }
 
     .games-answer-axis-card {
-      grid-template-columns: 28px minmax(24px, 34px) minmax(62px, 1fr) minmax(42px, 60px) minmax(
-          54px,
-          62px
-        );
-      gap: 5px;
-      min-height: 58px;
+      grid-template-areas:
+        "rank player time"
+        "rank answer answer";
+      grid-template-columns: 30px minmax(0, 1fr) 72px;
+      gap: 6px 8px;
+      min-height: 72px;
       padding: 8px;
       overflow: hidden;
       box-sizing: border-box;
     }
 
+    .games-answer-axis-card__rank {
+      grid-area: rank;
+      align-self: center;
+    }
+
     .games-answer-axis-card .games-results-table__player {
-      grid-column: 2;
+      grid-area: player;
       width: 100%;
       max-width: none;
       overflow: hidden;
@@ -173,37 +193,41 @@
 
     .games-answer-axis-card__answer-pack {
       position: static;
-      grid-column: 3 / 5;
+      grid-area: answer;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(38px, 60px);
+      width: 100%;
+      grid-template-columns: minmax(0, 1fr) max-content;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       pointer-events: auto;
     }
 
     .games-answer-axis-card__answer-pack--missing {
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: 34px minmax(0, 1fr);
     }
 
     .games-answer-axis-card__answer,
     .games-answer-axis-card__answer-pack .games-answer-axis-card__answer {
       grid-column: 1;
-      justify-self: center;
+      justify-self: start;
       max-width: 100%;
-      font-size: 28px;
+      overflow: hidden;
+      font-size: 26px;
+      text-overflow: ellipsis;
     }
 
     .games-answer-axis-card__answer--missing {
       font-size: 28px;
+      justify-self: center;
     }
 
     .games-answer-axis-card__delta,
     .games-answer-axis-card__answer-pack .games-answer-axis-card__delta {
       grid-column: 2;
-      width: 100%;
-      min-width: 0;
+      max-width: 78px;
+      min-width: 42px;
       min-height: 28px;
-      justify-self: stretch;
+      justify-self: end;
       margin-left: 0;
       padding: 0 4px;
       overflow: hidden;
@@ -213,13 +237,15 @@
     }
 
     .games-answer-axis-card__no-answer {
-      grid-column: 1;
+      grid-column: 2;
+      justify-self: start;
       margin-left: 0;
+      max-width: 100%;
       font-size: 12px;
     }
 
     .games-answer-axis-card__time {
-      grid-column: 5;
+      grid-area: time;
       justify-self: end;
       max-width: 100%;
       font-size: 14px;

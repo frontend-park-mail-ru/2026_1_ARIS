@@ -75,11 +75,14 @@ function renderCurrentAnswerForm(
       <label class="games-field games-field--answer">
         <span class="games-answer-form__label">${escapeHtml(gameT("gameplay.answerLabel"))}</span>
         <input
-          type="number"
+          type="text"
           name="answer"
           data-games-answer-input
-          inputmode="decimal"
-          step="any"
+          inputmode="numeric"
+          enterkeyhint="done"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
           placeholder="${escapeHtml(gameT("gameplay.answerPlaceholder"))}"
           autofocus
           required

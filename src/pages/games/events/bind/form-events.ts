@@ -8,6 +8,7 @@ import {
   validateNumericField,
   validateTitleField,
 } from "../../shared/forms";
+import { bindGamesAnswerInputFocusEvents } from "../answer-input";
 import { bindGamesFormFieldEvents } from "../form-fields";
 import { bindGamesLiveFieldEvents } from "../live-fields";
 import { bindGamesNumberFieldEvents } from "../number-fields";
@@ -21,6 +22,7 @@ export function bindGamesFormEvents(
   root: GamesEventsRoot,
   options: BindGamesPageEventsOptions,
 ): void {
+  bindGamesAnswerInputFocusEvents(root);
   bindGamesNumberFieldEvents(root, {
     showRankedLockedCreateFieldError,
     setNumericFieldError,

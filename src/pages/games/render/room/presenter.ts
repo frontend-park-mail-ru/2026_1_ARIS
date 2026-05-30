@@ -9,11 +9,7 @@ import type { GamesErrorTarget, GamesPageState } from "../../state/store";
 import type { GameCatalogItem } from "../../shared/registry";
 import { shouldShowFinalRoundResultBeforeSummary } from "../../round/reveal";
 import { gameT } from "../../shared/i18n";
-import {
-  areRoomPlayersReady,
-  getCurrentRoomPlayer,
-  isCurrentRoomCreator,
-} from "../../room/selectors";
+import { areRoomPlayersReady, getCurrentPlayer, isCurrentRoomCreator } from "../../room/selectors";
 import { renderRoomPanel } from "./panel";
 import {
   renderLobbyCreator,
@@ -111,7 +107,7 @@ export function renderRoomPanelPresenter(options: RenderRoomPanelPresenterOption
     canLeaveRoom,
     canStartRoom,
     startTooltipLines: getStartTooltipLines(options),
-    currentPlayer: getCurrentRoomPlayer(room),
+    currentPlayer: getCurrentPlayer(room, options.currentProfileId),
     rankedBadge: renderRankedBadge(room),
     rankedToggle: isPublicLobby
       ? ""

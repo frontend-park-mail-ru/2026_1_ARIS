@@ -61,9 +61,10 @@ export function createGamesPageDomAdapters(options: GamesPageDomAdaptersOptions)
       lastFocusedQuestionId = "";
       return;
     }
-    if (question.id === lastFocusedQuestionId) return;
-    const input = root.querySelector("[data-games-answer-input]");
+    const input = root.querySelector<HTMLInputElement>("[data-games-answer-input]");
     if (!input) return;
+    const isFocused = input.ownerDocument.activeElement === input;
+    if (question.id === lastFocusedQuestionId && isFocused) return;
 
     focusCurrentAnswerInput(root);
     lastFocusedQuestionId = question.id;

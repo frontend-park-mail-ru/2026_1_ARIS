@@ -54,12 +54,10 @@ export function shouldBlockFullRoomJoin(room: GameRoom, currentProfileId: string
 
 /** Возвращает автора комнаты из creator, списка игроков или первого участника. */
 export function getRoomAuthor(room: GameRoom) {
-  return (
-    room.creator ??
-    room.players.find((player) => player.profileId === room.createdByProfileId) ??
-    room.players[0] ??
-    null
-  );
+  const currentAdmin = room.players.find((player) => player.profileId === room.createdByProfileId);
+  if (currentAdmin) return currentAdmin;
+
+  return room.creator ?? room.players[0] ?? null;
 }
 
 /** Проверяет готовность всех игроков комнаты. */

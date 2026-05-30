@@ -112,6 +112,31 @@ describe("games room panel presenter", () => {
     expect(html).toContain("data-games-start-open");
   });
 
+  it("в обычной комнате считает администратора игроком, когда он пришёл отдельно от players", () => {
+    const room = createRoom({
+      players: [
+        createPlayer({
+          profileId: "profile-2",
+          userAccountId: "user-2",
+          name: "Grace Hopper",
+          firstName: "Grace",
+          username: "grace",
+          isMe: false,
+        }),
+      ],
+    });
+    const roomWithCreatorAsPlayer = {
+      ...room,
+      players: [room.creator!, ...room.players],
+    };
+    const html = renderRoomPanelPresenter(createOptions(roomWithCreatorAsPlayer));
+
+    expect(html).toContain("Участников в комнате: 2/8");
+    expect(html).toContain("Готовы: 2/2");
+    expect(html).toContain("Ada Lovelace");
+    expect(html).toContain("Администратор:");
+  });
+
   it("рендерит публичное лобби обычной комнатой без готовности", () => {
     const html = renderRoomPanelPresenter(
       createOptions(
@@ -124,6 +149,7 @@ describe("games room panel presenter", () => {
 
     expect(html).toContain("Публичная ссылка");
     expect(html).toContain("Участников в комнате: 2/80");
+    expect(html).toContain("Администратор:");
     expect(html).not.toContain("Название комнаты:");
     expect(html).toContain("Ada Lovelace");
     expect(html).toContain("Grace Hopper");

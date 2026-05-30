@@ -5,6 +5,7 @@ import { getRoomUpdatePatch } from "../../state/room-update-patches";
 import type { ApplyRoomSocketStateDeps } from "./types";
 import { gameT } from "../../shared/i18n";
 import { debugGamesEvent, debugGamesVerboseEvent } from "../../runtime/debug";
+import { playPublicLobbyStartSound } from "../../room/public-lobby-sound";
 
 function getRoomDebugSummary(room: GameRoom | null): Record<string, unknown> | null {
   if (!room) return null;
@@ -109,6 +110,7 @@ export async function applyRoomSocketState(
       },
     }),
   });
+  playPublicLobbyStartSound(previousRoom, update.normalizedRoom, deps.getCurrentProfileId());
   deps.rememberRoomAccess(update.normalizedRoom);
   deps.clearPendingVoluntaryLeave(update.normalizedRoom.id);
   deps.refreshGamesDom();

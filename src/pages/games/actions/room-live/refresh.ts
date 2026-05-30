@@ -1,6 +1,7 @@
 import { ApiError } from "../../../../api/core/client";
 import { normalizeLobbyRoomUpdate } from "../../room/state/lobby-updates";
 import { getRoomLiveSignature } from "../../room/state/live-signature";
+import { playPublicLobbyStartSound } from "../../room/public-lobby-sound";
 import { getRoomUpdatePatch } from "../../state/room-update-patches";
 import type { RefreshCurrentRoomActionDeps, RefreshCurrentRoomSilentlyDeps } from "./types";
 
@@ -33,6 +34,7 @@ export async function refreshCurrentRoomSilentlyAction(
         },
       }),
     );
+    playPublicLobbyStartSound(latestRoom, normalizedRoom, deps.getCurrentProfileId());
   } catch (error) {
     if (error instanceof ApiError && error.status === 403) {
       const recoveredRoom =

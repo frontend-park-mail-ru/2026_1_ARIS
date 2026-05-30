@@ -178,6 +178,29 @@ describe("games round result render", () => {
     expect(html).toContain("Next question in");
   });
 
+  it("не выводит отдельное время для пропущенного ответа", () => {
+    const room = createRoom("active");
+    room.questions[0]!.answers = room.questions[0]!.answers.filter(
+      (answer) => answer.profileId !== "3",
+    );
+    const html = renderRoundResultStage({
+      room,
+      question: room.questions[0]!,
+      renderPlayerCell: (_player, label) => `<span>${label}</span>`,
+    });
+
+    document.body.innerHTML = html;
+    const cards = [...document.querySelectorAll<HTMLElement>("[data-games-round-result-card]")];
+    const alanCard = cards.find((card) => card.textContent?.includes("Alan"));
+
+    expect(alanCard).toBeTruthy();
+    expect(alanCard?.classList.contains("games-answer-axis-card--missing")).toBe(true);
+    expect(alanCard?.classList.contains("games-answer-axis-card--has-time")).toBe(false);
+    expect(alanCard?.textContent).toContain("Нет ответа");
+    expect(alanCard?.textContent).not.toContain("Нет времени");
+    expect(alanCard?.querySelector(".games-answer-axis-card__time")).toBeNull();
+  });
+
   it("показывает таймер активного результата без серверного nextQuestionAt", () => {
     const room = createRoom("active");
     room.nextQuestionAt = "";

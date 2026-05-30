@@ -23,6 +23,7 @@ export function createRoomControlUpdateActions(options: RoomUpdateActionsOptions
     async handleStartRoom(): Promise<void> {
       await startCurrentRoom({
         room: options.getRoom(),
+        currentProfileId: options.getCurrentProfileId(),
         currentMessages: options.getCurrentMessages(),
         getSystemMessages: options.getSystemMessages,
         mergeMessages: options.mergeMessages,

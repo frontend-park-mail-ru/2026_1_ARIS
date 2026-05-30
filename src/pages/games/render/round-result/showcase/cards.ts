@@ -73,11 +73,12 @@ function renderRoundResultPlayerCard(
 ): string {
   const playerLabel = getPlayerFullName(row.player);
   const timeLabel = formatDurationMs(row.answer?.responseTimeMs);
+  const shouldRenderTime = row.showTime && !row.isMissingAnswer;
   const cardStyle = `${renderRoundResultStyle({ ...row, revealIndex }, index, maxRevealIndex)}; --games-time-reveal-delay: ${timeRevealDelayMs}ms`;
 
   return `
     <article
-      class="games-answer-axis-card${row.player.isMe ? " games-answer-axis-card--me" : ""}${row.place === 1 ? " games-answer-axis-card--winner" : ""}${row.answerDelta === 0 ? " games-answer-axis-card--exact" : ""}${row.isMissingAnswer ? " games-answer-axis-card--missing" : ""}${row.showTime ? " games-answer-axis-card--has-time" : ""}"
+      class="games-answer-axis-card${row.player.isMe ? " games-answer-axis-card--me" : ""}${row.place === 1 ? " games-answer-axis-card--winner" : ""}${row.answerDelta === 0 ? " games-answer-axis-card--exact" : ""}${row.isMissingAnswer ? " games-answer-axis-card--missing" : ""}${shouldRenderTime ? " games-answer-axis-card--has-time" : ""}"
       style="${cardStyle}"
       data-games-round-answer-card
       data-games-round-result-card
@@ -86,7 +87,7 @@ function renderRoundResultPlayerCard(
       <span class="games-answer-axis-card__rank">#${roundPlace}</span>
       ${renderPlayerCell(row.player, playerLabel)}
       ${renderRoundCardAnswerPack(row)}
-      ${row.showTime ? `<time class="games-answer-axis-card__time">${escapeHtml(timeLabel)}</time>` : ""}
+      ${shouldRenderTime ? `<time class="games-answer-axis-card__time">${escapeHtml(timeLabel)}</time>` : ""}
     </article>
   `;
 }

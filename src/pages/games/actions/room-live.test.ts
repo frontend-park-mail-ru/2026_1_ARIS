@@ -108,6 +108,7 @@ function createRefreshDeps(
     getCurrentRoom: () => room,
     getLoading: () => false,
     getSocketOpen: () => false,
+    getCurrentProfileId: () => "1",
     getCurrentMessages: () => [],
     fetchRoom: vi.fn(async () => room ?? createRoom()),
     hydrateRoom: vi.fn(async (item) => item),

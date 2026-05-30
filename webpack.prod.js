@@ -187,6 +187,11 @@ module.exports = {
           to: "assets/img",
           globOptions: { ignore: ["**/.DS_Store"] },
         },
+        {
+          from: path.resolve(__dirname, "public/assets/audio"),
+          to: "assets/audio",
+          globOptions: { ignore: ["**/.DS_Store"] },
+        },
       ],
     }),
   ],

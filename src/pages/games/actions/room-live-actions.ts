@@ -123,6 +123,7 @@ export function createRoomLiveActions(options: RoomLiveActionsOptions) {
       getCurrentRoom: options.getRoom,
       getLoading: options.getLoading,
       getSocketOpen: options.getSocketOpenState,
+      getCurrentProfileId: options.getCurrentProfileId,
       getCurrentMessages: options.getCurrentMessages,
       fetchRoom: options.fetchRoom,
       hydrateRoom: options.hydrateRoom,

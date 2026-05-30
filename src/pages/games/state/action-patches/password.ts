@@ -1,4 +1,5 @@
 import type { GameRoom } from "../../../../api/games";
+import { gameT } from "../../shared/i18n";
 import type { GamesStatePatch } from "./types";
 
 /**
@@ -35,7 +36,7 @@ export function getPasswordVisibilityPatch(
     return {
       passwordMenuOpen: false,
       message: "",
-      error: "Пароль не получен.",
+      error: gameT("room.passwordMissing"),
       errorTarget: "password",
     };
   }

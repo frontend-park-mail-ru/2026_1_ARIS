@@ -1,5 +1,6 @@
 import { getPasswordModeFromAttribute, isModalCloseClick } from "./shared";
 import type { HandleGamesRoomMenusClickOptions } from "./types";
+import { gameT } from "../../shared/i18n";
 
 /**
  * Обрабатывает открытие rename title модалки.
@@ -66,7 +67,7 @@ function handlePasswordShowClick(
     options.setGamesState({
       passwordMenuOpen: false,
       message: "",
-      error: "Не удалось изменить отображение пароля.",
+      error: gameT("room.passwordDisplayError"),
       errorTarget: "password",
     });
   });
@@ -115,7 +116,7 @@ function handlePasswordRemoveClick(
     options.setGamesState({
       loading: false,
       message: "",
-      error: options.getErrorMessage(error, "Не удалось убрать пароль."),
+      error: options.getErrorMessage(error, gameT("room.passwordRemoveError")),
       errorTarget: "password",
     });
   });

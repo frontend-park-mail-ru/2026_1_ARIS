@@ -1,4 +1,5 @@
 import type { GameRoom } from "../../../api/games";
+import { gameT } from "../shared/i18n";
 
 export type PendingVoluntaryLeave = {
   roomId: string;
@@ -11,12 +12,12 @@ export type PendingVoluntaryLeave = {
 
 /** Возвращает сообщение добровольного выхода из комнаты. */
 export function getVoluntaryLeaveMessage(isOwnRoom: boolean): string {
-  return isOwnRoom ? "Вы вышли из своей комнаты." : "Вы вышли из комнаты.";
+  return isOwnRoom ? gameT("room.leftOwn") : gameT("room.left");
 }
 
 /** Возвращает подпись действия возврата после добровольного выхода. */
 export function getVoluntaryLeaveReturnLabel(isOwnRoom: boolean): string {
-  return isOwnRoom ? "Войти в вашу комнату?" : "Вернуться в комнату?";
+  return isOwnRoom ? gameT("page.returnRoom") : gameT("room.backToRoom");
 }
 
 /** Создаёт снимок добровольного выхода для последующего восстановления комнаты. */

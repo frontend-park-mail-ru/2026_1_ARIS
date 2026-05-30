@@ -1,6 +1,7 @@
 import { ApiError } from "../../../api/core/client";
 import type { GameRoom } from "../../../api/games";
 import type { PendingVoluntaryLeave } from "../room/lifecycle";
+import { gameT } from "../shared/i18n";
 import { getRoomUnavailablePatch } from "../state/action-patches";
 import type { GamesPageState } from "../state/store";
 
@@ -37,7 +38,7 @@ export async function handleRoomUnavailableAction(
 ): Promise<void> {
   const shouldRecover = options?.recover ?? true;
   const roomId = deps.getRoom()?.id || deps.getRoomId();
-  let message = "Комната распущена.";
+  let message = gameT("room.disbanded");
   let messageReturnRoomId = "";
   let messageReturnInviteCode = "";
   let messageReturnPassword = "";
@@ -69,7 +70,7 @@ export async function handleRoomUnavailableAction(
       return;
     }
     if (roomRestored === "removed") {
-      message = "Вы были удалены из комнаты.";
+      message = gameT("room.removed");
     }
   }
 

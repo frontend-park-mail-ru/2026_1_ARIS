@@ -137,73 +137,66 @@ export function renderProfileEditor(profile: DisplayProfile): string {
   }
 
   return `
-    <section class="profile-editor content-card" data-profile-editor hidden>
-      <form class="profile-editor__form" data-profile-edit-form novalidate>
-        <div class="profile-editor__intro">
-          <h2>Редактирование профиля</h2>
-          <p>Отправим только изменённые поля. Остальное останется как есть.</p>
-        </div>
+    <form class="profile-editor__form" data-profile-edit-form novalidate>
+      <div class="profile-editor__grid">
+        ${renderEditorTextField("firstName", "Имя", profile.editable.firstName)}
+        ${renderEditorTextField("lastName", "Фамилия", profile.editable.lastName)}
+        ${renderEditorTextField("email", "Email", profile.editable.email, {
+          type: "text",
+          inputMode: "email",
+          placeholder: "mail@example.com",
+        })}
+        ${renderEditorTextField("phone", "Телефон", profile.editable.phone, {
+          type: "tel",
+        })}
+        ${renderEditorTextField("town", "Текущий город", profile.editable.town)}
+        ${renderEditorTextField("nativeTown", "Родной город", profile.editable.nativeTown)}
+        ${renderEditorTextField("birthdayDate", "Дата рождения", profile.editable.birthdayDate, {
+          type: "date",
+        })}
 
-        <div class="profile-editor__grid">
-          ${renderEditorTextField("firstName", "Имя", profile.editable.firstName)}
-          ${renderEditorTextField("lastName", "Фамилия", profile.editable.lastName)}
-          ${renderEditorTextField("email", "Email", profile.editable.email, {
-            type: "text",
-            inputMode: "email",
-            placeholder: "mail@example.com",
-          })}
-          ${renderEditorTextField("phone", "Телефон", profile.editable.phone, {
-            type: "tel",
-          })}
-          ${renderEditorTextField("town", "Текущий город", profile.editable.town)}
-          ${renderEditorTextField("nativeTown", "Родной город", profile.editable.nativeTown)}
-          ${renderEditorTextField("birthdayDate", "Дата рождения", profile.editable.birthdayDate, {
-            type: "date",
-          })}
+        <label class="profile-editor__field">
+          <span>Пол</span>
+          <select class="profile-editor__input" name="gender">
+            <option value="male" ${profile.editable.gender === "male" ? "selected" : ""}>Мужской</option>
+            <option value="female" ${profile.editable.gender === "female" ? "selected" : ""}>Женский</option>
+          </select>
+          ${renderEditorFieldError("gender")}
+        </label>
 
-          <label class="profile-editor__field">
-            <span>Пол</span>
-            <select class="profile-editor__input" name="gender">
-              <option value="male" ${profile.editable.gender === "male" ? "selected" : ""}>Мужской</option>
-              <option value="female" ${profile.editable.gender === "female" ? "selected" : ""}>Женский</option>
-            </select>
-            ${renderEditorFieldError("gender")}
-          </label>
+        ${renderEditorTextField("institution", "Учебное заведение", profile.editable.institution)}
+        ${renderEditorTextField("group", "Группа / курс", profile.editable.group)}
+        ${renderEditorTextField("company", "Компания", profile.editable.company)}
+        ${renderEditorTextField("jobTitle", "Роль / должность", profile.editable.jobTitle)}
+        ${renderEditorTextarea("bio", "О себе", profile.editable.bio, "Коротко о себе")}
+        ${renderEditorTextarea(
+          "interests",
+          "Интересы",
+          profile.editable.interests,
+          "Что тебе действительно интересно",
+        )}
+        ${renderEditorTextarea(
+          "favMusic",
+          "Любимая музыка",
+          profile.editable.favMusic,
+          "Артисты, жанры, плейлисты",
+        )}
+      </div>
 
-          ${renderEditorTextField("institution", "Учебное заведение", profile.editable.institution)}
-          ${renderEditorTextField("group", "Группа / курс", profile.editable.group)}
-          ${renderEditorTextField("company", "Компания", profile.editable.company)}
-          ${renderEditorTextField("jobTitle", "Роль / должность", profile.editable.jobTitle)}
-          ${renderEditorTextarea("bio", "О себе", profile.editable.bio, "Коротко о себе")}
-          ${renderEditorTextarea(
-            "interests",
-            "Интересы",
-            profile.editable.interests,
-            "Что тебе действительно интересно",
-          )}
-          ${renderEditorTextarea(
-            "favMusic",
-            "Любимая музыка",
-            profile.editable.favMusic,
-            "Артисты, жанры, плейлисты",
-          )}
-        </div>
+      <p class="profile-editor__message" data-profile-form-message hidden></p>
 
-        <p class="profile-editor__message" data-profile-form-message hidden></p>
-
-        <div class="profile-editor__actions">
-          <button type="submit" class="profile-editor__button profile-editor__button--primary">
-            Сохранить изменения
-          </button>
-          <button
-            type="button"
-            class="profile-editor__button"
-            data-profile-edit-cancel
-          >
-            Отмена
-          </button>
-        </div>
-      </form>
-    </section>
+      <div class="profile-editor__actions">
+        <button type="submit" class="button button--primary profile-editor__button profile-editor__button--primary">
+          Сохранить изменения
+        </button>
+        <button
+          type="button"
+          class="button button--neutral profile-editor__button"
+          data-profile-edit-cancel
+        >
+          Отмена
+        </button>
+      </div>
+    </form>
   `;
 }

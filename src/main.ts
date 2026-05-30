@@ -8,6 +8,7 @@ import "./styles/tokens.css";
 import "./styles/layout.scss";
 
 import "./components/button/button.scss";
+import "./components/comment-compose/comment-compose.scss";
 import "./components/header/header.scss";
 import "./components/input/input.scss";
 import "./components/logo/logo.scss";
@@ -52,11 +53,13 @@ import { resetUserSettingsSyncState, syncUserSettingsWithServer } from "./state/
 const SITE_ORIGIN = "https://arisnet.ru";
 const CANONICAL_ROUTE_ALIASES: Record<string, string> = {
   "/feed": "/",
+  "/communities": "/groups",
 };
 const NOINDEX_EXACT_PATHS = new Set(["/login", "/register", "/settings"]);
 const NOINDEX_PATH_PREFIXES = [
   "/chats",
   "/friends",
+  "/groups",
   "/communities",
   "/profile",
   "/id",
@@ -97,6 +100,9 @@ function normalisePathname(pathname: string): string {
 
 function getCanonicalPath(pathname: string): string {
   const normalisedPathname = normalisePathname(pathname);
+  if (normalisedPathname.startsWith("/communities/")) {
+    return normalisedPathname.replace(/^\/communities/i, "/groups");
+  }
   return CANONICAL_ROUTE_ALIASES[normalisedPathname] ?? normalisedPathname;
 }
 
@@ -183,6 +189,10 @@ function matchesRoutePath(pathname: string, routePath: string): boolean {
     return /^\/id[^/]+$/i.test(normalisedPathname);
   }
 
+  if (normalisedRoutePath === "/groups/:id") {
+    return /^\/groups\/[^/]+$/i.test(normalisedPathname);
+  }
+
   if (normalisedRoutePath === "/communities/:id") {
     return /^\/communities\/[^/]+$/i.test(normalisedPathname);
   }
@@ -197,6 +207,10 @@ function matchesRoutePath(pathname: string, routePath: string): boolean {
 
   if (normalisedRoutePath === "/games/quiz/:roomId") {
     return /^\/games\/quiz\/[^/]+$/i.test(normalisedPathname);
+  }
+
+  if (normalisedRoutePath === "/games/public/:inviteCode") {
+    return /^\/games\/public\/[^/]+$/i.test(normalisedPathname);
   }
 
   return false;
@@ -250,13 +264,23 @@ const routes: Route[] = [
     render: async (p, s) => (await loadFriends()).renderFriends(p, s),
   },
   {
+    path: "/groups",
+    title: "ARISNET — Groups",
+    render: async (p, s) => (await loadCommunities()).renderCommunities(p, s),
+  },
+  {
+    path: "/groups/:id",
+    title: "ARISNET — Group",
+    render: async (p, s) => (await loadCommunities()).renderCommunities(p, s),
+  },
+  {
     path: "/communities",
-    title: "ARISNET — Communities",
+    title: "ARISNET — Groups",
     render: async (p, s) => (await loadCommunities()).renderCommunities(p, s),
   },
   {
     path: "/communities/:id",
-    title: "ARISNET — Community",
+    title: "ARISNET — Group",
     render: async (p, s) => (await loadCommunities()).renderCommunities(p, s),
   },
   {
@@ -305,6 +329,11 @@ const routes: Route[] = [
     render: async (p, s) => (await loadGames()).renderGames(p, s),
   },
   {
+    path: "/games/public/:inviteCode",
+    title: "ARISNET — Public Quiz",
+    render: async (p, s) => (await loadGames()).renderGames(p, s),
+  },
+  {
     path: "/games/:roomId",
     title: "ARISNET — Game Room",
     render: async (p, s) => (await loadGames()).renderGames(p, s),
@@ -346,6 +375,7 @@ const router = createRouter(root, routes);
 registerPrefetch("/", async () => (await loadFeed()).prefetchFeed());
 registerPrefetch("/feed", async () => (await loadFeed()).prefetchFeed());
 registerPrefetch("/chats", async () => (await loadChats()).prefetchChats());
+registerPrefetch("/groups", async () => (await loadCommunities()).prefetchCommunities());
 registerPrefetch("/communities", async () => (await loadCommunities()).prefetchCommunities());
 
 // Карта путей для предзагрузки JS-чанков.
@@ -354,6 +384,7 @@ const chunkMap: Record<string, () => Promise<unknown>> = {
   "/feed": loadFeed,
   "/chats": loadChats,
   "/friends": loadFriends,
+  "/groups": loadCommunities,
   "/communities": loadCommunities,
   "/profile": loadProfile,
   "/login": loadLogin,

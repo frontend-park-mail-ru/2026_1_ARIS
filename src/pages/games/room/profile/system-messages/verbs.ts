@@ -1,4 +1,6 @@
 import type { GameRoom } from "../../../../../api/games";
+import { getLanguageMode } from "../../../../../state/language";
+import { gameT } from "../../../shared/i18n";
 import { getPlayerGender } from "./gender";
 import { getSystemPlayerFullName } from "./names";
 
@@ -6,6 +8,7 @@ import { getSystemPlayerFullName } from "./names";
  * Возвращает глагол для смены статуса готовности.
  */
 export function getReadyVerb(player: GameRoom["players"][number] | null | undefined): string {
+  if (getLanguageMode() === "EN") return "set";
   const gender = getPlayerGender(player);
   if (gender === "male") return "поставил";
   if (gender === "female") return "поставила";
@@ -16,6 +19,7 @@ export function getReadyVerb(player: GameRoom["players"][number] | null | undefi
  * Возвращает глагол для входа игрока в комнату.
  */
 export function getJoinedVerb(player: GameRoom["players"][number] | null | undefined): string {
+  if (getLanguageMode() === "EN") return "joined";
   const gender = getPlayerGender(player);
   if (gender === "male") return "присоединился";
   if (gender === "female") return "присоединилась";
@@ -26,6 +30,7 @@ export function getJoinedVerb(player: GameRoom["players"][number] | null | undef
  * Возвращает глагол для выхода игрока из комнаты.
  */
 export function getLeftVerb(player: GameRoom["players"][number] | null | undefined): string {
+  if (getLanguageMode() === "EN") return "left";
   const gender = getPlayerGender(player);
   if (gender === "male") return "вышел";
   if (gender === "female") return "вышла";
@@ -36,13 +41,14 @@ export function getLeftVerb(player: GameRoom["players"][number] | null | undefin
  * Возвращает подпись игрока для сообщений входа и выхода.
  */
 export function getRoomJoinLeavePlayerLabel(player: GameRoom["players"][number]): string {
-  return getSystemPlayerFullName(player) || "Игрок";
+  return getSystemPlayerFullName(player) || gameT("common.playerFallback");
 }
 
 /**
  * Возвращает глагол для удаления игрока из комнаты.
  */
 export function getRemovedVerb(player: GameRoom["players"][number] | null | undefined): string {
+  if (getLanguageMode() === "EN") return "was removed";
   const gender = getPlayerGender(player);
   if (gender === "male") return "был удален";
   if (gender === "female") return "была удалена";
@@ -55,6 +61,7 @@ export function getRemovedVerb(player: GameRoom["players"][number] | null | unde
 export function getAssignedAdminVerb(
   player: GameRoom["players"][number] | null | undefined,
 ): string {
+  if (getLanguageMode() === "EN") return "assigned";
   const gender = getPlayerGender(player);
   if (gender === "male") return "назначил";
   if (gender === "female") return "назначила";
@@ -65,5 +72,5 @@ export function getAssignedAdminVerb(
  * Форматирует тип комнаты для пользовательских сообщений.
  */
 export function formatRoomModeLabel(isRanked: boolean): string {
-  return isRanked ? "Рейтинговая" : "Обычная";
+  return isRanked ? gameT("room.ranked") : gameT("room.casual");
 }

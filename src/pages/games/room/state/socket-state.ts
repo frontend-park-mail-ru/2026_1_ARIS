@@ -38,10 +38,47 @@ function shouldKeepSubmittedAnswer(
   );
 }
 
+function getCurrentPlayerHasAnswered(room: GameRoom | null, currentProfileId: string): boolean {
+  const player = currentProfileId
+    ? room?.players.find((item) => item.profileId === currentProfileId)
+    : room?.players.find((item) => item.isMe);
+  return Boolean(player?.hasAnswered);
+}
+
+function getLocalCurrentProfileId(previousRoom: GameRoom | null, currentProfileId: string): string {
+  if (currentProfileId) return currentProfileId;
+  return previousRoom?.players.find((player) => player.isMe)?.profileId ?? "";
+}
+
+function normalizeIncomingCurrentPlayer(
+  previousRoom: GameRoom | null,
+  incomingRoom: GameRoom,
+  currentProfileId: string,
+): GameRoom {
+  const localProfileId = getLocalCurrentProfileId(previousRoom, currentProfileId);
+  return {
+    ...incomingRoom,
+    players: incomingRoom.players.map((player) => ({
+      ...player,
+      isMe: Boolean(localProfileId && player.profileId === localProfileId),
+    })),
+    creator: incomingRoom.creator
+      ? {
+          ...incomingRoom.creator,
+          isMe: Boolean(localProfileId && incomingRoom.creator.profileId === localProfileId),
+        }
+      : incomingRoom.creator,
+  };
+}
+
 /** Готовит чистую модель обновления состояния комнаты из socket-события. */
 export function getRoomSocketStateUpdate(input: RoomSocketStateUpdateInput): RoomSocketStateUpdate {
   const previousAdminId = input.previousRoom?.createdByProfileId ?? "";
-  const normalizedRoom = normalizeLobbyRoomUpdate(input.previousRoom, input.incomingRoom);
+  const normalizedRoom = normalizeIncomingCurrentPlayer(
+    input.previousRoom,
+    normalizeLobbyRoomUpdate(input.previousRoom, input.incomingRoom),
+    input.currentProfileId,
+  );
   const keepSubmittedAnswer = shouldKeepSubmittedAnswer(
     input.previousRoom,
     normalizedRoom,
@@ -52,6 +89,13 @@ export function getRoomSocketStateUpdate(input: RoomSocketStateUpdateInput): Roo
     isAnswerProgressOnly && input.previousRoom
       ? mergeAnswerProgressRoom(input.previousRoom, normalizedRoom)
       : normalizedRoom;
+  const sameCurrentQuestion =
+    (input.previousRoom?.currentQuestion?.id ?? "") === (stateRoom.currentQuestion?.id ?? "");
+  const previousCurrentPlayerAnswered = getCurrentPlayerHasAnswered(
+    input.previousRoom,
+    input.currentProfileId,
+  );
+  const nextCurrentPlayerAnswered = getCurrentPlayerHasAnswered(stateRoom, input.currentProfileId);
 
   return {
     normalizedRoom,
@@ -59,8 +103,7 @@ export function getRoomSocketStateUpdate(input: RoomSocketStateUpdateInput): Roo
     systemMessages: input.getSystemMessages(input.previousRoom, normalizedRoom),
     isAnswerProgressOnly,
     currentQuestionAnswerChanged:
-      (input.previousRoom?.currentQuestion?.hasAnswered ?? false) !==
-      (stateRoom.currentQuestion?.hasAnswered ?? false),
+      sameCurrentQuestion && !previousCurrentPlayerAnswered && nextCurrentPlayerAnswered,
     becameAdmin:
       Boolean(previousAdminId) &&
       previousAdminId !== input.incomingRoom.createdByProfileId &&

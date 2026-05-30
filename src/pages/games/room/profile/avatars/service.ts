@@ -5,11 +5,13 @@ import {
   inferPlayerGenderByName,
   normalizeGamePlayerGender,
 } from "../system-messages";
+import { isPublicGuestPlayer } from "../public-guest";
 import {
   createGameRoomAvatarCaches,
   rememberGamePlayerAvatar as rememberCachedGamePlayerAvatar,
 } from "./cache";
 import { createRoomChatAvatarService } from "./chat";
+import { loadGameAvatarUrlById } from "./media";
 import { getProfileAvatarLink } from "./profile";
 import type { GamePlayer, GameRoomAvatarServiceOptions } from "./types";
 
@@ -47,6 +49,7 @@ export function createGameRoomAvatarService(options: GameRoomAvatarServiceOption
     getSessionUser: options.getSessionUser,
     loadProfile: options.loadProfile,
     getPlayerAvatarUrl,
+    ...(options.loadAvatarUrlById ? { loadAvatarUrlById: options.loadAvatarUrlById } : {}),
   });
 
   /**
@@ -77,15 +80,17 @@ export function createGameRoomAvatarService(options: GameRoomAvatarServiceOption
     const currentProfileId = options.getCurrentProfileId();
     const players = await Promise.all(
       items.map(async (player) => {
-        const isCurrentPlayer =
-          player.isMe || (Boolean(currentProfileId) && player.profileId === currentProfileId);
+        const isCurrentPlayer = currentProfileId
+          ? player.profileId === currentProfileId
+          : player.isMe;
         const directGender = normalizeGamePlayerGender(player.gender);
         if (player.profileId && directGender) {
           caches.gamePlayerGenderCache.set(player.profileId, directGender);
         }
         const sessionAvatar = isCurrentPlayer ? options.getSessionUser()?.avatarLink : "";
         let avatarUrl = player.avatarUrl;
-        let gender = directGender || inferPlayerGenderByName(player);
+        const isPublicGuest = isPublicGuestPlayer(player);
+        let gender = isPublicGuest ? "male" : directGender || inferPlayerGenderByName(player);
 
         if (sessionAvatar) {
           avatarUrl = sessionAvatar;
@@ -96,7 +101,20 @@ export function createGameRoomAvatarService(options: GameRoomAvatarServiceOption
           avatarUrl = cachedAvatar;
         }
 
-        if (!player.profileId || (avatarUrl && directGender)) {
+        if (!avatarUrl) {
+          avatarUrl = await loadGameAvatarUrlById(
+            {
+              caches,
+              ...(options.loadAvatarUrlById
+                ? { loadAvatarUrlById: options.loadAvatarUrlById }
+                : {}),
+            },
+            player.avatarId,
+            signal,
+          );
+        }
+
+        if (isPublicGuest || !player.profileId || (avatarUrl && directGender)) {
           rememberGamePlayerAvatar(player, avatarUrl);
           return { ...player, isMe: isCurrentPlayer, avatarUrl, gender };
         }

@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { GameRoom, GameRoomStatus } from "../../../../api/games";
+import { languageStore } from "../../../../state/language";
 import {
   formatRoomModeLabel,
   getRemovedVerb,
@@ -65,6 +66,10 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
 }
 
 describe("games room system messages", () => {
+  afterEach(() => {
+    languageStore.reset({ language: "RU" });
+  });
+
   it("нормализует старые названия рейтингового режима", () => {
     expect(normalizeRenderedSystemMessageText('Тип игры изменен: "На рейтинг".')).toBe(
       'Тип игры изменен: "Рейтинговая".',
@@ -99,6 +104,44 @@ describe("games room system messages", () => {
     expect(messages).not.toContain('Игрок 1 поставил статус "Готов" (2/3).');
   });
 
+  it("пишет вход гостей публичного лобби в мужском роде", () => {
+    const previousRoom = createRoom({
+      isPublicLobby: true,
+      players: [],
+    });
+    const nextRoom = createRoom({
+      isPublicLobby: true,
+      players: [
+        createPlayer("3", {
+          userAccountId: "0",
+          username: "guest",
+          firstName: "Софья",
+          lastName: "Ситниченко",
+        }),
+      ],
+    });
+
+    const messages = getRoomSystemMessages(previousRoom, nextRoom).map((message) => message.text);
+
+    expect(messages).toContain("Софья Ситниченко присоединился к комнате.");
+    expect(messages).not.toContain("Софья Ситниченко присоединилась к комнате.");
+  });
+
+  it("переводит сохранённые русские системные сообщения для EN-интерфейса", () => {
+    languageStore.reset({ language: "EN" });
+
+    expect(normalizeRenderedSystemMessageText("Софья Ситниченко присоединилась к комнате.")).toBe(
+      "Софья Ситниченко joined the room.",
+    );
+    expect(
+      normalizeRenderedSystemMessageText('Сергей Шульгиненко поставил статус "Готов" (1/2).'),
+    ).toBe('Сергей Шульгиненко is now "Ready" (1/2).');
+    expect(normalizeRenderedSystemMessageText("Игра начинается.")).toBe("Game starting.");
+    expect(normalizeRenderedSystemMessageText('Тип игры изменен: "На рейтинг".')).toBe(
+      'Game type changed: "Ranked".',
+    );
+  });
+
   it("подавляет сообщение выхода после обработанного disconnect/remove", () => {
     const previousRoom = createRoom({
       players: [createPlayer("1"), createPlayer("2", { firstName: "Анна" })],
@@ -110,5 +153,20 @@ describe("games room system messages", () => {
     });
 
     expect(messages).toHaveLength(0);
+  });
+
+  it("не пишет изменения готовности в публичном лобби", () => {
+    const previousRoom = createRoom({
+      isPublicLobby: true,
+      players: [createPlayer("1", { isReady: false })],
+    });
+    const nextRoom = createRoom({
+      isPublicLobby: true,
+      players: [createPlayer("1", { isReady: true })],
+    });
+
+    const messages = getRoomSystemMessages(previousRoom, nextRoom).map((message) => message.text);
+
+    expect(messages).not.toContain('Игрок 1 поставил статус "Готов" (1/1).');
   });
 });

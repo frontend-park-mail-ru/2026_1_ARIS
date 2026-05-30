@@ -3,8 +3,13 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../../api/core/client";
-import type { GameRoom } from "../../../api/games";
-import { loadInitialGamesState, type LoadInitialGamesStateOptions } from "./initial-state";
+import type { GameRoom, PublicGameGuestSession } from "../../../api/games";
+import {
+  loadInitialGamesState,
+  loadInitialPublicGamesState,
+  type LoadInitialGamesStateOptions,
+  type LoadInitialPublicGamesStateOptions,
+} from "./initial-state";
 
 const room = {
   id: "room-1",
@@ -28,6 +33,21 @@ function createOptions(
     canRecoverRoomAccess: vi.fn(() => false),
     recoverRoomAccess: vi.fn(async () => null),
     replaceWithGamesMenuRoute: vi.fn(),
+    ...overrides,
+  };
+}
+
+function createPublicOptions(
+  overrides: Partial<LoadInitialPublicGamesStateOptions> = {},
+): LoadInitialPublicGamesStateOptions {
+  return {
+    hasSessionUser: vi.fn(() => false),
+    joinRoom: vi.fn(async () => room),
+    getStoredPublicGuestSession: vi.fn(() => null),
+    forgetPublicGuestSession: vi.fn(),
+    getPublicRoom: vi.fn(async () => room),
+    hydrateRoom: vi.fn(async (item) => item),
+    rememberRoomAccess: vi.fn(),
     ...overrides,
   };
 }
@@ -123,5 +143,44 @@ describe("games initial state action", () => {
     expect(state.roomId).toBe("");
     expect(state.message).toBe("В этой комнате уже максимальное число участников.");
     expect(replaceWithGamesMenuRoute).toHaveBeenCalledTimes(1);
+  });
+
+  it("авторизованного игрока заводит в публичную комнату обычным профилем", async () => {
+    const session: PublicGameGuestSession = {
+      inviteCode: "ABC123",
+      roomId: "room-1",
+      token: "guest-token",
+    };
+    const options = createPublicOptions({
+      hasSessionUser: vi.fn(() => true),
+      getStoredPublicGuestSession: vi.fn(() => session),
+    });
+
+    const state = await loadInitialPublicGamesState("ABC123", undefined, options);
+
+    expect(state.room).toBe(room);
+    expect(state.roomId).toBe("room-1");
+    expect(options.joinRoom).toHaveBeenCalledWith({ inviteCode: "ABC123" });
+    expect(options.getPublicRoom).not.toHaveBeenCalled();
+    expect(options.rememberRoomAccess).toHaveBeenCalledWith(room);
+    expect(options.forgetPublicGuestSession).toHaveBeenCalledWith(session);
+  });
+
+  it("гостя с сохранённой публичной сессией заводит по guest-token", async () => {
+    const session: PublicGameGuestSession = {
+      inviteCode: "ABC123",
+      roomId: "room-1",
+      token: "guest-token",
+    };
+    const options = createPublicOptions({
+      getStoredPublicGuestSession: vi.fn(() => session),
+    });
+
+    const state = await loadInitialPublicGamesState("ABC123", undefined, options);
+
+    expect(state.room).toBe(room);
+    expect(state.roomId).toBe("room-1");
+    expect(options.joinRoom).not.toHaveBeenCalled();
+    expect(options.getPublicRoom).toHaveBeenCalledWith("room-1", "guest-token", undefined);
   });
 });

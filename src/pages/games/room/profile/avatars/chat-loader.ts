@@ -1,6 +1,8 @@
 import type { GameRoom, GameRoomMessage } from "../../../../../api/games";
+import { isPublicGuestMessageAuthor } from "../public-guest";
 import { isRoomSystemMessage } from "../../../chat/model";
 import { rememberRoomChatAuthorAvatar } from "./cache";
+import { loadGameAvatarUrlById } from "./media";
 import { getProfileAvatarLink } from "./profile";
 import type { RoomChatAvatarServiceOptions } from "./chat-types";
 
@@ -12,13 +14,22 @@ export async function loadRoomChatAuthorAvatar(
   message: GameRoomMessage,
 ): Promise<string> {
   const authorProfileId = message.authorProfileId.trim();
-  if (!authorProfileId) return "";
-
-  const cachedAvatar = options.caches.gameAvatarLinkCache.get(authorProfileId);
+  const cachedAvatar = authorProfileId
+    ? options.caches.gameAvatarLinkCache.get(authorProfileId)
+    : "";
   if (cachedAvatar) {
     rememberRoomChatAuthorAvatar(options.caches, message, cachedAvatar);
     return cachedAvatar;
   }
+
+  const avatarByMediaId = await loadGameAvatarUrlById(options, message.authorAvatarId);
+  if (avatarByMediaId) {
+    rememberRoomChatAuthorAvatar(options.caches, message, avatarByMediaId);
+    return avatarByMediaId;
+  }
+
+  if (isPublicGuestMessageAuthor(message)) return "";
+  if (!authorProfileId) return "";
 
   let request = options.caches.gameRoomChatAuthorAvatarRequestCache.get(authorProfileId);
   if (!request) {

@@ -37,6 +37,7 @@ describe("feed api", () => {
         lastName: "Ситниченко",
         avatarLink: "/media/a.png",
       },
+      communityId: 56,
       text: "Привет",
       createdAt: "2026-05-04T10:30:00.000Z",
       likes: "12",
@@ -50,6 +51,7 @@ describe("feed api", () => {
     expect(card).toEqual({
       id: "42",
       authorId: "7",
+      communityId: "56",
       author: "sofia",
       firstName: "Софья",
       lastName: "Ситниченко",
@@ -74,6 +76,11 @@ describe("feed api", () => {
       items: [],
       nextCursor: "abc",
       hasMore: true,
+    });
+    expect(mapFeedResponse({ posts: [], nextCursor: "", hasMore: true })).toEqual({
+      items: [],
+      nextCursor: "",
+      hasMore: false,
     });
   });
 

@@ -7,6 +7,7 @@ export type CreateRoomFormValues = {
   maxPlayers: string;
   questionCount: string;
   answerTimeoutSec: string;
+  roundPauseSec: string;
   password: string;
   isRanked: boolean;
 };
@@ -27,13 +28,16 @@ export type JoinListedRoomValues = {
 export function buildCreateRoomCommand(values: CreateRoomFormValues): CreateRoomCommand {
   const questionCount = parseBoundedInt(values.questionCount, 5, 1, 20);
   const answerTimeoutSec = parseBoundedInt(values.answerTimeoutSec, 10, 0, 300);
+  const roundPauseSec = parseBoundedInt(values.roundPauseSec, 5, 1, 60);
   const normalizedQuestionCount = values.isRanked ? 20 : questionCount;
   const normalizedAnswerTimeoutSec = values.isRanked ? 10 : answerTimeoutSec;
+  const normalizedRoundPauseSec = values.isRanked ? 5 : roundPauseSec;
   const payload: CreateGameRoomPayload = {
     title: values.title,
     maxPlayers: parseBoundedInt(values.maxPlayers, 2, 2, 8),
     questionCount: normalizedQuestionCount,
     answerTimeoutSec: normalizedAnswerTimeoutSec,
+    roundPauseSec: normalizedRoundPauseSec,
     gameType: "number_duel",
     isRanked: values.isRanked,
     inviteCodeEnabled: true,

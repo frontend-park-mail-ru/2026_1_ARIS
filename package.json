@@ -18,6 +18,7 @@
     "test": "vitest run",
     "test:e2e": "cypress run",
     "test:e2e:quick": "node scripts/run-cypress-e2e.mjs",
+    "load:public-lobby": "node scripts/public-lobby-load.mjs",
     "test:e2e:open": "cypress open",
     "test:allure": "npm run allure:clean && vitest run && allure generate allure-results -o allure-report --clean",
     "test:coverage": "vitest run --coverage",

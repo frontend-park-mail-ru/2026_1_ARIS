@@ -1,5 +1,7 @@
 import { renderInput } from "../../../../../components/input/input";
 import { renderModalCloseButton } from "../../../../../components/modal-close/modal-close";
+import { escapeHtml } from "../../../../../utils/avatar";
+import { gameT } from "../../../shared/i18n";
 import { renderModalError } from "../shared";
 import type { RenderPasswordModalOptions } from "./types";
 
@@ -9,16 +11,16 @@ import type { RenderPasswordModalOptions } from "./types";
 function renderRemovePasswordModal(options: RenderPasswordModalOptions): string {
   return `
     <div class="games-confirm-modal" data-games-password-modal>
-      <section class="games-confirm-modal__dialog" role="dialog" aria-modal="true" aria-label="Удалить пароль">
-        <h2 class="games-confirm-modal__title">Удалить пароль?</h2>
-        <p class="games-confirm-modal__text">После удаления войти в комнату можно будет без пароля.</p>
+      <section class="games-confirm-modal__dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(gameT("modal.removePasswordTitle"))}">
+        <h2 class="games-confirm-modal__title">${escapeHtml(gameT("modal.removePasswordTitle"))}</h2>
+        <p class="games-confirm-modal__text">${escapeHtml(gameT("modal.removePasswordText"))}</p>
         ${renderModalError(options.error)}
         <div class="games-confirm-modal__actions">
           <button type="button" class="games-button games-button--danger" data-games-password-remove-confirm ${options.loading ? "disabled" : ""}>
-            Удалить пароль
+            ${escapeHtml(gameT("menu.removePassword"))}
           </button>
           <button type="button" class="games-button games-button--secondary" data-games-password-modal-close>
-            Отмена
+            ${escapeHtml(gameT("modal.cancel"))}
           </button>
         </div>
       </section>
@@ -30,13 +32,14 @@ function renderRemovePasswordModal(options: RenderPasswordModalOptions): string 
  * Рендерит форму установки или изменения пароля комнаты.
  */
 function renderSetPasswordModal(options: RenderPasswordModalOptions): string {
-  const title = options.mode === "change" ? "Изменить пароль" : "Поставить пароль";
+  const title =
+    options.mode === "change" ? gameT("menu.changePassword") : gameT("menu.setPassword");
 
   return `
     <div class="games-confirm-modal" data-games-password-modal>
-      <section class="games-confirm-modal__dialog" role="dialog" aria-modal="true" aria-label="${title}">
+      <section class="games-confirm-modal__dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
         <div class="games-confirm-modal__header">
-          <h2 class="games-confirm-modal__title">${title}</h2>
+          <h2 class="games-confirm-modal__title">${escapeHtml(title)}</h2>
           ${renderModalCloseButton({
             className: "games-confirm-modal__close",
             attributes: "data-games-password-modal-close",
@@ -44,7 +47,7 @@ function renderSetPasswordModal(options: RenderPasswordModalOptions): string {
         </div>
         <form class="games-password-modal-form" data-games-password-form>
           <div class="games-field">
-            <span>Пароль</span>
+            <span>${escapeHtml(gameT("room.passwordLabel").replace(/:$/, ""))}</span>
             ${renderInput({
               type: "password",
               name: "password",
@@ -55,10 +58,10 @@ function renderSetPasswordModal(options: RenderPasswordModalOptions): string {
           ${renderModalError(options.error)}
           <div class="games-confirm-modal__actions">
             <button type="submit" class="games-button games-button--primary" ${options.loading ? "disabled" : ""}>
-              Сохранить
+              ${escapeHtml(gameT("modal.save"))}
             </button>
             <button type="button" class="games-button games-button--secondary" data-games-password-modal-close>
-              Отмена
+              ${escapeHtml(gameT("modal.cancel"))}
             </button>
           </div>
         </form>

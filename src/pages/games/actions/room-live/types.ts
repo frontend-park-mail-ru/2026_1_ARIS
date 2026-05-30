@@ -32,6 +32,7 @@ export type RefreshCurrentRoomSilentlyDeps = {
   getCurrentRoom: () => GameRoom | null;
   getLoading: () => boolean;
   getSocketOpen: () => boolean;
+  getCurrentProfileId: () => string;
   getCurrentMessages: () => GameRoomMessage[];
   fetchRoom: (roomId: string) => Promise<GameRoom>;
   hydrateRoom: (room: GameRoom) => Promise<GameRoom>;

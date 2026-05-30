@@ -1,4 +1,5 @@
 import type { GameRoom } from "../../../../api/games";
+import { gameT } from "../../shared/i18n";
 import type { GamesStatePatch } from "./types";
 
 /**
@@ -7,11 +8,11 @@ import type { GamesStatePatch } from "./types";
 export function getExistingCreatedRoomPatch(room: GameRoom): GamesStatePatch {
   return {
     loading: false,
-    message: "Вы не можете создать больше одной комнаты.",
+    message: gameT("room.oneRoomLimit"),
     messageReturnRoomId: room.id,
     messageReturnInviteCode: room.inviteCode || "",
     messageReturnPassword: room.password || "",
-    messageReturnRoomLabel: "Войти в вашу комнату?",
+    messageReturnRoomLabel: gameT("page.returnRoom"),
     messageRefreshRooms: false,
     error: "",
     errorTarget: "",
@@ -24,7 +25,7 @@ export function getExistingCreatedRoomPatch(room: GameRoom): GamesStatePatch {
 export function getRoomFullMessagePatch(): GamesStatePatch {
   return {
     loading: false,
-    message: "В этой комнате уже максимальное число участников.",
+    message: gameT("room.full"),
     messageReturnRoomId: "",
     messageReturnInviteCode: "",
     messageReturnPassword: "",
@@ -42,7 +43,7 @@ export function getRoomFullMessagePatch(): GamesStatePatch {
 /**
  * Возвращает state-patch отсутствующей комнаты с предложением обновить список.
  */
-export function getRoomNotFoundPatch(message = "Этой комнаты не существует."): GamesStatePatch {
+export function getRoomNotFoundPatch(message = gameT("room.notFound")): GamesStatePatch {
   return {
     loading: false,
     message,

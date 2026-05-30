@@ -5,10 +5,17 @@
  */
 import type { GameRoomSocketHandlers, GameRoomSocketSubscription } from "./types";
 import { extractRoomMessageResponse, extractRoomResponse, type RawRecord } from "./mappers";
+import { getLanguageMode } from "../../state/language";
+import { getPublicGameGuestSessionByRoom } from "./public-room";
 
 function getGameSocketUrl(roomId: string): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/ws/games/${encodeURIComponent(roomId)}`;
+  const lang = getLanguageMode() === "EN" ? "en" : "ru";
+  const publicSession = getPublicGameGuestSessionByRoom(roomId);
+  if (publicSession) {
+    return `${protocol}//${window.location.host}/ws/games/public/${encodeURIComponent(roomId)}?lang=${lang}&token=${encodeURIComponent(publicSession.token)}`;
+  }
+  return `${protocol}//${window.location.host}/ws/games/${encodeURIComponent(roomId)}?lang=${lang}`;
 }
 
 export function subscribeToGameRoom(

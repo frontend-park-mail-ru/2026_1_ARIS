@@ -67,6 +67,7 @@ export type BindGamesPageEventsOptions = {
   handleSubmitRoomChat: (form: HTMLFormElement) => Promise<void>;
   handleCreateRoom: (form: HTMLFormElement) => Promise<void>;
   handleJoinRoom: (form: HTMLFormElement) => Promise<void>;
+  handleJoinPublicRoom?: (form: HTMLFormElement) => Promise<void>;
   handleJoinListedRoom: (form: HTMLFormElement) => Promise<void>;
   handleRenameRoomTitle: (form: HTMLFormElement) => Promise<void>;
   handlePasswordForm: (form: HTMLFormElement) => Promise<void>;

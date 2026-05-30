@@ -1,7 +1,14 @@
-import { disbandGameRoom, leaveGameRoom, type GameRoom } from "../../../api/games";
+import {
+  disbandGameRoom,
+  forgetPublicGameGuestSession,
+  getPublicGameGuestSessionByRoom,
+  leaveGameRoom,
+  type GameRoom,
+} from "../../../api/games";
 import { getDisbandRoomSuccessPatch } from "../state/action-patches";
 import type { GamesPageState } from "../state/store";
 import { isCurrentRoomCreator } from "../room/selectors";
+import { gameT } from "../shared/i18n";
 
 type SetGamesState = (patch: Partial<GamesPageState>) => void;
 
@@ -35,13 +42,13 @@ export async function disbandCurrentRoom(options: DisbandCurrentRoomOptions): Pr
   if (!isCurrentRoomCreator(room, options.currentProfileId)) {
     setGamesState({
       message: "",
-      error: "Распустить комнату может только администратор.",
+      error: gameT("room.creatorOnlyDisband"),
       errorTarget: "footer",
     });
     return;
   }
 
-  setGamesState({ loading: true, message: "Распускаем комнату...", error: "", errorTarget: "" });
+  setGamesState({ loading: true, message: gameT("room.disbanding"), error: "", errorTarget: "" });
   options.clearPendingVoluntaryLeave(room.id);
   options.forgetRoomAccess(room.id);
   await disbandGameRoom(room.id);
@@ -58,13 +65,20 @@ export async function exitRoomToMenu(options: ExitRoomToMenuOptions): Promise<vo
   if (!room) return;
 
   if (room.status === "waiting" && !isCurrentRoomCreator(room, options.currentProfileId)) {
-    setGamesState({ loading: true, message: "Выходим из комнаты...", error: "", errorTarget: "" });
+    setGamesState({ loading: true, message: gameT("room.leaving"), error: "", errorTarget: "" });
     try {
       options.forgetRoomAccess(room.id);
       await leaveGameRoom(room.id);
     } catch (error) {
       setGamesState({ loading: false, message: "", error: "", errorTarget: "" });
       throw error;
+    }
+  }
+
+  if (room.isPublicLobby) {
+    const publicGuestSession = getPublicGameGuestSessionByRoom(room.id);
+    if (publicGuestSession) {
+      forgetPublicGameGuestSession(publicGuestSession);
     }
   }
 

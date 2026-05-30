@@ -1,4 +1,5 @@
 import type { GamePlayerGender, GameRoom } from "../../../../../api/games";
+import { isPublicGuestPlayer } from "../public-guest";
 import { getSystemPlayerFullName } from "./names";
 
 /**
@@ -59,5 +60,6 @@ export function getPlayerGender(
   player: GameRoom["players"][number] | null | undefined,
 ): GamePlayerGender {
   if (!player) return "";
+  if (isPublicGuestPlayer(player)) return "male";
   return normalizeGamePlayerGender(player.gender) || inferPlayerGenderByName(player);
 }

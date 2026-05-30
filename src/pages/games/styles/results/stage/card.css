@@ -26,9 +26,30 @@
     flex-direction: column;
     justify-content: flex-start;
     gap: 16px;
-    overflow-y: auto;
+    overflow: hidden auto;
     overscroll-behavior: contain;
+    scrollbar-color: rgb(95 111 157 / 42%) transparent;
+    scrollbar-width: thin;
     animation: games-stage-in 320ms ease both;
+  }
+
+  .games-stage-card::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .games-stage-card::-webkit-scrollbar-track,
+  .games-stage-card::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  .games-stage-card::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-pill);
+    background: rgb(95 111 157 / 38%);
+  }
+
+  .games-stage-card::-webkit-scrollbar-thumb:hover {
+    background: rgb(95 111 157 / 52%);
   }
 
   .games-game-stage > .games-stage-card {

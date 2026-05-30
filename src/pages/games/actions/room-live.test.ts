@@ -108,6 +108,7 @@ function createRefreshDeps(
     getCurrentRoom: () => room,
     getLoading: () => false,
     getSocketOpen: () => false,
+    getCurrentProfileId: () => "1",
     getCurrentMessages: () => [],
     fetchRoom: vi.fn(async () => room ?? createRoom()),
     hydrateRoom: vi.fn(async (item) => item),
@@ -160,6 +161,77 @@ describe("games room live actions", () => {
       expect.objectContaining({ title: "Next" }),
     );
     expect(deps.refreshGamesDom).toHaveBeenCalledTimes(1);
+  });
+
+  it("не перерисовывает комнату при повторном snapshot принятого ответа", async () => {
+    const previousRoom = createRoom({
+      status: "active",
+      currentQuestionIndex: 1,
+      currentQuestion: {
+        id: "q1",
+        position: 1,
+        text: "Question",
+        startedAt: "2026-05-25T00:00:00.000Z",
+        deadlineAt: "2026-05-25T00:00:30.000Z",
+        hasAnswered: true,
+      },
+      players: [createPlayer({ score: 12, hasAnswered: true })],
+    });
+    const incomingRoom = createRoom({
+      ...previousRoom,
+      players: [createPlayer({ score: 0, hasAnswered: true })],
+    });
+    const deps = createSocketDeps(previousRoom, {
+      getSubmittedQuestionId: () => "q1",
+      getSubmittedAnswerValue: () => "42",
+    });
+
+    await applyRoomSocketState(incomingRoom, deps);
+
+    expect(deps.patchGamesState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        room: expect.objectContaining({
+          players: [expect.objectContaining({ score: 12, hasAnswered: true })],
+        }),
+        submittedQuestionId: "q1",
+        submittedAnswerValue: "42",
+      }),
+    );
+    expect(deps.syncCurrentAnswerFormDom).not.toHaveBeenCalled();
+    expect(deps.syncPlayersRailAnswerDom).toHaveBeenCalledTimes(1);
+    expect(deps.refreshGamesDom).not.toHaveBeenCalled();
+  });
+
+  it("не перезапускает stage после повторного snapshot результата раунда", async () => {
+    const completedQuestion = {
+      id: "q1",
+      position: 1,
+      status: "completed" as const,
+      text: "Question",
+      correctAnswer: 42,
+      answers: [],
+      winnerProfileId: "1",
+      startedAt: "2026-05-25T00:00:00.000Z",
+      deadlineAt: "2026-05-25T00:00:30.000Z",
+      completedAt: "2026-05-25T00:00:31.000Z",
+    };
+    const previousRoom = createRoom({
+      status: "active",
+      currentQuestionIndex: 1,
+      currentQuestion: null,
+      questions: [completedQuestion],
+      players: [createPlayer({ score: 1, hasAnswered: true })],
+    });
+    const incomingRoom = createRoom({
+      ...previousRoom,
+      players: [createPlayer({ score: 1, hasAnswered: true })],
+    });
+    const deps = createSocketDeps(previousRoom);
+
+    await applyRoomSocketState(incomingRoom, deps);
+
+    expect(deps.syncPlayersRailAnswerDom).toHaveBeenCalledTimes(1);
+    expect(deps.refreshGamesDom).not.toHaveBeenCalled();
   });
 
   it("игнорирует socket-обновление другой комнаты", async () => {

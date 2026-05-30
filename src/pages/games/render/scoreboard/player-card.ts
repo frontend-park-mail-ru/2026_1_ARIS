@@ -3,10 +3,30 @@ import { escapeHtml, renderAvatarMarkup } from "../../../../utils/avatar";
 import { formatRoundPointBadge, formatRoundPointValue } from "../../shared/formatters";
 import { getPlayerPlaceByScores } from "../../round/model";
 import { getGamePlayerLabel, getPlayerFullName } from "../../room/profile/players";
+import { gameT } from "../../shared/i18n";
 import type { RenderGameScoreboardOptions } from "./types";
 import type { getGameScoreboardModel } from "./model";
 
 type GameScoreboardModel = ReturnType<typeof getGameScoreboardModel>;
+
+/**
+ * Рендерит компактное имя игрока в боковой таблице в две строки.
+ */
+function renderScoreboardPlayerNameContent(player: GameRoom["players"][number]): string {
+  const explicitFirstName = player.firstName?.trim();
+  const explicitLastName = player.lastName?.trim();
+  const fullNameParts =
+    explicitFirstName || explicitLastName ? [] : getPlayerFullName(player).split(/\s+/);
+  const firstName = explicitFirstName || fullNameParts[0] || getGamePlayerLabel(player);
+  const lastName = explicitLastName || fullNameParts.slice(1).join(" ");
+
+  return `
+    <span class="games-game-player__name-lines">
+      <span class="games-game-player__first-name">${escapeHtml(firstName)}</span>
+      ${lastName ? `<span class="games-game-player__last-name">${escapeHtml(lastName)}</span>` : ""}
+    </span>
+  `;
+}
 
 /**
  * Рендерит карточку игрока внутри игровой таблицы очков.
@@ -17,7 +37,12 @@ export function renderGameScoreboardPlayerCard(
   model: GameScoreboardModel,
   options: Pick<RenderGameScoreboardOptions, "getPlayerAvatarUrl" | "renderProfileLink">,
 ): string {
-  const place = getPlayerPlaceByScores(room, player, model.displayScoreMap);
+  const place = getPlayerPlaceByScores(
+    room,
+    player,
+    model.displayScoreMap,
+    model.displayAnswerTimeMap,
+  );
   const playerLabel = getGamePlayerLabel(player);
   const playerFullName = getPlayerFullName(player);
   const avatarUrl = options.getPlayerAvatarUrl(player);
@@ -32,7 +57,7 @@ export function renderGameScoreboardPlayerCard(
         label: playerFullName,
         content: avatarMarkup,
         avatarUrl,
-        ariaLabel: `Открыть профиль ${playerFullName}`,
+        ariaLabel: gameT("leaderboard.openProfile", { name: playerFullName }),
       })
     : avatarMarkup;
   const nameView = player.profileId
@@ -40,10 +65,10 @@ export function renderGameScoreboardPlayerCard(
         profileId: player.profileId,
         className: "games-game-player__name",
         label: playerFullName,
-        content: escapeHtml(playerLabel),
+        content: renderScoreboardPlayerNameContent(player),
         avatarUrl,
       })
-    : `<strong class="games-game-player__name">${escapeHtml(playerLabel)}</strong>`;
+    : `<strong class="games-game-player__name">${renderScoreboardPlayerNameContent(player)}</strong>`;
   const roundPointValue = model.roundPoints.get(player.profileId);
   const displayScore = model.displayScoreMap.get(player.profileId) ?? 0;
   const finalScore = model.finalScoreMap.get(player.profileId) ?? displayScore;
@@ -54,16 +79,21 @@ export function renderGameScoreboardPlayerCard(
       : model.timelineStartMs +
         model.scoreStartDelayMs +
         pointSequenceIndex * model.scoreStepDelayMs;
-  const finalPlace = getPlayerPlaceByScores(room, player, model.finalScoreMap);
+  const finalPlace = getPlayerPlaceByScores(
+    room,
+    player,
+    model.finalScoreMap,
+    model.finalAnswerTimeMap,
+  );
 
   return `
-    <article class="games-game-player${player.isMe ? " games-game-player--me" : ""}${place === 1 ? " games-game-player--leader" : ""}${room.status === "active" && player.hasAnswered ? " games-game-player--answered" : ""}" data-games-player-card="${escapeHtml(player.profileId)}" data-games-scoreboard-card="${escapeHtml(player.profileId)}" data-games-player-final-order="${model.finalOrderByProfile.get(player.profileId) ?? 0}" data-games-player-final-place="${finalPlace}" data-games-player-answered="${player.hasAnswered ? "true" : "false"}">
+    <article class="games-game-player${player.isMe ? " games-game-player--me" : ""}${place === 1 ? " games-game-player--leader" : ""}${room.status === "active" && player.hasAnswered ? " games-game-player--answered" : ""}" data-key="player-${escapeHtml(player.profileId)}" data-games-player-card="${escapeHtml(player.profileId)}" data-games-scoreboard-card="${escapeHtml(player.profileId)}" data-games-player-final-order="${model.finalOrderByProfile.get(player.profileId) ?? 0}" data-games-player-final-place="${finalPlace}" data-games-player-answered="${player.hasAnswered ? "true" : "false"}">
       <span class="games-game-player__place">#${place}</span>
       ${avatarView}
       <span class="games-game-player__info">
         ${nameView}
       </span>
-      <span class="games-game-player__score">
+      <span class="games-game-player__score${scoreAnimationStartAt > 0 ? " games-game-player__score--pending-round-points" : ""}"${scoreAnimationStartAt > 0 ? ` data-games-score-shell data-games-score-show-at="${scoreAnimationStartAt}"` : ""}>
         <strong${
           scoreAnimationStartAt > 0
             ? ` data-games-score-animate data-games-score-from="${displayScore}" data-games-score-to="${finalScore}" data-games-score-start-at="${scoreAnimationStartAt}"`

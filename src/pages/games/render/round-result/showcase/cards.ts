@@ -7,35 +7,17 @@ import {
   type RoundAnswerShowcaseItem,
   type RoundResultPresentationRow,
 } from "../../../round/model";
-import { getGamePlayerLabel } from "../../../room/profile/players";
+import { getPlayerFullName } from "../../../room/profile/players";
+import { gameT } from "../../../shared/i18n";
 import type { RenderPlayerCell } from "../types";
 import { renderRoundResultStyle } from "./style";
-
-/**
- * Рендерит карточку правильного ответа на шкале результата.
- */
-function renderRoundCorrectAnswerCard(
-  item: Extract<RoundAnswerShowcaseItem, { type: "correct" }>,
-  index: number,
-): string {
-  return `
-    <article
-      class="games-answer-axis-card games-answer-axis-card--correct"
-      style="${renderRoundResultStyle(item, index)}"
-      data-games-correct-answer
-      data-games-round-answer-card
-    >
-      <strong class="games-answer-axis-card__correct-value">${escapeHtml(formatStoredAnswer(item.answerValue))}</strong>
-    </article>
-  `;
-}
 
 /**
  * Рендерит значение ответа игрока в карточке результата.
  */
 function renderRoundCardAnswer(row: RoundResultPresentationRow): string {
   if (row.isMissingAnswer) {
-    return `<strong class="games-answer-axis-card__answer games-answer-axis-card__answer--missing" aria-label="Нет ответа">×</strong>`;
+    return `<strong class="games-answer-axis-card__answer games-answer-axis-card__answer--missing" aria-label="${escapeHtml(gameT("results.noAnswer"))}">×</strong>`;
   }
 
   const answerLabel = formatStoredAnswer(row.answer?.answer ?? null);
@@ -64,7 +46,7 @@ function renderRoundCardAnswerPack(row: RoundResultPresentationRow): string {
     return `
       <span class="games-answer-axis-card__answer-pack games-answer-axis-card__answer-pack--missing">
         ${renderRoundCardAnswer(row)}
-        <span class="games-answer-axis-card__no-answer">нет ответа</span>
+        <span class="games-answer-axis-card__no-answer">${escapeHtml(gameT("results.noAnswer"))}</span>
       </span>
     `;
   }
@@ -85,16 +67,18 @@ function renderRoundResultPlayerCard(
   index: number,
   roundPlace: number,
   revealIndex: number,
+  maxRevealIndex: number,
   timeRevealDelayMs: number,
   renderPlayerCell: RenderPlayerCell,
 ): string {
-  const playerLabel = getGamePlayerLabel(row.player);
+  const playerLabel = getPlayerFullName(row.player);
   const timeLabel = formatDurationMs(row.answer?.responseTimeMs);
-  const cardStyle = `${renderRoundResultStyle({ ...row, revealIndex }, index)}; --games-time-reveal-delay: ${timeRevealDelayMs}ms`;
+  const shouldRenderTime = row.showTime && !row.isMissingAnswer;
+  const cardStyle = `${renderRoundResultStyle({ ...row, revealIndex }, index, maxRevealIndex)}; --games-time-reveal-delay: ${timeRevealDelayMs}ms`;
 
   return `
     <article
-      class="games-answer-axis-card${row.player.isMe ? " games-answer-axis-card--me" : ""}${row.place === 1 ? " games-answer-axis-card--winner" : ""}${row.answerDelta === 0 ? " games-answer-axis-card--exact" : ""}${row.isMissingAnswer ? " games-answer-axis-card--missing" : ""}${row.showTime ? " games-answer-axis-card--has-time" : ""}"
+      class="games-answer-axis-card${row.player.isMe ? " games-answer-axis-card--me" : ""}${row.place === 1 ? " games-answer-axis-card--winner" : ""}${row.answerDelta === 0 ? " games-answer-axis-card--exact" : ""}${row.isMissingAnswer ? " games-answer-axis-card--missing" : ""}${shouldRenderTime ? " games-answer-axis-card--has-time" : ""}"
       style="${cardStyle}"
       data-games-round-answer-card
       data-games-round-result-card
@@ -103,7 +87,7 @@ function renderRoundResultPlayerCard(
       <span class="games-answer-axis-card__rank">#${roundPlace}</span>
       ${renderPlayerCell(row.player, playerLabel)}
       ${renderRoundCardAnswerPack(row)}
-      ${row.showTime ? `<time class="games-answer-axis-card__time">${escapeHtml(timeLabel)}</time>` : ""}
+      ${shouldRenderTime ? `<time class="games-answer-axis-card__time">${escapeHtml(timeLabel)}</time>` : ""}
     </article>
   `;
 }
@@ -114,18 +98,16 @@ function renderRoundResultPlayerCard(
 export function renderRoundAnswerShowcaseItem(
   item: RoundAnswerShowcaseItem,
   index: number,
-  scorePlaceByProfile: Map<string, number>,
+  maxRevealIndex: number,
   timeRevealDelayMs: number,
   renderPlayerCell: RenderPlayerCell,
 ): string {
-  if (item.type === "correct") {
-    return renderRoundCorrectAnswerCard(item, index);
-  }
   return renderRoundResultPlayerCard(
     item.row,
     index,
-    scorePlaceByProfile.get(item.row.player.profileId) ?? item.row.place,
+    item.orderIndex,
     item.revealIndex,
+    maxRevealIndex,
     timeRevealDelayMs,
     renderPlayerCell,
   );

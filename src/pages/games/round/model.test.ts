@@ -3,8 +3,14 @@ import type { GamePlayer, GameRoom } from "../../../api/games";
 import {
   getComputedScoresByProfile,
   getComputedWinnerProfileId,
+  getPlayerPlace,
+  getPlayerTotalResponseTimeMs,
+  getRoundAnswerShowcaseItems,
   getRoundPointsByProfile,
+  getRoundResultPresentationRows,
   getRoundResultRows,
+  getRankedPlayers,
+  getTotalAnswerTimeByProfile,
 } from "./model";
 
 /** Создаёт игрока комнаты для проверки scoring-модели. */
@@ -82,7 +88,6 @@ function createRoom(): GameRoom {
         status: "completed",
         text: "Первый вопрос",
         correctAnswer: 100,
-        answerUnit: "",
         answers: [
           {
             profileId: ada.profileId,
@@ -120,7 +125,6 @@ function createRoom(): GameRoom {
         status: "completed",
         text: "Второй вопрос",
         correctAnswer: 50,
-        answerUnit: "",
         answers: [
           {
             profileId: ada.profileId,
@@ -187,5 +191,144 @@ describe("games round model", () => {
       "3": 2,
     });
     expect(getComputedWinnerProfileId(room)).toBe("2");
+  });
+
+  it("сортирует равные итоговые очки по суммарному времени ответов", () => {
+    const room = createRoom();
+    const ada = room.players[0]!;
+    const grace = room.players[1]!;
+
+    room.players = [ada, grace];
+    room.questions = [
+      {
+        ...room.questions[0]!,
+        answers: [
+          {
+            profileId: ada.profileId,
+            answer: 100,
+            distance: 0,
+            answeredAt: "",
+            responseTimeMs: 1000,
+            isWinner: true,
+          },
+          {
+            profileId: grace.profileId,
+            answer: 101,
+            distance: 1,
+            answeredAt: "",
+            responseTimeMs: 500,
+            isWinner: false,
+          },
+        ],
+        winnerProfileId: ada.profileId,
+      },
+      {
+        ...room.questions[1]!,
+        answers: [
+          {
+            profileId: ada.profileId,
+            answer: 49,
+            distance: 1,
+            answeredAt: "",
+            responseTimeMs: 1000,
+            isWinner: false,
+          },
+          {
+            profileId: grace.profileId,
+            answer: 50,
+            distance: 0,
+            answeredAt: "",
+            responseTimeMs: 200,
+            isWinner: true,
+          },
+        ],
+        winnerProfileId: grace.profileId,
+      },
+    ];
+
+    expect(Object.fromEntries(getComputedScoresByProfile(room))).toEqual({
+      "1": 1,
+      "2": 1,
+    });
+    expect(getPlayerTotalResponseTimeMs(room, ada.profileId)).toBe(2000);
+    expect(getPlayerTotalResponseTimeMs(room, grace.profileId)).toBe(700);
+    expect(getPlayerPlace(room, grace)).toBe(1);
+    expect(getPlayerPlace(room, ada)).toBe(2);
+    expect(getComputedWinnerProfileId(room)).toBe(grace.profileId);
+  });
+
+  it("сортирует финал по суммарному времени при равных очках", () => {
+    const room = createRoom();
+    room.questions[1] = {
+      ...room.questions[1]!,
+      answers: [
+        {
+          profileId: "1",
+          answer: 46,
+          distance: 4,
+          answeredAt: "",
+          responseTimeMs: 800,
+          isWinner: false,
+        },
+        {
+          profileId: "2",
+          answer: 54,
+          distance: 4,
+          answeredAt: "",
+          responseTimeMs: 800,
+          isWinner: false,
+        },
+        {
+          profileId: "3",
+          answer: 50,
+          distance: 0,
+          answeredAt: "",
+          responseTimeMs: 1200,
+          isWinner: true,
+        },
+      ],
+    };
+
+    expect(Object.fromEntries(getComputedScoresByProfile(room))).toEqual({
+      "1": 2,
+      "2": 2,
+      "3": 2,
+    });
+    expect(Object.fromEntries(getTotalAnswerTimeByProfile(room))).toEqual({
+      "1": 1800,
+      "2": 1804,
+      "3": 11200,
+    });
+    expect(getRankedPlayers(room).map((player) => player.profileId)).toEqual(["1", "2", "3"]);
+    expect(getComputedWinnerProfileId(room)).toBe("1");
+  });
+
+  it("назначает отдельный слот раскрытия каждой карточке ответа", () => {
+    const room = createRoom();
+    const question = {
+      ...room.questions[1]!,
+      answers: room.players.map((player, index) => ({
+        profileId: player.profileId,
+        answer: 50,
+        distance: 0,
+        answeredAt: "",
+        responseTimeMs: 800 + index * 100,
+        isWinner: true,
+      })),
+    };
+
+    const playerRevealIndexes = getRoundAnswerShowcaseItems(
+      getRoundResultPresentationRows(room, question),
+    ).map((item) => item.revealIndex);
+
+    expect(new Set(playerRevealIndexes).size).toBe(room.players.length);
+    expect(Math.max(...playerRevealIndexes)).toBe(room.players.length);
+  });
+
+  it("показывает время на каждой карточке результата раунда", () => {
+    const room = createRoom();
+    const rows = getRoundResultPresentationRows(room, room.questions[1]!);
+
+    expect(rows.every((row) => row.showTime)).toBe(true);
   });
 });

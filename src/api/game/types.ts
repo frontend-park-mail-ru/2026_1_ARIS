@@ -40,7 +40,6 @@ export type GameRoundQuestion = {
   status: "pending" | "active" | "completed";
   text: string;
   correctAnswer: number | null;
-  answerUnit: string;
   answers: GameAnswer[];
   winnerProfileId: string;
   startedAt: string;
@@ -55,7 +54,6 @@ export type CurrentGameQuestion = {
   startedAt: string;
   deadlineAt: string;
   hasAnswered: boolean;
-  answerUnit: string;
 };
 
 export type GameStats = {
@@ -88,9 +86,11 @@ export type GameRoom = {
   hasPassword: boolean;
   password: string;
   isRanked: boolean;
+  isPublicLobby?: boolean;
   inviteCodeEnabled: boolean;
   questionCount: number;
   answerTimeoutSec: number;
+  roundPauseSec?: number;
   currentQuestionIndex: number;
   nextQuestionAt: string;
   pausedByProfileId: string;
@@ -149,6 +149,7 @@ export type CreateGameRoomPayload = {
   title: string;
   questionCount: number;
   answerTimeoutSec: number;
+  roundPauseSec: number;
   gameType: GameType;
   maxPlayers?: number;
   password?: string;

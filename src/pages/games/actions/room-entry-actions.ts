@@ -1,5 +1,6 @@
 import type { GameRoom } from "../../../api/games";
 import type { GamesPageState } from "../state/store";
+import { joinPublicRoomFromFormAction } from "./public-room";
 import { joinOwnListedRoomAction } from "./room-entry";
 import {
   createRoomFromFormAction,
@@ -85,10 +86,22 @@ export function createRoomEntryActions(options: RoomEntryActionsOptions) {
     });
   }
 
+  /**
+   * Входит в изолированную публичную комнату по имени и фамилии.
+   */
+  async function handleJoinPublicRoom(form: HTMLFormElement): Promise<void> {
+    await joinPublicRoomFromFormAction(form, {
+      inviteCode: form.dataset.gamesPublicInvite || "",
+      hydrateRoom: options.hydrateRoom,
+      setGamesState: options.setGamesState,
+    });
+  }
+
   return {
     handleCreateRoom,
     handleJoinRoom,
     handleJoinOwnListedRoom,
     handleJoinListedRoom,
+    handleJoinPublicRoom,
   };
 }

@@ -5,6 +5,7 @@
  */
 import {
   getFriends,
+  getUserFriends,
   getIncomingFriendRequests,
   getOutgoingFriendRequests,
   type Friend,
@@ -15,7 +16,13 @@ import { isNetworkUnavailableError } from "../../state/network-status";
 import { StateManager } from "../../state/StateManager";
 import { t } from "../../state/i18n";
 import { normaliseAvatarLink } from "../profile/state";
-import type { DisplayFriend, FriendsData, FriendsState, FriendsTab } from "./types";
+import type {
+  DisplayFriend,
+  FriendsData,
+  FriendsSearchResults,
+  FriendsState,
+  FriendsTab,
+} from "./types";
 
 const FRIENDS_ACTIVE_TAB_STORAGE_KEY = "friends.activeTab";
 
@@ -29,6 +36,8 @@ export const friendAvatarCache = new Map<string, string>();
 export const friendsStore = new StateManager<FriendsState>({
   loaded: false,
   loadedForUserId: "",
+  viewedProfileId: "",
+  viewedProfileName: "",
   loading: false,
   errorMessage: "",
   query: "",
@@ -79,6 +88,8 @@ export function getFriendsErrorMessage(
  */
 export function resetFriendsState(): void {
   friendsState.loaded = false;
+  friendsState.viewedProfileId = "";
+  friendsState.viewedProfileName = "";
   friendsState.loading = false;
   friendsState.errorMessage = "";
   friendsState.query = "";
@@ -218,6 +229,29 @@ function getActiveFriendsSource(): DisplayFriend[] {
       : friendsState.outgoing;
 }
 
+function getKnownFriendProfileIds(): Set<string> {
+  return new Set(
+    [...friendsState.friends, ...friendsState.incoming, ...friendsState.outgoing].map(
+      (friend) => friend.profileId,
+    ),
+  );
+}
+
+function getFriendSearchableText(friend: DisplayFriend): string {
+  return [friend.firstName, friend.lastName, friend.username, friend.educationLabel]
+    .join(" ")
+    .toLowerCase();
+}
+
+export function getLocalFriendSearchResults(query: string): DisplayFriend[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return [];
+
+  return getActiveFriendsSource().filter((friend) =>
+    getFriendSearchableText(friend).includes(normalizedQuery),
+  );
+}
+
 function mapSearchUserToDisplayFriend(
   user: SearchUser,
   existingFriend?: DisplayFriend,
@@ -240,19 +274,27 @@ function mapSearchUserToDisplayFriend(
 export async function searchFriendsFromBackend(
   query: string,
   signal?: AbortSignal,
-): Promise<DisplayFriend[]> {
+): Promise<FriendsSearchResults> {
   const trimmedQuery = query.trim();
-  if (!trimmedQuery) return [];
+  if (!trimmedQuery) return { friends: [], users: [] };
 
-  const sourceById = new Map(getActiveFriendsSource().map((friend) => [friend.profileId, friend]));
+  const localFriends = getLocalFriendSearchResults(trimmedQuery);
+  const knownFriendIds = getKnownFriendProfileIds();
   const results = await searchUsersAndCommunities(trimmedQuery, signal);
 
-  return results.users
-    .map((user) => {
-      const existingFriend = sourceById.get(String(user.profileId));
-      return existingFriend ? mapSearchUserToDisplayFriend(user, existingFriend) : null;
+  const seenSiteUserIds = new Set<string>();
+  const siteUsers = results.users
+    .filter((user) => {
+      const profileId = String(user.profileId);
+      if (!profileId || knownFriendIds.has(profileId) || seenSiteUserIds.has(profileId)) {
+        return false;
+      }
+      seenSiteUserIds.add(profileId);
+      return true;
     })
-    .filter((friend): friend is DisplayFriend => Boolean(friend));
+    .map((user) => mapSearchUserToDisplayFriend(user));
+
+  return { friends: localFriends, users: siteUsers };
 }
 
 /**
@@ -278,6 +320,17 @@ export async function hydrateDisplayFriendAvatarLinks(
  * @param {AbortSignal} [signal] Сигнал отмены запроса.
  * @returns {Promise<FriendsData>} Наборы друзей для всех вкладок.
  */
+export async function loadUserFriendsFromBackend(
+  profileId: string,
+  signal?: AbortSignal,
+): Promise<FriendsData> {
+  const friends = await getUserFriends(profileId, "accepted", signal);
+  const hydratedFriends = await hydrateFriendAvatarLinks(friends, signal);
+  const mappedFriends = await Promise.all(hydratedFriends.map(mapFriendToDisplay));
+
+  return { friends: mappedFriends, incoming: [], outgoing: [] };
+}
+
 export async function loadFriendsFromBackend(signal?: AbortSignal): Promise<FriendsData> {
   const [friends, incoming, outgoing] = await Promise.all([
     getFriends("accepted", signal),
@@ -345,6 +398,8 @@ export function findFriendById(friendId: string): DisplayFriend | null {
     friendsState.friends.find((f) => f.profileId === friendId) ??
     friendsState.incoming.find((f) => f.profileId === friendId) ??
     friendsState.outgoing.find((f) => f.profileId === friendId) ??
+    friendsState.searchResults?.friends.find((f) => f.profileId === friendId) ??
+    friendsState.searchResults?.users.find((f) => f.profileId === friendId) ??
     null
   );
 }
@@ -356,15 +411,16 @@ export function findFriendById(friendId: string): DisplayFriend | null {
  */
 export function getVisibleFriends(): DisplayFriend[] {
   const query = friendsState.query.trim().toLowerCase();
-  if (query && friendsState.searchResults) return friendsState.searchResults;
+  if (query && friendsState.searchResults) return friendsState.searchResults.friends;
 
   const source = getActiveFriendsSource();
   if (!query) return source;
 
-  return source.filter((friend) =>
-    [friend.firstName, friend.lastName, friend.username, friend.educationLabel]
-      .join(" ")
-      .toLowerCase()
-      .includes(query),
-  );
+  return getLocalFriendSearchResults(query);
+}
+
+export function getVisibleSiteUsers(): DisplayFriend[] {
+  const query = friendsState.query.trim();
+  if (!query || !friendsState.searchResults) return [];
+  return friendsState.searchResults.users;
 }

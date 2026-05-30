@@ -79,6 +79,7 @@ const gamesPageRenderer = createGamesPageRendering({
   getRoot: gamesPageRoot.getRoot,
   getState: () => gamesState,
   isCatalogRoute: isGamesCatalogRoute,
+  isAuthorised: () => Boolean(getSessionUser()),
   reportedQuestionKeys,
   reportingQuestionKeys,
   getCurrentProfileId,

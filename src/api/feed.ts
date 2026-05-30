@@ -14,6 +14,8 @@ export type PostcardModel = {
   id: string;
   /** Идентификатор автора. */
   authorId: string;
+  /** Идентификатор сообщества, если пост опубликован от сообщества. */
+  communityId?: string;
   /** Логин или username автора. */
   author: string;
   /** Имя автора. */
@@ -102,6 +104,7 @@ type FeedMedia = {
 type FeedItem = {
   id?: number | string;
   author?: FeedAuthor;
+  communityId?: number | string | null;
   text?: string;
   createdAt?: string;
   likes?: number | string;
@@ -176,9 +179,15 @@ export function mapFeedItemToPostcard(item: FeedItem): PostcardModel {
       ? item.media
       : [];
 
+  const communityId =
+    item.communityId === undefined || item.communityId === null
+      ? ""
+      : String(item.communityId).trim();
+
   return {
     id: postId,
     authorId: item.author?.id ?? "",
+    ...(communityId ? { communityId } : {}),
     author: item.author?.username ?? "Пользователь",
     firstName: item.author?.firstName ?? "",
     lastName: item.author?.lastName ?? "",
@@ -215,7 +224,7 @@ export function mapFeedResponse(response?: FeedResponse) {
   return {
     items: Array.isArray(response?.posts) ? response.posts.map(mapFeedItemToPostcard) : [],
     nextCursor: response?.nextCursor ?? "",
-    hasMore: Boolean(response?.hasMore),
+    hasMore: Boolean(response?.hasMore && response?.nextCursor),
   };
 }
 

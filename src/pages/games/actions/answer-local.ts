@@ -2,6 +2,7 @@ import type { GameRoom } from "../../../api/games";
 import { formatStoredAnswer } from "../round/model";
 import { mergeAnswerProgressRoom } from "../room/state/answer-progress";
 import type { GamesPageState } from "../state/store";
+import { debugGamesEvent } from "../runtime/debug";
 
 export type AcceptCurrentAnswerLocallyOptions = {
   answer: number;
@@ -13,18 +14,28 @@ export type AcceptCurrentAnswerLocallyOptions = {
   syncPlayersRailAnswerDom: (room?: GameRoom | null) => void;
 };
 
+/** Возвращает комнату с локально принятым ответом текущего игрока. */
+function getLocalAcceptedAnswerRoom(room: GameRoom): GameRoom {
+  const question = room.currentQuestion;
+  if (!question) return room;
+
+  return {
+    ...room,
+    currentQuestion: { ...question, hasAnswered: true },
+    players: room.players.map((player) =>
+      player.isMe ? { ...player, hasAnswered: true } : player,
+    ),
+  };
+}
+
 /**
  * Оптимистично отмечает текущий ответ как принятый без полного rerender комнаты.
  */
 export function acceptCurrentAnswerLocally(options: AcceptCurrentAnswerLocallyOptions): void {
   const { answer, incomingRoom, currentRoom } = options;
   const questionId = currentRoom?.currentQuestion?.id ?? "";
-  if (
-    !currentRoom ||
-    !questionId ||
-    !incomingRoom?.currentQuestion ||
-    incomingRoom.currentQuestion.id !== questionId
-  ) {
+
+  if (!currentRoom || !questionId) {
     if (incomingRoom) {
       options.setGamesState({
         room: incomingRoom,
@@ -38,24 +49,28 @@ export function acceptCurrentAnswerLocally(options: AcceptCurrentAnswerLocallyOp
     return;
   }
 
-  const answerProgressRoom = mergeAnswerProgressRoom(currentRoom, incomingRoom);
+  const answerProgressRoom =
+    incomingRoom?.currentQuestion?.id === questionId
+      ? mergeAnswerProgressRoom(currentRoom, incomingRoom)
+      : currentRoom;
   const answerProgressQuestion = answerProgressRoom.currentQuestion;
   if (!answerProgressQuestion) return;
+  const acceptedAnswerRoom = getLocalAcceptedAnswerRoom(answerProgressRoom);
 
   options.patchGamesState({
     submittedQuestionId: questionId,
     submittedAnswerValue: formatStoredAnswer(answer),
-    room: {
-      ...answerProgressRoom,
-      currentQuestion: { ...answerProgressQuestion, hasAnswered: true },
-      players: answerProgressRoom.players.map((player) =>
-        player.isMe ? { ...player, hasAnswered: true } : player,
-      ),
-    },
+    room: acceptedAnswerRoom,
     error: "",
     errorTarget: "",
     message: "",
   });
+  debugGamesEvent("answer accepted locally", {
+    roomId: acceptedAnswerRoom.id,
+    questionId,
+    answer: formatStoredAnswer(answer),
+    currentPlayer: acceptedAnswerRoom.players.find((player) => player.isMe)?.profileId ?? "",
+  });
   options.syncCurrentAnswerFormDom();
-  options.syncPlayersRailAnswerDom();
+  options.syncPlayersRailAnswerDom(acceptedAnswerRoom);
 }

@@ -52,7 +52,6 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
       id: "q1",
       position: 1,
       text: "Question",
-      answerUnit: "",
       startedAt: "2026-05-25T00:00:00.000Z",
       deadlineAt: "2026-05-25T00:00:30.000Z",
       hasAnswered: false,
@@ -92,6 +91,134 @@ describe("games room socket state", () => {
     expect(update.stateRoom.players[0]?.score).toBe(12);
     expect(update.submittedQuestionId).toBe("q1");
     expect(update.submittedAnswerValue).toBe("42");
+  });
+
+  it("оставляет повторный snapshot принятого ответа без полного rerender", () => {
+    const previousRoom = createRoom({
+      currentQuestion: {
+        ...createRoom().currentQuestion!,
+        hasAnswered: true,
+      },
+      players: [createPlayer({ score: 12, hasAnswered: true })],
+    });
+    const incomingRoom = createRoom({
+      currentQuestion: {
+        ...previousRoom.currentQuestion!,
+        hasAnswered: true,
+      },
+      players: [createPlayer({ score: 0, hasAnswered: true })],
+    });
+
+    const update = getRoomSocketStateUpdate({
+      previousRoom,
+      incomingRoom,
+      currentProfileId: "1",
+      submittedQuestionId: "q1",
+      submittedAnswerValue: "42",
+      getSystemMessages: vi.fn(() => []),
+    });
+
+    expect(update.isAnswerProgressOnly).toBe(true);
+    expect(update.currentQuestionAnswerChanged).toBe(false);
+    expect(update.stateRoom.players[0]?.score).toBe(12);
+    expect(update.submittedQuestionId).toBe("q1");
+    expect(update.submittedAnswerValue).toBe("42");
+  });
+
+  it("не заменяет форму ответа, когда ответил другой игрок", () => {
+    const previousRoom = createRoom({
+      players: [
+        createPlayer({ profileId: "1", hasAnswered: false }),
+        createPlayer({ profileId: "2", isMe: false, hasAnswered: false }),
+      ],
+    });
+    const incomingRoom = createRoom({
+      currentQuestion: {
+        ...previousRoom.currentQuestion!,
+        hasAnswered: true,
+      },
+      players: [
+        createPlayer({ profileId: "1", hasAnswered: false }),
+        createPlayer({ profileId: "2", isMe: false, hasAnswered: true }),
+      ],
+    });
+
+    const update = getRoomSocketStateUpdate({
+      previousRoom,
+      incomingRoom,
+      currentProfileId: "1",
+      submittedQuestionId: "",
+      submittedAnswerValue: "",
+      getSystemMessages: vi.fn(() => []),
+    });
+
+    expect(update.isAnswerProgressOnly).toBe(true);
+    expect(update.currentQuestionAnswerChanged).toBe(false);
+  });
+
+  it("не доверяет входящему isMe от другого публичного гостя", () => {
+    const previousRoom = createRoom({
+      players: [
+        createPlayer({ profileId: "1", isMe: true, hasAnswered: false }),
+        createPlayer({ profileId: "2", isMe: false, hasAnswered: false }),
+      ],
+    });
+    const incomingRoom = createRoom({
+      currentQuestion: {
+        ...previousRoom.currentQuestion!,
+        hasAnswered: true,
+      },
+      players: [
+        createPlayer({ profileId: "1", isMe: false, hasAnswered: false }),
+        createPlayer({ profileId: "2", isMe: true, hasAnswered: true }),
+      ],
+    });
+
+    const update = getRoomSocketStateUpdate({
+      previousRoom,
+      incomingRoom,
+      currentProfileId: "",
+      submittedQuestionId: "",
+      submittedAnswerValue: "",
+      getSystemMessages: vi.fn(() => []),
+    });
+
+    expect(update.isAnswerProgressOnly).toBe(true);
+    expect(update.currentQuestionAnswerChanged).toBe(false);
+    expect(update.stateRoom.players.map((player) => [player.profileId, player.isMe])).toEqual([
+      ["1", true],
+      ["2", false],
+    ]);
+  });
+
+  it("для авторизованного игрока выбирает текущего по profileId, а не по входящему isMe", () => {
+    const previousRoom = createRoom({
+      players: [
+        createPlayer({ profileId: "1", isMe: true, hasAnswered: false }),
+        createPlayer({ profileId: "2", isMe: false, hasAnswered: false }),
+      ],
+    });
+    const incomingRoom = createRoom({
+      players: [
+        createPlayer({ profileId: "1", isMe: false, hasAnswered: false }),
+        createPlayer({ profileId: "2", isMe: true, hasAnswered: true }),
+      ],
+    });
+
+    const update = getRoomSocketStateUpdate({
+      previousRoom,
+      incomingRoom,
+      currentProfileId: "1",
+      submittedQuestionId: "",
+      submittedAnswerValue: "",
+      getSystemMessages: vi.fn(() => []),
+    });
+
+    expect(update.normalizedRoom.players.map((player) => [player.profileId, player.isMe])).toEqual([
+      ["1", true],
+      ["2", false],
+    ]);
+    expect(update.currentQuestionAnswerChanged).toBe(false);
   });
 
   it("сбрасывает submitted answer при смене вопроса", () => {

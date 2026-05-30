@@ -20,13 +20,10 @@ function createInitialChatsState(): ChatsState {
       open: false,
       loading: false,
       stickersLoading: false,
-      saving: false,
       errorMessage: "",
-      search: "",
       packs: [],
       activePackId: "",
       stickersByPackId: new Map(),
-      newPackTitle: "",
     },
     threads: [],
     selectedChatId: "",
@@ -100,6 +97,13 @@ export function resetChatsStateMutable(): void {
   }
   if (chatsState.voiceDraft) {
     URL.revokeObjectURL(chatsState.voiceDraft.localUrl);
+  }
+  if (chatsState.videoNoteRecording) {
+    window.clearInterval(chatsState.videoNoteRecording.timerId);
+    if (chatsState.videoNoteRecording.recorder.state !== "inactive") {
+      chatsState.videoNoteRecording.recorder.stop();
+    }
+    chatsState.videoNoteRecording.stream.getTracks().forEach((track) => track.stop());
   }
   chatsStore.reset(createInitialChatsState());
   setHasHydratedPersistedChatsUiState(false);

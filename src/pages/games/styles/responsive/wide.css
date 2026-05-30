@@ -8,10 +8,15 @@
     }
 
     .app-layout--game-room {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
       height: auto;
       min-height: 0;
       grid-template-columns: minmax(0, 1fr);
+      justify-content: stretch;
       row-gap: var(--space-4);
+      box-sizing: border-box;
       overflow: visible;
     }
 
@@ -19,6 +24,8 @@
     .app-layout--game-room .app-layout__center,
     .app-layout--game-room .app-layout__right {
       display: flex;
+      width: 100%;
+      min-width: 0;
       height: auto;
       min-height: 0;
       padding-left: 0;
@@ -41,6 +48,7 @@
     }
 
     .games-room-players-panel {
+      width: 100%;
       height: auto;
       max-height: 360px;
     }

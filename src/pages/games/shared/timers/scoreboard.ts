@@ -1,3 +1,5 @@
+import { scoreboardSortAnimationMs, scoreValueAnimationMs } from "../constants";
+
 /**
  * Считает easing для плавного добора счёта.
  */
@@ -14,12 +16,11 @@ function animateScoreValue(
   to: number,
   formatScore: (value: number) => string,
 ): void {
-  const durationMs = 720;
   const startedAt = performance.now();
   element.dataset.gamesScoreAnimated = "true";
 
   const tick = (now: number) => {
-    const progress = Math.min(1, (now - startedAt) / durationMs);
+    const progress = Math.min(1, (now - startedAt) / scoreValueAnimationMs);
     const value = from + (to - from) * easeOutCubic(progress);
     element.textContent = formatScore(progress >= 1 ? to : value);
     if (progress < 1) {
@@ -40,6 +41,12 @@ export function syncScoreboardAnimations(
   formatScore: (value: number) => string,
 ): void {
   const now = Date.now();
+
+  root.querySelectorAll<HTMLElement>("[data-games-score-shell]").forEach((scoreShell) => {
+    const showAt = Number(scoreShell.dataset.gamesScoreShowAt ?? 0);
+    if (!Number.isFinite(showAt) || now < showAt) return;
+    scoreShell.classList.add("games-game-player__score--showing-round-points");
+  });
 
   root.querySelectorAll<HTMLElement>("[data-games-round-points-badge]").forEach((badge) => {
     const startAt = Number(badge.dataset.gamesRoundPointsStartAt ?? 0);
@@ -73,12 +80,15 @@ export function syncScoreboardAnimations(
     if (!order.length) return;
 
     const cards = Array.from(list.querySelectorAll<HTMLElement>("[data-games-scoreboard-card]"));
+    const scrollTop = list.scrollTop;
     const rects = new Map(cards.map((card) => [card, card.getBoundingClientRect()]));
     const byProfile = new Map(cards.map((card) => [card.dataset.gamesScoreboardCard ?? "", card]));
     order.forEach((profileId) => {
       const card = byProfile.get(profileId);
       if (card) list.append(card);
     });
+    list.scrollTop = scrollTop;
+    list.classList.add("games-game-scoreboard__list--sorting");
     cards.forEach((card) => {
       const place = card.dataset.gamesPlayerFinalPlace;
       const placeEl = card.querySelector<HTMLElement>(".games-game-player__place");
@@ -99,6 +109,14 @@ export function syncScoreboardAnimations(
         card.style.transform = "";
       });
     });
+    window.setTimeout(() => {
+      list.classList.remove("games-game-scoreboard__list--sorting");
+      cards.forEach((card) => {
+        card.classList.remove("games-game-player--sorting");
+        card.style.transition = "";
+        card.style.transform = "";
+      });
+    }, scoreboardSortAnimationMs + 80);
     list.dataset.gamesScoreboardSorted = "true";
   });
 }

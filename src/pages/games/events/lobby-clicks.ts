@@ -2,6 +2,7 @@ import { handleRoomsAutoRefreshClick } from "./lobby-clicks/auto-refresh";
 import { handleLobbyModeClick } from "./lobby-clicks/mode";
 import { handleReturnRoomClick } from "./lobby-clicks/return-room";
 import type { HandleGamesLobbyClickOptions } from "./lobby-clicks/types";
+import { gameT } from "../shared/i18n";
 
 export type { HandleGamesLobbyClickOptions } from "./lobby-clicks/types";
 
@@ -45,7 +46,7 @@ export function handleGamesLobbyClick(
         messageReturnRoomId: "",
         messageReturnInviteCode: "",
         messageReturnPassword: "",
-        error: options.getErrorMessage(error, "Не удалось открыть список комнат."),
+        error: options.getErrorMessage(error, gameT("rooms.openListError")),
       });
     });
     return true;

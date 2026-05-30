@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameRoom } from "../../../api/games";
-import { disbandGameRoom, leaveGameRoom } from "../../../api/games";
+import {
+  disbandGameRoom,
+  forgetPublicGameGuestSession,
+  getPublicGameGuestSessionByRoom,
+  leaveGameRoom,
+} from "../../../api/games";
 import { disbandCurrentRoom, exitRoomToMenu } from "./room-lifecycle";
 
 vi.mock("../../../api/games", () => ({
   disbandGameRoom: vi.fn(),
+  forgetPublicGameGuestSession: vi.fn(),
+  getPublicGameGuestSessionByRoom: vi.fn(),
   leaveGameRoom: vi.fn(),
 }));
 
@@ -63,6 +70,7 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
 describe("room lifecycle actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getPublicGameGuestSessionByRoom).mockReturnValue(null);
   });
 
   it("распускает комнату создателя и закрывает socket", async () => {
@@ -152,5 +160,27 @@ describe("room lifecycle actions", () => {
       error: "",
       errorTarget: "",
     });
+  });
+
+  it("очищает гостевую публичную сессию при выходе из публичной игры", async () => {
+    const session = { inviteCode: "ABC123", roomId: "room-1", token: "guest-token" };
+    vi.mocked(getPublicGameGuestSessionByRoom).mockReturnValue(session);
+    const navigateToGamesMenu = vi.fn();
+
+    await exitRoomToMenu({
+      room: createRoom({ status: "active", isPublicLobby: true }),
+      currentProfileId: "profile-1",
+      forgetRoomAccess: vi.fn(),
+      closeRoomSocket: vi.fn(),
+      stopRoomChat: vi.fn(),
+      resetGamesState: vi.fn(),
+      navigateToGamesMenu,
+      setGamesState: vi.fn(),
+    });
+
+    expect(getPublicGameGuestSessionByRoom).toHaveBeenCalledWith("room-1");
+    expect(forgetPublicGameGuestSession).toHaveBeenCalledWith(session);
+    expect(leaveGameRoom).not.toHaveBeenCalled();
+    expect(navigateToGamesMenu).toHaveBeenCalled();
   });
 });

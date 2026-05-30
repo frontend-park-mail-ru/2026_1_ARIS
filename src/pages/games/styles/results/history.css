@@ -106,8 +106,9 @@
   }
 
   .games-answer-progress__item--done {
-    border-color: rgb(53 137 96 / 38%);
-    background: rgb(53 137 96 / 12%);
+    border-color: rgb(95 111 157 / 24%);
+    background:
+      linear-gradient(135deg, rgb(95 111 157 / 14%), rgb(95 111 157 / 7%)), rgb(244 246 249);
     color: var(--color-text-main);
   }
 

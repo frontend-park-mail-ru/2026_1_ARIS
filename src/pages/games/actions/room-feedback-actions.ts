@@ -9,6 +9,7 @@ import type { GamesPageState } from "../state/store";
 import { getRoomFullMessagePatch } from "../state/action-patches";
 import type { PendingVoluntaryLeave } from "../room/lifecycle";
 import { formatRoomModeLabel } from "../room/profile/system-messages";
+import { gameT } from "../shared/i18n";
 
 export type RoomFeedbackActionsOptions = {
   getPasswordVisible: () => boolean;
@@ -33,7 +34,7 @@ export function createRoomFeedbackActions(options: RoomFeedbackActionsOptions) {
    * Возвращает текст toast при смене ranked-режима комнаты.
    */
   function getRankedTypeToastMessage(isRanked: boolean): string {
-    return `Администратор поставил тип игры "${formatRoomModeLabel(isRanked)}"`;
+    return gameT("room.rankedToast", { mode: formatRoomModeLabel(isRanked) });
   }
 
   /**

@@ -6,6 +6,15 @@ export function getRequestedRoomId(params?: Record<string, string>): string {
 }
 
 /**
+ * Возвращает public invite-код из параметров роутера.
+ */
+export function getRequestedPublicInviteCode(params?: Record<string, string>): string {
+  return String(params?.inviteCode ?? "")
+    .trim()
+    .toUpperCase();
+}
+
+/**
  * Нормализует pathname без хвостовых слешей.
  */
 export function normaliseGamesPath(pathname: string): string {
@@ -17,6 +26,13 @@ export function normaliseGamesPath(pathname: string): string {
  */
 export function isGamesCatalogRoute(pathname = window.location.pathname): boolean {
   return normaliseGamesPath(pathname) === "/games";
+}
+
+/**
+ * Проверяет, открыт ли изолированный публичный вход в презентационную игру.
+ */
+export function isPublicGamesRoute(pathname = window.location.pathname): boolean {
+  return /^\/games\/public\/[^/]+$/i.test(normaliseGamesPath(pathname));
 }
 
 /**

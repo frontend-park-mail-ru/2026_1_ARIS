@@ -1,8 +1,9 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GamePlayer, GameRoom } from "../../../api/games";
+import { languageStore } from "../../../state/language";
 import {
   renderActiveRoundStage,
   renderGameStartingStage,
@@ -71,7 +72,6 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
       id: "q1",
       position: 1,
       text: "How many moons does Mars have?",
-      answerUnit: "",
       startedAt: "2026-05-25T00:00:00.000Z",
       deadlineAt: "2026-05-25T00:00:30.000Z",
       hasAnswered: false,
@@ -85,9 +85,15 @@ function createRoom(overrides: Partial<GameRoom> = {}): GameRoom {
 }
 
 describe("games play stage render", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    languageStore.reset({ language: "RU" });
+  });
+
   it("рендерит активный вопрос и ошибку формы ответа", () => {
     const html = renderActiveRoundStage({
       room: createRoom(),
+      currentPlayer: createRoom().players[0] ?? null,
       submittedQuestionId: "",
       submittedAnswerValue: "",
       renderInlineError: (target) => `<span data-error="${target}">Ошибка ответа</span>`,
@@ -96,7 +102,28 @@ describe("games play stage render", () => {
     expect(html).toContain("Текущий вопрос");
     expect(html).toContain("How many moons does Mars have?");
     expect(html).toContain("Введите число");
+    expect(html).toContain('type="text"');
+    expect(html).toContain('inputmode="numeric"');
+    expect(html).toContain('enterkeyhint="done"');
     expect(html).toContain('data-error="answer"');
+    expect(html).toContain("data-games-active-question-timer");
+  });
+
+  it("рендерит активный вопрос на английском языке интерфейса", () => {
+    languageStore.reset({ language: "EN" });
+
+    const html = renderActiveRoundStage({
+      room: createRoom(),
+      currentPlayer: createRoom().players[0] ?? null,
+      submittedQuestionId: "",
+      submittedAnswerValue: "",
+      renderInlineError: () => "",
+    });
+
+    expect(html).toContain("Current question");
+    expect(html).toContain("Enter a number");
+    expect(html).toContain("Submit answer");
+    expect(html).toContain("Time left");
   });
 
   it("рендерит подтверждение отправленного ответа", () => {
@@ -105,7 +132,6 @@ describe("games play stage render", () => {
         id: "q1",
         position: 1,
         text: "How many moons does Mars have?",
-        answerUnit: "",
         startedAt: "2026-05-25T00:00:00.000Z",
         deadlineAt: "2026-05-25T00:00:30.000Z",
         hasAnswered: true,
@@ -113,6 +139,7 @@ describe("games play stage render", () => {
     });
     const html = renderActiveRoundStage({
       room,
+      currentPlayer: { ...room.players[0]!, hasAnswered: true },
       submittedQuestionId: "q1",
       submittedAnswerValue: "2",
       renderInlineError: () => "",
@@ -120,6 +147,42 @@ describe("games play stage render", () => {
 
     expect(html).toContain("Ваш ответ принят: 2");
     expect(html).toContain("games-answer-form--accepted");
+  });
+
+  it("оставляет форму ответа, если сервер пометил вопрос отвеченным чужим ответом", () => {
+    const room = createRoom({
+      currentQuestion: {
+        id: "q1",
+        position: 1,
+        text: "How many moons does Mars have?",
+        startedAt: "2026-05-25T00:00:00.000Z",
+        deadlineAt: "2026-05-25T00:00:30.000Z",
+        hasAnswered: true,
+      },
+    });
+    const html = renderActiveRoundStage({
+      room,
+      currentPlayer: room.players[0] ?? null,
+      submittedQuestionId: "",
+      submittedAnswerValue: "",
+      renderInlineError: () => "",
+    });
+
+    expect(html).toContain("data-games-answer-input");
+    expect(html).not.toContain("games-answer-form--accepted");
+  });
+
+  it("показывает вопрос наблюдателю без формы ответа", () => {
+    const html = renderActiveRoundStage({
+      room: createRoom({ isPublicLobby: true }),
+      currentPlayer: null,
+      submittedQuestionId: "",
+      submittedAnswerValue: "",
+      renderInlineError: () => "",
+    });
+
+    expect(html).toContain("How many moons does Mars have?");
+    expect(html).not.toContain("data-games-answer-form");
   });
 
   it("рендерит паузу с голосованием за продолжение", () => {
@@ -156,6 +219,26 @@ describe("games play stage render", () => {
     expect(html).toContain("How many moons does Mars have?");
   });
 
+  it("рендерит короткий countdown продолжения паузы полной полоской", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T00:02:05.100Z"));
+    const room = createRoom({
+      pausedByProfileId: "1",
+      pauseStartedAt: "2026-05-25T00:00:10.000Z",
+      pauseUntilAt: "2026-05-25T00:02:10.000Z",
+    });
+
+    const html = renderPauseStage({
+      room,
+      loading: false,
+      pausedByPlayer: room.players[0]!,
+      canForceResume: false,
+      currentPlayer: room.players[0]!,
+    });
+
+    expect(html).toContain('data-games-timer-total-ms="5000"');
+  });
+
   it("скрывает кнопку паузы на стартовом countdown и показывает использованную паузу", () => {
     const room = createRoom({
       currentQuestion: null,
@@ -181,6 +264,16 @@ describe("games play stage render", () => {
         isStartCountdown: false,
       }),
     ).toContain("Пауза уже использована");
+
+    expect(
+      renderPauseAction({
+        room: createRoom({ isPublicLobby: true }),
+        loading: false,
+        canPause: true,
+        currentPlayer: createPlayer({ pauseUsed: true }),
+        isStartCountdown: false,
+      }),
+    ).toBe("");
   });
 
   it("рендерит countdown старта игры", () => {

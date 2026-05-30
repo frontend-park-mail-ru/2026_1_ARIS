@@ -83,9 +83,7 @@ jobs:
             npm ci
             BUILD_VERSION=$(node -p "require('./package.json').version")
             printf 'BUILD_COMMIT=%s\nBUILD_VERSION=%s\n' "${{ github.sha }}" "$BUILD_VERSION" > .env.build
-            sudo systemctl set-environment BUILD_COMMIT="${{ github.sha }}" BUILD_VERSION="$BUILD_VERSION"
-            sudo systemctl restart arisfront
-            sleep 10
+            sleep 2
             bash scripts/smoke.sh
 
   notify-telegram:

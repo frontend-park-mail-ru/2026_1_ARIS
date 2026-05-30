@@ -4,8 +4,9 @@
  * Содержит функции генерации HTML и обновления DOM для страницы.
  */
 import { renderPostcard } from "../../components/postcard/postcard";
+import { renderCommentCompose } from "../../components/comment-compose/comment-compose";
 import { getFeedMode, getSessionUser } from "../../state/session";
-import { escapeHtml, renderAvatarMarkup } from "../../utils/avatar";
+import { escapeHtml } from "../../utils/avatar";
 import { t } from "../../state/i18n";
 import { formatPersonName } from "../../utils/display-name";
 import type { PostcardModel } from "../../api/feed";
@@ -105,10 +106,9 @@ export function renderOfflineFeedFallback(isAuthorised: boolean): string {
  * @returns {string} HTML индикатора.
  */
 export function renderFeedStatus(hasMore: boolean, isLoading: boolean): string {
-  const hiddenClass = hasMore ? "" : " feed-infinite-status--hidden";
-  const text = isLoading ? t("feed.loadingMore") : t("feed.loadMore");
+  const text = !hasMore ? t("feed.end") : isLoading ? t("feed.loadingMore") : t("feed.loadMore");
 
-  return `<div class="feed-infinite-status${hiddenClass}" data-feed-status>${text}</div>`;
+  return `<div class="feed-infinite-status" data-feed-status>${text}</div>`;
 }
 
 /**
@@ -130,29 +130,14 @@ function renderFeedPostComments(postId: string): string {
       ${
         sessionUser
           ? `
-        <div class="profile-comment-compose">
-          ${renderAvatarMarkup(
-            "profile-comment-compose__avatar",
-            userName,
-            sessionUser.avatarLink,
-            {
-              width: 32,
-              height: 32,
-            },
-          )}
-          <form class="profile-post__comment-form" data-feed-comment-form="${escapeHtml(postId)}" novalidate>
-            <input
-              type="text"
-              class="profile-post__comment-input"
-              placeholder="${t("profile.commentPlaceholder")}"
-              data-feed-comment-input="${escapeHtml(postId)}"
-              maxlength="2000"
-              autocomplete="off"
-            >
-            <button type="submit" class="profile-post__comment-send">${t("profile.commentSubmit")}</button>
-          </form>
-        </div>
-        <p class="profile-post__comment-error" data-feed-comment-error="${escapeHtml(postId)}" hidden></p>
+        ${renderCommentCompose({
+          postId,
+          userName,
+          avatarLink: sessionUser.avatarLink,
+          formAttribute: "data-feed-comment-form",
+          inputAttribute: "data-feed-comment-input",
+          errorAttribute: "data-feed-comment-error",
+        })}
       `
           : ""
       }

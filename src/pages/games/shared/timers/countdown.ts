@@ -1,6 +1,29 @@
 import { formatTimerRemainingMs, getTimerRemainingCentiseconds } from "./formatting";
 import { syncScoreboardAnimations } from "./scoreboard";
 
+const QUESTION_DEADLINE_REFRESH_INTERVAL_MS = 1_000;
+const TIMER_START_HUE = 135;
+const TIMER_END_HUE = 0;
+
+function getTimerProgressColor(progress: number): string {
+  const normalizedProgress = Math.max(0, Math.min(1, progress));
+  const hue = Math.round(TIMER_END_HUE + normalizedProgress * (TIMER_START_HUE - TIMER_END_HUE));
+  return `hsl(${hue} 58% 44%)`;
+}
+
+function notifyQuestionDeadlineExpired(timer: HTMLElement, onExpired: () => void): void {
+  if (!timer.hasAttribute("data-games-active-question-timer")) return;
+
+  const now = Date.now();
+  const lastRefreshAt = Number(timer.dataset.gamesQuestionDeadlineRefreshAt ?? 0);
+  if (Number.isFinite(lastRefreshAt) && lastRefreshAt > 0) {
+    if (now - lastRefreshAt < QUESTION_DEADLINE_REFRESH_INTERVAL_MS) return;
+  }
+
+  timer.dataset.gamesQuestionDeadlineRefreshAt = String(now);
+  window.setTimeout(() => onExpired(), 0);
+}
+
 /**
  * Обновляет игровые countdown-элементы внутри root.
  */
@@ -9,6 +32,8 @@ export function updateGamesCountdown(
   options: {
     formatScore: (value: number) => string;
     onFinalResultsExpired: () => void;
+    onQuestionDeadlineExpired: () => void;
+    onRoundResultExpired?: () => void;
   },
 ): void {
   syncScoreboardAnimations(root, options.formatScore);
@@ -49,9 +74,15 @@ export function updateGamesCountdown(
     const isDanger = remainingMs <= 3000;
 
     if (valueEl) valueEl.textContent = formatTimerRemainingMs(remainingMs);
-    if (progressEl) progressEl.style.transform = `scaleX(${progress})`;
+    if (progressEl) {
+      progressEl.style.transform = `scaleX(${progress})`;
+      progressEl.style.setProperty("--games-timer-bar-color", getTimerProgressColor(progress));
+    }
     timer.classList.toggle("games-precision-timer--danger", isDanger);
     timer.classList.toggle("games-start-countdown--danger", isDanger);
+    if (remainingMs <= 0) {
+      notifyQuestionDeadlineExpired(timer, options.onQuestionDeadlineExpired);
+    }
   });
 
   const finalResultsUntilEl = root.querySelector<HTMLElement>("[data-games-final-results-until]");
@@ -62,6 +93,17 @@ export function updateGamesCountdown(
     if (!Number.isNaN(finalResultsUntilMs) && Date.now() >= finalResultsUntilMs) {
       finalResultsUntilEl.removeAttribute("data-games-final-results-until");
       window.setTimeout(() => options.onFinalResultsExpired(), 0);
+    }
+  }
+
+  const roundResultUntilEl = root.querySelector<HTMLElement>("[data-games-round-result-until]");
+  if (roundResultUntilEl) {
+    const roundResultUntilMs = new Date(
+      roundResultUntilEl.dataset.gamesRoundResultUntil ?? "",
+    ).getTime();
+    if (!Number.isNaN(roundResultUntilMs) && Date.now() >= roundResultUntilMs) {
+      roundResultUntilEl.removeAttribute("data-games-round-result-until");
+      window.setTimeout(() => options.onRoundResultExpired?.(), 0);
     }
   }
 

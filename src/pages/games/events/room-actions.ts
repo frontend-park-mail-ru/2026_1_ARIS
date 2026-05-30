@@ -1,4 +1,5 @@
 import type { GameRoom } from "../../../api/games";
+import { gameT } from "../shared/i18n";
 import type { GamesPageState } from "../state/store";
 
 export type HandleGamesRoomActionsClickOptions = {
@@ -54,7 +55,7 @@ function handleRankedToggleClick(
   if (desiredRanked === options.room?.isRanked) return true;
 
   void options.handleRoomRankedToggle(desiredRanked).catch((error: unknown) => {
-    setRoomActionError(options, error, "Не удалось изменить тип игры.");
+    setRoomActionError(options, error, gameT("room.changeModeError"));
   });
   return true;
 }
@@ -74,7 +75,7 @@ function handleReadyToggleClick(
   if (isReady === options.currentPlayerReady) return true;
 
   void options.handleReadyToggle(isReady).catch((error: unknown) => {
-    setRoomActionError(options, error, "Не удалось обновить готовность.");
+    setRoomActionError(options, error, gameT("room.readyError"));
   });
   return true;
 }
@@ -93,7 +94,7 @@ function handleReplayToggleClick(
   if (isReady === options.currentPlayerReady) return true;
 
   void options.handleReplayToggle(isReady).catch((error: unknown) => {
-    setRoomActionError(options, error, "Не удалось запустить повторную игру.");
+    setRoomActionError(options, error, gameT("room.replayError"));
   });
   return true;
 }
@@ -109,7 +110,7 @@ export function handleGamesRoomActionsClick(
   if (target.closest("[data-games-pause-room]")) {
     event.preventDefault();
     void options.handlePauseRoom().catch((error: unknown) => {
-      setRoomActionError(options, error, "Не удалось поставить игру на паузу.");
+      setRoomActionError(options, error, gameT("room.pauseError"));
     });
     return true;
   }
@@ -117,7 +118,7 @@ export function handleGamesRoomActionsClick(
   if (target.closest("[data-games-force-resume]")) {
     event.preventDefault();
     void options.handleForceResumeRoom().catch((error: unknown) => {
-      setRoomActionError(options, error, "Не удалось продолжить игру.");
+      setRoomActionError(options, error, gameT("room.resumeError"));
     });
     return true;
   }

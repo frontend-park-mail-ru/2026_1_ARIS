@@ -1,7 +1,28 @@
 import type { GameRoom } from "../../../../api/games";
 import { getRoomSocketStateUpdate } from "../../room/state/socket-state";
+import { getAnswerProgressOnlyBlockReason } from "../../room/state/answer-progress";
 import { getRoomUpdatePatch } from "../../state/room-update-patches";
 import type { ApplyRoomSocketStateDeps } from "./types";
+import { gameT } from "../../shared/i18n";
+import { debugGamesEvent, debugGamesVerboseEvent } from "../../runtime/debug";
+import { playPublicLobbyStartSound } from "../../room/public-lobby-sound";
+
+function getRoomDebugSummary(room: GameRoom | null): Record<string, unknown> | null {
+  if (!room) return null;
+  return {
+    id: room.id,
+    status: room.status,
+    currentQuestionId: room.currentQuestion?.id ?? "",
+    currentQuestionHasAnswered: room.currentQuestion?.hasAnswered ?? null,
+    currentQuestionIndex: room.currentQuestionIndex,
+    nextQuestionAt: room.nextQuestionAt,
+    players: room.players.length,
+    answeredPlayers: room.players.filter((player) => player.hasAnswered).length,
+    me: room.players.find((player) => player.isMe)?.profileId ?? "",
+    completedQuestions: room.questions.filter((question) => question.status === "completed").length,
+    activeQuestions: room.questions.filter((question) => question.status === "active").length,
+  };
+}
 
 /**
  * Применяет socket-обновление комнаты к state страницы.
@@ -10,10 +31,12 @@ export async function applyRoomSocketState(
   incomingRoom: GameRoom,
   deps: ApplyRoomSocketStateDeps,
 ): Promise<void> {
-  const previousRoom = deps.getCurrentRoom();
+  const initialRoomId = deps.getCurrentRoom()?.id ?? "";
   const hydratedIncomingRoom = await deps.hydrateRoom(incomingRoom);
+  const previousRoom = deps.getCurrentRoom();
 
-  if (deps.getCurrentRoom()?.id && deps.getCurrentRoom()?.id !== hydratedIncomingRoom.id) return;
+  if (previousRoom?.id && previousRoom.id !== hydratedIncomingRoom.id) return;
+  if (initialRoomId && previousRoom?.id && previousRoom.id !== initialRoomId) return;
 
   const update = getRoomSocketStateUpdate({
     previousRoom,
@@ -23,6 +46,23 @@ export async function applyRoomSocketState(
     submittedAnswerValue: deps.getSubmittedAnswerValue(),
     getSystemMessages: deps.getSystemMessages,
   });
+  const blockReason = update.isAnswerProgressOnly
+    ? ""
+    : getAnswerProgressOnlyBlockReason(previousRoom, update.normalizedRoom);
+
+  const debugPayload = {
+    previous: getRoomDebugSummary(previousRoom),
+    incoming: getRoomDebugSummary(hydratedIncomingRoom),
+    normalized: getRoomDebugSummary(update.normalizedRoom),
+    isAnswerProgressOnly: update.isAnswerProgressOnly,
+    currentQuestionAnswerChanged: update.currentQuestionAnswerChanged,
+    fullRenderReason: blockReason || "non answer-progress update",
+  };
+  if (update.isAnswerProgressOnly && !update.currentQuestionAnswerChanged) {
+    debugGamesVerboseEvent("socket room_state", debugPayload);
+  } else {
+    debugGamesEvent("socket room_state", debugPayload);
+  }
 
   if (update.isAnswerProgressOnly) {
     deps.patchGamesState({
@@ -70,12 +110,13 @@ export async function applyRoomSocketState(
       },
     }),
   });
+  playPublicLobbyStartSound(previousRoom, update.normalizedRoom, deps.getCurrentProfileId());
   deps.rememberRoomAccess(update.normalizedRoom);
   deps.clearPendingVoluntaryLeave(update.normalizedRoom.id);
   deps.refreshGamesDom();
 
   if (update.becameAdmin) {
-    deps.showToast("Вы назначены администратором комнаты");
+    deps.showToast(gameT("room.assignedAdminToast"));
   }
   if (update.rankedChanged) {
     showRankedChangeToast(update.normalizedRoom, deps);

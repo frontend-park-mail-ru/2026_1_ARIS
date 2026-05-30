@@ -3,6 +3,7 @@ import { joinGameRoom } from "../../../../api/games";
 import { getRoomNotFoundPatch } from "../../state/action-patches";
 import { isJoinRoomAlreadyStartedError, isJoinRoomFullError } from "../../shared/errors";
 import type { JoinListedRoomActionOptions } from "./types";
+import { gameT } from "../../shared/i18n";
 
 /**
  * Подключает пользователя к комнате из списка комнат.
@@ -48,7 +49,7 @@ export async function joinListedRoomAction(options: JoinListedRoomActionOptions)
       options.setGamesOverlayState({
         loading: false,
         joinPasswordValue: password,
-        joinPasswordError: "Неверный пароль",
+        joinPasswordError: gameT("join.wrongPassword"),
         error: "",
         errorTarget: "",
       });

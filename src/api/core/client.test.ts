@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { languageStore } from "../../state/language";
 import { trackedFetch } from "../../state/network-status";
 import { captureAppException } from "../../utils/sentry";
 import {
@@ -29,6 +30,7 @@ function jsonResponse(data: unknown, init: ResponseInit = {}): Response {
 describe("api core client", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    languageStore.reset({ language: "RU" });
   });
 
   it("parseJson возвращает fallback для пустого тела", async () => {
@@ -87,7 +89,7 @@ describe("api core client", () => {
       method: "POST",
       credentials: "include",
       body: JSON.stringify({ title: "Hello" }),
-      headers: { "Content-Type": "application/json" },
+      headers: { "Accept-Language": "ru", "Content-Type": "application/json" },
     });
   });
 
@@ -105,7 +107,7 @@ describe("api core client", () => {
       method: "POST",
       credentials: "include",
       body,
-      headers: { "X-Test": "1" },
+      headers: { "Accept-Language": "ru", "X-Test": "1" },
     });
   });
 
@@ -125,6 +127,7 @@ describe("api core client", () => {
       method: "POST",
       credentials: "include",
       keepalive: true,
+      headers: { "Accept-Language": "ru" },
     });
   });
 
@@ -137,7 +140,7 @@ describe("api core client", () => {
       method: "POST",
       credentials: "include",
       body: JSON.stringify({ title: "Hello" }),
-      headers: { "Content-Type": "application/json" },
+      headers: { "Accept-Language": "ru", "Content-Type": "application/json" },
     });
   });
 
@@ -149,6 +152,32 @@ describe("api core client", () => {
 
     await expect(Promise.all([first, second])).resolves.toEqual([{ ok: true }, { ok: true }]);
     expect(trackedFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("не смешивает дедупликацию GET-запросов с разными языками интерфейса", async () => {
+    vi.mocked(trackedFetch)
+      .mockResolvedValueOnce(jsonResponse({ language: "ru" }))
+      .mockResolvedValueOnce(jsonResponse({ language: "en" }));
+
+    const first = apiRequest("/api/shared");
+    languageStore.reset({ language: "EN" });
+    const second = apiRequest("/api/shared");
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { language: "ru" },
+      { language: "en" },
+    ]);
+    expect(trackedFetch).toHaveBeenCalledTimes(2);
+    expect(trackedFetch).toHaveBeenNthCalledWith(
+      1,
+      "/api/shared",
+      expect.objectContaining({ headers: { "Accept-Language": "ru" } }),
+    );
+    expect(trackedFetch).toHaveBeenNthCalledWith(
+      2,
+      "/api/shared",
+      expect.objectContaining({ headers: { "Accept-Language": "en" } }),
+    );
   });
 
   it("не дедуплицирует запросы с AbortSignal", async () => {

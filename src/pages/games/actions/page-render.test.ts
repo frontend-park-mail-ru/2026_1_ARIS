@@ -22,6 +22,7 @@ function createOptions(overrides: Partial<RenderGamesPageOptions> = {}): RenderG
     resetGamesState: vi.fn(),
     replaceGamesState: vi.fn(),
     getRequestedRoomId: vi.fn(() => "room-1"),
+    getRequestedPublicInviteCode: vi.fn(() => "ABC123"),
     renderPageShell: vi.fn(() => "<main>Games</main>"),
     getRoom: vi.fn(async () => room),
     joinRoom: vi.fn(async () => room),
@@ -77,5 +78,23 @@ describe("games page render action", () => {
       }),
     );
     expect(options.renderPageShell).toHaveBeenCalledTimes(1);
+  });
+
+  it("для публичной ссылки авторизованного игрока вызывает обычный join по inviteCode", async () => {
+    const options = createOptions({
+      isPublicRoute: vi.fn(() => true),
+    });
+
+    await renderGamesPage({ inviteCode: "ABC123" }, undefined, options);
+
+    expect(options.getRequestedPublicInviteCode).toHaveBeenCalledWith({ inviteCode: "ABC123" });
+    expect(options.joinRoom).toHaveBeenCalledWith({ inviteCode: "ABC123" });
+    expect(options.replaceGamesState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roomId: "room-1",
+        room: expect.objectContaining({ id: "room-1" }),
+      }),
+    );
+    expect(options.renderGuestPage).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 import { getQuestionReportConfirmPatch } from "../shared";
 import type { HandleGamesRoomMenusClickOptions } from "../types";
+import { gameT } from "../../../shared/i18n";
 
 /**
  * Обрабатывает action копирования вопроса из floating menu.
@@ -11,8 +12,8 @@ function handleQuestionCopyAction(
   if (!action.startsWith("question-copy:")) return false;
   const questionKey = action.slice("question-copy:".length);
   void options.handleCopyQuestionAnswer(questionKey).catch(() => {
-    options.setGamesState({ ...options.closeGamesMenus(), message: "", error: "" });
-    options.showAppToast("Не удалось скопировать вопрос.");
+    options.setGamesOverlayState({ ...options.closeGamesMenus(), message: "", error: "" });
+    options.showAppToast(gameT("copy.questionError"));
   });
   return true;
 }
@@ -31,7 +32,7 @@ function handleQuestionReportAction(
     options.reportedQuestionKeys.has(questionKey) ||
     options.reportingQuestionKeys.has(questionKey)
   ) {
-    options.setGamesState({
+    options.setGamesOverlayState({
       ...options.closeGamesMenus(),
       message: "",
       error: "",

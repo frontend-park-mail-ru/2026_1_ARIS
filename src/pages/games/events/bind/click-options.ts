@@ -5,6 +5,7 @@ import {
   showGameHint,
   updateGamesPopoverViewportOffset,
 } from "../../shared/popovers";
+import { gameT } from "../../shared/i18n";
 import { setFloatingMenuAnchor } from "../../render/floating-menu";
 import type { BindGamesPageEventsOptions, GamesEventsRoot } from "./types";
 
@@ -87,7 +88,7 @@ export function getGamesClickEventOptions(
       handleReportQuestionError: (questionKey: string, error: unknown) => {
         options.reportingQuestionKeys.delete(questionKey);
         options.syncQuestionReportButtons(questionKey);
-        options.showAppToast(options.getErrorMessage(error, "Не удалось отправить жалобу."));
+        options.showAppToast(options.getErrorMessage(error, gameT("report.submitError")));
       },
       setQuestionReportOverlayState: options.setQuestionReportOverlayState,
     },

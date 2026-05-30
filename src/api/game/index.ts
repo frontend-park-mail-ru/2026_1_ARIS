@@ -9,3 +9,4 @@ export * from "./rooms";
 export * from "./chat";
 export * from "./ratings";
 export * from "./socket";
+export * from "./public-room";

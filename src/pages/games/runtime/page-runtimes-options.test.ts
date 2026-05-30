@@ -45,11 +45,12 @@ describe("games page runtimes options", () => {
     options.loadWaitingRoomsSilently();
     options.refreshCurrentRoomSilently();
     options.onFinalResultsExpired();
+    options.onQuestionDeadlineExpired();
 
     expect(setRecoveredRoom).toHaveBeenCalledWith(state.room);
     expect(setRoomSocketOpenState).toHaveBeenCalledWith(false);
     expect(loadWaitingRooms).toHaveBeenCalledWith({ preserveMessage: true, silent: true });
-    expect(refreshCurrentRoomSilently).toHaveBeenCalledOnce();
+    expect(refreshCurrentRoomSilently).toHaveBeenCalledTimes(2);
     expect(refreshGamesDom).toHaveBeenCalledOnce();
   });
 });

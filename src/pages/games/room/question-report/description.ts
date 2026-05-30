@@ -13,27 +13,36 @@ export function buildQuestionReportDescription(options: QuestionReportDescriptio
   const player = getCurrentRoomPlayer(room);
   const correctAnswer = getQuestionCorrectAnswer(question);
   const correctAnswerLabel =
-    correctAnswer === undefined ? "не раскрыт на момент жалобы" : formatStoredAnswer(correctAnswer);
+    correctAnswer === undefined
+      ? gameT("report.notRevealedAtReport")
+      : formatStoredAnswer(correctAnswer);
   const reporterAnswerLabel = getQuestionReporterAnswerLabel(room, question);
   const pageUrl = options.pageUrl ?? (typeof window === "undefined" ? "" : window.location.href);
   const reportedAt = options.reportedAt ?? new Date();
+  const unknown = gameT("report.unknown");
 
   return [
-    "Пользователь пожаловался на вопрос в игровой комнате.",
+    gameT("report.descriptionIntro"),
     "",
     gameT("room.reportGame", { game: getPrimaryGameCatalogItem().title, type: room.gameType }),
-    `Комната: ${room.title || "без названия"} (ID ${room.id})`,
-    `Статус комнаты: ${room.status}`,
-    `Вопрос: ${question.position || room.currentQuestionIndex || "неизвестно"} из ${room.questionCount}`,
-    `ID вопроса: ${question.id || "неизвестно"}`,
-    `Текст вопроса: ${question.text}`,
-    `Правильный ответ: ${correctAnswerLabel}`,
-    `Ответ пользователя: ${reporterAnswerLabel}`,
+    gameT("report.roomLine", { title: room.title || gameT("report.roomUntitled"), id: room.id }),
+    gameT("report.roomStatus", { status: room.status }),
+    gameT("report.questionPosition", {
+      position: question.position || room.currentQuestionIndex || unknown,
+      total: room.questionCount,
+    }),
+    gameT("report.questionId", { id: question.id || unknown }),
+    gameT("report.questionText", { text: question.text }),
+    gameT("report.correctAnswer", { answer: correctAnswerLabel }),
+    gameT("report.reporterAnswer", { answer: reporterAnswerLabel }),
     "",
-    `Пожаловался: ${player?.name || user?.firstName || "Пользователь"} (profileId ${player?.profileId || user?.id || "неизвестно"})`,
-    user?.login ? `Логин: ${user.login}` : "",
-    pageUrl ? `Страница: ${pageUrl}` : "",
-    `Время жалобы: ${reportedAt.toISOString()}`,
+    gameT("report.reporter", {
+      name: player?.name || user?.firstName || gameT("common.userFallback"),
+      profileId: player?.profileId || user?.id || unknown,
+    }),
+    user?.login ? gameT("report.login", { login: user.login }) : "",
+    pageUrl ? gameT("report.page", { url: pageUrl }) : "",
+    gameT("report.time", { time: reportedAt.toISOString() }),
   ]
     .filter(Boolean)
     .join("\n");

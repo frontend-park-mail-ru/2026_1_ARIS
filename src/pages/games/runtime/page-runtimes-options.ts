@@ -78,6 +78,7 @@ export function createGamesPageRuntimesOptions(
     refreshCurrentRoomSilently: params.runtimeRefs.refreshCurrentRoomSilentlyRef,
     formatScore: formatRoundPointValue,
     onFinalResultsExpired: params.refreshGamesDom,
+    onQuestionDeadlineExpired: params.runtimeRefs.refreshCurrentRoomSilentlyRef,
   };
 }
 

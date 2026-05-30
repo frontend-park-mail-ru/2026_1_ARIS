@@ -1,5 +1,6 @@
 import type { GameRoom, GameRoomMessage } from "../../../../../api/games";
 import { createRoomSystemMessage } from "../../../chat/model";
+import { gameT } from "../../../shared/i18n";
 import { getSystemPlayerFullName } from "./names";
 import {
   formatRoomModeLabel,
@@ -11,6 +12,20 @@ import {
 } from "./verbs";
 
 /**
+ * Возвращает игрока по profileId из предыдущей или новой версии комнаты.
+ */
+function getSystemPlayer(
+  previousRoom: GameRoom,
+  nextRoom: GameRoom,
+  profileId: string,
+): GameRoom["players"][number] | undefined {
+  return (
+    nextRoom.players.find((item) => item.profileId === profileId) ??
+    previousRoom.players.find((item) => item.profileId === profileId)
+  );
+}
+
+/**
  * Возвращает имя игрока по profileId из предыдущей или новой версии комнаты.
  */
 function getSystemPlayerLabel(
@@ -18,10 +33,8 @@ function getSystemPlayerLabel(
   nextRoom: GameRoom,
   profileId: string,
 ): string {
-  const player =
-    nextRoom.players.find((item) => item.profileId === profileId) ??
-    previousRoom.players.find((item) => item.profileId === profileId);
-  return getSystemPlayerFullName(player) || "Игрок";
+  const player = getSystemPlayer(previousRoom, nextRoom, profileId);
+  return getSystemPlayerFullName(player) || gameT("common.playerFallback");
 }
 
 /**
@@ -33,7 +46,7 @@ function pushRoomSettingsMessages(
   nextRoom: GameRoom,
 ): void {
   if (previousRoom.title !== nextRoom.title) {
-    messages.push(`Комната переименована: "${nextRoom.title}".`);
+    messages.push(gameT("system.roomRenamed", { title: nextRoom.title }));
   }
 
   if (
@@ -41,9 +54,7 @@ function pushRoomSettingsMessages(
     nextRoom.createdByProfileId &&
     previousRoom.createdByProfileId !== nextRoom.createdByProfileId
   ) {
-    const previousAdmin =
-      nextRoom.players.find((item) => item.profileId === previousRoom.createdByProfileId) ??
-      previousRoom.players.find((item) => item.profileId === previousRoom.createdByProfileId);
+    const previousAdmin = getSystemPlayer(previousRoom, nextRoom, previousRoom.createdByProfileId);
     const previousAdminLabel = getSystemPlayerLabel(
       previousRoom,
       nextRoom,
@@ -55,14 +66,18 @@ function pushRoomSettingsMessages(
       nextRoom.createdByProfileId,
     );
     messages.push(
-      `${previousAdminLabel} ${getAssignedAdminVerb(previousAdmin)} нового администратора: ${nextAdminLabel}.`,
+      gameT("system.adminAssigned", {
+        previous: previousAdminLabel,
+        verb: getAssignedAdminVerb(previousAdmin),
+        next: nextAdminLabel,
+      }),
     );
   }
 
   if (!previousRoom.hasPassword && nextRoom.hasPassword) {
-    messages.push("Пароль комнаты установлен.");
+    messages.push(gameT("system.passwordSet"));
   } else if (previousRoom.hasPassword && !nextRoom.hasPassword) {
-    messages.push("Пароль комнаты удален.");
+    messages.push(gameT("system.passwordRemoved"));
   } else if (
     previousRoom.hasPassword &&
     nextRoom.hasPassword &&
@@ -70,11 +85,11 @@ function pushRoomSettingsMessages(
     nextRoom.password &&
     previousRoom.password !== nextRoom.password
   ) {
-    messages.push("Пароль комнаты изменен.");
+    messages.push(gameT("system.passwordChanged"));
   }
 
   if (previousRoom.isRanked !== nextRoom.isRanked) {
-    messages.push(`Тип игры изменен: "${formatRoomModeLabel(nextRoom.isRanked)}".`);
+    messages.push(gameT("system.modeChanged", { mode: formatRoomModeLabel(nextRoom.isRanked) }));
   }
 }
 
@@ -91,13 +106,23 @@ function pushRoomRosterMessages(
 ): void {
   nextRoom.players.forEach((player) => {
     if (!player.profileId || previousPlayersByProfile.has(player.profileId)) return;
-    messages.push(`${getRoomJoinLeavePlayerLabel(player)} ${getJoinedVerb(player)} к комнате.`);
+    messages.push(
+      gameT("system.joined", {
+        player: getRoomJoinLeavePlayerLabel(player),
+        verb: getJoinedVerb(player),
+      }),
+    );
   });
 
   previousRoom.players.forEach((player) => {
     if (!player.profileId || nextPlayersByProfile.has(player.profileId)) return;
     if (consumeDisconnectRemoval?.(nextRoom.id, player.profileId)) return;
-    messages.push(`${getRoomJoinLeavePlayerLabel(player)} ${getLeftVerb(player)} из комнаты.`);
+    messages.push(
+      gameT("system.left", {
+        player: getRoomJoinLeavePlayerLabel(player),
+        verb: getLeftVerb(player),
+      }),
+    );
   });
 }
 
@@ -111,6 +136,7 @@ function pushRoomReadyMessages(
   roomRosterChanged: boolean,
 ): void {
   if (previousRoom.status !== "waiting" || nextRoom.status !== "waiting") return;
+  if (previousRoom.isPublicLobby || nextRoom.isPublicLobby) return;
 
   const suppressForcedNotReady = previousRoom.isRanked !== nextRoom.isRanked || roomRosterChanged;
   const readyCount = nextRoom.players.filter((player) => player.isReady).length;
@@ -125,7 +151,12 @@ function pushRoomReadyMessages(
     const playerLabel = getSystemPlayerLabel(previousRoom, nextRoom, player.profileId);
     const readySuffix = player.isReady ? ` (${readyCount}/${readyTotal})` : "";
     messages.push(
-      `${playerLabel} ${getReadyVerb(player)} статус "${player.isReady ? "Готов" : "Не готов"}"${readySuffix}.`,
+      gameT("system.readyChanged", {
+        player: playerLabel,
+        verb: getReadyVerb(player),
+        status: player.isReady ? gameT("room.ready") : gameT("room.notReady"),
+        suffix: readySuffix,
+      }),
     );
   });
 }
@@ -170,7 +201,7 @@ export function getRoomSystemMessages(
   pushRoomReadyMessages(messages, previousRoom, nextRoom, roomRosterChanged);
 
   if (previousRoom.status === "waiting" && nextRoom.status === "active") {
-    messages.push("Игра начинается.");
+    messages.push(gameT("system.gameStarting"));
   }
 
   return messages.map((message) => createRoomSystemMessage(nextRoom.id, message));

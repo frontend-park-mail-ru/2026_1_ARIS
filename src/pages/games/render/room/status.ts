@@ -1,6 +1,7 @@
 import type { GameRoom } from "../../../../api/games";
 import { escapeHtml } from "../../../../utils/avatar";
 import { areRoomPlayersReady, getRoomMaxPlayers } from "../../room/selectors";
+import { gameT } from "../../shared/i18n";
 
 export type RenderParticipantsStatusOptions = {
   room: GameRoom;
@@ -16,7 +17,10 @@ export type RenderReadyPlayersStatusOptions = {
  * Форматирует счётчик участников комнаты.
  */
 export function formatParticipants(room: GameRoom): string {
-  return `Участников в комнате: ${room.players.length}/${getRoomMaxPlayers(room)}`;
+  return gameT("room.participantsCount", {
+    current: room.players.length,
+    max: getRoomMaxPlayers(room),
+  });
 }
 
 /**
@@ -25,7 +29,7 @@ export function formatParticipants(room: GameRoom): string {
 export function renderParticipantsStatus(options: RenderParticipantsStatusOptions): string {
   const { room, hintOpen } = options;
   const hasEnoughPlayers = room.players.length >= 2;
-  const hintText = "Минимум: 2 игрока";
+  const hintText = gameT("room.minPlayersHint");
 
   return `
     <span class="games-ready-status">
@@ -59,7 +63,7 @@ export function renderParticipantsStatus(options: RenderParticipantsStatusOption
  */
 export function formatReadyPlayers(room: GameRoom): string {
   const readyCount = room.players.filter((player) => player.isReady).length;
-  return `Готовы: ${readyCount}/${room.players.length}`;
+  return gameT("room.readyCount", { ready: readyCount, total: room.players.length });
 }
 
 /**
@@ -68,9 +72,7 @@ export function formatReadyPlayers(room: GameRoom): string {
 export function renderReadyPlayersStatus(options: RenderReadyPlayersStatusOptions): string {
   const { room, hintOpen } = options;
   const allPlayersReady = areRoomPlayersReady(room);
-  const hintText = allPlayersReady
-    ? "Все игроки готовы к игре"
-    : "Один или несколько игроков не готовы к игре";
+  const hintText = allPlayersReady ? gameT("room.readyAll") : gameT("room.readyNotAll");
 
   return `
     <span class="games-ready-status">

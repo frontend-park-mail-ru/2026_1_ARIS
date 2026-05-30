@@ -41,6 +41,7 @@ describe("games room entry form actions", () => {
       <label class="games-field"><input name="maxPlayers" value="3" data-games-number-field><span data-games-field-error></span></label>
       <label class="games-field"><input name="questionCount" value="5" data-games-number-field><span data-games-field-error></span></label>
       <label class="games-field"><input name="answerTimeoutSec" value="30" data-games-number-field><span data-games-field-error></span></label>
+      <label class="games-field"><input name="roundPauseSec" value="6" data-games-number-field><span data-games-field-error></span></label>
       <input name="password" value="secret">
       <input type="checkbox" name="isRanked">
     `;
@@ -62,6 +63,7 @@ describe("games room entry form actions", () => {
           maxPlayers: 3,
           questionCount: 5,
           answerTimeoutSec: 30,
+          roundPauseSec: 6,
         }),
       }),
     );

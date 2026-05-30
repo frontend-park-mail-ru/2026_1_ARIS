@@ -29,14 +29,45 @@ import {
   getPostCommentRepliesBatch,
   likePostComment,
   unlikePostComment,
+  updatePostComment,
+  deletePostComment,
 } from "../../api/posts";
-import { renderCommentItemHtml, renderSingleCommentHtml } from "../../utils/post-comment-render";
+import {
+  COMMENT_PAGE_SIZE,
+  renderCommentItemsHtml,
+  renderCommentsListHtml,
+  renderMoreCommentsButtonHtml,
+  renderSingleCommentHtml,
+} from "../../utils/post-comment-render";
 import { getFeedMode, getSessionUser } from "../../state/session";
-import { escapeHtml, prepareAvatarLinks } from "../../utils/avatar";
+import { prepareAvatarLinks } from "../../utils/avatar";
 import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
+import {
+  completeFixedCommentBlockSkeleton,
+  restoreFixedCommentBlockSkeleton,
+  showFixedCommentBlockSkeleton,
+} from "../../utils/comment-block-loading";
+import {
+  bindFloatingCommentMenuActions,
+  cancelCommentEdit,
+  closeCommentMenus,
+  confirmCommentDelete,
+  finishCommentEdit,
+  openCommentEditForm,
+  positionCommentMenu,
+  setCommentEditError,
+} from "../../utils/comment-actions";
+import { waitForMinimumLoadingTime } from "../../utils/loading-state";
+import { showAppToast } from "../../utils/toast";
 import { t } from "../../state/i18n";
 
-import type { FeedMode, FeedAuthKey, FeedCenterResult, ActiveFeedState } from "./types";
+import type {
+  FeedMode,
+  FeedAuthKey,
+  FeedCenterResult,
+  ActiveFeedState,
+  FeedCachedPage,
+} from "./types";
 import {
   activeFeedState,
   feedItemsCache,
@@ -97,6 +128,16 @@ function getCurrentFeedMode(): FeedMode {
   return isFeedMode(mode) ? mode : "by-time";
 }
 
+function saveFeedPageCache(authKey: FeedAuthKey, modeKey: FeedMode, page: FeedCachedPage): void {
+  const cacheKey = `${authKey}:${modeKey}`;
+  feedItemsCache.set(cacheKey, page);
+  persistFeedItems(authKey, modeKey, page);
+}
+
+function pageFromActiveState(state: ActiveFeedState): FeedCachedPage {
+  return { items: state.items, nextCursor: state.nextCursor, hasMore: state.hasMore };
+}
+
 function formatStatCount(count: number): string {
   if (count >= 1000000) {
     return `${Math.floor(count / 1000000)}м`;
@@ -130,8 +171,7 @@ function updateActiveFeedPostLikeState(postId: string, likes: number, isLiked: b
   const authKey: FeedAuthKey = getSessionUser() ? "authorised" : "guest";
   const modeKey = getCurrentFeedMode();
 
-  feedItemsCache.set(`${authKey}:${modeKey}`, nextItems);
-  persistFeedItems(authKey, modeKey, nextItems);
+  saveFeedPageCache(authKey, modeKey, pageFromActiveState(nextState));
   setActiveFeedState(nextState);
 }
 
@@ -183,16 +223,13 @@ function updateActiveFeedPostCommentCount(postId: string, comments: number): voi
   const authKey: FeedAuthKey = getSessionUser() ? "authorised" : "guest";
   const modeKey = getCurrentFeedMode();
 
-  feedItemsCache.set(`${authKey}:${modeKey}`, nextItems);
-  persistFeedItems(authKey, modeKey, nextItems);
+  saveFeedPageCache(authKey, modeKey, pageFromActiveState(nextState));
   setActiveFeedState(nextState);
 }
 
 function syncFeedPostCommentCountUi(postId: string): void {
   const post = activeFeedState?.items.find((item) => item.id === postId);
-  if (!post) {
-    return;
-  }
+  if (!post) return;
 
   document
     .querySelectorAll<HTMLElement>(
@@ -201,6 +238,11 @@ function syncFeedPostCommentCountUi(postId: string): void {
     .forEach((count) => {
       count.textContent = formatStatCount(post.comments);
     });
+}
+
+function getFeedPostCommentTotal(postId: string, loadedCount: number): number {
+  const postCount = activeFeedState?.items.find((item) => item.id === postId)?.comments ?? 0;
+  return Math.max(postCount, loadedCount);
 }
 
 function isFeedCommentListEmpty(postId: string): boolean {
@@ -215,6 +257,62 @@ function findFeedPostCard(target: Element): HTMLElement | null {
   const card = target.closest<HTMLElement>("[data-post-id]");
 
   return card?.closest("[data-feed-list]") instanceof HTMLElement ? card : null;
+}
+
+function restoreFeedCommentForm(
+  postId: string,
+  text: string,
+  replyToId?: string,
+  placeholder?: string,
+): void {
+  const form = document.querySelector<HTMLFormElement>(
+    `[data-feed-comment-form="${CSS.escape(postId)}"]`,
+  );
+  const input = form?.querySelector<HTMLInputElement>(
+    `[data-feed-comment-input="${CSS.escape(postId)}"]`,
+  );
+  const submitBtn = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const errorEl = document.querySelector<HTMLElement>(
+    `[data-feed-comment-error="${CSS.escape(postId)}"]`,
+  );
+
+  if (form && replyToId) {
+    form.dataset.feedPostReplyTo = replyToId;
+  }
+
+  if (input) {
+    input.value = text;
+    if (placeholder) input.placeholder = placeholder;
+  }
+  if (submitBtn) submitBtn.disabled = false;
+
+  if (errorEl) {
+    errorEl.textContent = t("profile.commentSendError");
+    errorEl.hidden = false;
+  }
+}
+
+function resetFeedCommentForm(postId: string): void {
+  const form = document.querySelector<HTMLFormElement>(
+    `[data-feed-comment-form="${CSS.escape(postId)}"]`,
+  );
+  const input = form?.querySelector<HTMLInputElement>(
+    `[data-feed-comment-input="${CSS.escape(postId)}"]`,
+  );
+  const submitBtn = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const errorEl = document.querySelector<HTMLElement>(
+    `[data-feed-comment-error="${CSS.escape(postId)}"]`,
+  );
+
+  if (form) delete form.dataset.feedPostReplyTo;
+  if (input) {
+    input.value = "";
+    input.placeholder = t("profile.commentPlaceholder");
+  }
+  if (submitBtn) submitBtn.disabled = false;
+  if (errorEl) {
+    errorEl.hidden = true;
+  }
 }
 
 function bindFeedLikeActions(): void {
@@ -291,7 +389,10 @@ function bindFeedImageViewerActions(): void {
   isFeedImageViewerBound = true;
 }
 
-async function loadFeedComments(postId: string): Promise<void> {
+async function loadFeedComments(
+  postId: string,
+  options: { showLoading?: boolean } = {},
+): Promise<void> {
   const listEl = document.querySelector<HTMLElement>(
     `[data-feed-comment-list="${CSS.escape(postId)}"]`,
   );
@@ -299,9 +400,11 @@ async function loadFeedComments(postId: string): Promise<void> {
   if (loadingFeedCommentPostIds.has(postId)) return;
 
   loadingFeedCommentPostIds.add(postId);
-  listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
+  if (options.showLoading !== false) {
+    listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
+  }
   try {
-    const comments = await getPostComments(postId, { limit: 50 });
+    const comments = await getPostComments(postId, { limit: COMMENT_PAGE_SIZE, offset: 0 });
     if (!comments.length) {
       listEl.innerHTML = `<p class="profile-comment-empty">${t("profile.commentsEmpty")}</p>`;
       loadedFeedCommentPostIds.add(postId);
@@ -312,17 +415,9 @@ async function loadFeedComments(postId: string): Promise<void> {
       .map((comment) => comment.id);
     const firstReplies =
       parentIds.length > 0 ? await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 }) : {};
-    const post = activeFeedState?.items.find((item) => item.id === postId);
-    const headerText = t("profile.commentsHeader").replace(
-      "{{n}}",
-      String(post?.comments ?? comments.length),
-    );
+    const totalCount = getFeedPostCommentTotal(postId, comments.length);
 
-    listEl.innerHTML =
-      `<p class="profile-comment-header-label">${escapeHtml(headerText)}</p>` +
-      comments
-        .map((comment) => renderCommentItemHtml(comment, firstReplies[comment.id]?.[0]))
-        .join("");
+    listEl.innerHTML = renderCommentsListHtml(postId, comments, firstReplies, { totalCount });
 
     const expanded = expandedFeedReplies.get(postId);
     if (expanded && expanded.size > 0) {
@@ -346,6 +441,123 @@ async function loadFeedComments(postId: string): Promise<void> {
     loadedFeedCommentPostIds.delete(postId);
   } finally {
     loadingFeedCommentPostIds.delete(postId);
+  }
+}
+
+async function loadMoreFeedComments(postId: string, button: HTMLButtonElement): Promise<void> {
+  const listEl = document.querySelector<HTMLElement>(
+    `[data-feed-comment-list="${CSS.escape(postId)}"]`,
+  );
+  if (!listEl) return;
+
+  const offset = listEl.querySelectorAll("[data-comment-item]").length;
+  button.disabled = true;
+
+  try {
+    const comments = await getPostComments(postId, {
+      limit: COMMENT_PAGE_SIZE,
+      offset,
+    });
+
+    if (!comments.length) {
+      button.remove();
+      return;
+    }
+
+    const parentIds = comments
+      .filter((comment) => comment.repliesCount > 0)
+      .map((comment) => comment.id);
+    const firstReplies =
+      parentIds.length > 0 ? await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 }) : {};
+    const nextLoadedCount = offset + comments.length;
+    const totalCount = getFeedPostCommentTotal(postId, nextLoadedCount);
+
+    button.insertAdjacentHTML("beforebegin", renderCommentItemsHtml(comments, firstReplies));
+
+    const nextButtonHtml = renderMoreCommentsButtonHtml(postId, nextLoadedCount, totalCount);
+    if (nextButtonHtml) {
+      button.outerHTML = nextButtonHtml;
+    } else {
+      button.remove();
+    }
+  } catch (error) {
+    console.error("[feed] load more comments failed", error);
+    button.disabled = false;
+  }
+}
+
+async function reloadFeedCommentsAfterMutation(
+  postId: string,
+  options: { skeletonState?: Parameters<typeof completeFixedCommentBlockSkeleton>[0] } = {},
+): Promise<void> {
+  loadingFeedCommentPostIds.delete(postId);
+  loadedFeedCommentPostIds.delete(postId);
+  await loadFeedComments(postId, { showLoading: !options.skeletonState });
+  completeFixedCommentBlockSkeleton(options.skeletonState ?? null);
+}
+
+function openFeedCommentMenu(toggle: HTMLButtonElement): void {
+  const commentId = toggle.getAttribute("data-comment-menu-toggle") ?? "";
+  const postId = toggle.getAttribute("data-comment-menu-post") ?? "";
+  if (!commentId || !postId) return;
+
+  const menu = document.querySelector<HTMLElement>(
+    `[data-comment-menu="${CSS.escape(commentId)}"][data-comment-menu-post="${CSS.escape(postId)}"]`,
+  );
+  const isExpanded = toggle.getAttribute("aria-expanded") === "true";
+  closeCommentMenus(document);
+
+  if (!menu || isExpanded) return;
+
+  const floatingMenu = menu.cloneNode(true);
+  if (!(floatingMenu instanceof HTMLElement)) return;
+
+  floatingMenu.dataset.commentMenuFloating = "";
+  positionCommentMenu(floatingMenu, toggle);
+  document.body.appendChild(floatingMenu);
+  bindFloatingCommentMenuActions(floatingMenu, document, {
+    onEdit: (targetPostId, targetCommentId) => {
+      openCommentEditForm(document, targetPostId, targetCommentId);
+    },
+    onDelete: (targetPostId, targetCommentId, removedCount) => {
+      void deleteFeedComment(targetPostId, targetCommentId, removedCount);
+    },
+  });
+  floatingMenu.hidden = false;
+  toggle.setAttribute("aria-expanded", "true");
+}
+
+async function deleteFeedComment(
+  postId: string,
+  commentId: string,
+  removedCount: number,
+): Promise<void> {
+  if (!(await confirmCommentDelete())) return;
+
+  const commentsEl = document.querySelector<HTMLElement>(
+    `[data-feed-post-comments="${CSS.escape(postId)}"]`,
+  );
+  const skeletonStartedAt = Date.now();
+  const skeletonState = commentsEl
+    ? showFixedCommentBlockSkeleton({
+        commentsEl,
+        postId,
+        listAttribute: "data-feed-comment-list",
+      })
+    : null;
+
+  try {
+    await deletePostComment(postId, commentId);
+    await waitForMinimumLoadingTime(skeletonStartedAt);
+    const currentCount = activeFeedState?.items.find((item) => item.id === postId)?.comments ?? 0;
+    updateActiveFeedPostCommentCount(postId, Math.max(0, currentCount - removedCount));
+    syncFeedPostCommentCountUi(postId);
+    expandedFeedReplies.get(postId)?.delete(commentId);
+    await reloadFeedCommentsAfterMutation(postId, { skeletonState });
+  } catch (error) {
+    console.error("[feed] comment delete failed", error);
+    restoreFixedCommentBlockSkeleton(skeletonState);
+    showAppToast(t("profile.commentDeleteError"));
   }
 }
 
@@ -375,7 +587,34 @@ function bindFeedCommentActions(): void {
   document.addEventListener("click", (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const commentMenuToggle = target.closest("[data-comment-menu-toggle]");
+    if (commentMenuToggle instanceof HTMLButtonElement) {
+      if (!(commentMenuToggle.closest("[data-feed-list]") instanceof HTMLElement)) return;
+      openFeedCommentMenu(commentMenuToggle);
+      return;
+    }
+
+    if (!target.closest("[data-comment-menu]") && !target.closest("[data-comment-menu-toggle]")) {
+      closeCommentMenus(document);
+    }
+
     if (!(target.closest("[data-feed-list]") instanceof HTMLElement)) return;
+
+    const commentEditCancel = target.closest("[data-comment-edit-cancel]");
+    if (commentEditCancel instanceof HTMLButtonElement) {
+      const commentId = commentEditCancel.getAttribute("data-comment-edit-cancel") ?? "";
+      if (commentId) cancelCommentEdit(document, commentId);
+      return;
+    }
+
+    const showMoreCommentsBtn = target.closest("[data-show-more-comments]");
+    if (showMoreCommentsBtn instanceof HTMLButtonElement) {
+      const postId = showMoreCommentsBtn.getAttribute("data-show-more-comments-post") ?? "";
+      if (!postId || showMoreCommentsBtn.disabled) return;
+      void loadMoreFeedComments(postId, showMoreCommentsBtn);
+      return;
+    }
 
     const showRepliesBtn = target.closest("[data-show-replies]");
     if (showRepliesBtn instanceof HTMLButtonElement) {
@@ -416,16 +655,11 @@ function bindFeedCommentActions(): void {
           const isNowLiked = updated.isLiked;
           commentLikeBtn.setAttribute("aria-pressed", String(isNowLiked));
           commentLikeBtn.classList.toggle("profile-comment__like--liked", isNowLiked);
-          const countSpan = commentLikeBtn.querySelector("span:last-child");
-          if (
-            countSpan &&
-            countSpan !== commentLikeBtn.querySelector(".profile-comment__like-icon")
-          ) {
-            countSpan.textContent = updated.likes > 0 ? String(updated.likes) : "";
-          } else if (updated.likes > 0) {
-            const span = document.createElement("span");
-            span.textContent = String(updated.likes);
-            commentLikeBtn.appendChild(span);
+          const countSpan = commentLikeBtn.querySelector<HTMLElement>(
+            ".profile-comment__like-count",
+          );
+          if (countSpan) {
+            countSpan.textContent = String(Math.max(0, updated.likes));
           }
         })
         .catch((error: unknown) => {
@@ -487,6 +721,35 @@ function bindFeedCommentActions(): void {
   document.addEventListener("submit", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLFormElement)) return;
+
+    const editCommentId = target.getAttribute("data-comment-edit-form");
+    if (editCommentId) {
+      const postId = target.getAttribute("data-comment-edit-post") ?? "";
+      if (!postId) return;
+
+      event.preventDefault();
+      const input = target.querySelector<HTMLTextAreaElement>(
+        `[data-comment-edit-input="${CSS.escape(editCommentId)}"]`,
+      );
+      const submitBtn = target.querySelector<HTMLButtonElement>('button[type="submit"]');
+      const text = input?.value.trim() ?? "";
+      if (!input || !text) return;
+
+      if (submitBtn) submitBtn.disabled = true;
+      void updatePostComment(postId, editCommentId, text)
+        .then((updated) => {
+          finishCommentEdit(document, editCommentId, updated.text);
+        })
+        .catch((error: unknown) => {
+          console.error("[feed] comment update failed", error);
+          setCommentEditError(document, editCommentId, t("profile.commentEditError"));
+        })
+        .finally(() => {
+          if (submitBtn) submitBtn.disabled = false;
+        });
+      return;
+    }
+
     const postId = target.dataset.feedCommentForm;
     if (!postId) return;
 
@@ -507,39 +770,71 @@ function bindFeedCommentActions(): void {
 
     const replyToId = target.dataset.feedPostReplyTo?.trim();
     const commentPayload = replyToId ? { text, parentCommentId: Number(replyToId) } : { text };
+    const inputPlaceholder = input.placeholder;
+    const skeletonStartedAt = Date.now();
+    const commentsEl = target.closest<HTMLElement>(
+      `[data-feed-post-comments="${CSS.escape(postId)}"]`,
+    );
+    const skeletonState = commentsEl
+      ? showFixedCommentBlockSkeleton({
+          commentsEl,
+          postId,
+          listAttribute: "data-feed-comment-list",
+        })
+      : null;
 
     void createPostComment(postId, commentPayload)
-      .then(() => {
-        input.value = "";
-        delete target.dataset.feedPostReplyTo;
-        input.placeholder = t("profile.commentPlaceholder");
-        loadedFeedCommentPostIds.delete(postId);
-        void loadFeedComments(postId);
-
+      .then(async () => {
+        await waitForMinimumLoadingTime(skeletonStartedAt);
         const currentCount =
           activeFeedState?.items.find((item) => item.id === postId)?.comments ?? 0;
         updateActiveFeedPostCommentCount(postId, currentCount + 1);
         syncFeedPostCommentCountUi(postId);
-      })
-      .catch((error: unknown) => {
-        console.error("[feed] comment submit failed", error);
-        if (errorEl) {
-          errorEl.textContent = t("profile.commentSendError");
-          errorEl.hidden = false;
+        if (replyToId) {
+          if (!expandedFeedReplies.has(postId)) expandedFeedReplies.set(postId, new Set());
+          expandedFeedReplies.get(postId)?.add(replyToId);
         }
+        await reloadFeedCommentsAfterMutation(postId, { skeletonState });
+        resetFeedCommentForm(postId);
+      })
+      .catch(async (error: unknown) => {
+        await waitForMinimumLoadingTime(skeletonStartedAt);
+        console.error("[feed] comment submit failed", error);
+        restoreFixedCommentBlockSkeleton(skeletonState);
+        restoreFeedCommentForm(postId, text, replyToId, inputPlaceholder);
       })
       .finally(() => {
         if (submitBtn) submitBtn.disabled = false;
       });
   });
 
+  window.addEventListener(
+    "scroll",
+    () => {
+      const openMenu = document.querySelector<HTMLElement>("[data-comment-menu]:not([hidden])");
+      if (!openMenu) return;
+
+      const commentId = openMenu.getAttribute("data-comment-menu");
+      const postId = openMenu.getAttribute("data-comment-menu-post");
+      const toggle =
+        commentId && postId
+          ? document.querySelector<HTMLButtonElement>(
+              `[data-feed-list] [data-comment-menu-toggle="${CSS.escape(commentId)}"][data-comment-menu-post="${CSS.escape(postId)}"]`,
+            )
+          : null;
+      if (toggle) positionCommentMenu(openMenu, toggle);
+    },
+    { passive: true },
+  );
+
   isFeedCommentBound = true;
 }
 
-function getSortedFeedItems(items: PostcardModel[]): PostcardModel[] {
+function getOrderedFeedItems(items: PostcardModel[]): PostcardModel[] {
   if (getCurrentFeedMode() === "for-you") {
-    return items;
+    return [...items];
   }
+
   return [...items].sort((a, b) => new Date(b.timeRaw).getTime() - new Date(a.timeRaw).getTime());
 }
 
@@ -549,7 +844,7 @@ async function buildGuestFeedPage(signal?: AbortSignal): Promise<FeedPageResult>
   const response = await getPublicFeed({ limit: 20, ...(signal ? { signal } : {}) });
   const mapped = mapFeedResponse(response);
   return {
-    items: getSortedFeedItems(mapped.items),
+    items: getOrderedFeedItems(mapped.items),
     nextCursor: mapped.nextCursor,
     hasMore: mapped.hasMore,
   };
@@ -561,7 +856,7 @@ async function buildAuthorisedFeedPage(signal?: AbortSignal): Promise<FeedPageRe
     const response = await getFeed({ limit: 20, mode, ...(signal ? { signal } : {}) });
     const mapped = mapFeedResponse(response);
     return {
-      items: getSortedFeedItems(mapped.items),
+      items: getOrderedFeedItems(mapped.items),
       nextCursor: mapped.nextCursor,
       hasMore: mapped.hasMore,
     };
@@ -588,25 +883,34 @@ async function getCachedFeedData(
   const cacheKey = `${authKey}:${modeKey}`;
 
   // Если в памяти есть свежие данные в пределах TTL, сразу возвращаем их без сетевого запроса.
-  const cachedItems = feedItemsCache.get(cacheKey);
-  if (cachedItems?.length) {
-    return { kind: "items", items: cachedItems, nextCursor: "", hasMore: false };
+  const cachedPage = feedItemsCache.get(cacheKey);
+  if (cachedPage?.items.length) {
+    return {
+      kind: "items",
+      items: cachedPage.items,
+      nextCursor: cachedPage.nextCursor,
+      hasMore: cachedPage.hasMore,
+    };
   }
 
-  const persistedItems = readPersistedFeedItems(authKey, modeKey);
+  const persistedPage = readPersistedFeedItems(authKey, modeKey);
 
   try {
     const page = isAuthorised
       ? await buildAuthorisedFeedPage(signal)
       : await buildGuestFeedPage(signal);
-    feedItemsCache.set(cacheKey, page.items);
-    persistFeedItems(authKey, modeKey, page.items);
+    saveFeedPageCache(authKey, modeKey, page);
     return { kind: "items", items: page.items, nextCursor: page.nextCursor, hasMore: page.hasMore };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
-    if (persistedItems?.length) {
-      feedItemsCache.set(cacheKey, persistedItems);
-      return { kind: "items", items: persistedItems, nextCursor: "", hasMore: false };
+    if (persistedPage?.items.length) {
+      feedItemsCache.set(cacheKey, persistedPage);
+      return {
+        kind: "items",
+        items: persistedPage.items,
+        nextCursor: persistedPage.nextCursor,
+        hasMore: persistedPage.hasMore,
+      };
     }
     if (!isOfflineNetworkError(error)) throw error;
     return { kind: "html", html: renderOfflineFeedFallback(isAuthorised) };
@@ -657,7 +961,7 @@ export async function prefetchFeed(): Promise<void> {
   const authKey: FeedAuthKey = isAuthorised ? "authorised" : "guest";
   const modeKey = getCurrentFeedMode();
   const cacheKey = `${authKey}:${modeKey}`;
-  if (feedItemsCache.get(cacheKey)?.length) return;
+  if (feedItemsCache.get(cacheKey)?.items.length) return;
   await getCachedFeedData(isAuthorised);
 }
 
@@ -665,6 +969,10 @@ async function fetchNextFeedPage(): Promise<void> {
   if (!activeFeedState?.hasMore) return;
 
   const cursor = activeFeedState.nextCursor;
+  if (!cursor) {
+    setActiveFeedState({ ...activeFeedState, hasMore: false });
+    return;
+  }
   const mode = getCurrentFeedMode();
   const isAuthorised = getSessionUser() !== null;
   const authKey: FeedAuthKey = isAuthorised ? "authorised" : "guest";
@@ -674,16 +982,18 @@ async function fetchNextFeedPage(): Promise<void> {
       ? await getFeed({ cursor, limit: 20, mode })
       : await getPublicFeed({ cursor, limit: 20 });
     const mapped = mapFeedResponse(response);
-    const allItems = [...activeFeedState.items, ...mapped.items];
+    const allItems = [...activeFeedState.items, ...getOrderedFeedItems(mapped.items)];
 
-    feedItemsCache.set(`${authKey}:${mode}`, allItems);
-    persistFeedItems(authKey, mode, allItems);
-
-    setActiveFeedState({
-      ...activeFeedState,
+    const nextPage: FeedCachedPage = {
       items: allItems,
       nextCursor: mapped.nextCursor,
       hasMore: mapped.hasMore,
+    };
+    saveFeedPageCache(authKey, mode, nextPage);
+
+    setActiveFeedState({
+      ...activeFeedState,
+      ...nextPage,
     });
 
     appendMoreFeedCards();
@@ -691,6 +1001,7 @@ async function fetchNextFeedPage(): Promise<void> {
     if (!(error instanceof Error && error.name === "AbortError")) {
       console.error("[feed] fetchNextFeedPage failed", error);
     }
+    throw error;
   }
 }
 
@@ -739,7 +1050,9 @@ function initViewTracking(): void {
                   position: pos >= 0 ? pos : 0,
                   source: "feed",
                 };
-                void postFeedEvents([event]);
+                void postFeedEvents([event]).catch((error: unknown) => {
+                  console.info("[feed] view event failed", error);
+                });
               }, 1000),
             );
           }

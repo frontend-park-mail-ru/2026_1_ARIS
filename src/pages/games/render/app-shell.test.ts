@@ -40,4 +40,20 @@ describe("games app shell render", () => {
     expect(html).toContain("<nav>Players</nav>");
     expect(html).toContain("<aside>Chat</aside>");
   });
+
+  it("рендерит обычный layout для публичной комнаты ожидания", () => {
+    const html = renderGamesPageShell({
+      room: { status: "waiting", isPublicLobby: true } as GameRoom,
+      shell: "<section>Public lobby</section>",
+      playersRail: "<nav>Players</nav>",
+      roomChat: "<aside>Chat</aside>",
+    });
+
+    expect(html).toContain("app-layout--content-wide");
+    expect(html).toContain("<aside>Sidebar</aside>");
+    expect(html).toContain("<section>Public lobby</section>");
+    expect(html).not.toContain("app-layout--game-room");
+    expect(html).not.toContain("data-games-room-players-rail");
+    expect(html).not.toContain("<nav>Players</nav>");
+  });
 });

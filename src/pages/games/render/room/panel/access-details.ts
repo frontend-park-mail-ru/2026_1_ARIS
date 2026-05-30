@@ -1,5 +1,7 @@
 import type { GameRoom } from "../../../../../api/games";
+import { buildPublicGameRoomUrl } from "../../../../../api/games";
 import { escapeHtml } from "../../../../../utils/avatar";
+import { gameT } from "../../../shared/i18n";
 import type { RenderRoomPanelOptions } from "./types";
 
 /** Рендерит карточку названия комнаты и переключатель ranked-режима. */
@@ -7,9 +9,9 @@ function renderRoomTitleDetails(options: RenderRoomPanelOptions): string {
   const { roomTitle, titleMenuOpen, rankedToggle } = options;
   return `
     <div class="games-room-details">
-      <section class="games-room-detail-card games-room-detail-card--stacked" aria-label="Название комнаты">
+      <section class="games-room-detail-card games-room-detail-card--stacked" aria-label="${escapeHtml(gameT("room.titleAria"))}">
         <div class="games-room-detail-card__content">
-          <span class="games-room-detail-card__label">Название комнаты:</span>
+          <span class="games-room-detail-card__label">${escapeHtml(gameT("room.titleLabel"))}</span>
           <span class="games-room-detail-card__value">${escapeHtml(roomTitle || "—")}</span>
         </div>
         <div class="games-access-menu">
@@ -17,7 +19,7 @@ function renderRoomTitleDetails(options: RenderRoomPanelOptions): string {
             type="button"
             class="games-menu-toggle"
             data-games-title-menu-toggle
-            aria-label="Действия с названием комнаты"
+            aria-label="${escapeHtml(gameT("room.titleActionsAria"))}"
             aria-expanded="${titleMenuOpen ? "true" : "false"}"
           >
             <span></span><span></span><span></span>
@@ -32,24 +34,24 @@ function renderRoomTitleDetails(options: RenderRoomPanelOptions): string {
 /** Рендерит карточку кода приглашения. */
 function renderInviteCodeDetails(room: GameRoom): string {
   return `
-    <section class="games-room-detail-card games-room-detail-card--stacked" aria-label="Код приглашения">
+    <section class="games-room-detail-card games-room-detail-card--stacked" aria-label="${escapeHtml(gameT("room.inviteCodeAria"))}">
       <div
         class="games-room-detail-card__copy"
         data-games-copy-invite="${escapeHtml(room.inviteCode || "")}"
         role="button"
         tabindex="0"
-        aria-label="Скопировать код приглашения"
+        aria-label="${escapeHtml(gameT("room.inviteCodeCopyAria"))}"
       >
         <span class="games-room-detail-card__content">
           <span class="games-room-detail-card__label-row">
-            <span class="games-room-detail-card__label">Код приглашения:</span>
+            <span class="games-room-detail-card__label">${escapeHtml(gameT("room.inviteCodeLabel"))}</span>
             <span class="games-room-detail-card__hint">
               <button
                 type="button"
                 class="games-catalog-card__hint-button games-field-hint-button"
                 data-games-catalog-hint
                 aria-controls="games-room-invite-code-hint"
-                aria-label="Показать подсказку про код приглашения"
+                aria-label="${escapeHtml(gameT("room.inviteCodeHintAria"))}"
                 aria-expanded="false"
               >
                 ?
@@ -60,7 +62,7 @@ function renderInviteCodeDetails(room: GameRoom): string {
                 popover="manual"
                 hidden
               >
-                Шестизначный код, по которому игроки могут попасть в вашу комнату из главного меню. Если установлен пароль, они должны его ввести.
+                ${escapeHtml(gameT("room.inviteCodeHint"))}
               </span>
             </span>
           </span>
@@ -71,21 +73,42 @@ function renderInviteCodeDetails(room: GameRoom): string {
   `;
 }
 
+/** Рендерит карточку публичной ссылки на презентационную комнату. */
+function renderPublicInviteDetails(room: GameRoom): string {
+  const url = room.inviteCode ? buildPublicGameRoomUrl(room.inviteCode) : "";
+  return `
+    <section class="games-room-detail-card games-room-detail-card--stacked games-room-detail-card--public-link" aria-label="${escapeHtml(gameT("room.publicLinkAria"))}">
+      <div
+        class="games-room-detail-card__copy"
+        data-games-copy-invite="${escapeHtml(url)}"
+        role="button"
+        tabindex="0"
+        aria-label="${escapeHtml(gameT("room.publicLinkCopyAria"))}"
+      >
+        <span class="games-room-detail-card__content">
+          <span class="games-room-detail-card__label">${escapeHtml(gameT("room.publicLinkLabel"))}</span>
+          <strong class="games-room-detail-card__code">${escapeHtml(url || "—")}</strong>
+        </span>
+      </div>
+    </section>
+  `;
+}
+
 /** Рендерит карточку пароля комнаты. */
 function renderPasswordDetails(options: RenderRoomPanelOptions): string {
   const { roomPasswordDisplay, canDisbandRoom, passwordMenuOpen } = options;
   return `
-    <section class="games-room-detail-card games-room-detail-card--stacked" aria-label="Пароль комнаты">
+    <section class="games-room-detail-card games-room-detail-card--stacked" aria-label="${escapeHtml(gameT("room.passwordAria"))}">
       <div class="games-room-detail-card__content">
         <span class="games-room-detail-card__label-row">
-          <span class="games-room-detail-card__label">Пароль:</span>
+          <span class="games-room-detail-card__label">${escapeHtml(gameT("room.passwordLabel"))}</span>
           <span class="games-room-detail-card__hint">
             <button
               type="button"
               class="games-catalog-card__hint-button games-field-hint-button"
               data-games-catalog-hint
               aria-controls="games-room-password-hint"
-              aria-label="Показать подсказку про пароль комнаты"
+              aria-label="${escapeHtml(gameT("room.passwordHintAria"))}"
               aria-expanded="false"
             >
               ?
@@ -96,7 +119,7 @@ function renderPasswordDetails(options: RenderRoomPanelOptions): string {
               popover="manual"
               hidden
             >
-              Игроки должны ввести этот пароль при входе в комнату, даже если они заходят по коду приглашения.
+              ${escapeHtml(gameT("room.passwordHint"))}
             </span>
           </span>
         </span>
@@ -110,7 +133,7 @@ function renderPasswordDetails(options: RenderRoomPanelOptions): string {
                 type="button"
                 class="games-menu-toggle"
                 data-games-password-menu-toggle
-                aria-label="Действия с паролем комнаты"
+                aria-label="${escapeHtml(gameT("room.passwordActionsAria"))}"
                 aria-expanded="${passwordMenuOpen ? "true" : "false"}"
               >
                 <span></span><span></span><span></span>
@@ -126,6 +149,14 @@ function renderPasswordDetails(options: RenderRoomPanelOptions): string {
 /** Рендерит блок доступа к комнате: название, тип, invite-код и пароль. */
 export function renderRoomAccessDetails(options: RenderRoomPanelOptions): string {
   if (options.room.status !== "waiting") return "";
+  if (options.room.isPublicLobby) {
+    return `
+      <div class="games-room-actions games-room-actions--full">
+        ${renderPublicInviteDetails(options.room)}
+      </div>
+    `;
+  }
+
   return `
     ${renderRoomTitleDetails(options)}
     <div class="games-room-actions">

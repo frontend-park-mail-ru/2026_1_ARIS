@@ -9,6 +9,8 @@ import { getInlineRoomLoadingPatch } from "../state/action-patches";
 import { getRoomUpdatePatch } from "../state/room-update-patches";
 import type { GamesPageState } from "../state/store";
 import { canCurrentPlayerForceResume, canCurrentPlayerPause } from "../room/selectors";
+import { playPublicLobbyStartSound, primePublicLobbyStartSound } from "../room/public-lobby-sound";
+import { gameT } from "../shared/i18n";
 
 type SetGamesState = (patch: Partial<GamesPageState>) => void;
 
@@ -24,6 +26,7 @@ export type ForceResumeCurrentRoomOptions = {
 
 export type StartCurrentRoomOptions = {
   room: GameRoom | null;
+  currentProfileId: string;
   currentMessages: GameRoomMessage[];
   getSystemMessages: (previousRoom: GameRoom, nextRoom: GameRoom) => GameRoomMessage[];
   mergeMessages: (existing: GameRoomMessage[], incoming: GameRoomMessage[]) => GameRoomMessage[];
@@ -42,7 +45,7 @@ export async function pauseCurrentRoom(options: PauseCurrentRoomOptions): Promis
   setGamesState({
     room: nextRoom,
     loading: false,
-    message: "Игра поставлена на паузу.",
+    message: gameT("room.paused"),
     error: "",
     errorTarget: "",
   });
@@ -62,7 +65,7 @@ export async function forceResumeCurrentRoom(
   setGamesState({
     room: nextRoom,
     loading: false,
-    message: "Голос за продолжение учтен.",
+    message: gameT("room.resumeVoteAccepted"),
     error: "",
     errorTarget: "",
   });
@@ -75,9 +78,11 @@ export async function startCurrentRoom(options: StartCurrentRoomOptions): Promis
   const { room, setGamesState } = options;
   if (!room) return;
 
+  primePublicLobbyStartSound(room, options.currentProfileId);
+
   setGamesState({
     loading: true,
-    message: "Запускаем игру...",
+    message: gameT("room.starting"),
     messageReturnRoomId: "",
     messageReturnInviteCode: "",
     messageReturnPassword: "",
@@ -87,6 +92,7 @@ export async function startCurrentRoom(options: StartCurrentRoomOptions): Promis
   });
 
   const nextRoom = await startGameRoom(room.id);
+  playPublicLobbyStartSound(room, nextRoom, options.currentProfileId);
   const systemMessages = options.getSystemMessages(room, nextRoom);
   setGamesState(
     getRoomUpdatePatch({

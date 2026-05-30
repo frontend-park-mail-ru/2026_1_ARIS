@@ -123,6 +123,7 @@ describe("room control actions", () => {
 
     await startCurrentRoom({
       room,
+      currentProfileId: "profile-1",
       currentMessages: [],
       getSystemMessages: () => [systemMessage],
       mergeMessages: (_existing, incoming) => incoming,

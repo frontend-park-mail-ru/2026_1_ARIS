@@ -6,10 +6,17 @@ import {
   formatStoredAnswer,
   getQuestionPositionLabel,
   getRoundResultRows,
+  isMissingRoundAnswer,
 } from "../../round/model";
 import { getPlayerFullName } from "../../room/profile/players";
+import { gameT } from "../../shared/i18n";
 import { renderResultsPlayerCell } from "./player-cell";
 import type { RenderFinalGameStageOptions } from "./types";
+
+/** Рендерит красный крестик для пустой ячейки результата. */
+function renderMissingResultCell(tag: "span" | "time" = "span"): string {
+  return `<${tag} class="games-results-table__missing" aria-label="${escapeHtml(gameT("results.noAnswer"))}">×</${tag}>`;
+}
 
 /** Рендерит архив ответов игроков по одному завершенному вопросу. */
 function renderFinalQuestionResults(
@@ -20,24 +27,37 @@ function renderFinalQuestionResults(
   const entries = getRoundResultRows(room, question);
 
   return `
-    <div class="games-results-table games-results-table--archive" aria-label="Ответы игроков">
+    <div class="games-results-table games-results-table--archive" aria-label="${escapeHtml(gameT("results.answerAxisAria"))}">
       <div class="games-results-table__head" aria-hidden="true">
         <span>#</span>
-        <span>Игрок</span>
-        <span>Ответ</span>
-        <span>Ошибка</span>
-        <span>Время</span>
+        <span>${escapeHtml(gameT("results.player"))}</span>
+        <span>${escapeHtml(gameT("results.answer"))}</span>
+        <span>${escapeHtml(gameT("results.error"))}</span>
+        <span>${escapeHtml(gameT("results.time"))}</span>
       </div>
       ${entries
         .map(({ player, answer, place }, index) => {
           const playerLabel = getPlayerFullName(player);
+          const hasAnswer = !isMissingRoundAnswer(answer);
           return `
-            <article class="games-results-table__row${index === 0 ? " games-results-table__row--winner" : ""}" style="--games-result-index: ${index}">
+            <article class="games-results-table__row${player.isMe ? " games-results-table__row--me" : ""}${index === 0 ? " games-results-table__row--winner" : ""}" style="--games-result-index: ${index}">
               <span class="games-results-table__rank">${place}</span>
               ${renderResultsPlayerCell(player, playerLabel, options)}
-              <span>${escapeHtml(formatStoredAnswer(answer?.answer ?? null))}</span>
-              <span>${escapeHtml(formatResultTableDistance(answer))}</span>
-              <time>${escapeHtml(formatDurationMs(answer?.responseTimeMs))}</time>
+              ${
+                hasAnswer
+                  ? `<span>${escapeHtml(formatStoredAnswer(answer?.answer ?? null))}</span>`
+                  : renderMissingResultCell()
+              }
+              ${
+                hasAnswer
+                  ? `<span>${escapeHtml(formatResultTableDistance(answer))}</span>`
+                  : renderMissingResultCell()
+              }
+              ${
+                hasAnswer && Number.isFinite(answer?.responseTimeMs)
+                  ? `<time>${escapeHtml(formatDurationMs(answer?.responseTimeMs))}</time>`
+                  : renderMissingResultCell("time")
+              }
             </article>
           `;
         })
@@ -54,9 +74,9 @@ export function renderFinalQuestionsArchive(
   const { room, renderQuestionActionsMenuButton } = options;
 
   return `
-    <section class="games-final-archive" aria-label="История вопросов и ответов">
+    <section class="games-final-archive" aria-label="${escapeHtml(gameT("results.questionsArchiveAria"))}">
       <header class="games-final-archive__header">
-        <h3>Вопросы и ответы</h3>
+        <h3>${escapeHtml(gameT("results.questionsArchiveTitle"))}</h3>
       </header>
       <div class="games-final-answers">
       ${completed
@@ -69,7 +89,7 @@ export function renderFinalQuestionsArchive(
             </header>
             <p>${escapeHtml(question.text)}</p>
             <p class="games-final-question__correct">
-              Правильный ответ: <strong>${escapeHtml(formatStoredAnswer(question.correctAnswer))}</strong>
+              ${escapeHtml(gameT("results.correctAnswer"))}: <strong>${escapeHtml(formatStoredAnswer(question.correctAnswer))}</strong>
             </p>
             ${renderFinalQuestionResults(room, question, options)}
           </article>

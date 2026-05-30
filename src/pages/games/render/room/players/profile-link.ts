@@ -1,4 +1,5 @@
 import { escapeHtml, renderAvatarMarkup } from "../../../../../utils/avatar";
+import { gameT } from "../../../shared/i18n";
 import type { GamePlayer, PlayerAvatarResolver, RenderGameProfileLinkOptions } from "./types";
 
 /**
@@ -39,7 +40,7 @@ export function renderPlayerProfileLink(
   player: GamePlayer,
   getPlayerAvatarUrl: PlayerAvatarResolver,
 ): string {
-  const playerName = player.name || player.username || "Игрок";
+  const playerName = player.name || player.username || gameT("common.playerFallback");
 
   return `
     <a href="${getRoomAuthorHref(player.profileId)}" class="games-player-profile" data-link>

@@ -1,5 +1,6 @@
 import type { GameRoom } from "../../../../../api/games";
 import { getRoomAuthor } from "../../../room/selectors";
+import { gameT } from "../../../shared/i18n";
 import type { PlayerAvatarResolver } from "./types";
 import { renderPlayerProfileLink } from "./profile-link";
 
@@ -15,7 +16,7 @@ export function renderLobbyCreator(
 
   return `
     <div class="games-lobby-creator">
-      <span class="games-lobby-creator__label">Администратор:</span>
+      <span class="games-lobby-creator__label">${gameT("room.adminLabel")}</span>
       ${renderPlayerProfileLink(creator, getPlayerAvatarUrl)}
     </div>
   `;

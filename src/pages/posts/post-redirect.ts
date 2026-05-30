@@ -18,7 +18,7 @@ export async function renderPostRedirect(
 
     let targetUrl: string;
     if (post.communityId && post.communityId > 0) {
-      targetUrl = `/communities/${encodeURIComponent(String(post.communityId))}?postId=${encodeURIComponent(postId)}`;
+      targetUrl = `/groups/${encodeURIComponent(String(post.communityId))}?postId=${encodeURIComponent(postId)}`;
     } else {
       targetUrl = `/profile/${encodeURIComponent(String(post.profileID))}?postId=${encodeURIComponent(postId)}`;
     }

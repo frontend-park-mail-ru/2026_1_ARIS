@@ -50,6 +50,26 @@ export type GamesPageDomAdapters = ReturnType<typeof createGamesPageDomAdapters>
  * Создаёт DOM/runtime адаптеры для страницы игр.
  */
 export function createGamesPageDomAdapters(options: GamesPageDomAdaptersOptions) {
+  let lastFocusedQuestionId = "";
+
+  /**
+   * Ставит автофокус в ответ только один раз на каждый новый вопрос.
+   */
+  function focusCurrentQuestionAnswerInput(root: Document | HTMLElement): void {
+    const question = options.getRoom()?.currentQuestion;
+    if (!question) {
+      lastFocusedQuestionId = "";
+      return;
+    }
+    const input = root.querySelector<HTMLInputElement>("[data-games-answer-input]");
+    if (!input) return;
+    const isFocused = input.ownerDocument.activeElement === input;
+    if (question.id === lastFocusedQuestionId && isFocused) return;
+
+    focusCurrentAnswerInput(root);
+    lastFocusedQuestionId = question.id;
+  }
+
   /**
    * Собирает зависимости runtime-обновления DOM страницы игр.
    */
@@ -64,7 +84,7 @@ export function createGamesPageDomAdapters(options: GamesPageDomAdaptersOptions)
       renderPlayersRail: options.renderPlayersRail,
       renderRoomChat: options.renderRoomChat,
       startCountdown: (root) => options.countdownRuntime.start(root),
-      focusAnswerInput: focusCurrentAnswerInput,
+      focusAnswerInput: focusCurrentQuestionAnswerInput,
       syncRoomSubscription,
       syncRoomsAutoRefresh,
       syncRoomStateRefresh,

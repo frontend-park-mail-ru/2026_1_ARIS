@@ -68,6 +68,7 @@ describe("room entry actions", () => {
         title: "Room",
         questionCount: 5,
         answerTimeoutSec: 30,
+        roundPauseSec: 5,
         gameType: "number_duel",
       },
       title: "Room",
@@ -98,6 +99,7 @@ describe("room entry actions", () => {
         title: "Room",
         questionCount: 5,
         answerTimeoutSec: 30,
+        roundPauseSec: 5,
         gameType: "number_duel",
       },
       title: "Room",
@@ -171,7 +173,7 @@ describe("room entry actions", () => {
       joinInviteCodeValue: "ABC123",
       joinPasswordValue: "bad",
       joinInviteCodeError: "",
-      joinPasswordError: "Пароль неверный",
+      joinPasswordError: "Неверный пароль",
     });
   });
 

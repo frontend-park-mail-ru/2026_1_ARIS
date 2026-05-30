@@ -4,11 +4,11 @@
     --header-logo-width: 138px;
     --header-logo-height: 52px;
     --header-search-width: 420px;
-    --header-search-padding-x: 26px;
+    --header-search-padding-x: 16px;
     --header-search-gap: 10px;
     --header-search-height: 40px;
     --header-search-icon-size: 24px;
-    --header-user-gap: 10px;
+    --header-user-gap: 18px;
     --header-guest-actions-gap: var(--space-3);
     --header-username-size: var(--text-size-title);
     --header-logout-size: var(--font-size-md);
@@ -80,6 +80,7 @@
     &__search-box {
       justify-self: center;
       width: calc(100% - (var(--layout-content-inner-padding-x) * 2));
+      padding-inline: var(--header-search-padding-x);
       box-sizing: border-box;
       margin: 0;
       position: relative;
@@ -364,7 +365,7 @@
       --header-height: 64px;
       --header-logo-width: 92px;
       --header-search-height: 44px;
-      --header-search-padding-x: 14px;
+      --header-search-padding-x: 12px;
       --header-avatar-size: 42px;
 
       &__inner,
@@ -382,7 +383,6 @@
 
       &__search-box {
         width: 100%;
-        padding: 0 14px;
       }
 
       &__guest-actions {

@@ -1,5 +1,7 @@
 import { updateGamesCountdown } from "../shared/timers";
 
+const COUNTDOWN_UPDATE_INTERVAL_MS = 100;
+
 export type GamesCountdownRuntime = {
   start: (root: Document | HTMLElement) => void;
   stop: () => void;
@@ -9,13 +11,24 @@ export type CreateGamesCountdownRuntimeOptions = {
   getRoot: () => Document | HTMLElement | null;
   formatScore: (value: number) => string;
   onFinalResultsExpired: () => void;
+  onQuestionDeadlineExpired: () => void;
+  onRoundResultExpired?: () => void;
 };
 
 /** Проверяет, есть ли в root элементы, которым нужен игровой countdown. */
-function hasCountdownElements(root: Document | HTMLElement): boolean {
+function hasCountdownRuntimeElements(root: Document | HTMLElement): boolean {
   return Boolean(
     root.querySelector(
-      "[data-games-countdown], [data-games-timer-deadline], [data-games-final-results-until]",
+      [
+        "[data-games-countdown]",
+        "[data-games-timer-deadline]",
+        "[data-games-final-results-until]",
+        "[data-games-round-result-until]",
+        "[data-games-score-shell]",
+        "[data-games-round-points-badge]",
+        "[data-games-score-animate]",
+        "[data-games-scoreboard-list]",
+      ].join(", "),
     ),
   );
 }
@@ -27,10 +40,17 @@ export function createGamesCountdownRuntime(
   let timerId: number | null = null;
 
   const update = (root: Document | HTMLElement) => {
-    updateGamesCountdown(root, {
+    const countdownOptions = {
       formatScore: options.formatScore,
       onFinalResultsExpired: options.onFinalResultsExpired,
-    });
+      onQuestionDeadlineExpired: options.onQuestionDeadlineExpired,
+    };
+    updateGamesCountdown(
+      root,
+      options.onRoundResultExpired
+        ? { ...countdownOptions, onRoundResultExpired: options.onRoundResultExpired }
+        : countdownOptions,
+    );
   };
 
   const stop = () => {
@@ -43,13 +63,13 @@ export function createGamesCountdownRuntime(
     start(root) {
       stop();
       update(root);
-      if (!hasCountdownElements(root)) return;
+      if (!hasCountdownRuntimeElements(root)) return;
 
       timerId = window.setInterval(() => {
         const currentRoot = options.getRoot();
         if (!currentRoot) return;
         update(currentRoot);
-      }, 10);
+      }, COUNTDOWN_UPDATE_INTERVAL_MS);
     },
     stop,
   };

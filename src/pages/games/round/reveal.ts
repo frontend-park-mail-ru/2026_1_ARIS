@@ -1,6 +1,6 @@
 import type { GameRoom } from "../../../api/games";
-import { finalRoundResultHoldMs } from "../shared/constants";
 import { getLatestCompletedQuestion } from "./model";
+import { getRoundResultTransitionEndMs } from "./timeline";
 
 /** Возвращает момент, до которого финальный раунд остается на экране перед итогами. */
 export function getFinalRoundResultsUntil(
@@ -10,7 +10,8 @@ export function getFinalRoundResultsUntil(
   if (room.status !== "finished" || !question?.completedAt) return null;
   const completedAtMs = new Date(question.completedAt).getTime();
   if (Number.isNaN(completedAtMs)) return null;
-  return new Date(completedAtMs + finalRoundResultHoldMs);
+  const transitionEndMs = getRoundResultTransitionEndMs(room, question);
+  return Date.now() < transitionEndMs ? new Date(transitionEndMs) : null;
 }
 
 /** Проверяет, нужно ли перед итогами игры еще показать результат последнего раунда. */
@@ -23,8 +24,15 @@ export function shouldShowFinalRoundResultBeforeSummary(room: GameRoom): boolean
 
 /** Проверяет, видим ли сейчас экран раскрытия результата раунда. */
 export function isRoundResultRevealVisible(room: GameRoom): boolean {
-  return (
-    (room.status === "active" && !room.currentQuestion) ||
-    (room.status === "finished" && shouldShowFinalRoundResultBeforeSummary(room))
-  );
+  if (room.status === "finished") {
+    return shouldShowFinalRoundResultBeforeSummary(room);
+  }
+
+  if (room.status !== "active") return false;
+
+  const latestCompleted = getLatestCompletedQuestion(room);
+  if (!latestCompleted) return false;
+
+  const transitionEndMs = getRoundResultTransitionEndMs(room, latestCompleted);
+  return Number.isFinite(transitionEndMs) && Date.now() < transitionEndMs;
 }

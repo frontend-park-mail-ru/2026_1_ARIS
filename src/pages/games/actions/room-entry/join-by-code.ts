@@ -7,6 +7,7 @@ import {
   isJoinRoomPasswordError,
 } from "../../shared/errors";
 import type { JoinRoomByCodeActionOptions } from "./types";
+import { gameT } from "../../shared/i18n";
 
 /**
  * Подключает пользователя к комнате по invite-коду.
@@ -38,7 +39,7 @@ export async function joinRoomByCodeAction(options: JoinRoomByCodeActionOptions)
         errorTarget: "",
         joinInviteCodeValue: inviteCode,
         joinPasswordValue: password,
-        joinInviteCodeError: "Игра не найдена",
+        joinInviteCodeError: gameT("join.gameNotFound"),
         joinPasswordError: "",
       });
       return;
@@ -52,7 +53,7 @@ export async function joinRoomByCodeAction(options: JoinRoomByCodeActionOptions)
         joinInviteCodeValue: inviteCode,
         joinPasswordValue: password,
         joinInviteCodeError: "",
-        joinPasswordError: "Пароль неверный",
+        joinPasswordError: gameT("join.wrongPassword"),
       });
       return;
     }

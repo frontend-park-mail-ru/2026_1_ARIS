@@ -33,6 +33,29 @@ function withSourceHeader(response, source) {
   });
 }
 
+function createOfflineResponse() {
+  return new Response("Offline", {
+    status: 503,
+    statusText: "Service Unavailable",
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "x-aris-response-source": "offline",
+    },
+  });
+}
+
+function isCacheableResponse(request, response) {
+  return response.status === 200 && response.ok && !request.headers.has("range");
+}
+
+async function putCacheSafely(cache, request, response) {
+  if (!isCacheableResponse(request, response)) {
+    return;
+  }
+
+  await cache.put(request, response);
+}
+
 async function readPrecacheUrls() {
   try {
     const response = await fetch("/asset-manifest.json", { cache: "no-store" });
@@ -96,9 +119,7 @@ async function staleWhileRevalidate(request, cacheName) {
 
   const networkPromise = fetch(request)
     .then((response) => {
-      if (response.ok) {
-        void cache.put(request, response.clone());
-      }
+      void putCacheSafely(cache, request, response.clone()).catch(() => undefined);
 
       return withSourceHeader(response, "network");
     })
@@ -107,14 +128,7 @@ async function staleWhileRevalidate(request, cacheName) {
         return withSourceHeader(cached, "cache");
       }
 
-      return new Response("Offline", {
-        status: 503,
-        statusText: "Service Unavailable",
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "x-aris-response-source": "offline",
-        },
-      });
+      return createOfflineResponse();
     });
 
   return cached ? withSourceHeader(cached, "cache") : networkPromise;
@@ -258,7 +272,7 @@ async function networkFirst(request, cacheName, fallbackUrls) {
   try {
     const response = await fetch(request);
 
-    if (response.ok) {
+    if (isCacheableResponse(request, response)) {
       // Сохраняем ответ с меткой времени для проверки TTL
       const headers = new Headers(response.headers);
       headers.set("x-aris-cached-at", String(Date.now()));
@@ -267,7 +281,7 @@ async function networkFirst(request, cacheName, fallbackUrls) {
         statusText: response.statusText,
         headers,
       });
-      await cache.put(request, stamped);
+      await putCacheSafely(cache, request, stamped);
     }
 
     return withSourceHeader(response, "network");
@@ -297,7 +311,7 @@ async function networkFirst(request, cacheName, fallbackUrls) {
       }
     }
 
-    throw new Error("offline");
+    return createOfflineResponse();
   }
 }
 
@@ -309,7 +323,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (IS_LOCAL_OR_TEST_ORIGIN) {
-    event.respondWith(fetch(request));
+    event.respondWith(fetch(request).catch(() => createOfflineResponse()));
     return;
   }
 

@@ -9,6 +9,7 @@ describe("game api mappers", () => {
       Status: "active",
       CreatedByProfileID: 7,
       IsRanked: true,
+      RoundPauseSec: 9,
       Players: [
         { ProfileID: 7, FirstName: "Мария", LastName: "Соколова", IsMe: true },
         { ProfileID: 8, login: "anya" },
@@ -21,6 +22,7 @@ describe("game api mappers", () => {
       status: "active",
       createdByProfileId: "7",
       isRanked: true,
+      roundPauseSec: 9,
     });
     expect(room.players).toHaveLength(2);
     expect(room.players[0]).toMatchObject({
@@ -33,6 +35,44 @@ describe("game api mappers", () => {
       name: "anya",
       isMe: false,
     });
+  });
+
+  it("добавляет создателя в игроки обычной комнаты, если backend прислал его отдельно", () => {
+    const room = mapRoom({
+      ID: 42,
+      CreatedByProfileID: 7,
+      Creator: { ProfileID: 7, FirstName: "Мария", LastName: "Соколова" },
+      Players: [{ ProfileID: 8, FirstName: "Анна" }],
+    });
+
+    expect(room.players.map((player) => player.profileId)).toEqual(["7", "8"]);
+    expect(room.players[0]).toMatchObject({
+      profileId: "7",
+      name: "Мария Соколова",
+    });
+  });
+
+  it("не добавляет создателя в игроки публичного лобби", () => {
+    const room = mapRoom({
+      ID: 42,
+      IsPublicLobby: true,
+      CreatedByProfileID: 7,
+      Creator: { ProfileID: 7, FirstName: "Мария", LastName: "Соколова" },
+      Players: [{ ProfileID: 8, FirstName: "Анна" }],
+    });
+
+    expect(room.players.map((player) => player.profileId)).toEqual(["8"]);
+  });
+
+  it("не добавляет устаревшего creator, если администратор уже сменился", () => {
+    const room = mapRoom({
+      ID: 42,
+      CreatedByProfileID: 8,
+      Creator: { ProfileID: 7, FirstName: "Мария" },
+      Players: [{ ProfileID: 8, FirstName: "Анна" }],
+    });
+
+    expect(room.players.map((player) => player.profileId)).toEqual(["8"]);
   });
 
   it("extractGameRoomFromResponse возвращает null для ответа без id", () => {

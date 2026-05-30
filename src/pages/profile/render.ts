@@ -14,6 +14,7 @@ import {
   renderAvatar,
 } from "./helpers";
 import { renderModalCloseButton } from "../../components/modal-close/modal-close";
+import { renderCommentCompose } from "../../components/comment-compose/comment-compose";
 import { renderAvatarMarkup } from "../../utils/avatar";
 import { formatPersonName } from "../../utils/display-name";
 import { getMediaFileName, isVideoMedia, resolveMediaUrl } from "../../utils/media";
@@ -217,14 +218,14 @@ export function renderDeleteFriendModal(profile: DisplayProfile): string {
         <div class="profile-delete-modal__actions">
           <button
             type="button"
-            class="profile-delete-modal__button profile-delete-modal__button--primary"
+            class="button button--primary profile-delete-modal__button profile-delete-modal__button--primary"
             data-profile-confirm-delete="${escapeHtml(profile.id)}"
           >
             ${t("profile.removeFriend")}
           </button>
           <button
             type="button"
-            class="profile-delete-modal__button"
+            class="button button--neutral profile-delete-modal__button"
             data-profile-delete-modal-close
           >
             ${t("friends.cancel")}
@@ -483,7 +484,7 @@ export function renderFriends(profile: DisplayProfile): string {
           ? `
             <footer class="profile-friends-card__footer">
               <a
-                href="/friends"
+                href="${profile.isOwnProfile ? "/friends" : `/friends?profileId=${encodeURIComponent(profile.id)}&name=${encodeURIComponent(formatPersonName(profile.firstName, profile.lastName) || profile.username || t("widgetbar.userFallback"))}`}"
                 data-link
                 class="profile-friends-card__more"
               >
@@ -567,6 +568,155 @@ function renderProfilePostFiles(files: ProfilePost["files"]): string {
   `;
 }
 
+export function renderProfilePostCard(
+  profile: DisplayProfile,
+  post: ProfilePost,
+  index = 0,
+): string {
+  const isOwnProfile = profile.isOwnProfile;
+  const sessionUser = getSessionUser();
+  const authorProfilePath = profile.isOwnProfile
+    ? "/profile"
+    : `/profile/${encodeURIComponent(profile.id)}`;
+  const authorPath =
+    post.authorId === profile.id || !post.authorId
+      ? authorProfilePath
+      : `/profile/${encodeURIComponent(post.authorId)}`;
+  const authorName =
+    formatPersonName(post.authorFirstName, post.authorLastName) || t("widgetbar.userFallback");
+  const canEditPost = canEditProfilePost(post);
+
+  return `
+    <article
+      class="profile-post content-card${index === 0 ? " profile-post--first-visible" : ""}"
+      data-profile-post-card
+      data-profile-post-id="${escapeHtml(post.id)}"
+      data-profile-post-scope="${post.isOwnPost ? "own" : "all"}"
+      data-profile-post-searchable="${escapeHtml(
+        [post.authorFirstName, post.authorLastName, post.authorUsername, post.text]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      )}"
+    >
+      <header class="profile-post__header">
+        <a
+          class="profile-post__author"
+          href="${authorPath}"
+          data-link
+        >
+          ${renderAvatarMarkup("profile-post__avatar", authorName, post.authorAvatarLink, {
+            width: 44,
+            height: 44,
+          })}
+
+          <div class="profile-post__meta">
+            <strong>${escapeHtml(authorName)}</strong>
+          </div>
+        </a>
+
+        ${
+          isOwnProfile && post.isOwnPost
+            ? `
+              <div class="profile-post__actions">
+                <button
+                  type="button"
+                  class="profile-post__menu-toggle"
+                  data-profile-post-menu-toggle="${escapeHtml(post.id)}"
+                  aria-label="${t("profile.actionsAria")}"
+                  aria-expanded="false"
+                >
+                  <span></span><span></span><span></span>
+                </button>
+                <div class="profile-post__menu" data-profile-post-menu="${escapeHtml(post.id)}" hidden>
+                  ${
+                    canEditPost
+                      ? `
+                        <button
+                          type="button"
+                          class="profile-post__menu-action"
+                          data-profile-post-edit="${escapeHtml(post.id)}"
+                        >
+                          ${t("profile.editPost")}
+                        </button>
+                      `
+                      : ""
+                  }
+                  <button
+                    type="button"
+                    class="profile-post__menu-action profile-post__menu-action--danger"
+                    data-profile-post-delete="${escapeHtml(post.id)}"
+                  >
+                    ${t("profile.deletePost")}
+                  </button>
+                </div>
+              </div>
+            `
+            : ""
+        }
+      </header>
+
+      <p class="profile-post__text">${escapeHtml(post.text)}</p>
+
+      ${renderProfilePostMedia(post)}
+      ${renderProfilePostFiles(post.files)}
+
+      <div class="profile-post__comments" data-profile-post-comments="${escapeHtml(post.id)}" hidden>
+        <div class="profile-post__comment-list" data-profile-post-comment-list="${escapeHtml(post.id)}"></div>
+        ${
+          sessionUser
+            ? `
+              ${renderCommentCompose({
+                postId: post.id,
+                userName:
+                  formatPersonName(sessionUser.firstName, sessionUser.lastName) ||
+                  t("widgetbar.userFallback"),
+                avatarLink: sessionUser.avatarLink,
+                formAttribute: "data-profile-post-comment-form",
+                inputAttribute: "data-profile-post-comment-input",
+                errorAttribute: "data-profile-post-comment-error",
+              })}
+            `
+            : ""
+        }
+      </div>
+
+      <footer class="profile-post__footer">
+        <div class="profile-post__stats">
+          <button
+            type="button"
+            class="profile-post__stat profile-post__stat-button${
+              post.isLiked ? " profile-post__stat-button--liked" : ""
+            }"
+            data-profile-post-like="${escapeHtml(post.id)}"
+            aria-pressed="${post.isLiked ? "true" : "false"}"
+            aria-label="${t("profile.likes")}"
+          >
+            <span class="profile-post__stat-icon">
+              <img src="/assets/img/icons/heart.svg" class="profile-post__icon" alt="" />
+            </span>
+            <span class="profile-post__stat-count">${post.likes}</span>
+          </button>
+          <button
+            type="button"
+            class="profile-post__stat profile-post__stat-button"
+            data-profile-post-toggle-comments="${escapeHtml(post.id)}"
+            aria-expanded="false"
+          >
+            <img src="/assets/img/icons/chat.svg" class="profile-post__icon" alt="" />
+            <span class="profile-post__stat-count" data-profile-post-comment-count="${escapeHtml(post.id)}">${post.comments}</span>
+          </button>
+        </div>
+        <time
+          class="profile-post__time"
+          ${post.timeRaw ? `datetime="${escapeHtml(post.timeRaw)}"` : ""}
+          ${post.timeRaw ? `data-tooltip="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}
+        >${escapeHtml(formatProfilePostRelativeTime(post.timeRaw, post.time))}</time>
+      </footer>
+    </article>
+  `;
+}
+
 export function renderProfilePosts(
   profile: DisplayProfile,
   posts: ProfilePost[],
@@ -586,7 +736,6 @@ export function renderProfilePosts(
           .map((post) => ({ ...post, isOwnPost: true })),
       ]
     : posts;
-  const sessionUser = getSessionUser();
   const pending = pendingProfilePostState;
   const isSavingCreate = pending.mode === "create";
   const isSavingEdit = pending.mode === "edit" && !!pending.postId;
@@ -619,13 +768,6 @@ export function renderProfilePosts(
       renderedPosts.splice(index, 1, { ...skeletonPost, id: `profile-skeleton-${pending.postId}` });
     }
   }
-  const renderAuthorPath = (post: ProfilePost) =>
-    post.authorId === profile.id || !post.authorId
-      ? authorProfilePath
-      : `/profile/${encodeURIComponent(post.authorId)}`;
-  const authorProfilePath = profile.isOwnProfile
-    ? "/profile"
-    : `/profile/${encodeURIComponent(profile.id)}`;
 
   return `
     <section class="profile-posts${isOwnProfile ? "" : " profile-posts--foreign"}" id="profile-posts">
@@ -679,166 +821,11 @@ export function renderProfilePosts(
             ? `
               ${isSavingCreate ? renderProfilePostSkeleton() : ""}
               ${renderedPosts
-                .map((post, index) => {
-                  if (post.text === "__PROFILE_SKELETON__") {
-                    return renderProfilePostSkeleton();
-                  }
-
-                  const canEditPost = canEditProfilePost(post);
-
-                  return `
-                    <article
-                      class="profile-post content-card${index === 0 ? " profile-post--first-visible" : ""}"
-                      data-profile-post-card
-                      data-profile-post-id="${escapeHtml(post.id)}"
-                      data-profile-post-scope="${post.isOwnPost ? "own" : "all"}"
-                      data-profile-post-searchable="${escapeHtml(
-                        [post.authorFirstName, post.authorLastName, post.authorUsername, post.text]
-                          .filter(Boolean)
-                          .join(" ")
-                          .toLowerCase(),
-                      )}"
-                    >
-                      <header class="profile-post__header">
-                        <a
-                          class="profile-post__author"
-                          href="${renderAuthorPath(post)}"
-                          data-link
-                        >
-                          ${renderAvatarMarkup(
-                            "profile-post__avatar",
-                            formatPersonName(post.authorFirstName, post.authorLastName) ||
-                              t("widgetbar.userFallback"),
-                            post.authorAvatarLink,
-                            { width: 44, height: 44 },
-                          )}
-
-                          <div class="profile-post__meta">
-                            <strong>${escapeHtml(
-                              formatPersonName(post.authorFirstName, post.authorLastName) ||
-                                t("widgetbar.userFallback"),
-                            )}</strong>
-                          </div>
-                        </a>
-
-                        ${
-                          isOwnProfile && post.isOwnPost
-                            ? `
-                              <div class="profile-post__actions">
-                                <button
-                                  type="button"
-                                  class="profile-post__menu-toggle"
-                                  data-profile-post-menu-toggle="${escapeHtml(post.id)}"
-                                  aria-label="${t("profile.actionsAria")}"
-                                  aria-expanded="false"
-                                >
-                                  <span></span><span></span><span></span>
-                                </button>
-                                <div class="profile-post__menu" data-profile-post-menu="${escapeHtml(post.id)}" hidden>
-                                  ${
-                                    canEditPost
-                                      ? `
-                                        <button
-                                          type="button"
-                                          class="profile-post__menu-action"
-                                          data-profile-post-edit="${escapeHtml(post.id)}"
-                                        >
-                                          ${t("profile.editPost")}
-                                        </button>
-                                      `
-                                      : ""
-                                  }
-                                  <button
-                                    type="button"
-                                    class="profile-post__menu-action profile-post__menu-action--danger"
-                                    data-profile-post-delete="${escapeHtml(post.id)}"
-                                  >
-                                    ${t("profile.deletePost")}
-                                  </button>
-                                </div>
-                              </div>
-                            `
-                            : ""
-                        }
-                      </header>
-
-                      <p class="profile-post__text">${escapeHtml(post.text)}</p>
-
-                      ${renderProfilePostMedia(post)}
-                      ${renderProfilePostFiles(post.files)}
-
-                      <div class="profile-post__comments" data-profile-post-comments="${escapeHtml(post.id)}" hidden>
-                        <div class="profile-post__comment-list" data-profile-post-comment-list="${escapeHtml(post.id)}"></div>
-                        ${
-                          sessionUser
-                            ? `
-                        <div class="profile-comment-compose">
-                          ${renderAvatarMarkup(
-                            "profile-comment-compose__avatar",
-                            formatPersonName(sessionUser.firstName, sessionUser.lastName) ||
-                              t("widgetbar.userFallback"),
-                            sessionUser.avatarLink,
-                            { width: 32, height: 32 },
-                          )}
-                          <form class="profile-post__comment-form" data-profile-post-comment-form="${escapeHtml(post.id)}" novalidate>
-                            <input
-                              type="text"
-                              class="profile-post__comment-input"
-                              placeholder="${t("profile.commentPlaceholder")}"
-                              data-profile-post-comment-input="${escapeHtml(post.id)}"
-                              maxlength="2000"
-                              autocomplete="off"
-                            >
-                            <button type="submit" class="profile-post__comment-send">
-                              ${t("profile.commentSubmit")}
-                            </button>
-                          </form>
-                        </div>
-                        <p class="profile-post__comment-error" data-profile-post-comment-error="${escapeHtml(post.id)}" hidden></p>
-                        `
-                            : ""
-                        }
-                      </div>
-
-                      <footer class="profile-post__footer">
-                        <div class="profile-post__stats">
-                          <button
-                            type="button"
-                            class="profile-post__stat profile-post__stat-button${
-                              post.isLiked ? " profile-post__stat-button--liked" : ""
-                            }"
-                            data-profile-post-like="${escapeHtml(post.id)}"
-                            aria-pressed="${post.isLiked ? "true" : "false"}"
-                            aria-label="${t("profile.likes")}"
-                          >
-                            <span class="profile-post__stat-icon">
-                              <img src="/assets/img/icons/heart.svg" class="profile-post__icon" alt="" />
-                            </span>
-                            <span>${post.likes}</span>
-                          </button>
-                          <span class="profile-post__stat">
-                            <img src="/assets/img/icons/repost.svg" class="profile-post__icon" alt="" />
-                            ${post.reposts}
-                          </span>
-                          <button
-                            type="button"
-                            class="profile-post__stat profile-post__stat-button"
-                            data-profile-post-toggle-comments="${escapeHtml(post.id)}"
-                            aria-expanded="false"
-                          >
-                            <img src="/assets/img/icons/chat.svg" class="profile-post__icon" alt="" />
-                            <span data-profile-post-comment-count="${escapeHtml(post.id)}">${post.comments}</span>
-                          </button>
-                        </div>
-                        <time
-                          class="profile-post__time"
-                          ${post.timeRaw ? `datetime="${escapeHtml(post.timeRaw)}"` : ""}
-                          ${post.timeRaw ? `data-tooltip="${escapeHtml(formatPostExactTime(post.timeRaw))}"` : ""}
-                        >${escapeHtml(formatProfilePostRelativeTime(post.timeRaw, post.time))}</time>
-                      </footer>
-                    </article>
-                  `;
-                })
+                .map((post, index) =>
+                  post.text === "__PROFILE_SKELETON__"
+                    ? renderProfilePostSkeleton()
+                    : renderProfilePostCard(profile, post, index),
+                )
                 .join("")}
             `
             : `
@@ -856,9 +843,13 @@ export function renderProfilePosts(
   `;
 }
 
-function renderProfilePostSkeleton(): string {
+export function renderProfilePostSkeleton(postId?: string): string {
+  const skeletonAttr = postId
+    ? ` data-profile-post-card data-profile-post-card-skeleton="${escapeHtml(postId)}"`
+    : "";
+
   return `
-    <article class="profile-post content-card">
+    <article class="profile-post content-card"${skeletonAttr} aria-hidden="true">
       <div class="profile-post__header">
         <div class="profile-post__author">
           <span class="avatar-skeleton" style="width:44px;height:44px"></span>
@@ -924,7 +915,12 @@ function formatProfilePostRelativeTime(iso?: string, fallback = ""): string {
   }).format(createdAt);
 }
 
-export function renderSection(title: string, content: string, action = ""): string {
+export function renderSection(
+  title: string,
+  content: string,
+  action = "",
+  titleAttributes = "",
+): string {
   if (!content.trim()) {
     return "";
   }
@@ -932,7 +928,7 @@ export function renderSection(title: string, content: string, action = ""): stri
   return `
     <section class="profile-section">
       <header class="profile-section__header">
-        <h2 class="profile-section__title">${escapeHtml(title)}</h2>
+        <h2 class="profile-section__title" ${titleAttributes}>${escapeHtml(title)}</h2>
         ${action}
       </header>
       <div class="profile-section__body">

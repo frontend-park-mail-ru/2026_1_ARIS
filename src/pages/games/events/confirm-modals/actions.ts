@@ -1,4 +1,5 @@
 import type { GamesPageState } from "../../state/store";
+import { gameT } from "../../shared/i18n";
 import type { HandleGamesConfirmModalsClickOptions } from "./types";
 
 /**
@@ -34,7 +35,7 @@ export function handleConfirmActionClick(
         options,
         { disbandConfirmOpen: false },
         error,
-        "Не удалось распустить комнату.",
+        gameT("room.disbandError"),
       );
     });
     return true;
@@ -47,7 +48,7 @@ export function handleConfirmActionClick(
         options,
         { kickConfirmProfileId: "", playerMenuProfileId: "" },
         error,
-        "Не удалось удалить игрока из комнаты.",
+        gameT("room.kickError"),
       );
     });
     return true;
@@ -60,7 +61,7 @@ export function handleConfirmActionClick(
         options,
         { adminConfirmProfileId: "", playerMenuProfileId: "" },
         error,
-        "Не удалось назначить администратора.",
+        gameT("room.assignAdminError"),
       );
     });
     return true;
@@ -69,7 +70,7 @@ export function handleConfirmActionClick(
   if (target.closest("[data-games-start-confirm]")) {
     event.preventDefault();
     void options.handleStartRoom().catch((error: unknown) => {
-      setConfirmActionError(options, { startConfirmOpen: false }, error, "Не удалось начать игру.");
+      setConfirmActionError(options, { startConfirmOpen: false }, error, gameT("room.startError"));
     });
     return true;
   }
@@ -77,12 +78,7 @@ export function handleConfirmActionClick(
   if (target.closest("[data-games-leave-confirm]")) {
     event.preventDefault();
     void options.handleExitGameToMenu().catch((error: unknown) => {
-      setConfirmActionError(
-        options,
-        { leaveConfirmOpen: false },
-        error,
-        "Не удалось покинуть игру.",
-      );
+      setConfirmActionError(options, { leaveConfirmOpen: false }, error, gameT("room.leaveError"));
     });
     return true;
   }

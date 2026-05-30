@@ -1,19 +1,47 @@
 /* Адаптивные правила планшетного layout страницы игр. */
 @layer pages {
   @media (width <=768px) {
+    .app-page--game-room {
+      width: 100%;
+      min-width: 0;
+      min-height: 100dvh;
+      overflow: hidden auto;
+    }
+
     .app-layout--game-room {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
       padding: var(--space-3) max(10px, env(safe-area-inset-right)) var(--space-3)
         max(10px, env(safe-area-inset-left));
+      grid-template-columns: minmax(0, 1fr);
+      justify-content: stretch;
       row-gap: var(--space-3);
       overflow: visible;
     }
 
     .app-layout--game-room .app-layout__left {
       display: flex;
+      order: 2;
+      width: 100%;
+      min-width: 0;
     }
 
     .app-layout--game-room .app-layout__center {
+      order: 1;
+      width: 100%;
+      min-width: 0;
       height: auto;
+      padding: 0;
+      overflow: visible;
+    }
+
+    .app-layout--game-room .app-layout__right {
+      order: 3;
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      overflow: visible;
     }
 
     .games-page {
@@ -30,7 +58,10 @@
     }
 
     .games-game-shell {
+      width: 100%;
+      min-width: 0;
       padding: var(--space-3);
+      box-sizing: border-box;
     }
 
     .games-room-chat {
@@ -41,16 +72,45 @@
       padding-bottom: 0;
     }
 
+    .app-layout--game-room .games-page,
+    .app-layout--game-room [data-games-content],
+    .games-layout--room,
+    .games-layout--room .games-main {
+      width: 100%;
+      max-width: 100%;
+      overflow: visible;
+    }
+
     .games-layout--room .games-panel {
-      max-height: min(640px, calc(100dvh - 72px));
+      width: 100%;
+      max-height: none;
     }
 
     .games-room-players-panel {
-      max-height: 300px;
+      max-height: min(360px, 48dvh);
       padding: var(--space-3);
+      overflow: hidden;
+    }
+
+    .games-room-players-panel--public {
+      max-height: min(420px, 52dvh);
+    }
+
+    .games-room-players-panel .games-game-scoreboard__list,
+    .games-room-players-panel--public .games-game-scoreboard__list {
+      display: flex;
+      max-height: min(292px, calc(48dvh - 68px));
+      padding-right: 2px;
+      flex-direction: column;
+      overflow: hidden auto;
+    }
+
+    .games-room-players-panel--public .games-game-scoreboard__list {
+      max-height: min(340px, calc(52dvh - 68px));
     }
 
     .games-room-layout__chat > .games-room-chat {
+      width: 100%;
       min-height: 340px;
       max-height: 520px;
     }
@@ -85,8 +145,17 @@
     }
 
     .games-stage-card {
-      min-height: 360px;
+      width: 100%;
+      min-height: min(360px, calc(100dvh - 116px));
       padding: var(--space-4);
+      box-sizing: border-box;
+    }
+
+    .games-stage-card--final,
+    .games-game-stage--final > .games-stage-card--final,
+    .games-game-stage--final {
+      max-height: none;
+      overflow: visible;
     }
 
     .games-stage-card__question {
@@ -147,10 +216,17 @@
       grid-template-columns: 34px 36px minmax(0, 1fr);
     }
 
-    .games-final-place em,
+    .games-final-place__stats,
+    .games-final-place > em,
+    .games-final-place__time,
     .games-final-place small {
       grid-column: 3;
       justify-self: start;
+    }
+
+    .games-final-place__stats {
+      align-items: flex-start;
+      text-align: left;
     }
 
     .games-replay-action {

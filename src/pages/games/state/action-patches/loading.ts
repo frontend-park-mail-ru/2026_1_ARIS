@@ -1,4 +1,5 @@
 import type { GamesStatePatch } from "./types";
+import { gameT } from "../../shared/i18n";
 
 /**
  * Возвращает общий loading-patch для действий с комнатой.
@@ -32,7 +33,7 @@ export function getInlineRoomLoadingPatch(message = ""): GamesStatePatch {
  * Возвращает state-patch начала создания комнаты.
  */
 export function getCreateRoomLoadingPatch(): GamesStatePatch {
-  return getRoomActionLoadingPatch("Создаем комнату...");
+  return getRoomActionLoadingPatch(gameT("room.creating"));
 }
 
 /**
@@ -40,7 +41,7 @@ export function getCreateRoomLoadingPatch(): GamesStatePatch {
  */
 export function getJoinRoomLoadingPatch(inviteCode: string, password: string): GamesStatePatch {
   return {
-    ...getRoomActionLoadingPatch("Подключаемся к комнате..."),
+    ...getRoomActionLoadingPatch(gameT("room.joining")),
     joinInviteCodeValue: inviteCode,
     joinPasswordValue: password,
     joinInviteCodeError: "",
@@ -57,7 +58,7 @@ export function getReturnRoomLoadingPatch(
   password = "",
 ): GamesStatePatch {
   return {
-    ...getRoomActionLoadingPatch("Возвращаемся в игровую комнату..."),
+    ...getRoomActionLoadingPatch(gameT("room.returning")),
     messageReturnRoomId: roomId,
     messageReturnInviteCode: inviteCode,
     messageReturnPassword: password,

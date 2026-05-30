@@ -7,8 +7,9 @@ import { getRoundResultCardDelayMs } from "../../../round/timeline";
 export function renderRoundResultStyle(
   item: Pick<RoundAnswerShowcaseItem, "answerSide" | "answerOffset" | "revealIndex">,
   index: number,
+  maxRevealIndex: number,
 ): string {
-  const delayMs = getRoundResultCardDelayMs(item.revealIndex);
+  const delayMs = getRoundResultCardDelayMs(item.revealIndex, maxRevealIndex);
   const pulseDelayMs = delayMs + 2400;
   return [
     `--games-result-index: ${index}`,

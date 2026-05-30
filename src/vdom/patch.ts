@@ -52,6 +52,9 @@ function patchChildren(live: Element, next: Element): void {
           currentLive.textContent = nextChild.textContent;
         }
         liveIdx++;
+      } else if (currentLive && !(currentLive instanceof Element && getKey(currentLive))) {
+        live.replaceChild(nextChild.cloneNode(), currentLive);
+        liveIdx++;
       } else {
         live.insertBefore(nextChild.cloneNode(), currentLive ?? null);
         liveIdx++;
@@ -90,8 +93,12 @@ function patchChildren(live: Element, next: Element): void {
       domPatch(currentLive, nextChild);
       liveIdx++;
     } else {
-      // Теги не совпадают или нет живого узла — вставляем новый
-      live.insertBefore(nextChild.cloneNode(true), currentLive ?? null);
+      // Теги не совпадают: обычный узел заменяем, keyed-узел оставляем до orphan-cleanup.
+      if (currentLive && !(currentLive instanceof Element && getKey(currentLive))) {
+        live.replaceChild(nextChild.cloneNode(true), currentLive);
+      } else {
+        live.insertBefore(nextChild.cloneNode(true), currentLive ?? null);
+      }
       liveIdx++;
     }
   }

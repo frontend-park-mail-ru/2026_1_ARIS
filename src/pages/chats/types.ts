@@ -46,6 +46,19 @@ export type ChatViewMessage = {
   profilePath?: string | undefined;
   /** Голосовое аудио-вложение сообщения. */
   voice?: ChatVoiceAttachment | undefined;
+  /** Видеосообщение-кружочек. */
+  videoNote?: ChatVideoNoteAttachment | undefined;
+};
+
+export type ChatVideoNoteAttachment = {
+  /** Идентификатор media на сервере, если он уже известен. */
+  mediaID?: number | undefined;
+  /** URL видеофайла для воспроизведения. */
+  url: string;
+  /** MIME-тип видео. */
+  mimeType: string;
+  /** Локальный Blob нужен для повтора отправки после временной ошибки. */
+  blob?: Blob | undefined;
 };
 
 export type ChatVoiceAttachment = {
@@ -76,13 +89,10 @@ export type StickerPickerState = {
   open: boolean;
   loading: boolean;
   stickersLoading: boolean;
-  saving: boolean;
   errorMessage: string;
-  search: string;
   packs: StickerPack[];
   activePackId: string;
   stickersByPackId: Map<string, Sticker[]>;
-  newPackTitle: string;
 };
 
 /**
@@ -224,6 +234,8 @@ export type ChatsState = {
       text: string;
       /** Голосовое вложение, если отправляется аудиосообщение. */
       voice?: ChatVoiceAttachment | undefined;
+      /** Видеосообщение-кружочек, если отправляется video_note. */
+      videoNote?: ChatVideoNoteAttachment | undefined;
       /** ID стикера для повторной отправки отдельного стикер-сообщения. */
       stickerId?: number | undefined;
       /** Время создания локального сообщения в формате ISO. */
@@ -234,6 +246,27 @@ export type ChatsState = {
   voiceRecording?: ChatVoiceRecordingState | undefined;
   /** Готовая голосовая запись, ожидающая отправки. */
   voiceDraft?: ChatVoiceDraftState | undefined;
+  /** Активная запись видеосообщения-кружочка. */
+  videoNoteRecording?: ChatVideoNoteRecordingState | undefined;
+};
+
+export type ChatVideoNoteRecordingState = {
+  /** Чат, для которого идёт запись. */
+  chatId: string;
+  /** MediaRecorder текущей записи. */
+  recorder: MediaRecorder;
+  /** Поток камеры и микрофона, который нужно остановить после записи. */
+  stream: MediaStream;
+  /** Собранные фрагменты видео. */
+  chunks: Blob[];
+  /** MIME-тип, выбранный для записи. */
+  mimeType: string;
+  /** Время начала записи. */
+  startedAt: number;
+  /** Текущее прошедшее время в миллисекундах. */
+  elapsedMs: number;
+  /** Таймер обновления интерфейса записи. */
+  timerId: number;
 };
 
 export type ChatVoiceDraftState = {

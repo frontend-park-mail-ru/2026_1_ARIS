@@ -16,6 +16,8 @@ import {
   createPostComment,
   likePostComment,
   unlikePostComment,
+  updatePostComment,
+  deletePostComment,
 } from "../../api/posts";
 import type { PostComment } from "../../api/posts";
 import {
@@ -32,6 +34,22 @@ import { clearWidgetbarCache } from "../../components/widgetbar/widgetbar";
 import { invalidateFriendsState } from "../friends/friends";
 import { rememberChatContactHint } from "../chats/contact-hints";
 import { isOutboxQueuedError } from "../../utils/outbox-idb";
+import {
+  completeFixedCommentBlockSkeleton,
+  restoreFixedCommentBlockSkeleton,
+  showFixedCommentBlockSkeleton,
+} from "../../utils/comment-block-loading";
+import {
+  bindFloatingCommentMenuActions,
+  cancelCommentEdit,
+  closeCommentMenus,
+  confirmCommentDelete,
+  finishCommentEdit,
+  openCommentEditForm,
+  positionCommentMenu,
+  setCommentEditError,
+} from "../../utils/comment-actions";
+import { waitForMinimumLoadingTime } from "../../utils/loading-state";
 import { showAppToast as showProfileToast } from "../../utils/toast";
 import { t } from "../../state/i18n";
 
@@ -96,7 +114,7 @@ import {
   initProfilePostListLayout,
   openProfilePostSearch,
 } from "./post-list";
-import { canEditProfilePost, escapeHtml } from "./helpers";
+import { canEditProfilePost } from "./helpers";
 import type { DisplayProfile } from "./types";
 import { openPostImageViewerFromTarget } from "../../utils/image-viewer";
 
@@ -105,20 +123,34 @@ const expandedPosts = new Set<string>();
 const expandedReplies = new Map<string, Set<string>>();
 
 export { renderSingleCommentHtml, renderCommentItemHtml } from "../../utils/post-comment-render";
-import { renderSingleCommentHtml, renderCommentItemHtml } from "../../utils/post-comment-render";
+import {
+  COMMENT_PAGE_SIZE,
+  renderCommentItemsHtml,
+  renderCommentsListHtml,
+  renderMoreCommentsButtonHtml,
+  renderSingleCommentHtml,
+} from "../../utils/post-comment-render";
+
+function getProfilePostCommentTotal(postId: string, loadedCount: number): number {
+  const postCount = currentProfilePosts.find((post) => post.id === postId)?.comments ?? 0;
+  return Math.max(postCount, loadedCount);
+}
 
 async function loadAndRenderPostComments(
   root: Document | HTMLElement,
   postId: string,
+  options: { showLoading?: boolean } = {},
 ): Promise<void> {
   const listEl = root.querySelector<HTMLElement>(
     `[data-profile-post-comment-list="${CSS.escape(postId)}"]`,
   );
   if (!listEl) return;
 
-  listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
+  if (options.showLoading !== false) {
+    listEl.innerHTML = `<p class="profile-comment-loading">${t("profile.commentLoading")}</p>`;
+  }
 
-  const comments = await getPostComments(postId, { limit: 50 });
+  const comments = await getPostComments(postId, { limit: COMMENT_PAGE_SIZE, offset: 0 });
 
   const parentIds = comments.filter((c) => c.repliesCount > 0).map((c) => c.id);
   let firstReplies: Record<string, PostComment[]> = {};
@@ -126,20 +158,14 @@ async function loadAndRenderPostComments(
     firstReplies = await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 });
   }
 
-  const post = currentProfilePosts.find((p) => p.id === postId);
-  const headerText = t("profile.commentsHeader").replace(
-    "{{n}}",
-    String(post?.comments ?? comments.length),
-  );
+  const totalCount = getProfilePostCommentTotal(postId, comments.length);
 
   if (!comments.length) {
     listEl.innerHTML = `<p class="profile-comment-empty">${t("profile.commentsEmpty")}</p>`;
     return;
   }
 
-  listEl.innerHTML =
-    `<p class="profile-comment-header-label">${escapeHtml(headerText)}</p>` +
-    comments.map((c) => renderCommentItemHtml(c, firstReplies[c.id]?.[0])).join("");
+  listEl.innerHTML = renderCommentsListHtml(postId, comments, firstReplies, { totalCount });
 
   const expanded = expandedReplies.get(postId);
   if (expanded && expanded.size > 0) {
@@ -155,6 +181,144 @@ async function loadAndRenderPostComments(
         });
       }
     }
+  }
+}
+
+async function loadMoreProfilePostComments(
+  root: Document | HTMLElement,
+  postId: string,
+  button: HTMLButtonElement,
+): Promise<void> {
+  const listEl = root.querySelector<HTMLElement>(
+    `[data-profile-post-comment-list="${CSS.escape(postId)}"]`,
+  );
+  if (!listEl) return;
+
+  const offset = listEl.querySelectorAll("[data-comment-item]").length;
+  button.disabled = true;
+
+  try {
+    const comments = await getPostComments(postId, {
+      limit: COMMENT_PAGE_SIZE,
+      offset,
+    });
+
+    if (!comments.length) {
+      button.remove();
+      return;
+    }
+
+    const parentIds = comments.filter((c) => c.repliesCount > 0).map((c) => c.id);
+    const firstReplies =
+      parentIds.length > 0 ? await getPostCommentRepliesBatch(postId, parentIds, { limit: 1 }) : {};
+    const nextLoadedCount = offset + comments.length;
+    const totalCount = getProfilePostCommentTotal(postId, nextLoadedCount);
+
+    button.insertAdjacentHTML("beforebegin", renderCommentItemsHtml(comments, firstReplies));
+
+    const nextButtonHtml = renderMoreCommentsButtonHtml(postId, nextLoadedCount, totalCount);
+    if (nextButtonHtml) {
+      button.outerHTML = nextButtonHtml;
+    } else {
+      button.remove();
+    }
+  } catch (error) {
+    console.error("[profile] load more comments failed", error);
+    button.disabled = false;
+  }
+}
+
+async function reloadProfileCommentsAfterMutation(
+  root: Document | HTMLElement,
+  postId: string,
+  options: { skeletonState?: Parameters<typeof completeFixedCommentBlockSkeleton>[0] } = {},
+): Promise<void> {
+  try {
+    await loadAndRenderPostComments(root, postId, { showLoading: !options.skeletonState });
+  } catch (error) {
+    console.error("[profile] reload comments failed", error);
+    const listEl = root.querySelector<HTMLElement>(
+      `[data-profile-post-comment-list="${CSS.escape(postId)}"]`,
+    );
+    if (listEl) {
+      listEl.innerHTML = `<p class="profile-comment-empty">${t("profile.commentSendError")}</p>`;
+    }
+  }
+
+  completeFixedCommentBlockSkeleton(options.skeletonState ?? null);
+}
+
+function openProfileCommentMenu(root: Document | HTMLElement, toggle: HTMLButtonElement): void {
+  const commentId = toggle.getAttribute("data-comment-menu-toggle") ?? "";
+  const postId = toggle.getAttribute("data-comment-menu-post") ?? "";
+  if (!commentId || !postId) return;
+
+  const menu = document.querySelector<HTMLElement>(
+    `[data-comment-menu="${CSS.escape(commentId)}"][data-comment-menu-post="${CSS.escape(postId)}"]`,
+  );
+  const isExpanded = toggle.getAttribute("aria-expanded") === "true";
+  closeCommentMenus(root);
+
+  if (!menu || isExpanded) return;
+
+  const floatingMenu = menu.cloneNode(true);
+  if (!(floatingMenu instanceof HTMLElement)) return;
+
+  floatingMenu.dataset.commentMenuFloating = "";
+  positionCommentMenu(floatingMenu, toggle);
+  document.body.appendChild(floatingMenu);
+  bindFloatingCommentMenuActions(floatingMenu, root, {
+    onEdit: (targetPostId, targetCommentId) => {
+      openCommentEditForm(root, targetPostId, targetCommentId);
+    },
+    onDelete: (targetPostId, targetCommentId, removedCount) => {
+      void deleteProfileComment(root, targetPostId, targetCommentId, removedCount);
+    },
+  });
+  floatingMenu.hidden = false;
+  toggle.setAttribute("aria-expanded", "true");
+}
+
+async function deleteProfileComment(
+  root: Document | HTMLElement,
+  postId: string,
+  commentId: string,
+  removedCount: number,
+): Promise<void> {
+  if (!(await confirmCommentDelete())) return;
+
+  const commentsEl = root.querySelector<HTMLElement>(
+    `[data-profile-post-comments="${CSS.escape(postId)}"]`,
+  );
+  const skeletonStartedAt = Date.now();
+  const skeletonState = commentsEl
+    ? showFixedCommentBlockSkeleton({
+        commentsEl,
+        postId,
+        listAttribute: "data-profile-post-comment-list",
+      })
+    : null;
+
+  try {
+    await deletePostComment(postId, commentId);
+    await waitForMinimumLoadingTime(skeletonStartedAt);
+    const nextPosts = currentProfilePosts.map((post) =>
+      post.id === postId ? { ...post, comments: Math.max(0, post.comments - removedCount) } : post,
+    );
+    setCurrentProfilePosts(nextPosts);
+    const updatedPost = nextPosts.find((post) => post.id === postId);
+    const countEl = root.querySelector<HTMLElement>(
+      `[data-profile-post-comment-count="${CSS.escape(postId)}"]`,
+    );
+    if (countEl && updatedPost) {
+      countEl.textContent = String(updatedPost.comments);
+    }
+    expandedReplies.get(postId)?.delete(commentId);
+    await reloadProfileCommentsAfterMutation(root, postId, { skeletonState });
+  } catch (error) {
+    console.error("[profile] comment delete failed", error);
+    restoreFixedCommentBlockSkeleton(skeletonState);
+    showProfileToast(t("profile.commentDeleteError"));
   }
 }
 
@@ -204,6 +368,63 @@ function rerenderProfilePostsSection(root: Document | HTMLElement): void {
       void loadAndRenderPostComments(root, postId);
     }
   });
+}
+
+function restoreProfileCommentForm(
+  root: Document | HTMLElement,
+  postId: string,
+  text: string,
+  replyToId?: string,
+  placeholder?: string,
+): void {
+  const form = root.querySelector<HTMLFormElement>(
+    `[data-profile-post-comment-form="${CSS.escape(postId)}"]`,
+  );
+  const input = form?.querySelector<HTMLInputElement>(
+    `[data-profile-post-comment-input="${CSS.escape(postId)}"]`,
+  );
+  const submitBtn = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const errorEl = root.querySelector<HTMLElement>(
+    `[data-profile-post-comment-error="${CSS.escape(postId)}"]`,
+  );
+
+  if (form && replyToId) {
+    form.dataset.profilePostReplyTo = replyToId;
+  }
+
+  if (input) {
+    input.value = text;
+    if (placeholder) input.placeholder = placeholder;
+  }
+  if (submitBtn) submitBtn.disabled = false;
+
+  if (errorEl) {
+    errorEl.textContent = t("profile.commentSendError");
+    errorEl.hidden = false;
+  }
+}
+
+function resetProfileCommentForm(root: Document | HTMLElement, postId: string): void {
+  const form = root.querySelector<HTMLFormElement>(
+    `[data-profile-post-comment-form="${CSS.escape(postId)}"]`,
+  );
+  const input = form?.querySelector<HTMLInputElement>(
+    `[data-profile-post-comment-input="${CSS.escape(postId)}"]`,
+  );
+  const submitBtn = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const errorEl = root.querySelector<HTMLElement>(
+    `[data-profile-post-comment-error="${CSS.escape(postId)}"]`,
+  );
+
+  if (form) delete form.dataset.profilePostReplyTo;
+  if (input) {
+    input.value = "";
+    input.placeholder = t("profile.commentPlaceholder");
+  }
+  if (submitBtn) submitBtn.disabled = false;
+  if (errorEl) {
+    errorEl.hidden = true;
+  }
 }
 
 function updateProfilePostLikeState(postId: string, likes: number, isLiked: boolean): void {
@@ -262,19 +483,6 @@ function updateProfileFriendActions(
   }
 
   actionsRoot.replaceWith(nextActionsRoot);
-}
-
-function collapseProfileDetails(root: Document | HTMLElement): void {
-  const more = root.querySelector<HTMLElement>(".profile-card__more");
-  const button = root.querySelector<HTMLButtonElement>("[data-profile-toggle]");
-
-  if (!more || !button || more.hidden) {
-    return;
-  }
-
-  more.hidden = true;
-  button.setAttribute("aria-expanded", "false");
-  button.textContent = "показать подробнее";
 }
 
 function closeProfileFriendMenus(root: Document | HTMLElement): void {
@@ -546,6 +754,23 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
       if (openPostImageViewerFromTarget(target)) return;
     }
 
+    const commentMenuToggle = target.closest("[data-comment-menu-toggle]");
+    if (commentMenuToggle instanceof HTMLButtonElement) {
+      openProfileCommentMenu(root, commentMenuToggle);
+      return;
+    }
+
+    if (!target.closest("[data-comment-menu]") && !target.closest("[data-comment-menu-toggle]")) {
+      closeCommentMenus(root);
+    }
+
+    const commentEditCancel = target.closest("[data-comment-edit-cancel]");
+    if (commentEditCancel instanceof HTMLButtonElement) {
+      const commentId = commentEditCancel.getAttribute("data-comment-edit-cancel") ?? "";
+      if (commentId) cancelCommentEdit(root, commentId);
+      return;
+    }
+
     const toggleCommentsBtn = target.closest("[data-profile-post-toggle-comments]");
     if (toggleCommentsBtn instanceof HTMLButtonElement) {
       const postId = toggleCommentsBtn.getAttribute("data-profile-post-toggle-comments") ?? "";
@@ -568,6 +793,15 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
         toggleCommentsBtn.setAttribute("aria-expanded", "true");
         void loadAndRenderPostComments(root, postId);
       }
+      return;
+    }
+
+    const showMoreCommentsBtn = target.closest("[data-show-more-comments]");
+    if (showMoreCommentsBtn instanceof HTMLButtonElement) {
+      if (!showMoreCommentsBtn.closest("[data-profile-post-comments]")) return;
+      const postId = showMoreCommentsBtn.getAttribute("data-show-more-comments-post") ?? "";
+      if (!postId || showMoreCommentsBtn.disabled) return;
+      void loadMoreProfilePostComments(root, postId, showMoreCommentsBtn);
       return;
     }
 
@@ -608,16 +842,11 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           const isNowLiked = updated.isLiked;
           commentLikeBtn.setAttribute("aria-pressed", String(isNowLiked));
           commentLikeBtn.classList.toggle("profile-comment__like--liked", isNowLiked);
-          const countSpan = commentLikeBtn.querySelector("span:last-child");
-          if (
-            countSpan &&
-            countSpan !== commentLikeBtn.querySelector(".profile-comment__like-icon")
-          ) {
-            countSpan.textContent = updated.likes > 0 ? String(updated.likes) : "";
-          } else if (updated.likes > 0) {
-            const span = document.createElement("span");
-            span.textContent = String(updated.likes);
-            commentLikeBtn.appendChild(span);
+          const countSpan = commentLikeBtn.querySelector<HTMLElement>(
+            ".profile-comment__like-count",
+          );
+          if (countSpan) {
+            countSpan.textContent = String(Math.max(0, updated.likes));
           }
         })
         .catch((error: unknown) => {
@@ -1355,10 +1584,6 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     if (editButton instanceof HTMLButtonElement) {
       event.preventDefault();
       event.stopPropagation();
-      const editor = root.querySelector<HTMLElement>("[data-profile-editor]");
-      if (editor?.hidden) {
-        collapseProfileDetails(root);
-      }
       toggleProfileEditor(root);
       return;
     }
@@ -1464,6 +1689,34 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
     const target = event.target;
     if (!(target instanceof HTMLFormElement)) return;
 
+    const editCommentId = target.getAttribute("data-comment-edit-form");
+    if (editCommentId) {
+      const postId = target.getAttribute("data-comment-edit-post") ?? "";
+      if (!postId) return;
+
+      event.preventDefault();
+      const input = target.querySelector<HTMLTextAreaElement>(
+        `[data-comment-edit-input="${CSS.escape(editCommentId)}"]`,
+      );
+      const submitBtn = target.querySelector<HTMLButtonElement>('button[type="submit"]');
+      const text = input?.value.trim() ?? "";
+      if (!input || !text) return;
+
+      if (submitBtn) submitBtn.disabled = true;
+      void updatePostComment(postId, editCommentId, text)
+        .then((updated) => {
+          finishCommentEdit(root, editCommentId, updated.text);
+        })
+        .catch((error: unknown) => {
+          console.error("[profile] comment update failed", error);
+          setCommentEditError(root, editCommentId, t("profile.commentEditError"));
+        })
+        .finally(() => {
+          if (submitBtn) submitBtn.disabled = false;
+        });
+      return;
+    }
+
     const postId = target.getAttribute("data-profile-post-comment-form");
     if (!postId) return;
 
@@ -1485,34 +1738,45 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
 
     const replyToId = target.dataset.profilePostReplyTo?.trim();
     const commentPayload = replyToId ? { text, parentCommentId: Number(replyToId) } : { text };
+    const inputPlaceholder = input.placeholder;
+    const skeletonStartedAt = Date.now();
+    const commentsEl = target.closest<HTMLElement>(
+      `[data-profile-post-comments="${CSS.escape(postId)}"]`,
+    );
+    const skeletonState = commentsEl
+      ? showFixedCommentBlockSkeleton({
+          commentsEl,
+          postId,
+          listAttribute: "data-profile-post-comment-list",
+        })
+      : null;
 
     void createPostComment(postId, commentPayload)
-      .then(() => {
+      .then(async () => {
+        await waitForMinimumLoadingTime(skeletonStartedAt);
         const nextPosts = currentProfilePosts.map((post) =>
           post.id === postId ? { ...post, comments: post.comments + 1 } : post,
         );
         setCurrentProfilePosts(nextPosts);
-
         const countEl = root.querySelector<HTMLElement>(
           `[data-profile-post-comment-count="${CSS.escape(postId)}"]`,
         );
-        if (countEl) {
-          const updatedPost = nextPosts.find((p) => p.id === postId);
-          if (updatedPost) countEl.textContent = String(updatedPost.comments);
+        const updatedPost = nextPosts.find((post) => post.id === postId);
+        if (countEl && updatedPost) {
+          countEl.textContent = String(updatedPost.comments);
         }
-
-        input.value = "";
-        delete target.dataset.profilePostReplyTo;
-        input.placeholder = t("profile.commentPlaceholder");
-
-        void loadAndRenderPostComments(root, postId);
+        if (replyToId) {
+          if (!expandedReplies.has(postId)) expandedReplies.set(postId, new Set());
+          expandedReplies.get(postId)?.add(replyToId);
+        }
+        await reloadProfileCommentsAfterMutation(root, postId, { skeletonState });
+        resetProfileCommentForm(root, postId);
       })
-      .catch((error: unknown) => {
+      .catch(async (error: unknown) => {
+        await waitForMinimumLoadingTime(skeletonStartedAt);
         console.error("[profile] create comment failed", error);
-        if (errorEl) {
-          errorEl.textContent = t("profile.commentSendError");
-          errorEl.hidden = false;
-        }
+        restoreFixedCommentBlockSkeleton(skeletonState);
+        restoreProfileCommentForm(root, postId, text, replyToId, inputPlaceholder);
       })
       .finally(() => {
         if (submitBtn) submitBtn.disabled = false;
@@ -1746,6 +2010,21 @@ export function bindProfileEvents(root: Document | HTMLElement): void {
           openMenu.style.top = `${rect.bottom + 8}px`;
           openMenu.style.right = `${window.innerWidth - rect.right}px`;
         }
+      }
+
+      const openCommentMenu = document.querySelector<HTMLElement>(
+        "[data-comment-menu]:not([hidden])",
+      );
+      if (openCommentMenu) {
+        const commentId = openCommentMenu.getAttribute("data-comment-menu");
+        const postId = openCommentMenu.getAttribute("data-comment-menu-post");
+        const toggle =
+          commentId && postId
+            ? root.querySelector<HTMLButtonElement>(
+                `[data-comment-menu-toggle="${CSS.escape(commentId)}"][data-comment-menu-post="${CSS.escape(postId)}"]`,
+              )
+            : null;
+        if (toggle) positionCommentMenu(openCommentMenu, toggle);
       }
 
       const openFriendMenu = document.querySelector<HTMLElement>(

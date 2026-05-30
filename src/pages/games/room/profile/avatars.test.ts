@@ -140,4 +140,108 @@ describe("game room avatars", () => {
       isMe: false,
     });
   });
+
+  it("загружает аватар игрока по avatarId, если профиль не дал ссылку", async () => {
+    const loadAvatarUrlById = vi.fn(async () => "/media/avatar-5.png");
+    const loadProfile = vi.fn(async () => {
+      throw new Error("profile unavailable");
+    });
+    const service = createService({
+      getCurrentProfileId: () => "other",
+      getCurrentPlayer: () => null,
+      getSessionUser: () => null,
+      loadAvatarUrlById,
+      loadProfile,
+    });
+
+    const [player] = await service.hydrateGamePlayersAvatars([
+      { ...basePlayer, avatarId: "5", avatarUrl: "", gender: "", isMe: false },
+    ]);
+
+    expect(loadAvatarUrlById).toHaveBeenCalledWith("5", undefined);
+    expect(player).toMatchObject({
+      avatarUrl: "/media/avatar-5.png",
+      isMe: false,
+    });
+  });
+
+  it("не ходит в profile API для временных гостей публичного лобби", async () => {
+    const loadProfile = vi.fn(async () => ({ imageLink: "/loaded.png", gender: "female" }));
+    const loadAvatarUrlById = vi.fn(async () => "");
+    const service = createService({
+      getCurrentProfileId: () => "other",
+      getCurrentPlayer: () => null,
+      getSessionUser: () => null,
+      loadAvatarUrlById,
+      loadProfile,
+    });
+
+    const [player] = await service.hydrateGamePlayersAvatars([
+      {
+        ...basePlayer,
+        profileId: "161",
+        userAccountId: "0",
+        username: "guest",
+        firstName: "Софья",
+        lastName: "Ситниченко",
+        avatarId: "",
+        avatarUrl: "",
+        gender: "",
+        isMe: false,
+      },
+    ]);
+
+    expect(loadAvatarUrlById).not.toHaveBeenCalled();
+    expect(loadProfile).not.toHaveBeenCalled();
+    expect(player).toMatchObject({
+      avatarUrl: "",
+      gender: "male",
+      isMe: false,
+    });
+  });
+
+  it("загружает аватар автора чата по authorAvatarId без профиля", async () => {
+    const loadAvatarUrlById = vi.fn(async () => "/media/chat-avatar.png");
+    const service = createService({
+      getSessionUser: () => null,
+      loadAvatarUrlById,
+    });
+
+    const avatarLinks = await service.hydrateRoomChatAuthorAvatars(null, [
+      {
+        ...baseMessage,
+        authorName: "Bob",
+        authorAvatarId: "7",
+      },
+    ]);
+
+    expect(loadAvatarUrlById).toHaveBeenCalledWith("7", undefined);
+    expect(avatarLinks).toContain("/media/chat-avatar.png");
+  });
+
+  it("не ходит в profile API для сообщений временных гостей публичного лобби", async () => {
+    const loadProfile = vi.fn(async () => ({ imageLink: "/loaded.png" }));
+    const loadAvatarUrlById = vi.fn(async () => "");
+    const service = createService({
+      getSessionUser: () => null,
+      loadAvatarUrlById,
+      loadProfile,
+    });
+
+    const avatarLinks = await service.hydrateRoomChatAuthorAvatars(null, [
+      {
+        ...baseMessage,
+        authorProfileId: "161",
+        authorUserAccountId: "0",
+        authorName: "Софья Ситниченко",
+        authorFirstName: "Софья",
+        authorLastName: "Ситниченко",
+        authorUsername: "guest",
+      },
+    ]);
+
+    expect(loadAvatarUrlById).not.toHaveBeenCalled();
+    expect(loadProfile).not.toHaveBeenCalled();
+    expect(avatarLinks).toEqual([]);
+  });
 });

@@ -1,4 +1,5 @@
 import type { GamesErrorTarget, GamesPageState } from "../state/store";
+import { gameT } from "../shared/i18n";
 
 type RoomChatPatch = Pick<
   Partial<GamesPageState>,
@@ -16,6 +17,7 @@ export type BindGamesSubmitEventsOptions = {
   handleSubmitRoomChat: (form: HTMLFormElement) => Promise<void>;
   handleCreateRoom: (form: HTMLFormElement) => Promise<void>;
   handleJoinRoom: (form: HTMLFormElement) => Promise<void>;
+  handleJoinPublicRoom?: ((form: HTMLFormElement) => Promise<void>) | undefined;
   handleJoinListedRoom: (form: HTMLFormElement) => Promise<void>;
   handleRenameRoomTitle: (form: HTMLFormElement) => Promise<void>;
   handlePasswordForm: (form: HTMLFormElement) => Promise<void>;
@@ -36,6 +38,9 @@ function getSubmitFormAction(
   options: BindGamesSubmitEventsOptions,
 ): (() => Promise<void>) | null {
   if (form.matches("[data-games-create-room]")) return () => options.handleCreateRoom(form);
+  if (form.matches("[data-games-public-join]") && options.handleJoinPublicRoom) {
+    return () => options.handleJoinPublicRoom!(form);
+  }
   if (form.matches("[data-games-join-room]")) return () => options.handleJoinRoom(form);
   if (form.matches("[data-games-join-listed-room]")) {
     return () => options.handleJoinListedRoom(form);
@@ -65,11 +70,35 @@ function handleRoomChatSubmit(form: HTMLFormElement, options: BindGamesSubmitEve
     options.setRoomChatState(
       {
         roomChatSending: false,
-        roomChatError: options.getErrorMessage(error, "Не удалось отправить сообщение."),
+        roomChatError: options.getErrorMessage(error, gameT("chat.sendError")),
       },
       { scrollToBottom: false },
     );
   });
+}
+
+function submitRoomChatForm(form: HTMLFormElement): void {
+  if (typeof form.requestSubmit === "function") {
+    form.requestSubmit();
+    return;
+  }
+  form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+}
+
+/**
+ * Отправляет сообщение чата по Enter без вставки перевода строки.
+ */
+function handleRoomChatInputKeydown(event: KeyboardEvent): void {
+  if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+  const target = event.target;
+  if (!(target instanceof HTMLTextAreaElement)) return;
+  if (!target.matches("[data-games-room-chat-input]")) return;
+
+  const form = target.closest<HTMLFormElement>("[data-games-room-chat-form]");
+  if (!form) return;
+
+  event.preventDefault();
+  submitRoomChatForm(form);
 }
 
 /**
@@ -84,7 +113,7 @@ function handleGameFormSubmit(form: HTMLFormElement, options: BindGamesSubmitEve
     options.setGamesState({
       loading: false,
       message: "",
-      error: options.getErrorMessage(error, "Не удалось выполнить действие."),
+      error: options.getErrorMessage(error, gameT("common.actionError")),
       errorTarget,
     });
   });
@@ -97,6 +126,10 @@ export function bindGamesSubmitEvents(
   root: GamesSubmitEventsRoot,
   options: BindGamesSubmitEventsOptions,
 ): void {
+  root.addEventListener("keydown", (event: Event) => {
+    handleRoomChatInputKeydown(event as KeyboardEvent);
+  });
+
   root.addEventListener("submit", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLFormElement)) return;

@@ -19,17 +19,8 @@ Frontend социальной сети ARIS.
 - [Деплой](https://arisnet.ru)
 - [Backend repository](https://github.com/go-park-mail-ru/2026_1_ARIS/)
 - [Figma](https://figma.com/design/fhzdyBQ8qjNFRCRVriSrK9/VK.com?node-id=8-16&p=f&t=u2EXBO6Pxh6QqWVC-0)
-
-### Информация о проекте
-
-- Команда: АРИС
-- Состав команды:
-  - [Сергей Шульгиненко](https://github.com/londonwaterloo) - Frontend
-  - [Иван Хвостов](https://github.com/KokInside) - Backend
-- Production: https://arisnet.ru
 - Swagger: https://arisnet.ru/swagger/index.html
-- Figma: https://figma.com/design/fhzdyBQ8qjNFRCRVriSrK9/VK.com?node-id=8-16&p=f&t=u2EXBO6Pxh6QqWVC-0
-- Backend repository: https://github.com/go-park-mail-ru/2026_1_ARIS/
+
 
 ### How-to-run
 

@@ -19,7 +19,7 @@ Frontend социальной сети ARIS.
 - [Деплой](https://arisnet.ru)
 - [Backend repository](https://github.com/go-park-mail-ru/2026_1_ARIS/)
 - [Figma](https://figma.com/design/fhzdyBQ8qjNFRCRVriSrK9/VK.com?node-id=8-16&p=f&t=u2EXBO6Pxh6QqWVC-0)
-- Swagger: https://arisnet.ru/swagger/index.html
+- [Swagger](https://arisnet.ru/swagger/index.html)
 
 
 ### How-to-run
